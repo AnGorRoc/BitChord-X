@@ -1332,6 +1332,9 @@
     <string name="spotify_sync_auto">Garder à jour</string>
     <string name="spotify_sync_auto_hint">Met à jour les playlists importées à l’ouverture de cette page</string>
     <string name="deselect_all">Tout désélectionner</string>
+    <string name="player_and_lyrics">Lecteur et paroles</string>
+    <string name="lyric_above_scrubber">Afficher les paroles au-dessus de la barre de lecture</string>
+    <string name="lyric_above_scrubber_subtitle">Affiche la ligne de paroles en cours au-dessus de la chronologie dans le lecteur</string>
     <string name="spotify_sync_imported">Importée</string>
     <string name="yt_export">Exporter vers YouTube Music</string>
     <string name="yt_export_stop">Arrêter l\'export</string>

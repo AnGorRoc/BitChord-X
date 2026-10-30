@@ -1331,6 +1331,9 @@
     <string name="spotify_sync_auto">Aktuell halten</string>
     <string name="spotify_sync_auto_hint">Aktualisiert importierte Playlists, wenn du diese Seite öffnest</string>
     <string name="deselect_all">Alle abwählen</string>
+    <string name="player_and_lyrics">Player &amp; Songtexte</string>
+    <string name="lyric_above_scrubber">Songtext über der Zeitleiste anzeigen</string>
+    <string name="lyric_above_scrubber_subtitle">Zeigt die aktuelle Songtextzeile im Player über der Zeitleiste an</string>
     <string name="spotify_sync_imported">Importiert</string>
     <string name="yt_export">Auf YouTube Music exportieren</string>
     <string name="yt_export_stop">Export stoppen</string>

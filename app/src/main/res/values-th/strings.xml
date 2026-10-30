@@ -1317,6 +1317,9 @@
     <string name="spotify_sync_auto">อัปเดตอยู่เสมอ</string>
     <string name="spotify_sync_auto_hint">อัปเดตเพลย์ลิสต์ที่นำเข้าเมื่อเปิดหน้านี้</string>
     <string name="deselect_all">ยกเลิกการเลือกทั้งหมด</string>
+    <string name="player_and_lyrics">เครื่องเล่นและเนื้อเพลง</string>
+    <string name="lyric_above_scrubber">แสดงเนื้อเพลงเหนือแถบเลื่อน</string>
+    <string name="lyric_above_scrubber_subtitle">แสดงบรรทัดเนื้อเพลงปัจจุบันเหนือไทม์ไลน์ในเครื่องเล่น</string>
     <string name="spotify_sync_imported">นำเข้าแล้ว</string>
     <string name="yt_export">ส่งออกไปยัง YouTube Music</string>
     <string name="yt_export_stop">หยุดส่งออก</string>

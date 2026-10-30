@@ -1251,6 +1251,9 @@
     <string name="spotify_sync_auto">Luôn cập nhật</string>
     <string name="spotify_sync_auto_hint">Cập nhật các danh sách phát đã nhập khi bạn mở trang này</string>
     <string name="deselect_all">Bỏ chọn tất cả</string>
+    <string name="player_and_lyrics">Trình phát &amp; lời bài hát</string>
+    <string name="lyric_above_scrubber">Hiện lời bài hát phía trên thanh tiến trình</string>
+    <string name="lyric_above_scrubber_subtitle">Hiển thị dòng lời bài hát hiện tại phía trên dòng thời gian trong trình phát</string>
     <string name="spotify_sync_imported">Đã nhập</string>
     <string name="yt_export">Xuất sang YouTube Music</string>
     <string name="yt_export_stop">Dừng xuất</string>

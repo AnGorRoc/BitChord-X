@@ -1336,6 +1336,9 @@
     <string name="spotify_sync_auto">שמירה על עדכניות</string>
     <string name="spotify_sync_auto_hint">מעדכן פלייליסטים שיובאו כשפותחים את הדף הזה</string>
     <string name="deselect_all">בטל את כל הבחירות</string>
+    <string name="player_and_lyrics">נגן ומילים</string>
+    <string name="lyric_above_scrubber">הצג מילים מעל פס ההתקדמות</string>
+    <string name="lyric_above_scrubber_subtitle">מציג את שורת המילים הנוכחית מעל ציר הזמן בנגן</string>
     <string name="spotify_sync_imported">יובא</string>
     <string name="yt_export">ייצוא ל-YouTube Music</string>
     <string name="yt_export_stop">עצירת הייצוא</string>

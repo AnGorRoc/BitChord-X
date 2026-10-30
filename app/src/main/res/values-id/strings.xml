@@ -1311,6 +1311,9 @@
     <string name="spotify_sync_auto">Selalu perbarui</string>
     <string name="spotify_sync_auto_hint">Memperbarui playlist yang diimpor saat halaman ini dibuka</string>
     <string name="deselect_all">Batalkan semua pilihan</string>
+    <string name="player_and_lyrics">Pemutar &amp; lirik</string>
+    <string name="lyric_above_scrubber">Tampilkan lirik di atas bilah kemajuan</string>
+    <string name="lyric_above_scrubber_subtitle">Menampilkan baris lirik saat ini di atas lini masa di pemutar</string>
     <string name="spotify_sync_imported">Diimpor</string>
     <string name="yt_export">Ekspor ke YouTube Music</string>
     <string name="yt_export_stop">Hentikan ekspor</string>

@@ -1358,6 +1358,9 @@
     <string name="spotify_sync_auto">Поддерживать актуальность</string>
     <string name="spotify_sync_auto_hint">Обновляет импортированные плейлисты при открытии этой страницы</string>
     <string name="deselect_all">Снять выделение</string>
+    <string name="player_and_lyrics">Плеер и тексты</string>
+    <string name="lyric_above_scrubber">Показывать строку текста над полосой перемотки</string>
+    <string name="lyric_above_scrubber_subtitle">Показывает текущую строку текста над временной шкалой в плеере</string>
     <string name="spotify_sync_imported">Импортировано</string>
     <string name="yt_export">Экспорт в YouTube Music</string>
     <string name="yt_export_stop">Остановить экспорт</string>

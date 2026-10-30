@@ -1369,6 +1369,9 @@
     <string name="spotify_sync_auto">Aktualizuj na bieżąco</string>
     <string name="spotify_sync_auto_hint">Aktualizuje zaimportowane playlisty po otwarciu tej strony</string>
     <string name="deselect_all">Odznacz wszystko</string>
+    <string name="player_and_lyrics">Odtwarzacz i teksty</string>
+    <string name="lyric_above_scrubber">Pokaż tekst nad paskiem postępu</string>
+    <string name="lyric_above_scrubber_subtitle">Wyświetla bieżący wiersz tekstu nad osią czasu w odtwarzaczu</string>
     <string name="spotify_sync_imported">Zaimportowano</string>
     <string name="yt_export">Eksportuj do YouTube Music</string>
     <string name="yt_export_stop">Zatrzymaj eksport</string>

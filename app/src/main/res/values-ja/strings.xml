@@ -1312,6 +1312,9 @@
     <string name="spotify_sync_auto">常に最新に保つ</string>
     <string name="spotify_sync_auto_hint">このページを開くと、インポート済みのプレイリストを更新します</string>
     <string name="deselect_all">すべての選択を解除</string>
+    <string name="player_and_lyrics">プレーヤーと歌詞</string>
+    <string name="lyric_above_scrubber">シークバーの上に歌詞を表示</string>
+    <string name="lyric_above_scrubber_subtitle">プレーヤーのタイムラインの上に現在の歌詞の行を表示します</string>
     <string name="spotify_sync_imported">インポート済み</string>
     <string name="yt_export">YouTube Music にエクスポート</string>
     <string name="yt_export_stop">エクスポートを停止</string>

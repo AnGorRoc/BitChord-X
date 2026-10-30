@@ -1310,6 +1310,9 @@
     <string name="spotify_sync_auto">保持最新</string>
     <string name="spotify_sync_auto_hint">開啟此頁面時更新已匯入的播放清單</string>
     <string name="deselect_all">取消全選</string>
+    <string name="player_and_lyrics">播放器與歌詞</string>
+    <string name="lyric_above_scrubber">在進度條上方顯示歌詞</string>
+    <string name="lyric_above_scrubber_subtitle">在播放器的時間軸上方顯示目前的歌詞行</string>
     <string name="spotify_sync_imported">已匯入</string>
     <string name="yt_export">匯出到 YouTube Music</string>
     <string name="yt_export_stop">停止匯出</string>

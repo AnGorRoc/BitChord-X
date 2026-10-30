@@ -1331,6 +1331,9 @@
     <string name="spotify_sync_auto">अप-टू-डेट रखें</string>
     <string name="spotify_sync_auto_hint">इस पेज को खोलने पर आयात की गई प्लेलिस्ट अपडेट होती हैं</string>
     <string name="deselect_all">सभी चयन हटाएं</string>
+    <string name="player_and_lyrics">प्लेयर और बोल</string>
+    <string name="lyric_above_scrubber">स्क्रबर के ऊपर बोल दिखाएं</string>
+    <string name="lyric_above_scrubber_subtitle">प्लेयर में टाइमलाइन के ऊपर वर्तमान बोल की पंक्ति दिखाता है</string>
     <string name="spotify_sync_imported">इंपोर्ट किया गया</string>
     <string name="yt_export">YouTube Music पर एक्सपोर्ट करें</string>
     <string name="yt_export_stop">एक्सपोर्ट रोकें</string>
