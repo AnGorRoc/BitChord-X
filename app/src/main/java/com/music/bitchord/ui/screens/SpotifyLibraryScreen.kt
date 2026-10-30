@@ -217,15 +217,17 @@ fun SpotifyLibraryScreen(
 
     // Pulling down from the top reads the library again. The indicator sits
     // where the page's own content starts, so it is the page's, not the bar's.
+    // When the list is empty, only the center list spinner is shown to avoid a double spinner.
+    val isPullRefreshing = loading && state.playlists.isNotEmpty()
     PullToRefreshBox(
-        isRefreshing = loading,
+        isRefreshing = isPullRefreshing,
         onRefresh = { reload++ },
         state = pullState,
         modifier = modifier.fillMaxSize(),
         indicator = {
             PullToRefreshDefaults.Indicator(
                 state = pullState,
-                isRefreshing = loading,
+                isRefreshing = isPullRefreshing,
                 modifier = Modifier.align(Alignment.TopCenter),
                 color = MaterialTheme.colorScheme.primary,
             )
