@@ -133,6 +133,15 @@ object SourceResolutionTracker {
                 TrackLog.d("SourceTracker", "[${old.displayName}] demoted from winner (superseded by higher quality)")
             }
         }
+        // A row still waiting on a lookup was never reached by the walk that
+        // found this winner. Left as it was, it would read as a request that
+        // simply has not answered yet.
+        val waiting = setOf(text(R.string.pipeline_status_querying), text(R.string.pipeline_status_waiting))
+        attemptMap.forEach { (id, old) ->
+            if (id != sourceId && old.status in waiting) {
+                attemptMap[id] = old.copy(status = text(R.string.pipeline_status_not_asked))
+            }
+        }
         attemptMap[sourceId] = base.copy(
             isWinner = true,
             status = winnerStatus ?: base.status,

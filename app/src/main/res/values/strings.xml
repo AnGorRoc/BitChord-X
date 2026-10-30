@@ -1330,6 +1330,7 @@
     <string name="pipeline_status_superseded" translatable="false">Replaced by higher quality</string>
     <string name="pipeline_status_querying" translatable="false">Looking up…</string>
     <string name="pipeline_status_waiting" translatable="false">Waiting</string>
+    <string name="pipeline_status_not_asked" translatable="false">Not asked</string>
     <string name="pipeline_status_skipped_data" translatable="false">Skipped by data limit (%1$s)</string>
     <string name="pipeline_status_skipped_lossless_first" translatable="false">Skipped (direct Lossless preferred)</string>
     <string name="pipeline_status_skipped_better_source" translatable="false">Skipped (higher-quality source preferred)</string>

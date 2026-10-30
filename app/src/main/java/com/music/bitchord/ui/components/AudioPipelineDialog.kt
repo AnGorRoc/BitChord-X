@@ -65,7 +65,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.music.bitchord.R
 import com.music.bitchord.data.NerdStats
 import com.music.bitchord.data.settings.AppSettings
+import com.music.bitchord.data.settings.permits
+import com.music.bitchord.data.sources.SourceConfig
+import com.music.bitchord.data.sources.SourceKind
+import com.music.bitchord.data.sources.SourceRegistry
 import com.music.bitchord.playback.AudioOutputStatus
+import com.music.bitchord.playback.SourceAttemptReport
 import com.music.bitchord.playback.SourceResolutionTracker
 import com.music.bitchord.playback.audio.bitperfect.BitPerfectOutput
 import com.music.bitchord.playback.dsd.DsdFilter
@@ -572,6 +577,26 @@ fun AudioPipelineDialog(
             } else {
                 emptyList()
             }
+            // Every enabled provider is listed whether or not this track asked
+            // it anything, so the reader can tell "answered" from "never asked".
+            val providerConfigs by SourceRegistry.configs.collectAsStateWithLifecycle()
+            val ceiling = AppSettings.effectiveAudioQuality
+            val notAsked = SourceResolutionTracker.text(R.string.pipeline_status_not_asked)
+            val sourceRows = remember(providerConfigs, resolutionReports, ceiling) {
+                sourceInspectionRows(
+                    configs = providerConfigs,
+                    reports = resolutionReports,
+                    notAsked = notAsked,
+                    skippedFor = { kind ->
+                        if (ceiling.permits(kind)) {
+                            null
+                        } else {
+                            SourceResolutionTracker.text(R.string.pipeline_status_skipped_data, ceiling.label)
+                        }
+                    },
+                )
+            }
+
             PipelineRule()
             PipelineSection(
                 stageIndex = 5,
@@ -581,19 +606,14 @@ fun AudioPipelineDialog(
                 stageActivationProvider = stageActivation,
                 onStageIconPositioned = onStageIconPositioned,
             ) {
-                if (resolutionReports.isEmpty()) {
-                    PipelineRow("Estado", "Sin consultas activas para esta pista")
+                if (sourceRows.isEmpty()) {
+                    PipelineRow("Estado", "Sin fuentes activas")
                 } else {
-                    resolutionReports.forEach { report ->
-                        val valueText = if (report.detail != null && !report.status.contains(report.detail)) {
-                            "${report.status} (${report.detail})"
-                        } else {
-                            report.status
-                        }
+                    sourceRows.forEach { row ->
                         PipelineSourceStatusRow(
-                            name = report.displayName,
-                            status = valueText,
-                            isWinner = report.isWinner,
+                            name = row.name,
+                            status = row.status,
+                            isWinner = row.isWinner,
                         )
                     }
                 }
@@ -1035,6 +1055,47 @@ private fun PipelineNote(text: String) {
             .padding(top = 1.dp, bottom = 4.dp),
     )
 }
+
+/** One line of the source inspection: a configured provider, or a source that answered without being configured. */
+internal data class SourceInspectionRow(
+    val name: String,
+    val status: String,
+    val isWinner: Boolean,
+)
+
+/**
+ * Every enabled provider in the order the walk tries them, each with what it
+ * answered for this track, then any source that answered without being in the
+ * list. A provider the walk never reached reads [notAsked], or the data-ceiling
+ * skip when the ceiling keeps it out of the walk altogether.
+ */
+internal fun sourceInspectionRows(
+    configs: List<SourceConfig>,
+    reports: List<SourceAttemptReport>,
+    notAsked: String,
+    skippedFor: (SourceKind) -> String?,
+): List<SourceInspectionRow> {
+    val unmatched = reports.toMutableList()
+    val rows = SourceRegistry.enabledConfigs(configs)
+        .sortedBy { it.kind.rank }
+        .map { config ->
+            // YouTube's reports are keyed by a fixed id rather than its config's
+            // id, and there is only ever one YouTube, so it is matched by kind.
+            val report = unmatched.firstOrNull {
+                it.sourceId == config.id || (config.kind == SourceKind.YOUTUBE && it.kind == SourceKind.YOUTUBE)
+            }
+            if (report != null) {
+                unmatched.remove(report)
+                SourceInspectionRow(report.displayName, report.statusLine(), report.isWinner)
+            } else {
+                SourceInspectionRow(config.displayName, skippedFor(config.kind) ?: notAsked, isWinner = false)
+            }
+        }
+    return rows + unmatched.map { SourceInspectionRow(it.displayName, it.statusLine(), it.isWinner) }
+}
+
+private fun SourceAttemptReport.statusLine(): String =
+    if (detail != null && !status.contains(detail)) "$status ($detail)" else status
 
 /** 44100 -> "44.1 kHz", 2822400 -> "2.8224 MHz". */
 private fun rateText(hz: Int): String =

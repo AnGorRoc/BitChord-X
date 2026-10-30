@@ -2,10 +2,13 @@ package com.music.bitchord
 
 import android.media.AudioFormat
 import com.music.bitchord.data.NerdStats
+import com.music.bitchord.data.sources.SourceConfig
 import com.music.bitchord.data.sources.SourceKind
 import com.music.bitchord.data.sources.StreamFormat
 import com.music.bitchord.playback.AudioOutputStatus
+import com.music.bitchord.playback.SourceAttemptReport
 import com.music.bitchord.playback.SourceResolutionTracker
+import com.music.bitchord.ui.components.sourceInspectionRows
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -433,5 +436,70 @@ class AudioPipelineTest {
         assertTrue(SourceResolutionTracker.sameTrack("abc", "abc"))
         assertFalse(SourceResolutionTracker.sameTrack("abc", "xyz"))
         assertFalse(SourceResolutionTracker.sameTrack("abc", null))
+    }
+
+    @Test
+    fun `a row still looking up when the winner is set reads as not asked`() {
+        SourceResolutionTracker.resetForTrack("vidWalk", "Walk")
+        SourceResolutionTracker.record(
+            "jio", "JioSaavn", SourceKind.JIOSAAVN,
+            SourceResolutionTracker.text(R.string.pipeline_status_querying),
+        )
+        SourceResolutionTracker.record(
+            "youtube", "YouTube Music", SourceKind.YOUTUBE,
+            SourceResolutionTracker.text(R.string.pipeline_status_waiting),
+        )
+        SourceResolutionTracker.setWinner("addon1", "En reproducción (FLAC Lossless)", mediaId = "vidWalk")
+
+        val reports = SourceResolutionTracker.current.value.reports
+        val notAsked = SourceResolutionTracker.text(R.string.pipeline_status_not_asked)
+        assertEquals(notAsked, reports.first { it.sourceId == "jio" }.status)
+        assertEquals(notAsked, reports.first { it.sourceId == "youtube" }.status)
+    }
+
+    @Test
+    fun `inspection lists every enabled provider and marks the ones never asked`() {
+        val addon = SourceConfig(kind = SourceKind.ADDON, label = "Mine", baseUrl = "https://a.example", enabled = true)
+        val jio = SourceConfig(kind = SourceKind.JIOSAAVN, enabled = true)
+        val youtube = SourceConfig(kind = SourceKind.YOUTUBE)
+        val off = SourceConfig(kind = SourceKind.TIDAL, enabled = false)
+        val reports = listOf(
+            SourceAttemptReport("youtube", "YouTube Music", SourceKind.YOUTUBE, "En reproducción (Opus)", isWinner = true),
+        )
+
+        val rows = sourceInspectionRows(
+            configs = listOf(jio, off, youtube, addon),
+            reports = reports,
+            notAsked = "No consultado",
+            skippedFor = { null },
+        )
+
+        assertEquals(
+            listOf("Mine", "JioSaavn", "YouTube Music"),
+            rows.map { it.name },
+        )
+        assertEquals("No consultado", rows[0].status)
+        assertEquals("No consultado", rows[1].status)
+        assertEquals("En reproducción (Opus)", rows[2].status)
+        assertTrue(rows[2].isWinner)
+    }
+
+    @Test
+    fun `inspection shows a data-ceiling skip and keeps answers from unconfigured sources`() {
+        val jio = SourceConfig(kind = SourceKind.JIOSAAVN, enabled = true)
+        val reports = listOf(
+            SourceAttemptReport("module", "module", SourceKind.MODULE, "En reproducción (FLAC)", isWinner = true),
+        )
+
+        val rows = sourceInspectionRows(
+            configs = listOf(jio),
+            reports = reports,
+            notAsked = "No consultado",
+            skippedFor = { kind -> if (kind == SourceKind.JIOSAAVN) "Omitido por límite de datos" else null },
+        )
+
+        assertEquals("Omitido por límite de datos", rows[0].status)
+        assertEquals("module", rows[1].name)
+        assertTrue(rows[1].isWinner)
     }
 }
