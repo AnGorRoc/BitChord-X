@@ -32,6 +32,8 @@ data class TrackResolutionState(
     val mediaId: String = "",
     val title: String = "",
     val reports: List<SourceAttemptReport> = emptyList(),
+    /** Where the audio is coming from without a lookup, such as the disk cache or a local file. */
+    val storage: String? = null,
 )
 
 /**
@@ -66,10 +68,13 @@ object SourceResolutionTracker {
 
     /**
      * Clears prior reports when advancing or changing to a new track.
+     *
+     * [storage] names where the audio comes from when it is not looked up at
+     * all — the disk cache or a local file — so that the stage can say so.
      */
-    fun resetForTrack(mediaId: String, title: String) {
+    fun resetForTrack(mediaId: String, title: String, storage: String? = null) {
         attemptMap.clear()
-        _current.value = TrackResolutionState(mediaId = mediaId, title = title, reports = emptyList())
+        _current.value = TrackResolutionState(mediaId = mediaId, title = title, reports = emptyList(), storage = storage)
         TrackLog.d("SourceTracker", "Reset for track '$title' ($mediaId)", about = mediaId)
     }
 
@@ -133,21 +138,38 @@ object SourceResolutionTracker {
                 TrackLog.d("SourceTracker", "[${old.displayName}] demoted from winner (superseded by higher quality)")
             }
         }
-        // A row still waiting on a lookup was never reached by the walk that
-        // found this winner. Left as it was, it would read as a request that
-        // simply has not answered yet.
-        val waiting = setOf(text(R.string.pipeline_status_querying), text(R.string.pipeline_status_waiting))
-        attemptMap.forEach { (id, old) ->
-            if (id != sourceId && old.status in waiting) {
-                attemptMap[id] = old.copy(status = text(R.string.pipeline_status_not_asked))
-            }
-        }
+        settleQueued()
         attemptMap[sourceId] = base.copy(
             isWinner = true,
             status = winnerStatus ?: base.status,
         )
+        // Whatever is playing now comes from this source, not from the store.
+        _current.update { it.copy(storage = null) }
         TrackLog.d("SourceTracker", "[${base.displayName}] promoted to WINNER: ${winnerStatus ?: base.status}")
         publish()
+    }
+
+    /**
+     * Ends the search for [mediaId]: a source still queued was never asked,
+     * and is reported as such rather than left waiting for a turn that is over.
+     * Called when the lookup that queued them has completed, so a source that
+     * is still awaiting an answer keeps its own status.
+     */
+    fun finishSearch(mediaId: String) {
+        if (!sameTrack(mediaId, _current.value.mediaId)) return
+        settleQueued()
+        publish()
+    }
+
+    /** Turns every queued row into a not-asked one. Asked rows keep their status. */
+    private fun settleQueued() {
+        val queued = text(R.string.pipeline_status_queued)
+        val notAsked = text(R.string.pipeline_status_not_asked)
+        attemptMap.forEach { (id, old) ->
+            if (old.status == queued) {
+                attemptMap[id] = old.copy(status = notAsked)
+            }
+        }
     }
 
     private fun publish() {

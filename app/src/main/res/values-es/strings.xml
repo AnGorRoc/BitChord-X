@@ -1381,6 +1381,9 @@
     <string name="pipeline_status_querying">Consultando…</string>
     <string name="pipeline_status_waiting">En espera</string>
     <string name="pipeline_status_not_asked">No consultado</string>
+    <string name="pipeline_status_queued">En cola</string>
+    <string name="pipeline_storage_cache">Caché</string>
+    <string name="pipeline_storage_local">Local</string>
     <string name="pipeline_status_skipped_data">Omitido por límite de datos (%1$s)</string>
     <string name="pipeline_status_skipped_lossless_first">Omitido (se prefirió Lossless directo)</string>
     <string name="pipeline_status_skipped_better_source">Omitido (se prefirió fuente de mayor calidad)</string>

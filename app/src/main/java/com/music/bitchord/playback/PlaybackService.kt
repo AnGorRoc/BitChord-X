@@ -4026,6 +4026,22 @@ class PlaybackService : MediaLibraryService() {
                 mediaItem.localConfiguration?.uri?.let(QualityUpgrade::cacheTag),
             )
         }
+        // A track played from the disk cache or a local file is never resolved,
+        // so nothing else would say where its audio is coming from. Network
+        // tracks are left to the resolver, which resets the inspection itself
+        // when it looks them up.
+        mediaItem?.let { item ->
+            val storage = when {
+                item.mediaMetadata.extras?.getString(EXTRA_LOCAL_URI) != null ->
+                    SourceResolutionTracker.text(R.string.pipeline_storage_local)
+                item.localConfiguration?.uri?.let { AudioCache.isFullyCached(it) } == true ->
+                    SourceResolutionTracker.text(R.string.pipeline_storage_cache)
+                else -> null
+            }
+            if (storage != null) {
+                SourceResolutionTracker.resetForTrack(item.mediaId, item.mediaMetadata.title?.toString().orEmpty(), storage)
+            }
+        }
         if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK) SkipPace.shared.noteSkip()
         TrackLog.d(
             "BitChord",
@@ -4862,6 +4878,17 @@ class PlaybackService : MediaLibraryService() {
         if (alreadyPending) {
             TrackLog.d("BitChord", "looking again for a better copy of $mediaId", about = mediaId)
         }
+        // Queued before anything else, so the sources a second look is about to
+        // ask read as queued from now on — the store is playing, and this is the
+        // search for something better.
+        for (candidate in SourceResolver.upgradeCandidates()) {
+            SourceResolutionTracker.record(
+                candidate.configId,
+                candidate.displayName,
+                candidate.kind,
+                SourceResolutionTracker.text(R.string.pipeline_status_queued),
+            )
+        }
         upgradeJob = scope.launch(TrackLog.about(mediaId)) {
             // A previous visit to this track already did all the expensive
             // parts and lost the swap to a skip. Nothing about the answer has
@@ -4943,6 +4970,10 @@ class PlaybackService : MediaLibraryService() {
 
                 QualityUpgrade.Look.Waiting -> Unit
             }
+        }.also { job ->
+            // However the search ends — answered, refused, or cancelled by a skip
+            // — whatever was still queued was never asked.
+            job.invokeOnCompletion { SourceResolutionTracker.finishSearch(mediaId) }
         }
     }
 
@@ -6494,6 +6525,8 @@ class PlaybackService : MediaLibraryService() {
         val allConfigured = SourceRegistry.active()
         val ceiling = AppSettings.effectiveAudioQuality
         SourceResolutionTracker.resetForTrack(videoId, target.title)
+        // Every active source is listed as queued up front. Each one moves on
+        // to "Looking up…" only when it is actually asked — see matchAndStream.
         for (s in allConfigured) {
             if (!ceiling.permits(s.kind)) {
                 SourceResolutionTracker.record(
@@ -6507,16 +6540,10 @@ class PlaybackService : MediaLibraryService() {
                     s.configId,
                     s.displayName,
                     s.kind,
-                    SourceResolutionTracker.text(R.string.pipeline_status_querying),
+                    SourceResolutionTracker.text(R.string.pipeline_status_queued),
                 )
             }
         }
-        SourceResolutionTracker.record(
-            "youtube",
-            "YouTube Music",
-            SourceKind.YOUTUBE,
-            SourceResolutionTracker.text(R.string.pipeline_status_waiting),
-        )
 
         if (SourceResolver.losslessFromStart()) {
             val lossless = withContext(Dispatchers.IO + TrackLog.about(videoId)) {
@@ -6526,7 +6553,7 @@ class PlaybackService : MediaLibraryService() {
                 NerdStats.onLosslessRaceEnd(videoId)
                 val configId = lossless.sourceConfigId ?: "module"
                 SourceResolutionTracker.setWinner(configId, SourceResolutionTracker.text(R.string.pipeline_status_playing_with, lossless.format.summary), mediaId = videoId)
-                SourceResolutionTracker.record("youtube", "YouTube Music", SourceKind.YOUTUBE, SourceResolutionTracker.text(R.string.pipeline_status_skipped_lossless_first))
+                SourceResolutionTracker.record(SourceRegistry.youtubeConfigId(), "YouTube Music", SourceKind.YOUTUBE, SourceResolutionTracker.text(R.string.pipeline_status_skipped_lossless_first))
                 return Resolved.Module(lossless)
             }
             TrackLog.d("BitChord", "no lossless copy of '${target.title}' in ${LOSSLESS_FROM_START_TIMEOUT_MS}ms; starting as usual", about = videoId)
@@ -6543,6 +6570,12 @@ class PlaybackService : MediaLibraryService() {
         // wrapped rather than thrown from: it is awaited only on the paths
         // that need it, and an async that fails without ever being awaited is
         // an unhandled exception in this service's scope.
+        SourceResolutionTracker.record(
+            SourceRegistry.youtubeConfigId(),
+            "YouTube Music",
+            SourceKind.YOUTUBE,
+            SourceResolutionTracker.text(R.string.pipeline_status_querying),
+        )
         val fallback = scope.async(Dispatchers.IO + TrackLog.about(videoId)) {
             runCatching { StreamResolver.resolve(videoId) }
         }
@@ -6625,7 +6658,7 @@ class PlaybackService : MediaLibraryService() {
             fallback.cancel()
             val quickConfigId = quick.sourceConfigId ?: "module"
             SourceResolutionTracker.setWinner(quickConfigId, SourceResolutionTracker.text(R.string.pipeline_status_playing_with, quick.format.summary), mediaId = videoId)
-            SourceResolutionTracker.record("youtube", "YouTube Music", SourceKind.YOUTUBE, SourceResolutionTracker.text(R.string.pipeline_status_skipped_better_source))
+            SourceResolutionTracker.record(SourceRegistry.youtubeConfigId(), "YouTube Music", SourceKind.YOUTUBE, SourceResolutionTracker.text(R.string.pipeline_status_skipped_better_source))
             // Everything that was asked for, ahead of the fallback: the
             // ordinary good case, and the one with no seam in it.
             if (!quick.belowRequest) {
@@ -6647,7 +6680,7 @@ class PlaybackService : MediaLibraryService() {
 
         val url = fallback.await().getOrThrow()
         val ytBitrate = NerdStats.pickedBitrateKbps(videoId) ?: 160
-        SourceResolutionTracker.setWinner("youtube", SourceResolutionTracker.text(R.string.pipeline_status_playing_with, "~$ytBitrate kbps Opus"), mediaId = videoId)
+        SourceResolutionTracker.setWinner(SourceRegistry.youtubeConfigId(), SourceResolutionTracker.text(R.string.pipeline_status_playing_with, "~$ytBitrate kbps Opus"), mediaId = videoId)
         // Marked pending only here, with the fallback's own bitrate in hand:
         // that figure is the answer to "better than what?" the second look
         // measures candidates against, and it isn't known until the client
@@ -6685,7 +6718,7 @@ class PlaybackService : MediaLibraryService() {
         if (direct != null) {
             val configId = direct.sourceConfigId ?: "addon"
             SourceResolutionTracker.setWinner(configId, SourceResolutionTracker.text(R.string.pipeline_status_playing_direct, direct.format.summary), mediaId = videoId)
-            SourceResolutionTracker.record("youtube", "YouTube Music", SourceKind.YOUTUBE, SourceResolutionTracker.text(R.string.pipeline_status_skipped_direct_addon))
+            SourceResolutionTracker.record(SourceRegistry.youtubeConfigId(), "YouTube Music", SourceKind.YOUTUBE, SourceResolutionTracker.text(R.string.pipeline_status_skipped_direct_addon))
             return Resolved.Module(direct)
         }
         val running = DirectSourceGate.stillLooking(videoId)
@@ -6708,7 +6741,7 @@ class PlaybackService : MediaLibraryService() {
             return Resolved.Module(running?.await() ?: throw e)
         }
         DirectSourceGate.startedOnYouTube(videoId, target)
-        SourceResolutionTracker.setWinner("youtube", SourceResolutionTracker.text(R.string.pipeline_status_playing_with, "YouTube Opus"), mediaId = videoId)
+        SourceResolutionTracker.setWinner(SourceRegistry.youtubeConfigId(), SourceResolutionTracker.text(R.string.pipeline_status_playing_with, "YouTube Opus"), mediaId = videoId)
         return Resolved.YouTube(url)
     }
 

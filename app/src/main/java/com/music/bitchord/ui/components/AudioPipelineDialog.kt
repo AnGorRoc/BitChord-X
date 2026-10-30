@@ -579,6 +579,13 @@ fun AudioPipelineDialog(
             }
             // Every enabled provider is listed whether or not this track asked
             // it anything, so the reader can tell "answered" from "never asked".
+            val resolutionStorage = if (
+                statsMediaId == null || SourceResolutionTracker.sameTrack(resolutionState.mediaId, statsMediaId)
+            ) {
+                resolutionState.storage
+            } else {
+                null
+            }
             val providerConfigs by SourceRegistry.configs.collectAsStateWithLifecycle()
             val ceiling = AppSettings.effectiveAudioQuality
             val notAsked = SourceResolutionTracker.text(R.string.pipeline_status_not_asked)
@@ -606,6 +613,7 @@ fun AudioPipelineDialog(
                 stageActivationProvider = stageActivation,
                 onStageIconPositioned = onStageIconPositioned,
             ) {
+                resolutionStorage?.let { PipelineRow("Reproduciendo desde", it) }
                 if (sourceRows.isEmpty()) {
                     PipelineRow("Estado", "Sin fuentes activas")
                 } else {
@@ -1079,11 +1087,7 @@ internal fun sourceInspectionRows(
     val rows = SourceRegistry.enabledConfigs(configs)
         .sortedBy { it.kind.rank }
         .map { config ->
-            // YouTube's reports are keyed by a fixed id rather than its config's
-            // id, and there is only ever one YouTube, so it is matched by kind.
-            val report = unmatched.firstOrNull {
-                it.sourceId == config.id || (config.kind == SourceKind.YOUTUBE && it.kind == SourceKind.YOUTUBE)
-            }
+            val report = unmatched.firstOrNull { it.sourceId == config.id }
             if (report != null) {
                 unmatched.remove(report)
                 SourceInspectionRow(report.displayName, report.statusLine(), report.isWinner)

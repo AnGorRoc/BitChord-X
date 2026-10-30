@@ -324,6 +324,15 @@ object SourceRegistry {
     fun config(configId: String): SourceConfig? = configs.value.firstOrNull { it.id == configId }
 
     /**
+     * The id of the YouTube source as the rest of the app knows it. YouTube is
+     * seeded with a generated id like every other config, so anything that
+     * names it in the resolution tracker has to ask for it rather than assume
+     * a fixed string.
+     */
+    fun youtubeConfigId(): String =
+        configs.value.firstOrNull { it.kind == SourceKind.YOUTUBE }?.id ?: SourceKind.YOUTUBE.name.lowercase()
+
+    /**
      * Drops completed addon track answers for an explicit quality retry.
      *
      * Empty responses are normally legitimate and cached, but an addon whose

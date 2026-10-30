@@ -439,22 +439,48 @@ class AudioPipelineTest {
     }
 
     @Test
-    fun `a row still looking up when the winner is set reads as not asked`() {
+    fun `a queued source that the winner never reached reads as not asked`() {
         SourceResolutionTracker.resetForTrack("vidWalk", "Walk")
-        SourceResolutionTracker.record(
-            "jio", "JioSaavn", SourceKind.JIOSAAVN,
-            SourceResolutionTracker.text(R.string.pipeline_status_querying),
-        )
-        SourceResolutionTracker.record(
-            "youtube", "YouTube Music", SourceKind.YOUTUBE,
-            SourceResolutionTracker.text(R.string.pipeline_status_waiting),
-        )
+        SourceResolutionTracker.record("jio", "JioSaavn", SourceKind.JIOSAAVN, SourceResolutionTracker.text(R.string.pipeline_status_queued))
+        SourceResolutionTracker.record("youtube", "YouTube Music", SourceKind.YOUTUBE, SourceResolutionTracker.text(R.string.pipeline_status_querying))
         SourceResolutionTracker.setWinner("addon1", "En reproducción (FLAC Lossless)", mediaId = "vidWalk")
 
         val reports = SourceResolutionTracker.current.value.reports
-        val notAsked = SourceResolutionTracker.text(R.string.pipeline_status_not_asked)
-        assertEquals(notAsked, reports.first { it.sourceId == "jio" }.status)
-        assertEquals(notAsked, reports.first { it.sourceId == "youtube" }.status)
+        assertEquals(SourceResolutionTracker.text(R.string.pipeline_status_not_asked), reports.first { it.sourceId == "jio" }.status)
+    }
+
+    @Test
+    fun `a source still awaiting its answer keeps saying so when the winner is set`() {
+        SourceResolutionTracker.resetForTrack("vidWaiting", "Waiting")
+        SourceResolutionTracker.record("youtube", "YouTube Music", SourceKind.YOUTUBE, SourceResolutionTracker.text(R.string.pipeline_status_querying))
+        SourceResolutionTracker.setWinner("addon1", "En reproducción (FLAC Lossless)", mediaId = "vidWaiting")
+
+        val yt = SourceResolutionTracker.current.value.reports.first { it.sourceId == "youtube" }
+        assertEquals(SourceResolutionTracker.text(R.string.pipeline_status_querying), yt.status)
+    }
+
+    @Test
+    fun `finishing a search settles only the queued rows of that track`() {
+        SourceResolutionTracker.resetForTrack("vidSearch", "Search")
+        SourceResolutionTracker.record("jio", "JioSaavn", SourceKind.JIOSAAVN, SourceResolutionTracker.text(R.string.pipeline_status_queued))
+        SourceResolutionTracker.record("addon1", "Addon", SourceKind.ADDON, SourceResolutionTracker.text(R.string.pipeline_status_querying))
+
+        SourceResolutionTracker.finishSearch("someOtherTrack")
+        assertEquals(SourceResolutionTracker.text(R.string.pipeline_status_queued), SourceResolutionTracker.current.value.reports.first { it.sourceId == "jio" }.status)
+
+        SourceResolutionTracker.finishSearch("vidSearch")
+        val reports = SourceResolutionTracker.current.value.reports
+        assertEquals(SourceResolutionTracker.text(R.string.pipeline_status_not_asked), reports.first { it.sourceId == "jio" }.status)
+        assertEquals(SourceResolutionTracker.text(R.string.pipeline_status_querying), reports.first { it.sourceId == "addon1" }.status)
+    }
+
+    @Test
+    fun `storage is reported for a track played without a lookup and cleared by a winner`() {
+        SourceResolutionTracker.resetForTrack("vidCache", "Cached", storage = "Cache")
+        assertEquals("Cache", SourceResolutionTracker.current.value.storage)
+
+        SourceResolutionTracker.setWinner("addon1", "En reproducción (FLAC Lossless)", mediaId = "vidCache")
+        assertNull(SourceResolutionTracker.current.value.storage)
     }
 
     @Test
@@ -464,7 +490,7 @@ class AudioPipelineTest {
         val youtube = SourceConfig(kind = SourceKind.YOUTUBE)
         val off = SourceConfig(kind = SourceKind.TIDAL, enabled = false)
         val reports = listOf(
-            SourceAttemptReport("youtube", "YouTube Music", SourceKind.YOUTUBE, "En reproducción (Opus)", isWinner = true),
+            SourceAttemptReport(youtube.id, "YouTube Music", SourceKind.YOUTUBE, "En reproducción (Opus)", isWinner = true),
         )
 
         val rows = sourceInspectionRows(

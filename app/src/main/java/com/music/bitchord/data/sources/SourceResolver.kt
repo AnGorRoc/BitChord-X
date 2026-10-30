@@ -573,6 +573,16 @@ object SourceResolver {
         val any: Boolean get() = count.get() > 0
     }
 
+    /**
+     * The sources a second look is willing to ask, in the order it asks them:
+     * everything the user ranked above YouTube. Empty when nothing outranks it.
+     */
+    fun upgradeCandidates(): List<MusicSource> {
+        val active = SourceRegistry.activeForPlayback()
+        val youtube = active.firstOrNull { it.kind == SourceKind.YOUTUBE } ?: return emptyList()
+        return rankedAbove(youtube.configId, active)
+    }
+
     suspend fun upgradeFor(
         target: TrackMatcher.Target,
         playing: StreamFormat? = null,
@@ -1312,6 +1322,14 @@ object SourceResolver {
         requireSharedArtist: Boolean = false,
         driftSec: Int = UPGRADE_DRIFT_SEC,
     ): SourceStream? {
+        // Asked from here on: until the answer comes back the row reads as
+        // waiting on this source, not as queued behind the others.
+        SourceResolutionTracker.record(
+            sourceId = source.configId,
+            displayName = source.displayName,
+            kind = source.kind,
+            status = SourceResolutionTracker.text(R.string.pipeline_status_querying),
+        )
         var searchedAny = false
         var hadAnyCandidates = false
         var hadRelevantCandidates = false
