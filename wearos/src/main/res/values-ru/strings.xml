@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="connecting">Подключение…</string>
+    <string name="no_phone_title">Телефон не подключен</string>
+    <string name="no_phone_body">Откройте BitChord на телефоне и держите его рядом с часами.</string>
+    <string name="retry">Повторить</string>
+    <string name="nothing_playing">Ничего не играет</string>
+    <string name="nothing_playing_body">Включите музыку в BitChord на телефоне.</string>
+    <string name="resume">Продолжить</string>
+    <string name="up_next">Далее</string>
+    <string name="queue_empty">В очереди ничего нет</string>
+    <string name="loading">Загрузка…</string>
+    <string name="playing_now">Сейчас играет</string>
+    <string name="more">Еще</string>
+    <string name="shuffle">Вперемешку</string>
+    <string name="repeat">Повтор</string>
+    <string name="repeat_off">Выкл.</string>
+    <string name="repeat_all">Все</string>
+    <string name="repeat_one">Один</string>
+    <string name="on">Вкл.</string>
+    <string name="off">Выкл.</string>
+    <string name="love">Нравится</string>
+    <string name="loved">В избранном</string>
+    <string name="volume">Громкость</string>
+    <string name="play">Воспроизведение</string>
+    <string name="pause">Пауза</string>
+    <string name="next">Вперед</string>
+    <string name="previous">Назад</string>
+    <string name="output">Вывод звука</string>
+    <string name="this_watch">Эти часы</string>
+    <string name="watch_speaker">Динамик или наушники часов</string>
+    <string name="on_phone_output">На телефоне</string>
+    <string name="phone_speaker">Динамик телефона</string>
+    <string name="wired_headphones">Проводные наушники</string>
+    <string name="usb_audio">USB-аудио</string>
+    <string name="hdmi">HDMI</string>
+    <string name="other_output">Другой вывод</string>
+    <string name="update_channel">Обновления</string>
+    <string name="update_ready">Обновление BitChord готово</string>
+    <string name="update_tap">Нажмите для установки обновления с телефона.</string>
+</resources>

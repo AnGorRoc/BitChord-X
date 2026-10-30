@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="connecting">Verbinde…</string>
+    <string name="no_phone_title">Smartphone nicht verbunden</string>
+    <string name="no_phone_body">Öffne BitChord auf deinem Smartphone und halte es in der Nähe deiner Smartwatch.</string>
+    <string name="retry">Erneut versuchen</string>
+    <string name="nothing_playing">Keine Wiedergabe</string>
+    <string name="nothing_playing_body">Spiele etwas in BitChord auf deinem Smartphone ab.</string>
+    <string name="resume">Fortsetzen</string>
+    <string name="up_next">Als Nächstes</string>
+    <string name="queue_empty">Nichts in der Warteschlange</string>
+    <string name="loading">Laden…</string>
+    <string name="playing_now">Aktuelle Wiedergabe</string>
+    <string name="more">Mehr</string>
+    <string name="shuffle">Zufallswiedergabe</string>
+    <string name="repeat">Wiederholen</string>
+    <string name="repeat_off">Aus</string>
+    <string name="repeat_all">Alle</string>
+    <string name="repeat_one">Eins</string>
+    <string name="on">Ein</string>
+    <string name="off">Aus</string>
+    <string name="love">Favorit</string>
+    <string name="loved">Favorisiert</string>
+    <string name="volume">Lautstärke</string>
+    <string name="play">Wiedergabe</string>
+    <string name="pause">Pause</string>
+    <string name="next">Weiter</string>
+    <string name="previous">Zurück</string>
+    <string name="output">Ausgabe</string>
+    <string name="this_watch">Diese Smartwatch</string>
+    <string name="watch_speaker">Smartwatch-Lautsprecher oder Kopfhörer</string>
+    <string name="on_phone_output">Auf Smartphone</string>
+    <string name="phone_speaker">Smartphone-Lautsprecher</string>
+    <string name="wired_headphones">Kabelgebundene Kopfhörer</string>
+    <string name="usb_audio">USB-Audio</string>
+    <string name="hdmi">HDMI</string>
+    <string name="other_output">Andere Ausgabe</string>
+    <string name="update_channel">Updates</string>
+    <string name="update_ready">BitChord-Update bereit</string>
+    <string name="update_tap">Tippe, um das Update von deinem Smartphone zu installieren.</string>
+</resources>

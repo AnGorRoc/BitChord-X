@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="connecting">กำลังเชื่อมต่อ…</string>
+    <string name="no_phone_title">ไม่ได้เชื่อมต่อโทรศัพท์</string>
+    <string name="no_phone_body">เปิด BitChord บนโทรศัพท์และวางไว้ใกล้กับนาฬิกา</string>
+    <string name="retry">ลองอีกครั้ง</string>
+    <string name="nothing_playing">ไม่ได้เล่นอยู่</string>
+    <string name="nothing_playing_body">เปิดเพลงใน BitChord บนโทรศัพท์ของคุณ</string>
+    <string name="resume">เล่นต่อ</string>
+    <string name="up_next">เล่นถัดไป</string>
+    <string name="queue_empty">ไม่มีรายการถัดไป</string>
+    <string name="loading">กำลังโหลด…</string>
+    <string name="playing_now">กำลังเล่น</string>
+    <string name="more">เพิ่มเติม</string>
+    <string name="shuffle">สลับเพลง</string>
+    <string name="repeat">เล่นซ้ำ</string>
+    <string name="repeat_off">ปิด</string>
+    <string name="repeat_all">ทั้งหมด</string>
+    <string name="repeat_one">เพลงเดียว</string>
+    <string name="on">เปิด</string>
+    <string name="off">ปิด</string>
+    <string name="love">ชอบ</string>
+    <string name="loved">ชอบแล้ว</string>
+    <string name="volume">ระดับเสียง</string>
+    <string name="play">เล่น</string>
+    <string name="pause">หยุดชั่วคราว</string>
+    <string name="next">ถัดไป</string>
+    <string name="previous">ก่อนหน้า</string>
+    <string name="output">เอาต์พุต</string>
+    <string name="this_watch">นาฬิกานี้</string>
+    <string name="watch_speaker">ลำโพงหรือหูฟังของนาฬิกา</string>
+    <string name="on_phone_output">บนโทรศัพท์</string>
+    <string name="phone_speaker">ลำโพงโทรศัพท์</string>
+    <string name="wired_headphones">หูฟังแบบมีสาย</string>
+    <string name="usb_audio">เสียงผ่าน USB</string>
+    <string name="hdmi">HDMI</string>
+    <string name="other_output">เอาต์พุตอื่น</string>
+    <string name="update_channel">อัปเดต</string>
+    <string name="update_ready">อัปเดต BitChord พร้อมแล้ว</string>
+    <string name="update_tap">แตะเพื่อติดตั้งการอัปเดตจากโทรศัพท์ของคุณ</string>
+</resources>

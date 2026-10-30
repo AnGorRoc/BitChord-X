@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="connecting">Bağlanıyor…</string>
+    <string name="no_phone_title">Telefon bağlı değil</string>
+    <string name="no_phone_body">Telefonunuzda BitChord uygulamasını açın ve saatinize yakın tutun.</string>
+    <string name="retry">Tekrar dene</string>
+    <string name="nothing_playing">Çalınmıyor</string>
+    <string name="nothing_playing_body">Telefonunuzdaki BitChord uygulamasından bir şeyler çalın.</string>
+    <string name="resume">Sürdür</string>
+    <string name="up_next">Sıradaki</string>
+    <string name="queue_empty">Sırada parça yok</string>
+    <string name="loading">Yükleniyor…</string>
+    <string name="playing_now">Şu An Çalıyor</string>
+    <string name="more">Daha Fazla</string>
+    <string name="shuffle">Karışık</string>
+    <string name="repeat">Tekrarla</string>
+    <string name="repeat_off">Kapalı</string>
+    <string name="repeat_all">Tümü</string>
+    <string name="repeat_one">Biri</string>
+    <string name="on">Açık</string>
+    <string name="off">Kapalı</string>
+    <string name="love">Beğen</string>
+    <string name="loved">Beğenildi</string>
+    <string name="volume">Ses Düzeyi</string>
+    <string name="play">Oynat</string>
+    <string name="pause">Duraklat</string>
+    <string name="next">Sonraki</string>
+    <string name="previous">Önceki</string>
+    <string name="output">Çıkış</string>
+    <string name="this_watch">Bu saat</string>
+    <string name="watch_speaker">Saat hoparlörü veya kulaklık</string>
+    <string name="on_phone_output">Telefonda</string>
+    <string name="phone_speaker">Telefon hoparlörü</string>
+    <string name="wired_headphones">Kablolu kulaklık</string>
+    <string name="usb_audio">USB ses</string>
+    <string name="hdmi">HDMI</string>
+    <string name="other_output">Diğer çıkış</string>
+    <string name="update_channel">Güncellemeler</string>
+    <string name="update_ready">BitChord güncellemesi hazır</string>
+    <string name="update_tap">Güncellemeyi telefonunuzdan yüklemek için dokunun.</string>
+</resources>
