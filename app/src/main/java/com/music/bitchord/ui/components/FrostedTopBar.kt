@@ -64,6 +64,7 @@ import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
@@ -429,7 +430,15 @@ private fun ArtworkPageActions(
         modifier = modifier
             // Ahead of the surface, so the glass, its edge and the avatar all
             // shrink as one ring — the avatar is not scaled again by its own slot.
+            // About the profile's own centre, not the pill's: the anchor stays
+            // where it is on screen, and any actions beside it fold into it
+            // instead of the whole ring sliding toward the middle of the pill.
             .graphicsLayer {
+                val anchorCentre = size.width - TOP_CONTROL_SIZE.toPx() / 2f
+                transformOrigin = TransformOrigin(
+                    pivotFractionX = if (size.width > 0f) anchorCentre / size.width else 0.5f,
+                    pivotFractionY = 0.5f,
+                )
                 scaleX = presence
                 scaleY = presence
                 alpha = presence.coerceIn(0f, 1f)
