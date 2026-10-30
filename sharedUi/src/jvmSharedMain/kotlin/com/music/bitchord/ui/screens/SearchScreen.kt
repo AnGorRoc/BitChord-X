@@ -72,7 +72,10 @@ import com.music.bitchord.data.model.BrowseType
 import com.music.bitchord.data.model.ROW_ART_PX
 import com.music.bitchord.data.model.SearchFilter
 import com.music.bitchord.data.model.artworkAt
+import com.music.bitchord.data.model.RankedSearch
 import com.music.bitchord.data.model.SearchResult
+import com.music.bitchord.data.model.SearchSectionKind
+import com.music.bitchord.data.model.rankAllSearch
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.model.playingRowMatcher
 import com.music.bitchord.data.model.UiState
@@ -328,23 +331,29 @@ fun SearchScreen(
                             is SearchResult.Browse -> null
                         } }
                     val isCurrentRow = playingRowMatcher(tracks, currentSong)
-                    val topResult = results.data.filterIsInstance<SearchResult.TopTrack>().firstOrNull()
-                    if (filter == SearchFilter.ALL && topResult != null) {
-                        item(key = "search:top-result:${topResult.song.videoId}") {
-                            SwipeToQueueBox(
-                                onSwipeToQueue = { onSongSwipe(topResult.song) },
-                                modifier = Modifier.fillMaxWidth(),
-                            ) {
-                                TopResultCard(
-                                    song = topResult.song,
-                                    onPlay = { onTopResultPlay(topResult.song) },
-                                    onPlaylist = { onTopResultPlaylist(topResult.song) },
-                                    onLongPress = { onSongLongPress(topResult.song) },
-                                )
+                    val ranked = if (filter == SearchFilter.ALL) rankAllSearch(results.data, query) else null
+                    val topResult = ranked?.topResult
+                    // The promoted card is YouTube's pick, but a closer artist or album
+                    // outranks it; it then sits at the head of the Songs section instead.
+                    val topResultCard: LazyListScope.() -> Unit = {
+                        if (topResult != null) {
+                            item(key = "search:top-result:${topResult.song.videoId}") {
+                                SwipeToQueueBox(
+                                    onSwipeToQueue = { onSongSwipe(topResult.song) },
+                                    modifier = Modifier.fillMaxWidth(),
+                                ) {
+                                    TopResultCard(
+                                        song = topResult.song,
+                                        onPlay = { onTopResultPlay(topResult.song) },
+                                        onPlaylist = { onTopResultPlaylist(topResult.song) },
+                                        onLongPress = { onSongLongPress(topResult.song) },
+                                    )
+                                }
                             }
                         }
                     }
-                    searchSections(results.data, filter).forEach { section ->
+                    if (ranked?.topResultLeads == true) topResultCard()
+                    searchSections(results.data, ranked).forEach { section ->
                         section.title?.let { title ->
                             item(key = "search-section:$title") {
                                 Text(
@@ -360,6 +369,7 @@ fun SearchScreen(
                                 )
                             }
                         }
+                        if (section.kind == SearchSectionKind.SONGS && ranked?.topResultLeads == false) topResultCard()
                         itemsIndexed(
                             items = section.rows,
                             key = { index, row ->
@@ -411,18 +421,31 @@ fun SearchScreen(
     }
 }
 
-private data class SearchSection(val title: String?, val rows: List<SearchResult>)
+private data class SearchSection(
+    val title: String?,
+    val rows: List<SearchResult>,
+    val kind: SearchSectionKind? = null,
+)
 
-/** The unfiltered page is useful only when its mixed result types are readable at a glance. */
-private fun searchSections(rows: List<SearchResult>, filter: SearchFilter): List<SearchSection> {
-    if (filter != SearchFilter.ALL) return listOf(SearchSection(null, rows))
-    return listOf(
-        SearchSection("Songs", rows.filterIsInstance<SearchResult.Track>()),
-        SearchSection("Artists", rows.filterIsInstance<SearchResult.Browse>().filter { it.item.type == BrowseType.ARTIST }),
-        SearchSection("Albums", rows.filterIsInstance<SearchResult.Browse>().filter { it.item.type == BrowseType.ALBUM }),
-        SearchSection("Playlists", rows.filterIsInstance<SearchResult.Browse>().filter { it.item.type == BrowseType.PLAYLIST }),
-        SearchSection("More", rows.filterIsInstance<SearchResult.Browse>().filter { it.item.type == BrowseType.OTHER }),
-    ).filter { it.rows.isNotEmpty() }
+/**
+ * The unfiltered page is useful only when its mixed result types are readable at a glance.
+ * [ranked] orders them by how closely each answers the query; see [rankAllSearch].
+ */
+private fun searchSections(rows: List<SearchResult>, ranked: RankedSearch?): List<SearchSection> {
+    if (ranked == null) return listOf(SearchSection(null, rows))
+    return ranked.sections.map { section ->
+        SearchSection(
+            title = when (section.kind) {
+                SearchSectionKind.SONGS -> "Songs"
+                SearchSectionKind.ARTISTS -> "Artists"
+                SearchSectionKind.ALBUMS -> "Albums"
+                SearchSectionKind.PLAYLISTS -> "Playlists"
+                SearchSectionKind.MORE -> "More"
+            },
+            rows = section.rows,
+            kind = section.kind,
+        )
+    }
 }
 
 /**
