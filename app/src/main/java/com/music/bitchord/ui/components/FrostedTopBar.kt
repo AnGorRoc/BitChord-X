@@ -5,6 +5,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
@@ -30,6 +31,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -186,6 +188,13 @@ fun FrostedTopBar(
      * Root tabs have no back button there for it to collide with.
      */
     accessory: (@Composable () -> Unit)? = null,
+    /**
+     * Whether the actions pill has anything in it. False while the bar has no
+     * actions to show — Settings, which is the profile's own destination — and
+     * the whole pill, edge and all, shrinks away rather than leaving its ring
+     * to vanish a moment after the avatar has already gone.
+     */
+    actionsVisible: Boolean = true,
     actions: @Composable () -> Unit = {},
 ) {
     val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
@@ -345,7 +354,11 @@ fun FrostedTopBar(
                     Spacer(Modifier.width(ACCESSORY_GAP))
                 }
                 if (useFloatingChrome) {
-                    ArtworkPageActions(hazeState = backButtonHazeState, content = actions)
+                    ArtworkPageActions(
+                        hazeState = backButtonHazeState,
+                        visible = actionsVisible,
+                        content = actions,
+                    )
                 } else {
                     actions()
                 }
@@ -373,17 +386,22 @@ private fun ArtworkPageBackButton(
         MaterialTheme.colorScheme.onSurface
     }
 
-    IconButton(
-        onClick = onClick,
-        modifier = modifier
-            .size(TOP_CONTROL_SIZE)
-            .then(artworkPageSurface(shape = shape, hazeState = hazeState)),
-    ) {
-        Icon(
-            SfIcons.ArrowBack,
-            contentDescription = stringResource(R.string.back),
-            tint = contentColor,
-        )
+    // The actions pill holds its buttons to TOP_CONTROL_SIZE (see
+    // ArtworkPageActions); without the same here, the button's own 48dp touch
+    // minimum stood this circle 4dp bigger than the profile beside it.
+    CompositionLocalProvider(LocalMinimumInteractiveComponentSize provides TOP_CONTROL_SIZE) {
+        IconButton(
+            onClick = onClick,
+            modifier = modifier
+                .size(TOP_CONTROL_SIZE)
+                .then(artworkPageSurface(shape = shape, hazeState = hazeState)),
+        ) {
+            Icon(
+                SfIcons.ArrowBack,
+                contentDescription = stringResource(R.string.back),
+                tint = contentColor,
+            )
+        }
     }
 }
 
@@ -391,11 +409,35 @@ private fun ArtworkPageBackButton(
 @Composable
 private fun ArtworkPageActions(
     hazeState: HazeState?,
+    visible: Boolean,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
+    val reduceAnimation by AppSettings.reduceAnimation.collectAsStateWithLifecycle()
+    val presence by animateFloatAsState(
+        targetValue = if (visible) 1f else 0f,
+        animationSpec = if (reduceAnimation) snap() else spring(
+            dampingRatio = 0.8f,
+            stiffness = Spring.StiffnessMediumLow,
+        ),
+        label = "topBarActionsPresence",
+    )
+    // Gone for good once it has shrunk to nothing: the pill is not drawn, and
+    // takes no room, while there is nothing in it.
+    if (presence <= 0.001f && !visible) return
     ActionsRow(
         modifier = modifier
+            // Ahead of the surface, so the glass, its edge and the avatar all
+            // shrink as one ring — the avatar is not scaled again by its own slot.
+            .graphicsLayer {
+                scaleX = presence
+                scaleY = presence
+                alpha = presence.coerceIn(0f, 1f)
+            }
+            // The row measures to nothing as soon as its content has left,
+            // which would end the shrink in a frame; hold the circle until
+            // the scale has run.
+            .defaultMinSize(minWidth = TOP_CONTROL_SIZE, minHeight = TOP_CONTROL_SIZE)
             .then(artworkPageSurface(shape = CircleShape, hazeState = hazeState))
             // One profile target with no inset is a true circle, the back
             // button's size. Once another action exists, Apple's inset opens at
@@ -547,8 +589,11 @@ private fun TopBarAnchorSlot(
     AnimatedVisibility(
         visible = anchor !is TopBarAnchor.None,
         modifier = modifier,
-        enter = fadeIn(animationSpec = tween(260)) + scaleIn(initialScale = 0.7f),
-        exit = fadeOut(animationSpec = tween(180)) + scaleOut(targetScale = 0.7f),
+        // Fade only: the pill around the anchor shrinks away on its own — see
+        // ArtworkPageActions — and scaling the avatar a second time inside it
+        // would have it leave the ring behind.
+        enter = fadeIn(animationSpec = tween(260)),
+        exit = fadeOut(animationSpec = tween(180)),
     ) {
         Box(
             modifier = Modifier.size(TOP_CONTROL_SIZE),
@@ -675,6 +720,7 @@ private fun AccessoryPill(
                         .background(MaterialTheme.colorScheme.surfaceVariant)
                 },
             ),
+        contentAlignment = Alignment.Center,
     ) {
         CompositionLocalProvider(LocalSearchFieldOnSurface provides true) {
             if (glass) {

@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -40,6 +41,10 @@ import dev.chrisbanes.haze.materials.HazeMaterials
 /**
  * Top-bar search source selector (YouTube | Library | Addons) styled
  * with the same floating liquid-glass / frosted materials as the back and profile buttons.
+ *
+ * [surface] false leaves the pill's own material and edge off, for a host that
+ * already draws them — the top bar's accessory pill — so the two do not stack
+ * into a second border, and the segments fill that host instead of floating in it.
  */
 @OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
@@ -48,6 +53,7 @@ fun SearchSourceSwitcher(
     onSearchSourceChange: (SearchSource) -> Unit,
     hazeState: HazeState?,
     modifier: Modifier = Modifier,
+    surface: Boolean = true,
 ) {
     val pillShape = remember { RoundedCornerShape(percent = 50) }
     val itemShape = remember { RoundedCornerShape(percent = 50) }
@@ -63,25 +69,29 @@ fun SearchSourceSwitcher(
     )
 
     Box(
-        modifier = modifier
-            .height(38.dp)
-            .clip(pillShape)
-            .then(
-                if (reduceDynamicBlur) {
-                    Modifier.background(container)
-                } else if (useLiquidGlass) {
-                    Modifier.liquidGlass(shape = pillShape, surfaceTint = glassBarTint())
-                } else if (hazeState != null) {
-                    Modifier.optimizedHazeEffect(
-                        state = hazeState,
-                        style = HazeMaterials.regular(container),
-                    )
-                } else {
-                    Modifier.background(container.copy(alpha = 0.85f))
-                },
-            )
-            .border(GLASS_EDGE_WIDTH, GLASS_EDGE_COLOR, pillShape)
-            .padding(3.dp),
+        modifier = if (surface) {
+            modifier
+                .height(38.dp)
+                .clip(pillShape)
+                .then(
+                    if (reduceDynamicBlur) {
+                        Modifier.background(container)
+                    } else if (useLiquidGlass) {
+                        Modifier.liquidGlass(shape = pillShape, surfaceTint = glassBarTint())
+                    } else if (hazeState != null) {
+                        Modifier.optimizedHazeEffect(
+                            state = hazeState,
+                            style = HazeMaterials.regular(container),
+                        )
+                    } else {
+                        Modifier.background(container.copy(alpha = 0.85f))
+                    },
+                )
+                .border(GLASS_EDGE_WIDTH, GLASS_EDGE_COLOR, pillShape)
+                .padding(3.dp)
+        } else {
+            modifier.fillMaxSize().padding(3.dp)
+        },
     ) {
         Row(
             modifier = Modifier.fillMaxHeight(),

@@ -3993,7 +3993,8 @@ private fun BitChordApp(
                                 searchSource = searchSource,
                                 onSearchSourceChange = { onSearchSourceChange(it) },
                                 hazeState = hazeState,
-                                modifier = Modifier.padding(horizontal = 4.dp),
+                                // The accessory pill around it is the surface.
+                                surface = false,
                             )
                         }
                     } else null,
@@ -4010,6 +4011,8 @@ private fun BitChordApp(
                                 TopBarAnchor.More(
                                     onClick = {
                                         detail.let { d ->
+                    // Settings is the profile's own destination: no actions there.
+                    actionsVisible = !(route != null && AppRoute.Settings in navigator),
                                             openBrowseMenu(BrowseTarget(
                                                 browseId = d.browseId,
                                                 title = d.title,
