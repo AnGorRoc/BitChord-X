@@ -5670,6 +5670,20 @@ private fun BitChordApp(
             var captureFailed by remember(mode) { mutableStateOf(false) }
             var pageReady by remember(mode) { mutableStateOf(false) }
             var confirmingProfile by remember(mode) { mutableStateOf(false) }
+            // A fresh sign-in confirms itself once, the first time the signed-in
+            // Music page is up. A login with several channels is rolled back by
+            // the view model and left to the button; so is any attempt that finds
+            // the page not ready yet.
+            var autoTried by remember(mode) { mutableStateOf(false) }
+            var autoAttempt by remember(mode) { mutableStateOf(false) }
+            LaunchedEffect(pageReady) {
+                if (pageReady && mode == WebSessionMode.SIGN_IN && !autoTried) {
+                    autoTried = true
+                    autoAttempt = true
+                    confirmingProfile = true
+                    captureRequest++
+                }
+            }
             Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
                 Column(Modifier.fillMaxSize()) {
                     Row(
@@ -5711,6 +5725,7 @@ private fun BitChordApp(
                         if (pageReady) {
                             TextButton(onClick = {
                                 captureFailed = false
+                                autoAttempt = false
                                 confirmingProfile = true
                                 captureRequest++
                             }, enabled = !confirmingProfile) {
@@ -5730,10 +5745,17 @@ private fun BitChordApp(
                         onPageReady = { pageReady = it },
                         onCaptureUnavailable = {
                             confirmingProfile = false
-                            captureFailed = true
+                            if (autoAttempt) autoAttempt = false else captureFailed = true
                         },
                         onCaptured = { session ->
-                            viewModel.onWebSession(session, mode) { accepted ->
+                            val auto = autoAttempt
+                            autoAttempt = false
+                            viewModel.onWebSession(
+                                session,
+                                mode,
+                                autoConfirm = auto,
+                                onNeedsChoice = { confirmingProfile = false },
+                            ) { accepted ->
                                 confirmingProfile = false
                                 if (accepted) {
                                     webSession = null

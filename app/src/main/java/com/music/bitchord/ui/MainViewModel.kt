@@ -3648,10 +3648,18 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * cookie is new. What follows — adopt the identity the captured page
      * reported, remember it, and refetch everything that belongs to a listener
      * — is the same work either way.
+     *
+     * With [autoConfirm] the listener never pressed anything: the session is
+     * only kept when the login has a single channel to be. A login with several
+     * (or one whose channels could not be listed) is rolled back untouched and
+     * reported through [onNeedsChoice], so the browser stays open for them to
+     * pick one themselves.
      */
     fun onWebSession(
         session: CapturedSession,
         mode: WebSessionMode,
+        autoConfirm: Boolean = false,
+        onNeedsChoice: () -> Unit = {},
         onComplete: (Boolean) -> Unit = {},
     ) {
         if (!session.loggedIn) {
@@ -3688,6 +3696,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 restoreActiveSession(oldAccountId, oldProfileId)
                 onComplete(false)
                 return@launch
+            }
+
+            if (autoConfirm) {
+                val single = YtMusicRepository.accountChannels().getOrNull()?.size?.let { it <= 1 } == true
+                if (!single) {
+                    restoreActiveSession(oldAccountId, oldProfileId)
+                    onNeedsChoice()
+                    return@launch
+                }
             }
 
             // A channel switch is another identity under the same Google
