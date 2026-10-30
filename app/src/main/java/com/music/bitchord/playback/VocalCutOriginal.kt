@@ -2,7 +2,7 @@ package com.music.bitchord.playback
 
 /**
  * The original Sing engine, restored verbatim in behaviour from v2.1.2
- * (`8c93099b`) — the first karaoke this fork shipped, before any filtering.
+ * (`8c93099b`) — the first karaoke this project shipped, before any filtering.
  *
  * `out = (in - cut · mid) · 1/(1 - cut/2)`, per frame, with no filter state at
  * all. What survives is the side signal plus half the mid, and the makeup gain
