@@ -1,40 +1,38 @@
-# BitChord (fork de AnGorRoc)
+# What BitChord-X adds
 
-Este fork parte del proyecto original [kushagrasinghx/BitChord](https://github.com/kushagrasinghx/BitChord) y lo sincroniza por versión. La rama de trabajo actual es `update/vX`, que se basa en el tag de upstream correspondiente. Este documento lista solo lo que el fork añade o cambia; el resto del comportamiento es el de upstream.
+BitChord-X builds on [BitChord](https://github.com/kushagrasinghx/BitChord) by Kushagra Singh and runs in parallel with it. This page lists what it adds or changes; everything else behaves as in the original. See [MAINTAINERS.md](MAINTAINERS.md) for credits.
 
-## Qué añade el fork
+## Playback and audio
+- **Hi-Res Lossless source**: real FLAC up to 24-bit. Off until you switch it on in Settings.
+- **Configurable lossless providers**, including ones typed in by hand, with failover ranked by latency.
+- **Sample-accurate quality upgrades**: when a lossy track is swapped for FLAC mid-song, the two versions are aligned before the crossfade.
+- **Lossless from the start** (optional): wait a few seconds for the FLAC copy instead of starting with the standard one.
+- **Automatic downgrade** to standard quality when the network can't sustain FLAC, with progressive retries.
+- **Mobile-data notice** when playing lossless on a cellular connection.
 
-### Reproducción y audio
-- **Fuente Hi-Res Lossless (Monochrome)**: audio FLAC real de hasta 24 bits. Está desactivada hasta que la activas en Ajustes.
-- **Proveedores Lossless configurables** a mano, con failover por latencia.
-- **Alineación de calidad en caliente**: al pasar de una versión con pérdida a FLAC durante la reproducción, las dos versiones se alinean a nivel de muestra antes del fundido.
-- **Sin pérdida desde el inicio** (opcional): espera unos segundos a la versión FLAC antes de empezar.
-- **Degradación automática** a calidad estándar si la red no sostiene FLAC, con reintentos progresivos.
-- **Aviso en datos móviles** al reproducir sin pérdida.
+## Downloads and cache
+- **One download planner** that ranks the current song, the next one and the rest of the queue.
+- **Separate lossless cache budget** (1 GB by default), independent of the standard cache.
+- **Lossless retention levels**: off, CD quality or Hi-Res.
+- **Cached songs get upgraded** in the background when a better copy is available.
+- **Automatic playlist downloads** inside the app, off by default, with a silent notice.
 
-### Descargas y caché
-- **Planificador de descargas unificado** que prioriza la canción actual, la siguiente y el resto de la cola.
-- **Caché de Lossless con presupuesto propio** (por defecto 1 GB), independiente de la caché estándar.
-- **Niveles de retención Lossless**: desactivado, calidad CD o Hi-Res.
-- **Mejora de canciones en caché**: si hay una versión de mayor calidad disponible, se reemplaza en segundo plano.
-- **Descarga automática de playlists** dentro de la app, desactivada por defecto y con aviso silencioso.
+## Links and services
+- **Links from Spotify, Apple Music, Deezer, SoundCloud, Tidal and Amazon Music** open in the app and search the song by title and artist.
+- **Spotify**: import your library or chosen playlists, incremental sync that only looks up new songs, multi-select, and retry for the lists that failed.
+- **Export local playlists to YouTube Music**, sent in batches with pauses to respect the API limits.
 
-### Enlaces y servicios externos
-- **Enlaces de Spotify, Apple Music, Deezer, SoundCloud, Tidal y Amazon Music** se abren en BitChord buscando la canción por título y artista.
-- **Spotify**: importación de biblioteca y playlists, sincronización incremental (solo busca las canciones nuevas), selección múltiple de listas y reintento de las que fallaron.
-- **Exportación de playlists locales a YouTube Music**, enviadas en lotes con pausas para respetar los límites de la API.
+## Interface
+- **Library as grid or rows**, with 64 dp artwork in the row view.
+- **Artwork prefetch** for the rows coming up, so scrolling has no gaps.
+- **Blurred placeholder** while high-resolution artwork loads on the now-playing screen.
+- **Morphing search bar** in the navbar, persistent mini player and a hold-and-slide gesture.
+- **Lyric line above the scrubber** (optional).
+- **Redesigned ⋮ menu and player artwork**, plus an exit animation when deleting playlists.
+- **Full Spanish translation**, in addition to the existing languages.
 
-### Interfaz
-- **Biblioteca en cuadrícula o en filas**, con carátulas de 64 dp en las filas.
-- **Precarga de carátulas** de las filas que vienen a continuación, para un desplazamiento sin huecos.
-- **Miniatura desenfocada** mientras carga la carátula en alta resolución en la pantalla de reproducción.
-- **Menú ⋮ y carátula del reproductor** rediseñados.
-- **Animación de salida** al eliminar playlists de la biblioteca.
-- **Traducción completa al español**, además de los idiomas existentes.
+## Updates
+- The in-app update check reads the releases of [BitChord-X](https://github.com/AnGorRoc/BitChord-X/releases).
 
-### Actualizaciones
-- La comprobación de versión consulta las **releases de este fork**, no las de upstream.
-
-## Otros documentos
-
-Para el servidor de Listen Together y la traducción de letras, mira [ADDITIONAL.md](ADDITIONAL.md).
+## Other documents
+For the Listen Together server and lyrics translation, see [ADDITIONAL.md](ADDITIONAL.md).

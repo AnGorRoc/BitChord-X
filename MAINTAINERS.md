@@ -1,10 +1,14 @@
 # Maintainers
 
-This document lists the maintainers responsible for BitChord.
+This document lists the maintainers of BitChord-X and credits the people behind the project it builds on.
 
 | Maintainer | GitHub | Responsibilities |
 |---|---|---|
-| Kushagra Singh | [@kushagrasinghx](https://github.com/kushagrasinghx) | Project creator, core architecture, release management, and PR reviews |
+| AnGorRoc | [@AnGorRoc](https://github.com/AnGorRoc) | BitChord-X maintainer: direction, releases and PR reviews |
+
+## Original project
+
+BitChord-X is derived from [BitChord](https://github.com/kushagrasinghx/BitChord), created by Kushagra Singh ([@kushagrasinghx](https://github.com/kushagrasinghx)), who is responsible for its core architecture.
 
 ## Responsibilities
 
@@ -12,9 +16,11 @@ Maintainers oversee project direction, repository maintenance, review and mergin
 
 ## Contributors
 
-This list is automatically generated from GitHub repository contributor data.
+People whose work is part of this codebase, from the original BitChord and from BitChord-X.
 
 <!-- BEGIN CONTRIBUTORS -->
+- [@AnGorRoc](https://github.com/AnGorRoc)
+- fvkinGordo
 - [@kushagrasinghx](https://github.com/kushagrasinghx)
 - [@Galaxyyss](https://github.com/Galaxyyss)
 - [@KabirSinghBhatia](https://github.com/KabirSinghBhatia)
