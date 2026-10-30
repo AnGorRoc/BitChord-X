@@ -115,6 +115,7 @@ import com.music.bitchord.data.OfflinePlaylists
 import com.music.bitchord.data.matchesSearch
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicInteger
 import java.util.concurrent.atomic.AtomicLong
 
 /** What the Search tab searches: YouTube Music, or the Local Music folder on this device. */
@@ -2805,7 +2806,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         private const val ADDON_SEARCH_TIMEOUT_MS = 12_000L
         private const val ADDON_SEARCH_LIMIT = 20
 
-        /** How many Spotify tracks are looked up on YouTube Music at once. */
+        /** How many Spotify songs are found between two saves of the playlist being matched. */
+        private const val SPOTIFY_SAVE_EVERY = 20
 
         /**
          * How long a keystroke waits before the typeahead is asked about it.
@@ -3193,7 +3195,24 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 setSongs(UiState.Success(currentList.toList()))
             }
 
+            // Filed as often as it moves, not only when the last song is found: the
+            // lookups take minutes on a long playlist, and leaving the page and coming
+            // back meanwhile found nothing filed and read the whole list again.
+            fun save() {
+                val cover = _detailStack.value.firstOrNull { it.browseId == browseId }?.thumbnailUrl ?: initialCover
+                val songs = synchronized(currentList) { currentList.toList() }
+                SpotifyCache.savePlaylist(
+                    playlistId = playlistId,
+                    title = title,
+                    coverUrl = cover,
+                    tracks = tracks,
+                    songs = songs,
+                )
+            }
+            save()
+
             val needsMatching = tracks.indices.filter { currentList[it].isUnresolvedSpotify }
+            val matched = AtomicInteger()
             if (needsMatching.isNotEmpty()) {
                 val matcher = SpotifyTrackMatcher(SpotifyImporter::lookUp)
                 coroutineScope {
@@ -3219,6 +3238,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                                     currentList[index] = found
                                 }
                             }
+                            if (matched.incrementAndGet() % SPOTIFY_SAVE_EVERY == 0) save()
 
                             if (open()) {
                                 _detailStack.update { stack ->
@@ -3235,14 +3255,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 }
             }
 
-            val finalCover = _detailStack.value.firstOrNull { it.browseId == browseId }?.thumbnailUrl ?: initialCover
-            SpotifyCache.savePlaylist(
-                playlistId = playlistId,
-                title = title,
-                coverUrl = finalCover,
-                tracks = tracks,
-                songs = currentList.toList(),
-            )
+            save()
         }
     }
 
