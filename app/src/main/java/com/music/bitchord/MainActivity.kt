@@ -73,7 +73,6 @@ import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.IosShare
-import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.automirrored.rounded.Sort
@@ -760,9 +759,8 @@ private fun BitChordApp(
     var creatingOfflinePlaylist by remember { mutableStateOf(false) }
     var showSpotifyImportDialog by remember { mutableStateOf(false) }
     // The Spotify page's playlists and its import selection, here so the top
-    // bar's "…" can start the selection on the page.
+    // bar's import button can start the selection on the page.
     val spotifyLibraryState = remember { SpotifyLibraryState() }
-    var spotifyMenuOpen by remember { mutableStateOf(false) }
     val spotifySyncRunning = com.music.bitchord.data.spotify.SpotifySync.state
         .collectAsStateWithLifecycle().value is com.music.bitchord.data.spotify.SpotifySyncState.Running
     // Which album or playlist the collection menu is open on, or null when it
@@ -4270,35 +4268,20 @@ private fun BitChordApp(
                                         )
                                     }
 
-                                    // Spotify Sync Menu
+                                    // Import: straight into choosing which playlists to copy
                                     route == AppRoute.Spotify && spotifyLibraryState.playlists.isNotEmpty() &&
                                         !spotifyLibraryState.selecting && !spotifySyncRunning -> {
                                         add(
                                             TopBarActionItem(key = "spotify") {
-                                                Box {
-                                                    IconButton(
-                                                        onClick = { spotifyMenuOpen = true },
-                                                        modifier = Modifier.size(TOP_CONTROL_SIZE),
-                                                    ) {
-                                                        Icon(
-                                                            Icons.Rounded.MoreHoriz,
-                                                            contentDescription = stringResource(R.string.more),
-                                                            tint = MaterialTheme.colorScheme.onSurface,
-                                                        )
-                                                    }
-                                                    DropdownMenu(
-                                                        expanded = spotifyMenuOpen,
-                                                        onDismissRequest = { spotifyMenuOpen = false },
-                                                    ) {
-                                                        DropdownMenuItem(
-                                                            text = { Text(stringResource(R.string.spotify_sync_menu)) },
-                                                            leadingIcon = { Icon(Icons.Rounded.Download, contentDescription = null) },
-                                                            onClick = {
-                                                                spotifyMenuOpen = false
-                                                                spotifyLibraryState.startSelecting()
-                                                            },
-                                                        )
-                                                    }
+                                                IconButton(
+                                                    onClick = spotifyLibraryState::startSelecting,
+                                                    modifier = Modifier.size(TOP_CONTROL_SIZE),
+                                                ) {
+                                                    Icon(
+                                                        Icons.Rounded.Download,
+                                                        contentDescription = stringResource(R.string.spotify_sync_menu),
+                                                        tint = MaterialTheme.colorScheme.onSurface,
+                                                    )
                                                 }
                                             },
                                         )

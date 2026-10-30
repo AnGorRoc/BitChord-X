@@ -1197,6 +1197,8 @@
     <string name="spotify_sync_error_network">No connection. Check your internet and try again.</string>
     <string name="spotify_sync_error_other">Something went wrong: %1$s</string>
     <string name="spotify_sync_auto">Keep up to date</string>
+    <string name="spotify_sync_auto_hint">Updates imported playlists when you open this page</string>
+    <string name="deselect_all">Deselect all</string>
     <string name="spotify_sync_imported">Imported</string>
     <string name="yt_export">Export to YouTube Music</string>
     <string name="yt_export_stop">Stop export</string>

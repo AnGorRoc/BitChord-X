@@ -1315,6 +1315,8 @@
     <string name="spotify_sync_error_network">ไม่มีการเชื่อมต่อ ตรวจสอบอินเทอร์เน็ตแล้วลองอีกครั้ง</string>
     <string name="spotify_sync_error_other">เกิดข้อผิดพลาด: %1$s</string>
     <string name="spotify_sync_auto">อัปเดตอยู่เสมอ</string>
+    <string name="spotify_sync_auto_hint">อัปเดตเพลย์ลิสต์ที่นำเข้าเมื่อเปิดหน้านี้</string>
+    <string name="deselect_all">ยกเลิกการเลือกทั้งหมด</string>
     <string name="spotify_sync_imported">นำเข้าแล้ว</string>
     <string name="yt_export">ส่งออกไปยัง YouTube Music</string>
     <string name="yt_export_stop">หยุดส่งออก</string>

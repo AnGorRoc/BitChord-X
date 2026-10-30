@@ -1286,6 +1286,8 @@
     <string name="spotify_sync_error_network">Bağlantı yok. İnternetini kontrol edip tekrar dene.</string>
     <string name="spotify_sync_error_other">Bir şeyler ters gitti: %1$s</string>
     <string name="spotify_sync_auto">Güncel tut</string>
+    <string name="spotify_sync_auto_hint">Bu sayfayı açtığında içe aktarılan çalma listelerini günceller</string>
+    <string name="deselect_all">Tüm seçimi kaldır</string>
     <string name="spotify_sync_imported">İçe aktarıldı</string>
     <string name="yt_export">YouTube Music\'e aktar</string>
     <string name="yt_export_stop">Aktarmayı durdur</string>

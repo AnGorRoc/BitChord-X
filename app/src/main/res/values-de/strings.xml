@@ -1329,6 +1329,8 @@
     <string name="spotify_sync_error_network">Keine Verbindung. Prüfe dein Internet und versuche es erneut.</string>
     <string name="spotify_sync_error_other">Etwas ist schiefgelaufen: %1$s</string>
     <string name="spotify_sync_auto">Aktuell halten</string>
+    <string name="spotify_sync_auto_hint">Aktualisiert importierte Playlists, wenn du diese Seite öffnest</string>
+    <string name="deselect_all">Alle abwählen</string>
     <string name="spotify_sync_imported">Importiert</string>
     <string name="yt_export">Auf YouTube Music exportieren</string>
     <string name="yt_export_stop">Export stoppen</string>

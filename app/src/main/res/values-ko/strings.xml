@@ -1178,6 +1178,8 @@
     <string name="spotify_sync_error_network">연결되어 있지 않습니다. 인터넷을 확인한 후 다시 시도하세요.</string>
     <string name="spotify_sync_error_other">문제가 발생했습니다: %1$s</string>
     <string name="spotify_sync_auto">최신 상태로 유지</string>
+    <string name="spotify_sync_auto_hint">이 페이지를 열 때 가져온 플레이리스트를 업데이트합니다</string>
+    <string name="deselect_all">모두 선택 해제</string>
     <string name="spotify_sync_imported">가져옴</string>
     <string name="yt_export">YouTube Music으로 내보내기</string>
     <string name="yt_export_stop">내보내기 중지</string>

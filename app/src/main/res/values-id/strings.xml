@@ -1309,6 +1309,8 @@
     <string name="spotify_sync_error_network">Tidak ada koneksi. Periksa internet Anda lalu coba lagi.</string>
     <string name="spotify_sync_error_other">Terjadi kesalahan: %1$s</string>
     <string name="spotify_sync_auto">Selalu perbarui</string>
+    <string name="spotify_sync_auto_hint">Memperbarui playlist yang diimpor saat halaman ini dibuka</string>
+    <string name="deselect_all">Batalkan semua pilihan</string>
     <string name="spotify_sync_imported">Diimpor</string>
     <string name="yt_export">Ekspor ke YouTube Music</string>
     <string name="yt_export_stop">Hentikan ekspor</string>

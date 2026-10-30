@@ -1,6 +1,11 @@
 package com.music.bitchord.ui.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -17,9 +22,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -30,6 +37,8 @@ import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Switch
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.material3.pulltorefresh.PullToRefreshDefaults
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
@@ -87,7 +96,7 @@ import org.jetbrains.compose.resources.painterResource
 
 /**
  * The Spotify page's playlists and, while one is being made, the choice of
- * which to import. Held above the page so the top bar's "…" can start the
+ * which to import. Held above the page so the top bar's import button can start the
  * choosing — the same split as [LocalFolderState] for Downloads.
  */
 @Stable
@@ -114,6 +123,11 @@ class SpotifyLibraryState {
 
     fun selectAll() {
         selectedIds = playlists.mapTo(linkedSetOf()) { it.id }
+    }
+
+    /** Unticks everything but stays in the choosing, unlike [clear]. */
+    fun deselectAll() {
+        selectedIds = emptySet()
     }
 
     fun clear() {
@@ -277,7 +291,7 @@ fun SpotifyLibraryScreen(
                 }
             } else {
                 if (state.selecting) {
-                    item { SelectingIntro() }
+                    item { SelectionHeader(state) }
                 }
                 // The pull's own indicator covers a reload of a list already on
                 // screen; this spinner is only for the first read.
@@ -322,26 +336,127 @@ fun SpotifyLibraryScreen(
             }
         }
 
-        val barModifier = Modifier
-            .align(Alignment.TopCenter)
-            .padding(top = topBarContentPadding(), start = PAGE_GUTTER, end = PAGE_GUTTER)
-        when {
-            state.selecting -> SelectionBar(state, barModifier)
-            sync !is SpotifySyncState.Idle -> SyncBar(sync, onOpenLogin, barModifier)
+        if (!state.selecting && sync !is SpotifySyncState.Idle) {
+            SyncBar(
+                sync = sync,
+                onSignIn = onOpenLogin,
+                modifier = Modifier
+                    .align(Alignment.TopCenter)
+                    .padding(top = topBarContentPadding(), start = PAGE_GUTTER, end = PAGE_GUTTER),
+            )
+        }
+
+        // The one action of choosing sits where the thumb is, just clear of the
+        // tab bar and mini player the list already leaves room for.
+        val haptics = rememberHaptics()
+        AnimatedVisibility(
+            visible = state.selecting,
+            enter = fadeIn() + slideInVertically { it / 2 },
+            exit = fadeOut() + slideOutVertically { it / 2 },
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = (contentPadding.calculateBottomPadding() - 8.dp).coerceAtLeast(0.dp)),
+        ) {
+            val count = state.selectedIds.size
+            val import = stringResource(R.string.spotify_import_button)
+            BarPill(
+                icon = Icons.Rounded.Download,
+                label = if (count > 0) "$import · $count" else import,
+                filled = true,
+                enabled = count > 0,
+                onClick = {
+                    haptics.play(Haptic.Resume)
+                    state.importSelected()
+                },
+                modifier = Modifier
+                    .shadow(10.dp, CircleShape)
+                    .widthIn(min = 200.dp),
+            )
         }
         }
     }
 }
 
-/** What appears over the list once choosing starts: what it does. */
+/**
+ * What choosing looks like, as the top of the list rather than a card over it:
+ * how many are ticked with a single control to tick or untick them all, what
+ * the import does, and the one setting that goes with it as a switch, so its
+ * state is plain to see.
+ */
 @Composable
-private fun SelectingIntro() {
-    Text(
-        text = stringResource(R.string.spotify_sync_description),
-        style = MaterialTheme.typography.bodyLarge,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 8.dp),
-    )
+private fun SelectionHeader(state: SpotifyLibraryState) {
+    val count = state.selectedIds.size
+    val allSelected = state.playlists.isNotEmpty() && count == state.playlists.size
+    val autoSync by AppSettings.spotifyAutoSync.collectAsStateWithLifecycle()
+    val haptics = rememberHaptics()
+    Column(Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            IconButton(onClick = state::clear) {
+                Icon(
+                    Icons.Rounded.Close,
+                    contentDescription = stringResource(R.string.cancel),
+                    tint = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.size(22.dp),
+                )
+            }
+            Text(
+                text = stringResource(R.string.selected_count, count),
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier.weight(1f),
+            )
+            TextButton(onClick = { if (allSelected) state.deselectAll() else state.selectAll() }) {
+                Text(stringResource(if (allSelected) R.string.deselect_all else R.string.select_all))
+            }
+        }
+        Text(
+            text = stringResource(R.string.spotify_sync_description),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(horizontal = PAGE_GUTTER).padding(bottom = 12.dp),
+        )
+        HorizontalDivider(Modifier.padding(horizontal = PAGE_GUTTER))
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .toggleable(
+                    value = autoSync,
+                    role = Role.Switch,
+                    onValueChange = {
+                        haptics.play(if (it) Haptic.ToggleOn else Haptic.ToggleOff)
+                        AppSettings.setSpotifyAutoSync(it)
+                    },
+                )
+                .padding(horizontal = PAGE_GUTTER, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                Icons.Rounded.Sync,
+                contentDescription = null,
+                tint = if (autoSync) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.size(22.dp),
+            )
+            Spacer(Modifier.width(16.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    text = stringResource(R.string.spotify_sync_auto),
+                    style = MaterialTheme.typography.titleSmall,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+                Text(
+                    text = stringResource(R.string.spotify_sync_auto_hint),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            Switch(checked = autoSync, onCheckedChange = null)
+        }
+        HorizontalDivider(Modifier.padding(horizontal = PAGE_GUTTER).padding(bottom = 4.dp))
+    }
 }
 
 @Composable
@@ -396,74 +511,8 @@ private fun Modifier.floating(): Modifier {
 private val BAR_PILL_HEIGHT = 44.dp
 
 /**
- * The selection, the way a contextual action bar is laid out: what is chosen
- * on top (close, the count, Select all), and under it what to do with it — the
- * main action as the app's filled capsule, with the one setting that goes with
- * it as its quieter twin beside it, as Play and Shuffle sit on a release page.
- */
-@Composable
-private fun SelectionBar(state: SpotifyLibraryState, modifier: Modifier) {
-    val count = state.selectedIds.size
-    val allSelected = state.playlists.isNotEmpty() && count == state.playlists.size
-    val autoSync by AppSettings.spotifyAutoSync.collectAsStateWithLifecycle()
-    val ink = if (isSystemInDarkTheme()) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
-    val haptics = rememberHaptics()
-    Column(modifier.floating()) {
-        Row(
-            modifier = Modifier.fillMaxWidth().height(48.dp).padding(horizontal = 4.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            IconButton(onClick = state::clear) {
-                Icon(
-                    Icons.Rounded.Close,
-                    contentDescription = stringResource(R.string.cancel),
-                    tint = ink,
-                    modifier = Modifier.size(20.dp),
-                )
-            }
-            Text(
-                text = stringResource(R.string.selected_count, count),
-                style = MaterialTheme.typography.titleSmall,
-                color = ink,
-                modifier = Modifier.weight(1f),
-            )
-            TextButton(onClick = state::selectAll, enabled = !allSelected) {
-                Text(stringResource(R.string.select_all))
-            }
-        }
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, bottom = 12.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            BarPill(
-                icon = Icons.Rounded.Sync,
-                label = stringResource(R.string.spotify_sync_auto),
-                highlighted = autoSync,
-                onClick = {
-                    haptics.play(if (autoSync) Haptic.ToggleOff else Haptic.ToggleOn)
-                    AppSettings.setSpotifyAutoSync(!autoSync)
-                },
-                modifier = Modifier.weight(1f),
-            )
-            BarPill(
-                icon = Icons.Rounded.Download,
-                label = stringResource(R.string.spotify_import_button),
-                filled = true,
-                enabled = count > 0,
-                onClick = {
-                    haptics.play(Haptic.Resume)
-                    state.importSelected()
-                },
-                modifier = Modifier.weight(1f),
-            )
-        }
-    }
-}
-
-/**
- * A capsule of the selection bar. [filled] is the main action, in the primary
- * colour (white with black type on dark, as Play is); otherwise it is the
- * quiet twin, which [highlighted] turns to the accent while its setting is on.
+ * The capsule of choosing, in the primary colour (white with black type on
+ * dark, as Play is). [enabled] off dims it until something is ticked.
  */
 @Composable
 private fun BarPill(
@@ -472,14 +521,12 @@ private fun BarPill(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     filled: Boolean = false,
-    highlighted: Boolean = false,
     enabled: Boolean = true,
 ) {
     val dark = isSystemInDarkTheme()
     val scheme = MaterialTheme.colorScheme
     val (container, content) = when {
         filled -> (if (dark) Color.White else scheme.primary) to (if (dark) Color.Black else scheme.onPrimary)
-        highlighted -> scheme.primary.copy(alpha = 0.18f) to scheme.primary
         else -> scheme.onSurface.copy(alpha = 0.08f) to scheme.onSurface
     }
     Row(

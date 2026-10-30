@@ -1330,6 +1330,8 @@
     <string name="spotify_sync_error_network">Pas de connexion. Vérifiez votre accès à Internet et réessayez.</string>
     <string name="spotify_sync_error_other">Une erreur est survenue : %1$s</string>
     <string name="spotify_sync_auto">Garder à jour</string>
+    <string name="spotify_sync_auto_hint">Met à jour les playlists importées à l’ouverture de cette page</string>
+    <string name="deselect_all">Tout désélectionner</string>
     <string name="spotify_sync_imported">Importée</string>
     <string name="yt_export">Exporter vers YouTube Music</string>
     <string name="yt_export_stop">Arrêter l\'export</string>
