@@ -42,6 +42,8 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -2521,6 +2523,24 @@ private fun BitChordApp(
         bottom = if (player.song != null) 210.dp else 140.dp,
     )
 
+    // Whether the keyboard is up. Only the flip is read here — never its
+    // height, which changes every frame of the animation and would recompose
+    // the whole screen with it — so the bars below can slim down and the
+    // search page can make its list the room they free.
+    val keyboardUp by run {
+        val imeInsets = WindowInsets.ime
+        val density = LocalDensity.current
+        remember { derivedStateOf { imeInsets.getBottom(density) > 0 } }
+    }
+    // With the keyboard up the page is the part of the screen above it, and
+    // what overlaps that is the slim mini player and the search bar, no more.
+    val searchListPadding = if (keyboardUp) {
+        PaddingValues(
+            top = listPadding.calculateTopPadding(),
+            bottom = if (player.song != null) 132.dp else 82.dp,
+        )
+    } else listPadding
+
     // What colour the page currently under the bars is. The fades either end
     // of the screen are flat colour wherever their blur has least to say, so
     // handing them the theme's background puts a black band on a page that is
@@ -2976,6 +2996,11 @@ private fun BitChordApp(
                         }
                     },
                     modifier = Modifier
+                        // The keyboard takes its share of the screen off the page
+                        // — whichever one has a field in it — instead of sitting
+                        // over the end of it. The floating bars ride above it on
+                        // their own, see MorphingBottomBar.
+                        .imePadding()
                         .hazeSource(hazeState)
                         .then(
                             if (glassActive) {
@@ -3752,7 +3777,7 @@ private fun BitChordApp(
                                 onHistoryRemove = viewModel::removeSearch,
                                 onHistoryClear = viewModel::clearSearchHistory,
                                 onTypeaheadLongPress = openSongMenu,
-                                contentPadding = listPadding,
+                                contentPadding = searchListPadding,
                                 // Snug under the bar rather than a page's breathing
                                 // gap below it: the field is in the bar (see the bar's
                                 // accessory), so what comes next is the field's own
@@ -3985,6 +4010,8 @@ private fun BitChordApp(
                         else -> null
                     },
                     modifier = Modifier.align(Alignment.TopCenter),
+                    // Settings is the profile's own destination: no actions there.
+                    actionsVisible = !(route != null && AppRoute.Settings in navigator),
                     accessory = if (
                         selectedTab == TAB_SEARCH && route == null && detail == null && selectedMoodGenre == null
                     ) {
@@ -4011,8 +4038,6 @@ private fun BitChordApp(
                                 TopBarAnchor.More(
                                     onClick = {
                                         detail.let { d ->
-                    // Settings is the profile's own destination: no actions there.
-                    actionsVisible = !(route != null && AppRoute.Settings in navigator),
                                             openBrowseMenu(BrowseTarget(
                                                 browseId = d.browseId,
                                                 title = d.title,
@@ -4442,6 +4467,7 @@ private fun BitChordApp(
                             onBlockedControl = showHostOnlyNotice,
                             dock = activeDock,
                             pull = playerSheetMotion.takeIf { !reducePlayerMotion },
+                            compact = keyboardUp,
                             modifier = Modifier.fillMaxWidth(),
                         )
                         Spacer(Modifier.height(8.dp))

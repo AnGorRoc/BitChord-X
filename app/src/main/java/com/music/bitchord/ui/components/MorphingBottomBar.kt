@@ -2,8 +2,6 @@ package com.music.bitchord.ui.components
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.AnimationSpec
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
@@ -59,6 +57,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
@@ -84,6 +83,9 @@ import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.stringResource
 
 private val GESTURE_BAR_FLOOR = 15.dp
+
+/** How far above the keyboard the bar floats. */
+private val KEYBOARD_GAP = 10.dp
 private const val TAB_SEARCH = 3
 
 /**
@@ -130,22 +132,18 @@ fun MorphingBottomBar(
         label = "searchMorphProgress",
     )
 
-    // Keyboard and bottom padding
+    // Keyboard and bottom padding.
+    //
+    // The bar rests above the gesture area, and while the keyboard is up it
+    // rides a [KEYBOARD_GAP] above the keys. That is one continuous figure —
+    // the larger of the two — read where the bar is laid out rather than here,
+    // so it follows the keyboard's own animation frame for frame instead of
+    // stepping to a fixed offset and recomposing on every frame of it.
     val density = LocalDensity.current
-    val imeBottom = WindowInsets.ime.getBottom(density)
-    val isKeyboardOpen = imeBottom > 0
-
+    val imeInsets = WindowInsets.ime
     val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
-    val defaultBottomPadding = max(navBottom, GESTURE_BAR_FLOOR)
-    val targetBottomPadding = if (isKeyboardOpen) 18.dp else defaultBottomPadding
-    val currentBottomPadding by animateDpAsState(
-        targetValue = targetBottomPadding,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioNoBouncy,
-            stiffness = Spring.StiffnessMediumLow,
-        ),
-        label = "navBottomPadding",
-    )
+    val restingBottomPx = with(density) { (max(navBottom, GESTURE_BAR_FLOOR) + 2.dp).roundToPx() }
+    val keyboardGapPx = with(density) { KEYBOARD_GAP.roundToPx() }
 
     // Nav tabs setup (Home, Explore, Library)
     val navTabs = remember(tabs) { tabs.take(3) }
@@ -237,7 +235,11 @@ fun MorphingBottomBar(
     BoxWithConstraints(
         modifier = modifier
             .padding(horizontal = BAR_GUTTER)
-            .padding(bottom = currentBottomPadding + 2.dp)
+            .layout { measurable, constraints ->
+                val placeable = measurable.measure(constraints)
+                val bottom = maxOf(restingBottomPx, imeInsets.getBottom(this) + keyboardGapPx)
+                layout(placeable.width, placeable.height + bottom) { placeable.place(0, 0) }
+            }
             .fillMaxWidth(),
     ) {
         val totalWidth = maxWidth
