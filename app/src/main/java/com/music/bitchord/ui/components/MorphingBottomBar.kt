@@ -355,10 +355,10 @@ fun MorphingBottomBar(
                                         interactionSource = remember { MutableInteractionSource() },
                                         indication = null,
                                     ) {
-                                        if (!isSelected) {
-                                            haptics.play(Haptic.Select)
-                                            onTabSelected(index)
-                                        }
+                                        // The active tab is forwarded too: the host turns
+                                        // that tap into "back to the root, or to the top".
+                                        haptics.play(Haptic.Select)
+                                        onTabSelected(index)
                                     },
                             ) {
                                 Icon(
