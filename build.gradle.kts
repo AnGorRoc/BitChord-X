@@ -65,6 +65,39 @@ extra["bitchordVersionName"] = "1.9.1"
  */
 extra["bitchordBetaSuffix"] = ""
 
+/*
+ * The release assets, named the way AppUpdateChecker.apkAssetUrl looks for
+ * them: BitChord-v1.9.1.apk (universal) and BitChord-v1.9.1_arm64-v8a.apk (per
+ * ABI) for the phone, BitChordTV-... for the TV. Gradle's own names
+ * (app-prod-universal-release.apk) match neither prefix, so a release uploaded
+ * as built would never offer the in-app update. The watch APK is left out on
+ * purpose: it ships inside the phone's.
+ *
+ *     ./gradlew releaseAssets   ->   build/release-assets/
+ */
+tasks.register<Copy>("releaseAssets") {
+    group = "distribution"
+    description = "Builds the signed prod APKs for phone and TV and names them for the release page."
+    dependsOn(":app:assembleProdRelease", ":tv:assembleProdRelease")
+
+    val betaSuffix = rootProject.extra["bitchordBetaSuffix"] as String
+    val tag = "v${rootProject.extra["bitchordVersionName"]}" + if (betaSuffix.isNotEmpty()) "-$betaSuffix" else ""
+    val abiPart = Regex("""-prod-(.+)-release\.apk$""")
+
+    into(layout.buildDirectory.dir("release-assets"))
+    doFirst { delete(destinationDir) }
+
+    listOf("app" to "BitChord", "tv" to "BitChordTV").forEach { (module, prefix) ->
+        from(project(":$module").layout.buildDirectory.dir("outputs/apk/prod/release")) {
+            include("*.apk")
+            rename { name ->
+                val abi = abiPart.find(name)?.groupValues?.get(1)
+                if (abi == null || abi == "universal") "$prefix-$tag.apk" else "$prefix-${tag}_$abi.apk"
+            }
+        }
+    }
+}
+
 plugins {
     id("com.android.application") version "8.10.1" apply false
     id("com.android.library") version "8.10.1" apply false

@@ -1,0 +1,61 @@
+name: Release
+
+# Pushing a tag such as v1.9.1 builds the signed phone and TV APKs and
+# publishes them as a GitHub release. The in-app updater reads
+# releases/latest and the release body ("what's new"), so this is the one
+# place a release is made.
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v5
+
+    - name: Set up JDK 17
+      uses: actions/setup-java@v5
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: gradle
+
+    - name: Setup Secrets (Keystore & local.properties)
+      run: |
+        echo "LASTFM_API_KEY=${{ secrets.LASTFM_API_KEY }}" > local.properties
+        echo "LASTFM_SECRET=${{ secrets.LASTFM_SECRET }}" >> local.properties
+        echo "LISTEN_TOGETHER_SERVER=${{ secrets.LISTEN_TOGETHER_SERVER }}" >> local.properties
+
+        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > bitchord-release.jks
+        {
+          echo "storeFile=bitchord-release.jks"
+          echo "storePassword=${{ secrets.KEYSTORE_PASSWORD }}"
+          echo "keyAlias=${{ secrets.KEY_ALIAS }}"
+          echo "keyPassword=${{ secrets.KEY_PASSWORD }}"
+        } > keystore.properties
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    - name: Build the signed phone and TV APKs
+      run: ./gradlew releaseAssets
+
+    # The tag has to be the version the build carries: the file names come
+    # from the Gradle version, and the updater compares the tag with it.
+    - name: Check the tag matches the build
+      run: test -f "build/release-assets/BitChord-${GITHUB_REF_NAME}.apk"
+
+    - name: Publish the release
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        flags=""
+        case "$GITHUB_REF_NAME" in *-*) flags="--prerelease" ;; esac
+        gh release create "$GITHUB_REF_NAME" build/release-assets/*.apk \
+          --title "BitChord-X $GITHUB_REF_NAME" --generate-notes $flags
