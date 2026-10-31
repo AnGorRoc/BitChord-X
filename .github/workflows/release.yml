@@ -12,7 +12,25 @@ permissions:
   contents: write
 
 jobs:
+  # A release published by hand from a local build (same file names) already
+  # owns this tag; building it again here would only fail on the duplicate.
+  check:
+    runs-on: ubuntu-24.04
+    outputs:
+      exists: ${{ steps.release.outputs.exists }}
+    steps:
+    - id: release
+      env:
+        GH_TOKEN: ${{ github.token }}
+        GH_REPO: ${{ github.repository }}
+      run: |
+        if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+          echo "exists=true" >> "$GITHUB_OUTPUT"
+        fi
+
   release:
+    needs: check
+    if: needs.check.outputs.exists != 'true'
     runs-on: ubuntu-24.04
 
     steps:
@@ -27,7 +45,13 @@ jobs:
         cache: gradle
 
     - name: Setup Secrets (Keystore & local.properties)
+      env:
+        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        LISTEN_TOGETHER_SERVER: ${{ secrets.LISTEN_TOGETHER_SERVER }}
       run: |
+        # An empty LISTEN_TOGETHER_SERVER is not "use the default": it builds an app
+        # with no server. Better to stop here than to publish that.
+        [ -n "$KEYSTORE_PASSWORD" ] && [ -n "$LISTEN_TOGETHER_SERVER" ] || { echo "Missing repository secrets"; exit 1; }
         echo "LASTFM_API_KEY=${{ secrets.LASTFM_API_KEY }}" > local.properties
         echo "LASTFM_SECRET=${{ secrets.LASTFM_SECRET }}" >> local.properties
         echo "LISTEN_TOGETHER_SERVER=${{ secrets.LISTEN_TOGETHER_SERVER }}" >> local.properties
