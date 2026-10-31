@@ -20,7 +20,7 @@ fun MainViewModel.onSignedIn(cookie: String, onComplete: (Boolean) -> Unit = {})
         clientVersion = null,
         loggedIn = true,
     )
-    onWebSession(session, WebSessionMode.SIGN_IN, onComplete)
+    onWebSession(session, WebSessionMode.SIGN_IN, onComplete = onComplete)
 }
 
 /**
