@@ -5,6 +5,7 @@ This document lists the maintainers of BitChord-X and credits the people behind 
 | Maintainer | GitHub | Responsibilities |
 |---|---|---|
 | AnGorRoc | [@AnGorRoc](https://github.com/AnGorRoc) | BitChord-X maintainer: direction, releases and PR reviews |
+| fvkinGordo | [@fvkinGordo](https://github.com/fvkinGordo) | BitChord-X maintainer: UI/UX & feature development |
 
 ## Original project
 
