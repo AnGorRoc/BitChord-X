@@ -188,35 +188,35 @@ class LoopMixSession private constructor(
                 ),
             )
 
-            // Gains: the outgoing deck takes over from its song, the incoming loop
-            // rises over the entry and the ramp, the outgoing one falls away.
+            // Gains: Equal-power crossover curve (L^2 + R^2 ≈ 1.0) avoiding clipping and energy dips.
             val h = LoopMix.HANDOVER_SEC
             renderer.setEnvelope(
                 LoopMixRenderer.OUT, LoopMixRenderer.KIND_GAIN,
-                doubleArrayOf(-h, 0.0, clock.enterEnd, clock.rampEnd, clock.releaseAt),
-                floatArrayOf(0f, 1f, 1f, 0.6f, 0f),
+                doubleArrayOf(-h, 0.0, clock.enterEnd, clock.handoffAt, clock.rampEnd, clock.releaseAt),
+                floatArrayOf(0f, 1f, 0.92f, 0.70f, 0.40f, 0f),
             )
             renderer.setEnvelope(
                 LoopMixRenderer.IN, LoopMixRenderer.KIND_GAIN,
-                doubleArrayOf(0.0, clock.enterEnd, clock.rampEnd),
-                floatArrayOf(0f, 0.55f, 1f),
+                doubleArrayOf(0.0, clock.enterEnd, clock.handoffAt, clock.rampEnd),
+                floatArrayOf(0f, 0.40f, 0.72f, 1f),
             )
-            // Bass: the incoming loop comes in without it; they swap over one bar mid-ramp.
-            val swapFrom = clock.handoffAt - clock.swapBar / 2
-            val swapTo = clock.handoffAt + clock.swapBar / 2
+            // Bass: Clean downbeat swap. Outgoing retains bass punch until the downbeat approach,
+            // then incoming bass takes over at 0 dB right on the handoff phrase boundary.
+            val swapStart = clock.handoffAt - clock.swapBar * 0.25
+            val swapEnd = clock.handoffAt + clock.swapBar * 0.10
             val cut = LoopMix.BASS_CUT_DB.toFloat()
             renderer.setEnvelope(
                 LoopMixRenderer.OUT, LoopMixRenderer.KIND_LOW_DB,
-                doubleArrayOf(swapFrom, swapTo), floatArrayOf(0f, cut),
+                doubleArrayOf(swapStart, swapEnd), floatArrayOf(0f, cut),
             )
             renderer.setEnvelope(
                 LoopMixRenderer.IN, LoopMixRenderer.KIND_LOW_DB,
-                doubleArrayOf(swapFrom, swapTo), floatArrayOf(cut, 0f),
+                doubleArrayOf(swapStart, swapEnd), floatArrayOf(cut, 0f),
             )
-            // The outgoing loop drains away through a rising high-pass once the tempo has arrived.
+            // The outgoing loop drains away through a rising high-pass starting from handoff to release.
             renderer.setEnvelope(
                 LoopMixRenderer.OUT, LoopMixRenderer.KIND_HIGH_PASS_HZ,
-                doubleArrayOf(clock.rampEnd, clock.releaseAt),
+                doubleArrayOf(clock.handoffAt, clock.releaseAt),
                 floatArrayOf(LoopMix.HIGH_PASS_FROM_HZ.toFloat(), LoopMix.HIGH_PASS_TO_HZ.toFloat()),
                 exponential = true,
             )
