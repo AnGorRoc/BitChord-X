@@ -259,6 +259,7 @@ fun SettingsScreen(
     val signatureApiEnabled by AppSettings.signatureApiEnabled.collectAsStateWithLifecycle()
     val signatureApiUrl by AppSettings.signatureApiUrl.collectAsStateWithLifecycle()
     val fullBleedArtwork by AppSettings.fullBleedArtwork.collectAsStateWithLifecycle()
+    val immersivePlayerMode by AppSettings.immersivePlayerMode.collectAsStateWithLifecycle()
     val legacyMeshGradient by AppSettings.legacyMeshGradient.collectAsStateWithLifecycle()
     val syncedLyrics by AppSettings.syncedLyrics.collectAsStateWithLifecycle()
     val lyricAboveScrubber by AppSettings.lyricAboveScrubber.collectAsStateWithLifecycle()
@@ -1081,6 +1082,21 @@ fun SettingsScreen(
                         onClick = { AppSettings.setFullBleedArtwork(!fullBleedArtwork) },
                     )
                 }
+            }
+            val immersiveModeTitle = stringResource(R.string.immersive_player_mode)
+            row(immersiveModeTitle, "immersive", "player") {
+                SettingsRow(
+                    icon = SfIcons.AutoAwesome,
+                    title = immersiveModeTitle,
+                    subtitle = stringResource(R.string.immersive_player_mode_subtitle),
+                    trailing = {
+                        IosSwitch(
+                            checked = immersivePlayerMode,
+                            onCheckedChange = AppSettings::setImmersivePlayerMode,
+                        )
+                    },
+                    onClick = { AppSettings.setImmersivePlayerMode(!immersivePlayerMode) },
+                )
             }
             val legacyMeshGradientTitle = stringResource(R.string.legacy_mesh_gradient)
             row(legacyMeshGradientTitle, "background", "player") {
