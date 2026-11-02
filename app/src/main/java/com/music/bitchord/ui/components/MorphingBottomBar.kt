@@ -69,6 +69,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.music.bitchord.data.settings.AppSettings
+import kotlinx.coroutines.delay
 import com.music.bitchord.sharedui.resources.Res
 import com.music.bitchord.sharedui.resources.clear
 import com.music.bitchord.sharedui.resources.search
@@ -194,8 +195,17 @@ fun MorphingBottomBar(
 
     LaunchedEffect(isSearching) {
         if (isSearching) {
-            searchFocusRequester.requestFocus()
-            keyboardController?.show()
+            delay(100)
+            try {
+                searchFocusRequester.requestFocus()
+                keyboardController?.show()
+            } catch (_: Exception) {
+                delay(120)
+                try {
+                    searchFocusRequester.requestFocus()
+                    keyboardController?.show()
+                } catch (_: Exception) {}
+            }
         } else {
             focusManager.clearFocus()
             keyboardController?.hide()
@@ -405,26 +415,37 @@ fun MorphingBottomBar(
                     .then(surfaceModifier())
                     .border(GLASS_EDGE_WIDTH, GLASS_EDGE_COLOR, pillShape)
                     .clickable(
-                        enabled = !isSearching,
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
                     ) {
-                        haptics.play(Haptic.Select)
-                        onTabSelected(TAB_SEARCH)
+                        if (!isSearching) {
+                            haptics.play(Haptic.Select)
+                            onTabSelected(TAB_SEARCH)
+                        } else {
+                            try {
+                                searchFocusRequester.requestFocus()
+                                keyboardController?.show()
+                            } catch (_: Exception) {}
+                        }
                     },
                 contentAlignment = Alignment.Center,
             ) {
-                if (searchProgress < 0.35f) {
+                if (searchProgress < 0.4f) {
+                    val iconAlpha = (1f - searchProgress * 2.5f).coerceIn(0f, 1f)
                     // Closed state: round search button with magnifying glass
                     Icon(
                         imageVector = tabs.getOrNull(TAB_SEARCH)?.icon ?: Icons.Rounded.Search,
                         contentDescription = stringResource(Res.string.search),
                         tint = if (isSearching) MaterialTheme.colorScheme.primary else contentColor.copy(alpha = 0.75f),
-                        modifier = Modifier.size(25.dp),
+                        modifier = Modifier
+                            .size(25.dp)
+                            .graphicsLayer { alpha = iconAlpha },
                     )
-                } else {
+                }
+
+                if (isSearching || searchProgress > 0.05f) {
                     // Expanding / Expanded state: full search field
-                    val contentAlpha = ((searchProgress - 0.35f) / 0.65f).coerceIn(0f, 1f)
+                    val contentAlpha = ((searchProgress - 0.15f) / 0.85f).coerceIn(0f, 1f)
                     Row(
                         modifier = Modifier
                             .fillMaxSize()
