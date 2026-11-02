@@ -65,6 +65,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.VolumeDown
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Cast
 import androidx.compose.material.icons.rounded.CastConnected
 import androidx.compose.material.icons.rounded.DirectionsCar
@@ -367,6 +368,7 @@ internal fun PlaybackQualityLabel(
         stillRacing = song.videoId in racingLossless,
         losslessRequested = effectiveQuality == AudioQuality.LOSSLESS,
         nerdStats = nerdStats,
+        song = song,
         modifier = modifier,
     )
 }
@@ -1666,6 +1668,7 @@ private fun LosslessOrStats(
     stillRacing: Boolean,
     losslessRequested: Boolean,
     nerdStats: NerdStats.Snapshot?,
+    song: Song,
     modifier: Modifier = Modifier,
 ) {
     // Which source actually served the bytes is recorded per track — see
@@ -1676,6 +1679,22 @@ private fun LosslessOrStats(
     var showSource by remember { mutableStateOf(false) }
     // A new track starts on its quality, never on the source of the last one.
     LaunchedEffect(nerdStats?.mediaId) { showSource = false }
+
+    val smartFadeOn by PlayerSettings.smartFadeEnabled.collectAsStateWithLifecycle()
+    val smartAnalysis by PlayerSettings.smartAnalysis.collectAsStateWithLifecycle()
+    val smartTransitionWindow by PlayerSettings.smartTransitionWindow.collectAsStateWithLifecycle()
+    val inParty by remember {
+        PlayerPlatform.host.party.map { it.inParty }.distinctUntilChanged()
+    }.collectAsStateWithLifecycle(initialValue = PlayerPlatform.host.party.value.inParty)
+
+    val isAutomixAnalyzing = smartFadeOn &&
+        !inParty &&
+        !song.isVideoOrigin &&
+        smartTransitionWindow == null &&
+        (smartAnalysis.current == TrackAnalysisState.ANALYSING ||
+         smartAnalysis.next == TrackAnalysisState.ANALYSING ||
+         smartAnalysis.next == TrackAnalysisState.REFINING)
+
     Box(
         modifier = modifier.then(
             if (source != null) Modifier.clickable { showSource = !showSource } else Modifier,
@@ -1722,6 +1741,13 @@ private fun LosslessOrStats(
                 // The band runs here too. It used to be reserved for the
                 // confirmed label, which left the wait reading as a dead grey line.
                 animated = true,
+            )
+            isAutomixAnalyzing -> LosslessLabel(
+                text = stringResource(Res.string.automix_analyzing),
+                animated = true,
+                pulsing = true,
+                iconPainter = rememberVectorPainter(Icons.Rounded.AutoAwesome),
+                iconSize = 13.dp,
             )
             nerdStats?.isLossless == true -> LosslessLabel(
                 // Same line Tidal, Qobuz and Apple Music draw it at — see
