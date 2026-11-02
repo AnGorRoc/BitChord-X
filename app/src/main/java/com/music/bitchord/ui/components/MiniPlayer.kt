@@ -402,6 +402,9 @@ fun MiniPlayer(
     // a pill instead of a rounded rectangle. Same idiom as [FloatingBottomBar]
     // directly below it, so the two shapes are the same family.
     val shape = RoundedCornerShape(percent = 50)
+    val useGlass = LocalLiquidGlassEnabled.current && isGlassSupported()
+    val barTint = glassBarTint()
+    val contentColor = if (useGlass) glassContentColor() else MaterialTheme.colorScheme.onBackground
     Box(
         modifier = modifier
             .padding(horizontal = BAR_GUTTER)
@@ -423,6 +426,8 @@ fun MiniPlayer(
             .then(
                 if (reduceDynamicBlur) {
                     Modifier.background(MaterialTheme.colorScheme.surface)
+                } else if (useGlass) {
+                    Modifier.liquidGlass(shape = shape, surfaceTint = barTint)
                 } else {
                     Modifier.optimizedHazeEffect(
                         state = hazeState,
@@ -430,7 +435,7 @@ fun MiniPlayer(
                     )
                 },
             )
-            .border(0.5.dp, Color.White.copy(alpha = 0.10f), shape)
+            .border(GLASS_EDGE_WIDTH, GLASS_EDGE_COLOR, shape)
             // Deliberately silent: the whole bar is the target, so it catches
             // stray taps meant for the page behind it, and the sheet rising is
             // its own confirmation. The glyphs on it still buzz.
@@ -485,14 +490,14 @@ fun MiniPlayer(
                 ExplicitSongTitle(
                     song = song,
                     style = MaterialTheme.typography.titleMedium,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    badgeColor = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = contentColor,
+                    badgeColor = if (useGlass) contentColor.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant,
                     fadeOverflow = true,
                 )
                 FadingLine(
                     text = song.artist,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = if (useGlass) contentColor.copy(alpha = 0.65f) else MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier
                         .layout { measurable, constraints ->
                             val placeable = measurable.measure(constraints)
@@ -505,7 +510,7 @@ fun MiniPlayer(
             if (isLoading) {
                 Box(Modifier.size(width = GLYPH_SLOT, height = glyphSlotHeight), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(
-                        color = MaterialTheme.colorScheme.onBackground,
+                        color = contentColor,
                         strokeWidth = 2.dp,
                         modifier = Modifier.size(SPINNER_SIZE),
                     )
@@ -521,7 +526,7 @@ fun MiniPlayer(
                     Icon(
                         imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                         contentDescription = stringResource(if (isPlaying) R.string.pause else R.string.play),
-                        tint = MaterialTheme.colorScheme.onBackground,
+                        tint = contentColor,
                         modifier = Modifier.size(GLYPH_SIZE),
                     )
                 }
@@ -538,7 +543,7 @@ fun MiniPlayer(
                 modifier = Modifier.size(width = GLYPH_SLOT, height = glyphSlotHeight),
             ) {
                 MiniPlayerNextGlyph(
-                    tint = MaterialTheme.colorScheme.onBackground
+                    tint = contentColor
                         .copy(alpha = if (controlsLocked) 0.3f else 1f),
                 )
             }
