@@ -1602,35 +1602,51 @@ fun NowPlayingScreen(
     val onVolumeChange: (Float) -> Unit = volume::drag
     val onVolumeChangeFinished: () -> Unit = volume::release
 
+    val landscape = landscapePlayerAvailable(windowWidth, windowHeight)
+
     // Lyrics, output and queue, with the output name under them — the row both
     // layouts end on, and the only thing in the landscape player's left column
     // besides the sleeve.
     val playerActions: @Composable () -> Unit = {
-        PlayerActionRow(
-            lyricsOpen = lyricsOpen,
-            queueOpen = queueOpen,
-            shuffleEnabled = shuffleEnabled,
-            repeatMode = repeatMode,
-            autoplayEnabled = autoplayEnabled,
-            onToggleLyrics = toggleLyrics,
-            onToggleQueue = toggleQueue,
-            onToggleShuffle = onToggleShuffle,
-            onCycleRepeat = onCycleRepeat,
-            onToggleAutoplay = onToggleAutoplay,
-            onOpenOutput = openAudioOutput,
-            onListenTogether = onListenTogether,
-            onOpenListenTogetherMembers = openListenTogetherMembers,
-        )
-        // Keep the current output caption visible in every state.
-        Spacer(Modifier.height(18.dp))
-        Box(
-            modifier = Modifier.fillMaxWidth().height(20.dp),
-            contentAlignment = Alignment.TopCenter,
-        ) {
-            OutputCaption(
-                accountName = accountName,
+        if (landscape) {
+            PlayerActionRow(
+                lyricsOpen = lyricsOpen,
+                queueOpen = queueOpen,
+                shuffleEnabled = shuffleEnabled,
+                repeatMode = repeatMode,
+                autoplayEnabled = autoplayEnabled,
+                onToggleLyrics = toggleLyrics,
+                onToggleQueue = toggleQueue,
+                onToggleShuffle = onToggleShuffle,
+                onCycleRepeat = onCycleRepeat,
+                onToggleAutoplay = onToggleAutoplay,
                 onOpenOutput = openAudioOutput,
-                onOpenMembers = openListenTogetherMembers,
+                onListenTogether = onListenTogether,
+                onOpenListenTogetherMembers = openListenTogetherMembers,
+            )
+            // Keep the current output caption visible in every state.
+            Spacer(Modifier.height(18.dp))
+            Box(
+                modifier = Modifier.fillMaxWidth().height(20.dp),
+                contentAlignment = Alignment.TopCenter,
+            ) {
+                OutputCaption(
+                    accountName = accountName,
+                    onOpenOutput = openAudioOutput,
+                    onOpenMembers = openListenTogetherMembers,
+                )
+            }
+        } else {
+            PlayerBottomRow(
+                song = song,
+                playedBy = playedBy,
+                lyricsOpen = lyricsOpen,
+                queueOpen = queueOpen,
+                onToggleLyrics = toggleLyrics,
+                onToggleQueue = toggleQueue,
+                onOpenOutput = openAudioOutput,
+                onOpenParty = openListenTogetherMembers,
+                onOpenPlaybackOrigin = openPlaybackOrigin,
             )
         }
     }
@@ -1711,7 +1727,6 @@ fun NowPlayingScreen(
     // gesture exist to let one tall column be the player, the lyrics and the
     // queue in turn, and in landscape none of them has anything to do — the
     // sleeve never has to get out of anything's way.
-    val landscape = landscapePlayerAvailable(windowWidth, windowHeight)
     // Tablet-sized players use the full-cover blur in all three states, and so
     // does the phone unless the legacy mesh is switched on — see the backdrop.
     val tabletArtworkBackdrop = tabletSizedPlayer(windowWidth)
