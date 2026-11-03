@@ -477,14 +477,7 @@ internal fun LandscapeCredits(
                 active = liked,
                 haptic = if (liked) Haptic.ToggleOff else Haptic.ToggleOn,
             )
-            Spacer(Modifier.width(8.dp))
         }
-        CircleGlyph(
-            icon = if (showRevertCue) Icons.AutoMirrored.Rounded.Undo else Icons.Rounded.MoreHoriz,
-            contentDescription = stringResource(Res.string.more),
-            onClick = onOpenMenu,
-            modifier = Modifier.menuAnchor(),
-        )
     }
 }
 

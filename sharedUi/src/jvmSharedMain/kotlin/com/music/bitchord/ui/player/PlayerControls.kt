@@ -331,7 +331,7 @@ private const val BADGE_SIZE_BUMP = 0.5f
  * where there is no sleeve colour to echo. The title, transport, seek and
  * volume bars stay white on purpose.
  */
-internal val LocalPlayerTint = compositionLocalOf { Color.White }
+val LocalPlayerTint = compositionLocalOf { Color.White }
 
 /**
  * The quality badge between the timestamps — "Lossless", "Hi-Res", a loading
