@@ -66,6 +66,10 @@ Previamente se desarrollaron e integraron las siguientes funcionalidades clave p
 - **Estado Actual**:
   - Rama publicada y sincronizada con `origin/fvkinGordo`.
   - Commits integrados y testeados en build devDebug sobre dispositivo físico:
+    - `d84b7ad6` feat(ui): add liquid glass morphing dock to full player with context actions
+    - `e85bf81c` feat(player): unify static artwork size with animated covers and smooth dissolve
+    - `38e4a772` style(reflection): tune mesh cover reflection strength and fade bounds
+    - `fc1ede0d` feat(automix): preserve lyrics and prevent vocal overlap with camelot key guard
     - `afde70c1` feat(player): show analyzing mix badge below timeline scrubber
     - `2a606526` feat(automix): calibrate equal-power gain curves and tighter bass swap
     - `02d8ca6b` feat(ui): auto-focus search bar and lift bottom pill above keyboard
