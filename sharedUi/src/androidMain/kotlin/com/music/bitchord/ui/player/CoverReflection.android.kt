@@ -11,8 +11,8 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 
 private const val MESH_ROWS = 32
-private const val REFLECTION_STRENGTH = 0.92f
-private const val REFLECTION_FADE_END = 0.9f
+private const val REFLECTION_STRENGTH = 0.82f
+private const val REFLECTION_FADE_END = 0.95f
 
 internal actual class PlatformReflectionMesh actual constructor() {
     private val verts = FloatArray((MESH_ROWS + 1) * 2 * 2)
