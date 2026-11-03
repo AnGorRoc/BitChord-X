@@ -57,6 +57,12 @@ object LoopMix {
     /** Bars after the incoming loop lets go before its own player takes over. */
     const val SETTLE_BARS = 2
 
+    /** Maximum tempo deviation (ratio 0..1) allowed before falling back to DJ filter transition. */
+    const val MAX_TEMPO_STRETCH_RATIO = 0.16
+
+    /** Minimum confidence required for key compatibility checks. */
+    const val MIN_KEY_CONFIDENCE = 0.30
+
     /** The fastest the master tempo moves: past this a ramp is heard as a lurch, not a mix. */
     const val MAX_BPM_PER_BAR = 2.5
     const val MIN_RAMP_BARS = 2
@@ -179,9 +185,14 @@ object LoopMix {
         val outCount = Rejections()
         val inCount = Rejections()
 
-        // outgoing: the latest instrumental loop that ends before the song does
+        // outgoing: ensure the loop does not start before the singer finishes singing!
+        val lastOutVocal = lastVocalTime(out, sungOut)
         val outEnd = outDuration - 0.5
-        val outFirst = max(earliestOutSec, outDuration - OUT_SEARCH_SEC)
+        val outFirst = if (lastOutVocal != null && lastOutVocal > earliestOutSec) {
+            max(earliestOutSec, lastOutVocal - LYRIC_GUARD_SEC)
+        } else {
+            max(earliestOutSec, outDuration - OUT_SEARCH_SEC)
+        }
         val outPick = firstClean(
             candidates = { bars -> loopsBetween(out.tailBeats, outGrid, outFirst, outEnd, bars).asReversed() },
             analysis = out,
@@ -190,10 +201,15 @@ object LoopMix {
             count = outCount,
         ) ?: return null.also { why?.append("outgoing: ")?.append(outCount) }
 
-        // incoming: the earliest instrumental loop in its opening
-        val inEnd = min(IN_SEARCH_SEC + LOOP_BARS * inGrid.barSec, inDuration - 20)
+        // incoming: ensure incoming loop is in the instrumental intro before vocals start!
+        val firstInVocal = firstVocalTime(inn, sungIn)
+        val maxInEnd = if (firstInVocal != null) {
+            min(IN_SEARCH_SEC + LOOP_BARS * inGrid.barSec, firstInVocal - LYRIC_GUARD_SEC)
+        } else {
+            min(IN_SEARCH_SEC + LOOP_BARS * inGrid.barSec, inDuration - 20)
+        }
         val inPick = firstClean(
-            candidates = { bars -> loopsBetween(inn.headBeats, inGrid, 0.0, inEnd, bars) },
+            candidates = { bars -> loopsBetween(inn.headBeats, inGrid, 0.0, maxInEnd, bars) },
             analysis = inn,
             sung = sungIn,
             beatSec = inGrid.beatSec,
@@ -207,10 +223,31 @@ object LoopMix {
 
         val fold = doubleArrayOf(1.0, 2.0, 0.5).minBy { abs(ln(inBpm / it / outBpm)) }
         val target = inBpm / fold
+        val stretchRatio = abs(target - outBpm) / outBpm
+        if (stretchRatio > MAX_TEMPO_STRETCH_RATIO) {
+            why?.append("tempo difference too large: ${outBpm.roundToInt()} -> ${target.roundToInt()} BPM (${(stretchRatio * 100).roundToInt()}%)")
+            return null
+        }
+
+        // Harmonic Key Clash Protection:
+        val outCamelot = if (out.keyConfidence >= MIN_KEY_CONFIDENCE) CamelotKey.parse(out.key) else null
+        val inCamelot = if (inn.keyConfidence >= MIN_KEY_CONFIDENCE) CamelotKey.parse(inn.key) else null
+        if (outCamelot != null && inCamelot != null && !outCamelot.isCompatibleWith(inCamelot)) {
+            why?.append("harmonic clash: ${outCamelot.code} (${out.key}) vs ${inCamelot.code} (${inn.key})")
+            return null
+        }
+
         val rampBars = ceil(abs(target - outBpm) / MAX_BPM_PER_BAR).toInt().coerceIn(MIN_RAMP_BARS, MAX_RAMP_BARS)
         // the incoming loop lets go only at its own loop boundary: round the mix up to whole incoming loops
         val inLoopOutBars = inPick.bars / fold
         val totalBars = (ceil((ENTER_BARS + rampBars + EXIT_BARS) / inLoopOutBars) * inLoopOutBars).roundToInt()
+
+        // Verify incoming song doesn't sing while the mix is still running (prevent vocal clash):
+        val inEndPosition = inPick.start + totalBars * fold * inBeat
+        if (firstInVocal != null && inEndPosition > firstInVocal!!) {
+            why?.append("incoming vocal starts at ${firstInVocal.roundToInt()}s, mix runs until ${inEndPosition.roundToInt()}s (vocal clash)")
+            return null
+        }
 
         fun pick(clean: Clean, beatSec: Double, bpm: Double) = Pick(
             loopStart = clean.start,
@@ -405,6 +442,42 @@ object LoopMix {
     }
 
     data class MaskStats(val share: Double, val longestRunSec: Double)
+
+    /** The last timestamp (track seconds) where vocals or lyrics are present in the song. */
+    fun lastVocalTime(analysis: TrackAnalysis, sung: List<Span>?): Double? {
+        val fromLyrics = sung?.filter { it.certainUntil > 0 }?.maxOfOrNull { it.certainUntil }
+        if (fromLyrics != null) return fromLyrics
+        var latest: Double? = null
+        for (window in analysis.vocalWindows) {
+            if (window.frameRate <= 0) continue
+            for (i in window.values.indices.reversed()) {
+                if (window.values[i] > VOCAL_ACTIVE_THRESHOLD) {
+                    val t = window.startTime + i / window.frameRate
+                    if (latest == null || t > latest) latest = t
+                    break
+                }
+            }
+        }
+        return latest
+    }
+
+    /** The first timestamp (track seconds) where vocals or lyrics begin in the song. */
+    fun firstVocalTime(analysis: TrackAnalysis, sung: List<Span>?): Double? {
+        val fromLyrics = sung?.filter { it.certainUntil > 0 }?.minOfOrNull { it.start }
+        if (fromLyrics != null) return fromLyrics
+        var earliest: Double? = null
+        for (window in analysis.vocalWindows) {
+            if (window.frameRate <= 0) continue
+            for (i in window.values.indices) {
+                if (window.values[i] > VOCAL_ACTIVE_THRESHOLD) {
+                    val t = window.startTime + i / window.frameRate
+                    if (earliest == null || t < earliest) earliest = t
+                    break
+                }
+            }
+        }
+        return earliest
+    }
 
     /**
      * How much of [from]..[to] the vocal model calls sung, and its longest sung
