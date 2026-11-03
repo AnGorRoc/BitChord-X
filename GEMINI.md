@@ -66,6 +66,8 @@ Previamente se desarrollaron e integraron las siguientes funcionalidades clave p
 - **Estado Actual**:
   - Rama publicada y sincronizada con `origin/fvkinGordo`.
   - Commits integrados y testeados en build devDebug sobre dispositivo físico:
+    - `feat(player)`: restore clean v1 3-button action row (lyrics, cast, queue) and deprecate experimental morphing dock
+    - `eaf45011` docs: update development context with recent commits
     - `d84b7ad6` feat(ui): add liquid glass morphing dock to full player with context actions
     - `e85bf81c` feat(player): unify static artwork size with animated covers and smooth dissolve
     - `38e4a772` style(reflection): tune mesh cover reflection strength and fade bounds

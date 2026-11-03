@@ -782,7 +782,6 @@ fun NowPlayingScreen(
     onQueueDragActiveChange: (Boolean) -> Unit = {},
     onClearQueue: () -> Unit,
     onSaveQueue: (() -> Unit)? = null,
-    bottomBar: (@Composable () -> Unit)? = null,
     onOpenMenu: () -> Unit,
     onOpenAlbum: (String) -> Unit,
     /**
@@ -1613,47 +1612,31 @@ fun NowPlayingScreen(
     // layouts end on, and the only thing in the landscape player's left column
     // besides the sleeve.
     val playerActions: @Composable () -> Unit = {
-        if (landscape) {
-            PlayerActionRow(
-                lyricsOpen = lyricsOpen,
-                queueOpen = queueOpen,
-                shuffleEnabled = shuffleEnabled,
-                repeatMode = repeatMode,
-                autoplayEnabled = autoplayEnabled,
-                onToggleLyrics = toggleLyrics,
-                onToggleQueue = toggleQueue,
-                onToggleShuffle = onToggleShuffle,
-                onCycleRepeat = onCycleRepeat,
-                onToggleAutoplay = onToggleAutoplay,
+        PlayerActionRow(
+            lyricsOpen = lyricsOpen,
+            queueOpen = queueOpen,
+            shuffleEnabled = shuffleEnabled,
+            repeatMode = repeatMode,
+            autoplayEnabled = autoplayEnabled,
+            onToggleLyrics = toggleLyrics,
+            onToggleQueue = toggleQueue,
+            onToggleShuffle = onToggleShuffle,
+            onCycleRepeat = onCycleRepeat,
+            onToggleAutoplay = onToggleAutoplay,
+            onOpenOutput = openAudioOutput,
+            onListenTogether = onListenTogether,
+            onOpenListenTogetherMembers = openListenTogetherMembers,
+        )
+        // Keep the current output caption visible in every state.
+        Spacer(Modifier.height(18.dp))
+        Box(
+            modifier = Modifier.fillMaxWidth().height(20.dp),
+            contentAlignment = Alignment.TopCenter,
+        ) {
+            OutputCaption(
+                accountName = accountName,
                 onOpenOutput = openAudioOutput,
-                onListenTogether = onListenTogether,
-                onOpenListenTogetherMembers = openListenTogetherMembers,
-            )
-            // Keep the current output caption visible in every state.
-            Spacer(Modifier.height(18.dp))
-            Box(
-                modifier = Modifier.fillMaxWidth().height(20.dp),
-                contentAlignment = Alignment.TopCenter,
-            ) {
-                OutputCaption(
-                    accountName = accountName,
-                    onOpenOutput = openAudioOutput,
-                    onOpenMembers = openListenTogetherMembers,
-                )
-            }
-        } else if (bottomBar != null) {
-            bottomBar()
-        } else {
-            PlayerBottomRow(
-                song = song,
-                playedBy = playedBy,
-                lyricsOpen = lyricsOpen,
-                queueOpen = queueOpen,
-                onToggleLyrics = toggleLyrics,
-                onToggleQueue = toggleQueue,
-                onOpenOutput = openAudioOutput,
-                onOpenParty = openListenTogetherMembers,
-                onOpenPlaybackOrigin = openPlaybackOrigin,
+                onOpenMembers = openListenTogetherMembers,
             )
         }
     }
@@ -3740,18 +3723,49 @@ fun NowPlayingScreen(
                                     active = liked,
                                     haptic = if (liked) Haptic.ToggleOff else Haptic.ToggleOn,
                                 )
+                                Spacer(Modifier.width(8.dp))
                             }
+                            // While the lyrics are up the menu glyph becomes the share
+                            // entry: the same pick mode a long-press on a line opens,
+                            // only on phones where a card can actually be made. While
+                            // picking it is the way back out again — the bar below
+                            // already holds Share.
+                            // Only once the sleeve has fully collapsed: the moment it starts
+                            // coming back the glyph is the menu again.
+                            // And only while the half player under the lyrics is tucked
+                            // away: with it up, the screen is the player again and the
+                            // glyph is its menu. A pick in progress keeps its Close
+                            // whichever way the controls are.
                             val lyricsShareGlyphVisible = lyricsOpen && collapseDone && lyricsShareEnabled &&
                                 !lyrics.isNullOrEmpty() && (!lyricsControlsOpen || lyricPicker.picking)
-                            if (lyricsShareGlyphVisible && lyricPicker.picking) {
-                                Spacer(Modifier.width(8.dp))
-                                CircleGlyph(
-                                    icon = Icons.Rounded.Close,
-                                    contentDescription = stringResource(Res.string.cancel),
-                                    onClick = lyricPicker.cancel,
-                                    haptic = Haptic.Select,
-                                )
-                            }
+                            CircleGlyph(
+                                icon = when {
+                                    showRevertCue -> Icons.AutoMirrored.Rounded.Undo
+                                    lyricsShareGlyphVisible && lyricPicker.picking -> Icons.Rounded.Close
+                                    lyricsShareGlyphVisible -> Icons.Rounded.IosShare
+                                    else -> Icons.Rounded.MoreHoriz
+                                },
+                                contentDescription = stringResource(
+                                    when {
+                                        showRevertCue -> Res.string.more
+                                        lyricsShareGlyphVisible && lyricPicker.picking -> Res.string.cancel
+                                        lyricsShareGlyphVisible -> Res.string.share
+                                        else -> Res.string.more
+                                    },
+                                ),
+                                onClick = when {
+                                    showRevertCue -> onOpenMenu
+                                    lyricsShareGlyphVisible && lyricPicker.picking -> lyricPicker.cancel
+                                    lyricsShareGlyphVisible -> lyricPicker.beginPicking
+                                    else -> onOpenMenu
+                                },
+                                haptic = if (lyricsShareGlyphVisible && !showRevertCue) {
+                                    Haptic.Select
+                                } else {
+                                    Haptic.Tap
+                                },
+                                modifier = Modifier.menuAnchor(),
+                            )
                         }
 
                         // [lyricsOpen] asked first: a close has already hidden the

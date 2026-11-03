@@ -29,10 +29,6 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
@@ -256,8 +252,6 @@ import com.music.bitchord.ui.components.MenuAnchor
 import com.music.bitchord.ui.components.menuAnchor
 import com.music.bitchord.ui.components.IosMenuPopover
 import com.music.bitchord.ui.components.SongActionsMenu
-import com.music.bitchord.ui.components.SongInfoDialog
-import com.music.bitchord.ui.player.PlayerMorphingDock
 import com.music.bitchord.ui.components.HeldContextMenu
 import com.music.bitchord.ui.components.HeldItem
 import androidx.media3.session.MediaController
@@ -694,9 +688,6 @@ private fun BitChordApp(
     var showSpotifyLogin by remember { mutableStateOf(false) }
     var discordDialog by remember { mutableStateOf<DiscordDialog?>(null) }
     var songActions by remember { mutableStateOf<Song?>(null) }
-    var songInfoDialogSong by remember { mutableStateOf<Song?>(null) }
-    val playerMenuProgress = remember { Animatable(0f) }
-    var playerSheetHeightPx by remember { mutableFloatStateOf(1200f) }
     var showLyricsOffset by remember { mutableStateOf(false) }
     var showSing by remember { mutableStateOf(false) }
     /**
@@ -2756,10 +2747,6 @@ private fun BitChordApp(
             onMoveInQueue = { from, to -> controller?.moveMediaItem(from, to) },
             onSaveQueue = saveQueueAsPlaylist,
             onQueueDragActiveChange = { active -> controller?.setQueueDragActive(active) },
-            bottomBar = {
-                // Reserve space so player controls and scrubber stay above the resting morphing dock
-                Spacer(Modifier.height(84.dp))
-            },
             onOpenMenu = {
                 menuFromPlayer = true
                 songMenuOrigin = null
@@ -5045,101 +5032,31 @@ private fun BitChordApp(
                     // the player. Not under "reduce dynamic blur": the panel
                     // is opaque then.
 
+                    val playerMenuUp = songActions != null && songMenuOrigin == null && menuFromPlayer
+                    LaunchedEffect(playerMenuUp, reduceDynamicBlur) {
+                        if (!playerMenuUp || reduceDynamicBlur) {
+                            delay(SNAPSHOT_RELEASE_DELAY_MS)
+                            playerBackdrop.release()
+                        }
+                    }
                     Box(
                         modifier = when {
                             reduceDynamicBlur -> Modifier.fillMaxSize()
-                            else -> Modifier.fillMaxSize().layerBackdrop(livePlayerBackdrop)
+                            playerLiveCanvas -> Modifier.fillMaxSize().layerBackdrop(livePlayerBackdrop)
+                            else -> Modifier.fillMaxSize().snapshotBackdropSource(playerBackdrop)
                         },
                     ) {
                         CompositionLocalProvider(LocalPlayerDock provides activeDock) {
                             nowPlaying(playerSong)
                         }
                     }
-                    if (playerSong != null) {
-                        val isOffline = playerSong.localUri != null
-                        val isDownloaded = isOffline || playerSong.videoId in savedDownloads
-                        val automixOn by AppSettings.smartFadeEnabled.collectAsStateWithLifecycle()
-                        CompositionLocalProvider(
-                            LocalAppBackdrop provides livePlayerBackdrop,
-                            LocalLiquidGlassEnabled provides true,
-                        ) {
-                            PlayerMorphingDock(
-                                progress = playerMenuProgress.value,
-                                animatableProgress = playerMenuProgress,
-                                song = playerSong,
-                                liked = likeStatusOf(playerSong) == LikeStatus.LIKE,
-                                isDownloaded = isDownloaded,
-                                isAudioVersion = !playerSong.isVideo,
-                                shuffleEnabled = shuffleEnabled,
-                                repeatMode = player.repeatMode,
-                                autoplayEnabled = autoplayEnabled,
-                                automixEnabled = automixOn,
-                                onToggleShuffle = { controller?.toggleShuffle() },
-                                onCycleRepeat = {
-                                    controller?.let {
-                                        val next = when (it.repeatMode) {
-                                            Player.REPEAT_MODE_OFF -> Player.REPEAT_MODE_ALL
-                                            Player.REPEAT_MODE_ALL -> Player.REPEAT_MODE_ONE
-                                            else -> Player.REPEAT_MODE_OFF
-                                        }
-                                        AppSettings.setRepeatMode(next)
-                                        it.repeatMode = next
-                                    }
-                                },
-                                onToggleAutoplay = { controller?.toggleAutoplay() },
-                                onToggleAutomix = { AppSettings.setSmartFadeEnabled(!automixOn) },
-                                onToggleLike = { toggleLikeOf(playerSong) },
-                                onToggleDownload = { downloadSong(playerSong) },
-                                onOpenAlbum = {
-                                    playerSong.albumId?.let { id ->
-                                        dismissPlayer()
-                                        viewModel.openDetail(
-                                            id,
-                                            playerSong.albumName ?: playerSong.title,
-                                            playerSong.artist,
-                                            playerSong.thumbnailUrl,
-                                            BrowseType.ALBUM,
-                                        )
-                                    }
-                                },
-                                onAddToPlaylist = {
-                                    scope.launch { playerMenuProgress.animateTo(0f) }
-                                    if (playerSong.localUri != null && (playerSong.videoId.startsWith("content://") || playerSong.videoId.startsWith("file://"))) {
-                                        offlinePlaylistTarget = playerSong
-                                    } else {
-                                        viewModel.loadPlaylists()
-                                        playlistTarget = playerSong
-                                    }
-                                },
-                                onStartRadio = {
-                                    scope.launch { playerMenuProgress.animateTo(0f) }
-                                    startRadio(playerSong)
-                                },
-                                onShare = {
-                                    scope.launch { playerMenuProgress.animateTo(0f) }
-                                    val sendIntent = Intent(Intent.ACTION_SEND).apply {
-                                        type = "text/plain"
-                                        putExtra(Intent.EXTRA_TEXT, "https://music.youtube.com/watch?v=${playerSong.videoId}")
-                                    }
-                                    context.startActivity(Intent.createChooser(sendIntent, playerSong.title))
-                                },
-                                onWatchMusicVideo = {
-                                    scope.launch { playerMenuProgress.animateTo(0f) }
-                                    if (playerSong.isVideo) {
-                                        scope.launch { switchToMusicOnly(playerSong, pauseWhileResolving = false) }
-                                    } else {
-                                        scope.launch { switchToVideo(playerSong, pauseWhileResolving = false) }
-                                    }
-                                },
-                                onViewCredits = {
-                                    scope.launch { playerMenuProgress.animateTo(0f) }
-                                    songInfoDialogSong = playerSong
-                                },
-                            )
-                        }
-                    }
-                    songInfoDialogSong?.let { song ->
-                        SongInfoDialog(song) { songInfoDialogSong = null }
+                    IosMenuPopover(
+                        item = songActions?.takeIf { songMenuOrigin == null && menuFromPlayer },
+                        anchor = songMenuAnchor,
+                        onDismiss = { songActions = null },
+                        backdrop = if (playerLiveCanvas) livePlayerBackdrop else playerBackdrop,
+                    ) { song ->
+                        songMenuBody(song)
                     }
                 }
             }
