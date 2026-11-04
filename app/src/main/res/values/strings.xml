@@ -333,6 +333,8 @@
     <string name="show_nav_labels">Show tab labels</string>
     <string name="show_nav_labels_subtitle">Names under the icons in the bottom bar. Off keeps the bar slimmer</string>
     <string name="full_screen_cover_art">Full-screen cover art</string>
+    <string name="immersive_player_mode">Modo Inmersivo</string>
+    <string name="immersive_player_mode_subtitle">La portada se expande en la parte superior con reflejo ambiental en los controles</string>
     <string name="legacy_mesh_gradient">Legacy mesh gradient</string>
     <string name="legacy_mesh_gradient_subtitle">Brings back the drifting colour blobs behind the player from v1.5</string>
     <string name="animated_cover_art">Animated cover art</string>

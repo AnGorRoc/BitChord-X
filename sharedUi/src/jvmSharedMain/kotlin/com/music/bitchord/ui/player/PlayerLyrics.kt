@@ -1856,8 +1856,8 @@ internal fun LyricsPanel(
     val lyricsBlur by PlayerSettings.lyricsBlur.collectAsStateWithLifecycle()
     val reduceAnimation by PlayerSettings.reduceAnimation.collectAsStateWithLifecycle()
 
-    val glowing = !reduceAnimation && !reduceDynamicBlur && lyricsBlur &&
-        renderEffectBlurSupported
+    // Syllable glowing/halo runs independently of background line blur
+    val glowing = !reduceAnimation && !reduceDynamicBlur && renderEffectBlurSupported
 
     LaunchedEffect(listState) {
         listState.interactionSource.interactions.collect { interaction ->

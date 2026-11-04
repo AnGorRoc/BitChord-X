@@ -527,7 +527,9 @@ internal fun GlassSelectionPill(
     val shape = remember { RoundedCornerShape(percent = 50) }
     val backdrop = remember(page, barGlass, tabRow, fillColor) {
         SelectionPillBackdrop(page, barGlass, tabRow) {
-            fillColor.copy(alpha = fillColor.alpha * (1f - motion.material))
+            val minAlpha = (fillColor.alpha * 0.15f).coerceAtLeast(0.03f)
+            val computedAlpha = (fillColor.alpha * (1f - motion.material)).coerceAtLeast(minAlpha)
+            fillColor.copy(alpha = computedAlpha)
         }
     }
     Box(

@@ -476,7 +476,7 @@ object AppSettings {
     val showNerdStats = MutableStateFlow(false)
 
     /** Show the output / Listen Together pill under the player's transport. */
-    val showListenTogetherButton = MutableStateFlow(false)
+    val showListenTogetherButton = MutableStateFlow(true)
 
     /** Freezes the main player's mesh gradient instead of letting it drift/crossfade. */
     val reduceAnimation = MutableStateFlow(false)
@@ -610,6 +610,7 @@ object AppSettings {
      * [NowPlayingScreen][com.music.bitchord.ui.player.NowPlayingScreen].
      */
     val fullBleedArtwork = MutableStateFlow(true)
+    val immersivePlayerMode = MutableStateFlow(true)
 
     /**
      * Puts v1.5's backdrop back on the player: four quantised blobs drifting
@@ -1121,7 +1122,7 @@ object AppSettings {
         shuffleEnabled.value = prefs.getBoolean(KEY_SHUFFLE_ENABLED, false)
         repeatMode.value = prefs.getInt(KEY_REPEAT_MODE, Player.REPEAT_MODE_OFF)
         showNerdStats.value = prefs.getBoolean(KEY_NERD_STATS, false)
-        showListenTogetherButton.value = prefs.getBoolean(KEY_LISTEN_TOGETHER_BUTTON, false)
+        showListenTogetherButton.value = prefs.getBoolean(KEY_LISTEN_TOGETHER_BUTTON, true)
         reduceAnimation.value = prefs.getBoolean(KEY_REDUCE_ANIMATION, false)
         showNavLabels.value = prefs.getBoolean(KEY_NAV_LABELS, true)
         onboardingComplete.value = prefs.getBoolean(KEY_ONBOARDING_COMPLETE, false)
@@ -1156,6 +1157,7 @@ object AppSettings {
         signatureApiEnabled.value = prefs.getBoolean(KEY_SIGNATURE_API_ENABLED, false)
         signatureApiUrl.value = normalizeSignatureApiUrl(prefs.getString(KEY_SIGNATURE_API_URL, "").orEmpty())
         fullBleedArtwork.value = prefs.getBoolean(KEY_FULL_BLEED_ARTWORK, true)
+        immersivePlayerMode.value = prefs.getBoolean(KEY_IMMERSIVE_PLAYER_MODE, true)
         legacyMeshGradient.value = prefs.getBoolean(KEY_LEGACY_MESH_GRADIENT, false)
         lastPlayerScreen.value = runCatching {
             LastPlayerScreen.valueOf(
@@ -1815,6 +1817,11 @@ object AppSettings {
     fun setFullBleedArtwork(value: Boolean) {
         fullBleedArtwork.value = value
         prefs.edit().putBoolean(KEY_FULL_BLEED_ARTWORK, value).apply()
+    }
+
+    fun setImmersivePlayerMode(value: Boolean) {
+        immersivePlayerMode.value = value
+        prefs.edit().putBoolean(KEY_IMMERSIVE_PLAYER_MODE, value).apply()
     }
 
     fun setLegacyMeshGradient(value: Boolean) {
@@ -2480,6 +2487,7 @@ object AppSettings {
     private const val KEY_SIGNATURE_API_ENABLED = "signature_api_enabled"
     private const val KEY_SIGNATURE_API_URL = "signature_api_url"
     private const val KEY_FULL_BLEED_ARTWORK = "full_bleed_artwork"
+    private const val KEY_IMMERSIVE_PLAYER_MODE = "immersive_player_mode"
     private const val KEY_LEGACY_MESH_GRADIENT = "legacy_mesh_gradient"
     private const val KEY_LAST_PLAYER_SCREEN = "last_player_screen"
     private const val KEY_SYNCED_LYRICS = "synced_lyrics"

@@ -65,7 +65,7 @@ private const val BLUR_RADIUS_DP = 8f
 private const val LENS_HEIGHT = 0.5f
 private const val LENS_AMOUNT = 0.5f
 private const val LENS_MAX_DP = 48f
-private const val SURFACE_OPACITY = 0.4f
+private const val SURFACE_OPACITY = 0.14f
 
 /**
  * Resolution fraction the glass surface records and processes its backdrop at.
