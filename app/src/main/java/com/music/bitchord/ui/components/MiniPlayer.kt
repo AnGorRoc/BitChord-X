@@ -6,6 +6,13 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -523,12 +530,31 @@ fun MiniPlayer(
                     },
                     modifier = Modifier.size(width = GLYPH_SLOT, height = glyphSlotHeight),
                 ) {
-                    Icon(
-                        imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                        contentDescription = stringResource(if (isPlaying) R.string.pause else R.string.play),
-                        tint = contentColor,
-                        modifier = Modifier.size(GLYPH_SIZE),
-                    )
+                    AnimatedContent(
+                        targetState = isPlaying,
+                        transitionSpec = {
+                            (fadeIn(animationSpec = tween(140)) +
+                                scaleIn(
+                                    initialScale = 0.45f,
+                                    animationSpec = spring(dampingRatio = 0.42f, stiffness = 420f),
+                                )
+                            ).togetherWith(
+                                fadeOut(animationSpec = tween(100)) +
+                                scaleOut(
+                                    targetScale = 0.45f,
+                                    animationSpec = tween(100, easing = FastOutLinearInEasing),
+                                )
+                            )
+                        },
+                        label = "miniPlayPauseMorph",
+                    ) { playing ->
+                        Icon(
+                            imageVector = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                            contentDescription = stringResource(if (playing) R.string.pause else R.string.play),
+                            tint = contentColor,
+                            modifier = Modifier.size(GLYPH_SIZE),
+                        )
+                    }
                 }
             }
             Spacer(Modifier.width(TRANSPORT_GAP))

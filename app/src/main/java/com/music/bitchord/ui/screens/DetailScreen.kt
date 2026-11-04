@@ -191,6 +191,9 @@ import com.music.bitchord.ui.icons.BitChordIcons
 import com.music.bitchord.ui.player.CanvasArtworkPlayer
 import com.music.bitchord.ui.theme.ArtworkPalette
 import com.music.bitchord.ui.theme.rememberArtworkPalette
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.luminance
+import com.music.bitchord.ui.graphics.ColorUtils
 import kotlin.math.roundToInt
 import java.util.Locale
 
@@ -199,7 +202,7 @@ private const val SONGS_PER_COLUMN = 4
 private const val ARTIST_ROW_MAX_ITEMS = 5
 
 /** The artist photo, very slightly taller than it is wide. */
-private const val ARTIST_PHOTO_RATIO = 0.95f
+private const val ARTIST_PHOTO_RATIO = 0.75f
 
 /** The framed sleeve on a release page, as a fraction of the page width. */
 private const val SLEEVE_FRACTION = 0.76f
@@ -539,7 +542,15 @@ fun DetailScreen(
             // release's sleeve sits framed on one flat colour with nothing to
             // dissolve, so it takes the same [ArtworkPalette.background] the
             // bars at either end of the screen are already fading into.
-            val pageColor = if (isArtist) palette.wash else palette.background
+            val isLightSystem = MaterialTheme.colorScheme.background.luminance() >= 0.5f
+            val harmonyBase = remember(palette.wash, isLightSystem) {
+                val hsl = FloatArray(3)
+                ColorUtils.colorToHSL(palette.wash.toArgb(), hsl)
+                val tunedLightness = if (isLightSystem) hsl[2].coerceIn(0.68f, 0.82f) else hsl[2].coerceIn(0.10f, 0.20f)
+                val tunedSaturation = hsl[1].coerceIn(0.12f, 0.38f)
+                Color(ColorUtils.HSLToColor(floatArrayOf(hsl[0], tunedSaturation, tunedLightness)))
+            }
+            val pageColor = if (isArtist) harmonyBase else palette.background
             BoxWithConstraints(Modifier.fillMaxSize().background(pageColor)) {
                 // Measured rather than read off the window. The player runs
                 // full-screen at every window size, so this page's own width in
@@ -549,7 +560,7 @@ fun DetailScreen(
                 // Capping against the window's own height is what keeps the ratio's
                 // math honest once the width it's fed is no longer guaranteed to be
                 // the narrow one it was written for.
-                val artHeight = (maxWidth / ARTIST_PHOTO_RATIO).coerceAtMost(maxHeight * 0.6f)
+                val artHeight = (maxWidth / ARTIST_PHOTO_RATIO).coerceAtMost(maxHeight * 0.65f)
                 val sleeveSize = (maxWidth * SLEEVE_FRACTION).coerceAtMost(maxHeight * SLEEVE_MAX_HEIGHT)
                 // A folder's grid view: the same column count the Library's
                 // "Show all" grids reach at this width.
@@ -567,6 +578,7 @@ fun DetailScreen(
                         artHeight = artHeight,
                         listState = listState,
                         heroUrl = appleArt?.heroUrl,
+                        harmonyBase = harmonyBase,
                         modifier = Modifier.matchParentSize(),
                     )
                 }
@@ -1515,13 +1527,9 @@ private fun PageBackground(
     artHeight: Dp,
     listState: LazyListState,
     heroUrl: String? = null,
+    harmonyBase: Color = Color.Unspecified,
     modifier: Modifier = Modifier,
 ) {
-    val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
-    // Not under a canvas: a still blurred over the foot of a moving clip would
-    // freeze the bottom of the video into the wrong picture.
-    val softenFoot = canvas == null && !reduceDynamicBlur &&
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.S
     val art = heroUrl ?: page.thumbnailUrl.artworkAt(HEADER_ART_PX)
 
     Box(modifier.clipToBounds()) {
@@ -1529,7 +1537,8 @@ private fun PageBackground(
             Modifier
                 .fillMaxWidth()
                 .height(artHeight)
-                .offset { IntOffset(0, listState.headerTop(artHeight.toPx()).roundToInt()) },
+                .offset { IntOffset(0, listState.headerTop(artHeight.toPx()).roundToInt()) }
+                .clipToBounds(),
         ) {
             AsyncImage(
                 model = art,
@@ -1541,9 +1550,7 @@ private fun PageBackground(
             )
 
             // Above the still art but below the scrim, so the scrim that
-            // settles the header into the page still sits over it. Always
-            // running: unlike the player's sleeve there is no transport here
-            // to follow, and the page is only up while it's being read.
+            // settles the header into the page still sits over it.
             canvas?.let { clip ->
                 CanvasArtworkPlayer(
                     canvas = clip,
@@ -1552,51 +1559,25 @@ private fun PageBackground(
                 )
             }
 
-            // The same sleeve, blurred and faded in over the lower half, so the
-            // picture loses its detail before it loses its colour — a merge
-            // rather than a fade to a flat tint. The same request as the sharp
-            // copy, so it is a memory-cache hit and lands on the same frame.
-            if (softenFoot) {
-                AsyncImage(
-                    model = art,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .matchParentSize()
-                        // Offscreen so the mask cuts the blurred result rather
-                        // than each draw beneath it.
-                        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-                        .drawWithContent {
-                            drawContent()
-                            drawRect(SOFT_FOOT_MASK, blendMode = BlendMode.DstIn)
-                        }
-                        // Rectangle keeps the edges clamped to the picture's own
-                        // colour rather than fading to transparent at the foot.
-                        .blur(SOFT_FOOT_BLUR, BlurredEdgeTreatment.Rectangle),
+            // Ends on the page colour with a smooth harmonic curve starting at 0.68f,
+            // preserving artist face/body clarity and avoiding harsh or milky tints.
+            val activeBrush = remember(harmonyBase) {
+                Brush.verticalGradient(
+                    0.68f to Color.Transparent,
+                    0.78f to harmonyBase.copy(alpha = 0.25f),
+                    0.88f to harmonyBase.copy(alpha = 0.65f),
+                    0.96f to harmonyBase.copy(alpha = 0.92f),
+                    1.00f to harmonyBase,
                 )
             }
-
-            // Ends on the page colour at full strength, so there is no edge
-            // left where the artwork stops. Eased rather than run straight: a
-            // gradient that changes slope at a stop shows a line at that stop,
-            // however close the colours either side of it are.
             Box(
                 Modifier
                     .matchParentSize()
-                    .background(
-                        Brush.verticalGradient(
-                            0.45f to Color.Transparent,
-                            0.65f to palette.wash.copy(alpha = 0.30f),
-                            0.82f to palette.wash.copy(alpha = 0.72f),
-                            0.94f to palette.wash.copy(alpha = 0.95f),
-                            1.00f to palette.wash,
-                        ),
-                    ),
+                    .background(activeBrush),
             )
         }
     }
 }
-
 /**
  * Where the top of the artwork currently is.
  *

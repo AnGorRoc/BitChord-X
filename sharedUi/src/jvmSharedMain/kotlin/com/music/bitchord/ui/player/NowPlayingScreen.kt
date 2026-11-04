@@ -21,6 +21,8 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.core.Animatable
 import com.music.bitchord.ui.theme.rememberPlayerTint
+import androidx.compose.ui.graphics.toArgb
+import com.music.bitchord.ui.graphics.ColorUtils
 import com.music.bitchord.ui.theme.rememberArtworkPalette
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.channels.Channel
@@ -2316,7 +2318,11 @@ fun NowPlayingScreen(
                 // queue panels must not crossfade the blurred artwork over it. A
                 // full-screen Spotify Canvas is its own backdrop until a panel opens.
                 if (isImmersive) {
-                    val playerBg = artworkPalette.background
+                    val hsl = FloatArray(3)
+                    ColorUtils.colorToHSL(artworkPalette.background.toArgb(), hsl)
+                    val targetLightness = hsl[2].coerceIn(0.08f, 0.15f)
+                    val targetSat = hsl[1].coerceIn(0.18f, 0.40f)
+                    val playerBg = Color(ColorUtils.HSLToColor(floatArrayOf(hsl[0], targetSat, targetLightness)))
                     Spacer(
                         modifier = Modifier
                             .fillMaxSize()

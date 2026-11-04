@@ -1,4 +1,7 @@
 package com.music.bitchord
+import androidx.compose.foundation.Image
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.graphics.ColorFilter
 
 import android.Manifest
 import android.content.Context
@@ -3543,7 +3546,7 @@ private fun BitChordApp(
                                 listState = homeListState,
                                 currentSong = player.song,
                                 isPlaying = player.isPlaying,
-                                title = stringResource(R.string.listen_now),
+                                title = null,
                                 signedIn = signedIn,
                                 onSignIn = { webSession = WebSessionMode.SIGN_IN },
                                 onItemClick = { item, shelfTitle ->
@@ -3593,7 +3596,7 @@ private fun BitChordApp(
                                             ),
                                         )
                                     }
-                                },
+                                }
                             )
                             TAB_EXPLORE -> selectedMoodGenre?.let { category ->
                                 MoodGenrePlaylistsScreen(
@@ -3961,7 +3964,7 @@ private fun BitChordApp(
                             detail != null && detailActiveShelf != null -> detailActiveShelf.title.orEmpty()
                             detail != null -> detail.title
                             selectedMoodGenre != null -> selectedMoodGenre?.title.orEmpty()
-                            else -> tabs[selectedTab].let {
+                            else -> if (selectedTab == TAB_HOME) "" else tabs[selectedTab].let {
                                 if (it.label == "Play") stringResource(R.string.listen_now) else it.label
                             }
                         }
@@ -3998,6 +4001,18 @@ private fun BitChordApp(
                     modifier = Modifier.align(Alignment.TopCenter),
                     // Settings is the profile's own destination: no actions there.
                     actionsVisible = !(route != null && AppRoute.Settings in navigator),
+                    leading = if (selectedTab == TAB_HOME && route == null && detail == null && selectedMoodGenre == null) {
+                        {
+                            Icon(
+                                painter = painterResource(R.drawable.ic_logo),
+                                contentDescription = "BitChord",
+                                tint = MaterialTheme.colorScheme.onBackground,
+                                modifier = Modifier
+                                    .padding(start = 4.dp)
+                                    .size(width = 30.dp, height = 30.dp),
+                            )
+                        }
+                    } else null,
                     accessory = if (
                         selectedTab == TAB_SEARCH && route == null && detail == null && selectedMoodGenre == null
                     ) {

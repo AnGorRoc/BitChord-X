@@ -10,6 +10,14 @@
 package com.music.bitchord.ui.components
 
 import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.core.Spring
@@ -452,12 +460,31 @@ private fun GlassNowPlaying(
                     },
                     modifier = Modifier.size(glyphSlot),
                 ) {
-                    Icon(
-                        imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                        contentDescription = stringResource(if (isPlaying) R.string.pause else R.string.play),
-                        tint = contentColor,
-                        modifier = Modifier.size(glyphSize),
-                    )
+                    AnimatedContent(
+                        targetState = isPlaying,
+                        transitionSpec = {
+                            (fadeIn(animationSpec = tween(140)) +
+                                scaleIn(
+                                    initialScale = 0.45f,
+                                    animationSpec = spring(dampingRatio = 0.42f, stiffness = 420f),
+                                )
+                            ).togetherWith(
+                                fadeOut(animationSpec = tween(100)) +
+                                scaleOut(
+                                    targetScale = 0.45f,
+                                    animationSpec = tween(100, easing = FastOutLinearInEasing),
+                                )
+                            )
+                        },
+                        label = "glassPlayPauseMorph",
+                    ) { playing ->
+                        Icon(
+                            imageVector = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                            contentDescription = stringResource(if (playing) R.string.pause else R.string.play),
+                            tint = contentColor,
+                            modifier = Modifier.size(glyphSize),
+                        )
+                    }
                 }
             }
             // Dropped inline: the collapsed row is sharing its width with the
