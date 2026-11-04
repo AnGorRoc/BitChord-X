@@ -21,6 +21,8 @@ import androidx.core.content.ContextCompat
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.slideOutVertically
@@ -2998,27 +3000,16 @@ private fun BitChordApp(
                         .imePadding()
                         .hazeSource(hazeState)
                         .then(
-                            if (glassActive) {
-                                Modifier
-                                    // Not under "reduce dynamic blur": nothing
-                                    // samples the layer then, and recording a
-                                    // whole page into one for no reader is the
-                                    // cost that setting exists to remove.
-                                    .then(
-                                        if (glassSamplesBackdrop) {
-                                            Modifier.layerBackdrop(appBackdrop)
-                                        } else {
-                                            Modifier
-                                        },
-                                    )
-                                    // Every page's scroll passes through here, so
-                                    // the glass bar collapses on all of them
-                                    // without each one having to know about it.
-                                    .nestedScroll(navBarScroll)
+                            if (glassActive && glassSamplesBackdrop) {
+                                Modifier.layerBackdrop(appBackdrop)
                             } else {
                                 Modifier
                             },
                         )
+                        // Every page's scroll passes through here, so
+                        // the dock collapses on all of them
+                        // without each one having to know about it.
+                        .nestedScroll(navBarScroll)
                         // The page held as one finished picture while the player
                         // slides over it: this window redraws on every frame of
                         // that, and the page's every draw — and every blur's
@@ -4392,6 +4383,7 @@ private fun BitChordApp(
                 }
 
                 val onTabSelected: (Int) -> Unit = { index ->
+                    navBarScroll.expand()
                     if (selectedTab == index) {
                         if (route != null || detail != null || selectedMoodGenre != null) {
                             navigator.clear()
@@ -4418,6 +4410,8 @@ private fun BitChordApp(
                     }
                 }
 
+                val effectiveInline = navBarScroll.isInline && selectedTab != TAB_SEARCH && !keyboardUp && player.song != null
+
                 Column(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -4427,30 +4421,39 @@ private fun BitChordApp(
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     QueueActionNoticeHost(queueNotice)
-                    player.song?.let { song ->
-                        MiniPlayer(
-                            song = song,
-                            isPlaying = player.isPlaying,
-                            isLoading = playPauseBusy,
-                            hazeState = hazeState,
-                            onPlayPause = {
-                                togglePlayPause()
-                            },
-                            onNext = { controller?.seekToNextMediaItem() },
-                            onPrevious = { controller?.seekToPrevious() },
-                            onExpand = if (reducePlayerMotion) {
-                                { showNowPlaying = true }
-                            } else {
-                                playerSheetMotion::open
-                            },
-                            controlsLocked = controlsLocked,
-                            onBlockedControl = showHostOnlyNotice,
-                            dock = activeDock,
-                            pull = playerSheetMotion.takeIf { !reducePlayerMotion },
-                            compact = keyboardUp,
-                            modifier = Modifier.fillMaxWidth(),
-                        )
-                        Spacer(Modifier.height(8.dp))
+                    val showTopMiniPlayer = player.song != null && !effectiveInline && selectedTab != TAB_SEARCH
+                    AnimatedVisibility(
+                        visible = showTopMiniPlayer,
+                        enter = fadeIn(tween(180)) + expandVertically(tween(200)),
+                        exit = fadeOut(tween(140)) + shrinkVertically(tween(180)),
+                    ) {
+                        player.song?.let { song ->
+                            Column {
+                                MiniPlayer(
+                                    song = song,
+                                    isPlaying = player.isPlaying,
+                                    isLoading = playPauseBusy,
+                                    hazeState = hazeState,
+                                    onPlayPause = {
+                                        togglePlayPause()
+                                    },
+                                    onNext = { controller?.seekToNextMediaItem() },
+                                    onPrevious = { controller?.seekToPrevious() },
+                                    onExpand = if (reducePlayerMotion) {
+                                        { showNowPlaying = true }
+                                    } else {
+                                        playerSheetMotion::open
+                                    },
+                                    controlsLocked = controlsLocked,
+                                    onBlockedControl = showHostOnlyNotice,
+                                    dock = activeDock,
+                                    pull = playerSheetMotion.takeIf { !reducePlayerMotion },
+                                    compact = keyboardUp,
+                                    modifier = Modifier.fillMaxWidth(),
+                                )
+                                Spacer(Modifier.height(8.dp))
+                            }
+                        }
                     }
                     MorphingBottomBar(
                         tabs = tabs,
@@ -4462,6 +4465,22 @@ private fun BitChordApp(
                         onDismissSearch = dismissSearch,
                         searchFocusRequester = searchFieldFocus,
                         hazeState = hazeState,
+                        isInline = effectiveInline,
+                        onExpandInline = { navBarScroll.expand() },
+                        inlineSong = player.song,
+                        isPlaying = player.isPlaying,
+                        isLoading = playPauseBusy,
+                        onPlayPause = { togglePlayPause() },
+                        onNext = { controller?.seekToNextMediaItem() },
+                        onPrevious = { controller?.seekToPrevious() },
+                        onExpandPlayer = if (reducePlayerMotion) {
+                            { showNowPlaying = true }
+                        } else {
+                            playerSheetMotion::open
+                        },
+                        pull = playerSheetMotion.takeIf { !reducePlayerMotion },
+                        controlsLocked = controlsLocked,
+                        onBlockedControl = showHostOnlyNotice,
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }

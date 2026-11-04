@@ -1,5 +1,21 @@
 package com.music.bitchord.ui.components
 
+import coil3.compose.AsyncImage
+import androidx.compose.ui.layout.ContentScale
+import com.music.bitchord.data.model.ROW_ART_PX
+import com.music.bitchord.data.model.artworkAt
+import com.music.bitchord.data.model.Song
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material3.CircularProgressIndicator
+import com.music.bitchord.ui.components.rememberRemoteArtworkUrl
+import androidx.compose.animation.core.Spring
+import androidx.compose.ui.unit.lerp
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
+import androidx.compose.ui.draw.clipToBounds
+
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.animateFloatAsState
@@ -110,6 +126,18 @@ fun MorphingBottomBar(
     onDismissSearch: () -> Unit,
     searchFocusRequester: FocusRequester,
     hazeState: HazeState,
+    isInline: Boolean = false,
+    onExpandInline: () -> Unit = {},
+    inlineSong: Song? = null,
+    isPlaying: Boolean = false,
+    isLoading: Boolean = false,
+    onPlayPause: () -> Unit = {},
+    onNext: () -> Unit = {},
+    onPrevious: () -> Unit = {},
+    onExpandPlayer: () -> Unit = {},
+    pull: MiniPlayerPull? = null,
+    controlsLocked: Boolean = false,
+    onBlockedControl: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val pillShape = remember { RoundedCornerShape(percent = 50) }
@@ -131,6 +159,16 @@ fun MorphingBottomBar(
             stiffness = 360f,
         ),
         label = "searchMorphProgress",
+    )
+
+    val isInlineEffective = isInline && !isSearching
+    val inlineProgress by animateFloatAsState(
+        targetValue = if (isInlineEffective) 1f else 0f,
+        animationSpec = if (reduceAnimation) snap() else spring(
+            dampingRatio = 0.82f,
+            stiffness = 380f,
+        ),
+        label = "inlineProgress",
     )
 
     // Keyboard and bottom padding.
@@ -255,7 +293,13 @@ fun MorphingBottomBar(
         val totalWidth = maxWidth
         val spacing = 8.dp * (1f - searchProgress)
         val searchWidth = restingCircleSize + (totalWidth - restingCircleSize) * searchProgress
-        val tabsWidth = (totalWidth - searchWidth - spacing).coerceAtLeast(0.dp)
+        val fullTabsWidth = (totalWidth - searchWidth - spacing).coerceAtLeast(0.dp)
+        val showInline = inlineProgress > 0.001f && inlineSong != null && searchProgress < 0.1f
+        val effectiveTabsWidth = if (showInline) {
+            lerp(fullTabsWidth, restingCircleSize, inlineProgress)
+        } else {
+            fullTabsWidth
+        }
 
         Row(
             modifier = Modifier
@@ -263,14 +307,14 @@ fun MorphingBottomBar(
                 .height(barHeight),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            // 1. LEFT PILL: Navigation tabs (Home, Explore, Library)
-            // Collapses towards the left as search expands
-            if (searchProgress < 0.99f && tabsWidth > 1.dp) {
+            // 1. LEFT PILL: Navigation tabs (Home, Explore, Library) or Active Tab Circle when inline
+            // Collapses towards the left as search expands, or compacts to active tab when inline
+            if (searchProgress < 0.99f && effectiveTabsWidth > 1.dp) {
                 val tabsAlpha = (1f - searchProgress * 2.2f).coerceIn(0f, 1f)
 
                 Box(
                     modifier = Modifier
-                        .width(tabsWidth)
+                        .width(effectiveTabsWidth)
                         .fillMaxHeight()
                         .graphicsLayer {
                             alpha = tabsAlpha
@@ -279,8 +323,27 @@ fun MorphingBottomBar(
                         .clip(pillShape)
                         .then(surfaceModifier())
                         .border(GLASS_EDGE_WIDTH, GLASS_EDGE_COLOR, pillShape)
-                        .padding(horizontal = PILL_INSET, vertical = 4.dp),
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            enabled = inlineProgress > 0.6f && showInline,
+                            onClick = {
+                                haptics.play(Haptic.Select)
+                                onExpandInline()
+                            },
+                        ),
+                    contentAlignment = Alignment.Center,
                 ) {
+                    if (inlineProgress < 0.8f) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .clipToBounds()
+                                .graphicsLayer {
+                                    alpha = (1f - inlineProgress * 1.5f).coerceIn(0f, 1f)
+                                }
+                                .padding(horizontal = PILL_INSET, vertical = 4.dp),
+                        ) {
                     // Liquid sliding indicator pill
                     if (tabWidthPx > 0f) {
                         Box(
@@ -394,10 +457,160 @@ fun MorphingBottomBar(
                         }
                     }
                 }
+            }
 
-                if (spacing > 0.dp) {
-                    Spacer(Modifier.width(spacing))
+            // Inline active tab circle view (shows only the selected tab's icon)
+            if (showInline && inlineProgress > 0.3f) {
+                        val activeTab = navTabs.getOrNull(lastSelectedNavTab)
+                        if (activeTab != null) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .graphicsLayer {
+                                        alpha = ((inlineProgress - 0.3f) / 0.7f).coerceIn(0f, 1f)
+                                    },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = activeTab.icon,
+                                    contentDescription = activeTab.label,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(26.dp),
+                                )
+                            }
+                        }
+                    }
                 }
+            }
+
+            // 2. MIDDLE PILL: Inline MiniPlayer (between Active Tab and Search)
+            if (showInline && inlineSong != null) {
+                Spacer(Modifier.width(8.dp * inlineProgress))
+
+                val middleAlpha = inlineProgress
+                val middleScale = 0.85f + 0.15f * inlineProgress
+
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .graphicsLayer {
+                            alpha = middleAlpha
+                            scaleX = middleScale
+                            scaleY = middleScale
+                        }
+                        .clip(pillShape)
+                        .then(surfaceModifier())
+                        .border(GLASS_EDGE_WIDTH, GLASS_EDGE_COLOR, pillShape)
+                        .miniPlayerGestures(
+                            pull = pull,
+                            onNext = {
+                                haptics.play(Haptic.SkipNext)
+                                onNext()
+                            },
+                            onPrevious = {
+                                haptics.play(Haptic.SkipPrevious)
+                                onPrevious()
+                            },
+                            locked = controlsLocked,
+                            onBlocked = onBlockedControl,
+                        )
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            onClick = onExpandPlayer,
+                        ),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (inlineProgress > 0.15f) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 10.dp, vertical = 6.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            val artUrl = rememberRemoteArtworkUrl(inlineSong)?.artworkAt(ROW_ART_PX)
+                            AsyncImage(
+                                model = artUrl,
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant),
+                            )
+
+                            Spacer(Modifier.width(8.dp))
+
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.Center,
+                            ) {
+                                Text(
+                                    text = inlineSong.title,
+                                    style = TextStyle(
+                                        fontSize = 12.5f.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = contentColor,
+                                    ),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Text(
+                                    text = inlineSong.artist,
+                                    style = TextStyle(
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Normal,
+                                        color = contentColor.copy(alpha = 0.65f),
+                                    ),
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+
+                            Spacer(Modifier.width(4.dp))
+
+                            if (isLoading) {
+                                Box(Modifier.size(36.dp), contentAlignment = Alignment.Center) {
+                                    CircularProgressIndicator(
+                                        color = contentColor,
+                                        strokeWidth = 2.dp,
+                                        modifier = Modifier.size(18.dp),
+                                    )
+                                }
+                            } else {
+                                Box(
+                                    modifier = Modifier
+                                        .size(36.dp)
+                                        .clip(CircleShape)
+                                        .clickable(
+                                            interactionSource = remember { MutableInteractionSource() },
+                                            indication = null,
+                                        ) {
+                                            if (controlsLocked) {
+                                                onBlockedControl()
+                                            } else {
+                                                haptics.play(if (isPlaying) Haptic.Pause else Haptic.Resume)
+                                                onPlayPause()
+                                            }
+                                        },
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Icon(
+                                        imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                                        contentDescription = null,
+                                        tint = contentColor,
+                                        modifier = Modifier.size(24.dp),
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+
+                Spacer(Modifier.width(8.dp * inlineProgress))
+            } else if (spacing > 0.dp && searchProgress < 0.99f) {
+                Spacer(Modifier.width(spacing))
             }
 
             // 2. RIGHT PILL: Search button -> Expanding Mega-Pill

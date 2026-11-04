@@ -58,6 +58,15 @@ Previamente se desarrollaron e integraron las siguientes funcionalidades clave p
    - BPM Stretch Guard: tope máximo de alteración de tempo ($\le 16\%$) para evitar estiramientos no naturales.
    - Preservación de letra y protección vocal (`lastVocalTime`, `firstVocalTime`): asegura que el tema saliente cante hasta el último verso y que el tema entrante comience a mezclarse únicamente en la intro instrumental, evitando que las voces se superpongan o corten.
 
+6. **Dock Compaction on Scroll & Inline MiniPlayer (`feat(ui)`)**:
+   - Al scrollear hacia abajo en Home, Explore y Library, el dock inferior y el MiniPlayer se compactan fluidamente en una sola fila minimalista de estilo *GlassNavBar*:
+     - **Izquierda:** Círculo (58dp) con el icono de la pestaña activa.
+     - **Centro:** MiniPlayer inline con portada, título, artista con elipsis, play/pause (con soporte de bloqueo para salas de fiesta) y gestos táctiles (skip swipe / drag up para abrir el reproductor).
+     - **Derecha:** Círculo (58dp) del botón de búsqueda.
+   - El MiniPlayer flotante superior desaparece de forma animada mediante `shrinkVertically + fadeOut`.
+   - Al scrollear hacia arriba o pulsar sobre el círculo de pestaña activa, el dock vuelve a desplegarse fluidamente en dos niveles.
+   - El botón de Party (Listen Together) viene activado por defecto en `AppSettings`.
+
 ---
 
 ## 5. Current State
@@ -66,7 +75,9 @@ Previamente se desarrollaron e integraron las siguientes funcionalidades clave p
 - **Estado Actual**:
   - Rama publicada y sincronizada con `origin/fvkinGordo`.
   - Commits integrados y testeados en build devDebug sobre dispositivo físico:
-    - `feat(player)`: restore clean v1 3-button action row (lyrics, cast, queue) and deprecate experimental morphing dock
+    - `feat(ui)`: compact dock on scroll down with inline miniplayer and active tab circle
+    - `feat(settings)`: enable listen together party button by default
+    - `083449b0` feat(player): restore clean v1 3-button action row (lyrics, cast, queue) and deprecate experimental morphing dock
     - `eaf45011` docs: update development context with recent commits
     - `d84b7ad6` feat(ui): add liquid glass morphing dock to full player with context actions
     - `e85bf81c` feat(player): unify static artwork size with animated covers and smooth dissolve
