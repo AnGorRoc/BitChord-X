@@ -26,6 +26,11 @@ import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.core.spring
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.slideOutVertically
@@ -4439,8 +4444,44 @@ private fun BitChordApp(
                     val showTopMiniPlayer = player.song != null && !effectiveInline && selectedTab != TAB_SEARCH
                     AnimatedVisibility(
                         visible = showTopMiniPlayer,
-                        enter = fadeIn(tween(180)) + expandVertically(tween(200)),
-                        exit = fadeOut(tween(140)) + shrinkVertically(tween(180)),
+                        enter = if (reducePlayerMotion) {
+                            fadeIn(tween(180)) + expandVertically(tween(200))
+                        } else {
+                            fadeIn(tween(220)) +
+                                expandVertically(
+                                    expandFrom = Alignment.Bottom,
+                                    clip = false,
+                                    animationSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                                ) +
+                                slideInVertically(
+                                    initialOffsetY = { (it * 0.45f).toInt() },
+                                    animationSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                                ) +
+                                scaleIn(
+                                    initialScale = 0.72f,
+                                    transformOrigin = TransformOrigin(0.5f, 1f),
+                                    animationSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                                )
+                        },
+                        exit = if (reducePlayerMotion) {
+                            fadeOut(tween(140)) + shrinkVertically(tween(180))
+                        } else {
+                            fadeOut(tween(180)) +
+                                shrinkVertically(
+                                    shrinkTowards = Alignment.Bottom,
+                                    clip = false,
+                                    animationSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                                ) +
+                                slideOutVertically(
+                                    targetOffsetY = { (it * 0.45f).toInt() },
+                                    animationSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                                ) +
+                                scaleOut(
+                                    targetScale = 0.72f,
+                                    transformOrigin = TransformOrigin(0.5f, 1f),
+                                    animationSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                                )
+                        },
                     ) {
                         player.song?.let { song ->
                             Column {

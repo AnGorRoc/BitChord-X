@@ -488,7 +488,7 @@ fun MorphingBottomBar(
                 Spacer(Modifier.width(8.dp * inlineProgress))
 
                 val middleAlpha = inlineProgress
-                val middleScale = 0.85f + 0.15f * inlineProgress
+                val middleScale = 0.80f + 0.20f * inlineProgress
 
                 Box(
                     modifier = Modifier
