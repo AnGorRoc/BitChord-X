@@ -229,6 +229,8 @@
     <string name="light">ライト</string>
     <string name="dark">ダーク</string>
     <string name="full_screen_cover_art_subtitle">正方形のジャケットの代わりにカバーをプレイヤーの端まで広げます</string>
+    <string name="immersive_player_mode">没入型プレイヤーモード</string>
+    <string name="immersive_player_mode_subtitle">カバーアートが上部に広がり、コントロール上にアンビエント反射が表示されます</string>
     <string name="animated_cover_art_subtitle">静止画のジャケットの代わりに一部のリリースが持つループ動画を再生します</string>
     <string name="dont_repeat_songs_subtitle">オートプレイは、このセッションで既に再生または提案された曲を再度提案しません</string>
     <string name="download_quality_subtitle">接続にかかわらず、1トラックあたり%1$s</string>

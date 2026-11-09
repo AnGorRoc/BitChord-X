@@ -57,7 +57,7 @@ class SkipPace(
     }
 
     /** Forgets every skip. For tests. */
-    internal fun reset() = synchronized(skips) { skips.clear() }
+    fun reset() = synchronized(skips) { skips.clear() }
 
     companion object {
         /** The listener's pace, shared by every source that asks. */

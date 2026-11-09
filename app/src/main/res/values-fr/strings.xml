@@ -233,6 +233,8 @@
     <string name="light">Clair</string>
     <string name="dark">Sombre</string>
     <string name="full_screen_cover_art_subtitle">Étend la pochette jusqu\'aux bords du lecteur au lieu d\'un carré</string>
+    <string name="immersive_player_mode">Mode lecteur immersif</string>
+    <string name="immersive_player_mode_subtitle">La pochette s\'étend en haut avec reflet ambiant sur les commandes</string>
     <string name="animated_cover_art_subtitle">Lit la vidéo en boucle que proposent certaines sorties au lieu d\'une pochette fixe</string>
     <string name="dont_repeat_songs_subtitle">La lecture automatique ne proposera pas une chanson déjà jouée ou suggérée pendant cette session</string>
     <string name="download_quality_subtitle">%1$s par piste, quelle que soit la connexion</string>

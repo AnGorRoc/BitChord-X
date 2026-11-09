@@ -356,6 +356,8 @@
     <string name="light">밝게</string>
     <string name="dark">어둡게</string>
     <string name="full_screen_cover_art_subtitle">커버를 정사각형에 가두지 않고 화면 모서리까지 확대합니다</string>
+    <string name="immersive_player_mode">몰입형 플레이어 모드</string>
+    <string name="immersive_player_mode_subtitle">커버 아트가 상단으로 확장되며 컨트롤 위로 앰비언트 반사가 적용됩니다</string>
     <string name="animated_cover_art_subtitle">일부 출시 버전에 반복 동영상이 있다면 정적 커버 대신 우선으로 재생합니다</string>
     <string name="dont_repeat_songs_subtitle">이번 세션에서 제안했거나 이미 재생한 곡은 다시 자동 재생으로 제안하지 않습니다</string>
     <string name="download_quality_subtitle">연결에 상관없이 곡당 %1$s</string>

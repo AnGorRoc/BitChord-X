@@ -234,6 +234,8 @@
     <string name="light">Claro</string>
     <string name="dark">Escuro</string>
     <string name="full_screen_cover_art_subtitle">Estende a capa até as bordas do player em vez de um quadrado</string>
+    <string name="immersive_player_mode">Modo de reprodução imersivo</string>
+    <string name="immersive_player_mode_subtitle">A capa se expande no topo com reflexo ambiente sobre os controles</string>
     <string name="animated_cover_art_subtitle">Reproduz o vídeo em loop que alguns lançamentos trazem em vez de uma capa estática</string>
     <string name="dont_repeat_songs_subtitle">A reprodução automática não sugerirá uma música já tocada ou sugerida nesta sessão</string>
     <string name="download_quality_subtitle">%1$s por faixa, independentemente da conexão</string>

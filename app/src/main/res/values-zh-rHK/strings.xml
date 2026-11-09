@@ -229,6 +229,8 @@
     <string name="light">淺色</string>
     <string name="dark">深色</string>
     <string name="full_screen_cover_art_subtitle">讓封面延伸至播放器邊緣，而不是顯示為方形</string>
+    <string name="immersive_player_mode">沉浸式播放器模式</string>
+    <string name="immersive_player_mode_subtitle">封面在頂部展開，並在控制項上方呈現環境倒影</string>
     <string name="animated_cover_art_subtitle">播放部分發行版自帶的迴圈影片，而不是靜態封面</string>
     <string name="dont_repeat_songs_subtitle">自動播放不會在本次會話中重複推薦已播放或已推薦過的歌曲</string>
     <string name="download_quality_subtitle">無論何種網路連線，每首曲目均為%1$s</string>

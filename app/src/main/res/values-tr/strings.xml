@@ -252,6 +252,8 @@
     <string name="light">Açık</string>
     <string name="dark">Koyu</string>
     <string name="full_screen_cover_art_subtitle">Kapağı kare bir kılıf yerine oynatıcının kenarlarına kadar uzatır</string>
+    <string name="immersive_player_mode">Sürükleyici oynatıcı modu</string>
+    <string name="immersive_player_mode_subtitle">Kapak, kontrollerin üzerinde ortam yansımasıyla üst kısımda genişler</string>
     <string name="animated_cover_art_subtitle">Bazı sürümlerin geldiği döngülü videoyu sabit bir kılıf yerine oynatır</string>
     <string name="dont_repeat_songs_subtitle">AutoPlay bu oturumda zaten çalınmış veya önerilmiş bir şarkıyı önermez</string>
     <string name="download_quality_subtitle">Bağlantı ne olursa olsun parça başına %1$s</string>

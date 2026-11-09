@@ -260,6 +260,8 @@
     <string name="light">Sáng</string>
     <string name="dark">Tối</string>
     <string name="full_screen_cover_art_subtitle">Mở rộng ảnh bìa ra các cạnh của trình phát thay vì khung vuông</string>
+    <string name="immersive_player_mode">Chế độ trình phát đắm chìm</string>
+    <string name="immersive_player_mode_subtitle">Ảnh bìa mở rộng ở trên cùng với hiệu ứng phản chiếu môi trường trên các nút điều khiển</string>
     <string name="animated_cover_art_subtitle">Phát video vòng lặp mà một số bản phát hành cung cấp thay vì ảnh tĩnh</string>
     <string name="dont_repeat_songs_subtitle">Tự động phát sẽ không gợi ý bài hát đã phát hoặc đã được gợi ý trong phiên này</string>
     <string name="download_quality_subtitle">%1$s mỗi bài, bất kể loại kết nối</string>

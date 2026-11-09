@@ -1611,7 +1611,7 @@ private fun StreamFormat.downloadBadge(): String? = when {
 internal fun youtubeDownloadBadge(extension: String, kbps: Int): String? {
     if (kbps <= 0) return null
     val codec = if (extension.equals("m4a", ignoreCase = true)) "AAC" else "OPUS"
-    return "$codec Â· $kbps kbps"
+    return "$codec · $kbps kbps"
 }
 
 /** Recover display metadata for private YouTube downloads made before it was persisted. */
