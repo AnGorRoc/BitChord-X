@@ -8,6 +8,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
@@ -396,7 +397,10 @@ fun MiniPlayer(
     // twitched as the last of them landed.
     val compaction by animateFloatAsState(
         targetValue = if (compact) 1f else 0f,
-        animationSpec = tween(durationMillis = COMPACT_MILLIS, easing = FastOutSlowInEasing),
+        animationSpec = spring(
+            dampingRatio = 0.82f,
+            stiffness = 380f,
+        ),
         label = "miniCompaction",
     )
     val artHeight = lerp(40.dp, COMPACT_ART_HEIGHT, compaction)
@@ -415,6 +419,12 @@ fun MiniPlayer(
     Box(
         modifier = modifier
             .padding(horizontal = BAR_GUTTER)
+            .animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = 0.82f,
+                    stiffness = 380f,
+                ),
+            )
             // Ahead of the surface, so a pull lifts the whole of it, frost and all.
             .miniPlayerGestures(
                 pull = pull,
@@ -461,6 +471,10 @@ fun MiniPlayer(
             // mini player does, rather than cropped into the square cover.
             val artWidth by animateDpAsState(
                 targetValue = if (song.isVideo) artHeight * (16f / 9f) else artHeight,
+                animationSpec = spring(
+                    dampingRatio = 0.82f,
+                    stiffness = 380f,
+                ),
                 label = "miniArtWidth",
             )
             Box(

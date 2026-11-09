@@ -156,7 +156,7 @@ fun MorphingBottomBar(
         targetValue = if (isSearching) 1f else 0f,
         animationSpec = if (reduceAnimation) snap() else spring(
             dampingRatio = 0.82f,
-            stiffness = 360f,
+            stiffness = 380f,
         ),
         label = "searchMorphProgress",
     )
@@ -341,6 +341,8 @@ fun MorphingBottomBar(
                                 .clipToBounds()
                                 .graphicsLayer {
                                     alpha = (1f - inlineProgress * 1.5f).coerceIn(0f, 1f)
+                                    scaleX = 1f - inlineProgress * 0.15f
+                                    scaleY = 1f - inlineProgress * 0.15f
                                 }
                                 .padding(horizontal = PILL_INSET, vertical = 4.dp),
                         ) {
@@ -460,35 +462,39 @@ fun MorphingBottomBar(
             }
 
             // Inline active tab circle view (shows only the selected tab's icon)
-            if (showInline && inlineProgress > 0.3f) {
-                        val activeTab = navTabs.getOrNull(lastSelectedNavTab)
-                        if (activeTab != null) {
-                            Box(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .graphicsLayer {
-                                        alpha = ((inlineProgress - 0.3f) / 0.7f).coerceIn(0f, 1f)
-                                    },
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                Icon(
-                                    imageVector = activeTab.icon,
-                                    contentDescription = activeTab.label,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(26.dp),
-                                )
-                            }
-                        }
+            if (showInline && inlineProgress > 0.15f) {
+                val activeTab = navTabs.getOrNull(lastSelectedNavTab)
+                if (activeTab != null) {
+                    val iconProgress = ((inlineProgress - 0.20f) / 0.80f).coerceIn(0f, 1f)
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .graphicsLayer {
+                                alpha = iconProgress
+                                scaleX = 0.70f + 0.30f * iconProgress
+                                scaleY = 0.70f + 0.30f * iconProgress
+                            },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = activeTab.icon,
+                            contentDescription = activeTab.label,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(26.dp),
+                        )
                     }
                 }
             }
+        }
+    }
 
             // 2. MIDDLE PILL: Inline MiniPlayer (between Active Tab and Search)
-            if (showInline && inlineSong != null) {
+            if (showInline) {
                 Spacer(Modifier.width(8.dp * inlineProgress))
 
-                val middleAlpha = inlineProgress
-                val middleScale = 0.80f + 0.20f * inlineProgress
+                val middleAlpha = ((inlineProgress - 0.05f) / 0.95f).coerceIn(0f, 1f)
+                val middleScale = 0.82f + 0.18f * inlineProgress
+                val middleOffsetY = -14f * (1f - inlineProgress)
 
                 Box(
                     modifier = Modifier
@@ -498,6 +504,7 @@ fun MorphingBottomBar(
                             alpha = middleAlpha
                             scaleX = middleScale
                             scaleY = middleScale
+                            translationY = middleOffsetY
                         }
                         .clip(pillShape)
                         .then(surfaceModifier())
@@ -522,10 +529,16 @@ fun MorphingBottomBar(
                         ),
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (inlineProgress > 0.15f) {
+                    if (inlineProgress > 0.10f) {
+                        val contentProgress = ((inlineProgress - 0.10f) / 0.90f).coerceIn(0f, 1f)
                         Row(
                             modifier = Modifier
                                 .fillMaxSize()
+                                .graphicsLayer {
+                                    alpha = contentProgress
+                                    scaleX = 0.88f + 0.12f * contentProgress
+                                    scaleY = 0.88f + 0.12f * contentProgress
+                                }
                                 .padding(horizontal = 10.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
@@ -608,7 +621,7 @@ fun MorphingBottomBar(
                     }
                 }
 
-                Spacer(Modifier.width(8.dp * inlineProgress))
+                Spacer(Modifier.width(8.dp * (1f - searchProgress)))
             } else if (spacing > 0.dp && searchProgress < 0.99f) {
                 Spacer(Modifier.width(spacing))
             }
@@ -645,6 +658,7 @@ fun MorphingBottomBar(
             ) {
                 if (searchProgress < 0.4f) {
                     val iconAlpha = (1f - searchProgress * 2.5f).coerceIn(0f, 1f)
+                    val iconScale = 1f - searchProgress * 0.25f
                     // Closed state: round search button with magnifying glass
                     Icon(
                         imageVector = tabs.getOrNull(TAB_SEARCH)?.icon ?: Icons.Rounded.Search,
@@ -652,18 +666,27 @@ fun MorphingBottomBar(
                         tint = if (isSearching) MaterialTheme.colorScheme.primary else contentColor.copy(alpha = 0.75f),
                         modifier = Modifier
                             .size(25.dp)
-                            .graphicsLayer { alpha = iconAlpha },
+                            .graphicsLayer {
+                                alpha = iconAlpha
+                                scaleX = iconScale
+                                scaleY = iconScale
+                            },
                     )
                 }
 
                 if (isSearching || searchProgress > 0.05f) {
                     // Expanding / Expanded state: full search field
-                    val contentAlpha = ((searchProgress - 0.15f) / 0.85f).coerceIn(0f, 1f)
+                    val contentAlpha = ((searchProgress - 0.10f) / 0.90f).coerceIn(0f, 1f)
+                    val contentScale = 0.90f + 0.10f * contentAlpha
                     Row(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(horizontal = 14.dp)
-                            .graphicsLayer { alpha = contentAlpha },
+                            .graphicsLayer {
+                                alpha = contentAlpha
+                                scaleX = contentScale
+                                scaleY = contentScale
+                            },
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Icon(
