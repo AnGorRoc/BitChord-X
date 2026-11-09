@@ -196,6 +196,7 @@ fun FrostedTopBar(
      * to vanish a moment after the avatar has already gone.
      */
     actionsVisible: Boolean = true,
+    leading: (@Composable () -> Unit)? = null,
     actions: @Composable () -> Unit = {},
 ) {
     val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
@@ -327,6 +328,15 @@ fun FrostedTopBar(
                             tint = MaterialTheme.colorScheme.onSurface,
                         )
                     }
+                }
+            } else if (leading != null) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .padding(start = BAR_GUTTER),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    leading()
                 }
             }
             // No wordmark at the leading end: the root tabs carry it above

@@ -22,6 +22,12 @@ import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -467,11 +473,6 @@ internal fun TransportRow(
     isPlaying: Boolean,
     /** While the stream resolves and buffers, the play glyph would be a lie. */
     isLoading: Boolean,
-    /**
-     * Lit whenever back has something to do — a track to step to, or enough
-     * elapsed to restart this one. Faded and inert, not removed, while a party
-     * host holds the controls: the transport keeps its shape either way.
-     */
     previousEnabled: Boolean,
     nextEnabled: Boolean,
     onPrevious: () -> Unit,
@@ -498,6 +499,7 @@ internal fun TransportRow(
             onClick = onPrevious,
             enabled = previousEnabled,
             haptic = Haptic.SkipPrevious,
+            kickDirection = -1f,
         )
         if (isLoading) {
             // Same footprint as the play/pause target — a smaller box here
@@ -510,13 +512,11 @@ internal fun TransportRow(
                 )
             }
         } else {
-            TransportGlyph(
-                icon = if (isPlaying) Res.drawable.ic_player_pause else Res.drawable.ic_player_play,
-                contentDescription = stringResource(if (isPlaying) Res.string.pause else Res.string.play),
+            MorphPlayPauseGlyph(
+                isPlaying = isPlaying,
                 size = playSize,
                 touchSize = playTouch,
                 onClick = onPlayPause,
-                haptic = if (isPlaying) Haptic.Pause else Haptic.Resume,
             )
         }
         TransportGlyph(
@@ -528,6 +528,7 @@ internal fun TransportRow(
             onClick = onNext,
             enabled = nextEnabled,
             haptic = Haptic.SkipNext,
+            kickDirection = 1f,
         )
     }
 }
@@ -789,9 +790,19 @@ private fun TransportGlyph(
     haptic: Haptic = Haptic.Tap,
     /** Vertical squash of the glyph alone; its width and touch box are untouched. */
     heightScale: Float = 1f,
+    /** Kinetic horizontal kick direction: +1f for next, -1f for previous, 0f for none */
+    kickDirection: Float = 0f,
 ) {
     val haptics = rememberHaptics()
-    // Faded rather than hidden: the row keeps its shape at the ends of a queue.
+    val scope = rememberCoroutineScope()
+    val kickOffset = remember { Animatable(0f) }
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val pressScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.86f else 1f,
+        animationSpec = spring(dampingRatio = 0.54f, stiffness = 720f),
+        label = "transportPressScale",
+    )
     val alpha by animateFloatAsState(
         targetValue = if (enabled) 1f else 0.3f,
         label = "transportAlpha",
@@ -799,12 +810,22 @@ private fun TransportGlyph(
     Box(
         modifier = Modifier
             .size(touchSize)
+            .graphicsLayer {
+                scaleX = pressScale
+                scaleY = pressScale
+            }
             .clickable(
-                interactionSource = remember { MutableInteractionSource() },
+                interactionSource = interactionSource,
                 indication = null,
                 enabled = enabled,
             ) {
                 haptics.play(haptic)
+                if (kickDirection != 0f) {
+                    scope.launch {
+                        kickOffset.snapTo(kickDirection * 10f)
+                        kickOffset.animateTo(0f, spring(dampingRatio = 0.55f, stiffness = 420f))
+                    }
+                }
                 onClick()
             },
         contentAlignment = Alignment.Center,
@@ -815,8 +836,76 @@ private fun TransportGlyph(
             tint = Color.White.copy(alpha = alpha),
             modifier = Modifier
                 .size(size)
-                .then(if (heightScale != 1f) Modifier.graphicsLayer { scaleY = heightScale } else Modifier),
+                .graphicsLayer {
+                    translationX = kickOffset.value.dp.toPx()
+                    if (heightScale != 1f) scaleY = heightScale
+                },
         )
+    }
+}
+
+@Composable
+private fun MorphPlayPauseGlyph(
+    isPlaying: Boolean,
+    size: androidx.compose.ui.unit.Dp,
+    touchSize: androidx.compose.ui.unit.Dp,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+) {
+    val haptics = rememberHaptics()
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val pressScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.86f else 1f,
+        animationSpec = spring(dampingRatio = 0.54f, stiffness = 720f),
+        label = "playPausePressScale",
+    )
+    val alpha by animateFloatAsState(
+        targetValue = if (enabled) 1f else 0.36f,
+        label = "playPauseAlpha",
+    )
+    Box(
+        modifier = Modifier
+            .size(touchSize)
+            .graphicsLayer {
+                scaleX = pressScale
+                scaleY = pressScale
+            }
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                enabled = enabled,
+            ) {
+                haptics.play(if (isPlaying) Haptic.Pause else Haptic.Resume)
+                onClick()
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        AnimatedContent(
+            targetState = isPlaying,
+            transitionSpec = {
+                (fadeIn(animationSpec = tween(140)) +
+                    scaleIn(
+                        initialScale = 0.45f,
+                        animationSpec = spring(dampingRatio = 0.42f, stiffness = 420f),
+                    )
+                ).togetherWith(
+                    fadeOut(animationSpec = tween(100)) +
+                    scaleOut(
+                        targetScale = 0.45f,
+                        animationSpec = tween(100, easing = androidx.compose.animation.core.FastOutLinearInEasing),
+                    )
+                )
+            },
+            label = "playPauseMorph",
+        ) { playing ->
+            Icon(
+                painter = painterResource(if (playing) Res.drawable.ic_player_pause else Res.drawable.ic_player_play),
+                contentDescription = stringResource(if (playing) Res.string.pause else Res.string.play),
+                tint = Color.White.copy(alpha = alpha),
+                modifier = Modifier.size(size),
+            )
+        }
     }
 }
 
