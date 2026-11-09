@@ -1590,19 +1590,6 @@ private fun PageBackground(
 private fun LazyListState.headerTop(artHeightPx: Float): Float =
     if (firstVisibleItemIndex == 0) -firstVisibleItemScrollOffset.toFloat() else -artHeightPx * 2f
 
-/** Where the blurred copy starts to show and where it has fully taken over. */
-private val SOFT_FOOT_MASK = Brush.verticalGradient(
-    0.55f to Color.Transparent,
-    0.85f to Color.Black,
-)
-
-/**
- * Wide enough that no shapes survive where the blurred copy is at full
- * strength — a blur that leaves them reads as a blurred photograph, and a
- * blurred photograph next to a flat colour is still two surfaces.
- */
-private val SOFT_FOOT_BLUR = 48.dp
-
 /**
  * Shuffle • Play • Star — the artist page's action row, as Apple Music lays
  * it out: a large Play circle with a small glass circle either side.

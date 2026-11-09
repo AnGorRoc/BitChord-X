@@ -1,7 +1,5 @@
 package com.music.bitchord
-import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.graphics.ColorFilter
 
 import android.Manifest
 import android.content.Context

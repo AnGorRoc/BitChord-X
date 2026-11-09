@@ -67,16 +67,24 @@ Previamente se desarrollaron e integraron las siguientes funcionalidades clave p
    - Al scrollear hacia arriba o pulsar sobre el círculo de pestaña activa, el dock vuelve a desplegarse fluidamente en dos niveles.
    - El botón de Party (Listen Together) viene activado por defecto en `AppSettings`.
 
+7. **Native Morph Play/Pause, Kinetic Skips & Spring MiniPlayer (`feat(player)`, `feat(ui)`)**:
+   - Transición de play/pause con morph suave mediante `AnimatedContent`, escala elástica y `fadeIn/fadeOut` en `PlayerControls`, `MiniPlayer` y `GlassNavBar`.
+   - Impulso cinético lateral (*kinetic kick*) con retorno por `spring` al presionar botones de salto previo y siguiente.
+   - Animación *spring pop* con escala y desplazamiento vertical al desplegar y ocultar el MiniPlayer flotante superior.
+   - Integración del icono de logo BitChord en `FrostedTopBar` para pestaña Home eliminando texto duplicado.
+   - Gradiente armónico y afinación cromática HSL para artistas en `DetailScreen` y modo inmersivo en `NowPlayingScreen`.
+
 ---
 
 ## 5. Current State
 - **Repositorio Base**: `https://github.com/AnGorRoc/BitChord-X.git`
-- **Branch Activa**: `fvkinGordo` (rama de desarrollo personal de Pedro / fvkinGordo)
+- **Branch Activa**: `main` (commits de `fvkinGordo` consolidados y verificados)
 - **Estado Actual**:
-  - Rama publicada y sincronizada con `origin/fvkinGordo`.
-  - Commits integrados y testeados en build devDebug sobre dispositivo físico:
-    - `feat(ui)`: compact dock on scroll down with inline miniplayer and active tab circle
-    - `feat(settings)`: enable listen together party button by default
+  - Commits de `fvkinGordo` integrados en `main`:
+    - `2a2c5f1a` feat(ui): add spring pop and scale transitions for floating miniplayer
+    - `546c8c8d` feat(player): add morph play/pause transition and kinetic skip kick to native icons
+    - `79e4b8f7` feat(ui): compact dock on scroll down with inline miniplayer and active tab circle
+    - `a3b4b144` feat(settings): enable listen together button by default in player capsule
     - `083449b0` feat(player): restore clean v1 3-button action row (lyrics, cast, queue) and deprecate experimental morphing dock
     - `eaf45011` docs: update development context with recent commits
     - `d84b7ad6` feat(ui): add liquid glass morphing dock to full player with context actions
