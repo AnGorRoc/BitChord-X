@@ -167,6 +167,7 @@ fun SpotifyLibraryScreen(
     val cookie by AppSettings.spotifySpdcToken.collectAsStateWithLifecycle()
     val context = LocalContext.current
     var loading by remember { mutableStateOf(false) }
+    var isManualRefreshing by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     // Bumped by a pull from the top of the list, to read the library again.
     var reload by remember { mutableIntStateOf(0) }
@@ -178,6 +179,7 @@ fun SpotifyLibraryScreen(
             state.clear()
             SpotifyCache.clear()
             error = null
+            isManualRefreshing = false
             return@LaunchedEffect
         }
         if (state.playlists.isEmpty()) {
@@ -202,8 +204,10 @@ fun SpotifyLibraryScreen(
                     SyncErrorKind.OTHER -> context.getString(R.string.spotify_sync_error_other, e.message.orEmpty())
                 }
             }
+        } finally {
+            loading = false
+            isManualRefreshing = false
         }
-        loading = false
     }
 
     // A library kept up to date brings the playlists already imported up to date.
@@ -235,18 +239,19 @@ fun SpotifyLibraryScreen(
     BackHandler(enabled = state.selecting) { state.clear() }
 
     // Pulling down from the top reads the library again. The indicator sits
-    // where the page's own content starts, so it is the page's, not the bar's.
-    // When the list is empty, only the center list spinner is shown to avoid a double spinner.
-    val isPullRefreshing = loading && state.playlists.isNotEmpty()
+    // where the page's own content starts, and only appears during explicit manual refresh.
     PullToRefreshBox(
-        isRefreshing = isPullRefreshing,
-        onRefresh = { reload++ },
+        isRefreshing = isManualRefreshing,
+        onRefresh = {
+            isManualRefreshing = true
+            reload++
+        },
         state = pullState,
         modifier = modifier.fillMaxSize(),
         indicator = {
             PullToRefreshDefaults.Indicator(
                 state = pullState,
-                isRefreshing = isPullRefreshing,
+                isRefreshing = isManualRefreshing,
                 modifier = Modifier.align(Alignment.TopCenter),
                 color = MaterialTheme.colorScheme.primary,
             )
