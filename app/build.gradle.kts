@@ -59,6 +59,7 @@ val betaSuffix = rootProject.extra["bitchordBetaSuffix"] as String
 android {
     namespace = "com.music.bitchord"
     // InnerTubeX's AAR requires compiling against 37; targetSdk (runtime behaviour) stays 36.
+    ndkVersion = "27.0.12077973"
     compileSdk = 37
     lint {
         checkReleaseBuilds = false
