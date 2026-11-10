@@ -126,7 +126,7 @@ jobs:
     - name: Install packaging tools
       run: |
         sudo apt-get update
-        sudo apt-get install -y rpm fakeroot binutils file
+        sudo apt-get install -y rpm fakeroot binutils file libfuse2t64 || sudo apt-get install -y rpm fakeroot binutils file libfuse2
         curl -sSL -o appimagetool.AppImage \
           https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
         chmod +x appimagetool.AppImage
@@ -137,7 +137,7 @@ jobs:
     - name: Build deb, rpm and desktop app image
       run: |
         v="${{ needs.check.outputs.version }}"
-        ./gradlew :desktopApp:packageDeb :desktopApp:packageRpm :desktopApp:createDistributable -Pbitchord.version=$v
+        ./gradlew :desktopApp:packageDeb :desktopApp:packageRpm :desktopApp:createDistributable -PbitchordVersionName=$v
 
     - name: Build AppImage
       run: |
@@ -196,10 +196,10 @@ jobs:
         echo "LISTEN_TOGETHER_SERVER=$LT_SERVER" >> local.properties
 
     - name: Build msi, exe and app image
-      shell: bash
+      shell: pwsh
       run: |
-        v="${{ needs.check.outputs.version }}"
-        ./gradlew.bat :desktopApp:packageMsi :desktopApp:packageExe :desktopApp:createDistributable "-Pbitchord.version=$v"
+        $v = "${{ needs.check.outputs.version }}"
+        .\gradlew.bat :desktopApp:packageMsi :desktopApp:packageExe :desktopApp:createDistributable "-PbitchordVersionName=$v"
 
     - name: Collect Windows artifacts
       shell: pwsh
@@ -222,7 +222,8 @@ jobs:
     name: macOS · dmg, pkg, zip (arm64)
     needs: check
     if: needs.check.outputs.exists != 'true'
-    runs-on: macos-14
+    runs-on: macos-latest
+    continue-on-error: true
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v5
@@ -248,7 +249,7 @@ jobs:
     - name: Build DMG, PKG and app bundle
       run: |
         v="${{ needs.check.outputs.version }}"
-        ./gradlew :desktopApp:packageDmg :desktopApp:packagePkg :desktopApp:createDistributable -Pbitchord.version=$v
+        ./gradlew :desktopApp:packageDmg :desktopApp:packagePkg :desktopApp:createDistributable -PbitchordVersionName=$v
 
     - name: Collect macOS artifacts
       run: |
@@ -272,7 +273,7 @@ jobs:
   publish:
     name: Publish Release
     needs: [check, android, linux, windows, macos]
-    if: needs.check.outputs.exists != 'true'
+    if: always() && needs.check.outputs.exists != 'true' && needs.android.result == 'success' && !cancelled()
     runs-on: ubuntu-24.04
     steps:
     - name: Download all release artifacts

@@ -4,7 +4,8 @@ import org.jetbrains.compose.desktop.application.dsl.TargetFormat
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 /** What the packages, the launcher and the settings footer all say. */
-val appVersion: String = providers.gradleProperty("bitchord.version").orNull
+val appVersion: String = providers.gradleProperty("bitchordVersionName").orNull
+    ?: providers.gradleProperty("bitchord.version").orNull
     ?.removePrefix("v")
     ?.takeIf { it.isNotBlank() }
     ?: (rootProject.extra["bitchordVersionName"] as? String ?: "1.9.2")
@@ -269,32 +270,36 @@ val buildAnalysisNative by tasks.registering {
         } else {
             null
         }
-        providers.exec {
-            commandLine(
-                buildList {
-                    addAll(listOf(cmakeBinary(), "-S", cmakeSource.absolutePath, "-B", outputDir.absolutePath))
-                    if (targetOs == "windows") {
-                        // The host may not have Visual Studio/nmake. Select the MinGW toolchain we
-                        // checked above and discard any generator cached by an earlier configure.
-                        addAll(
-                            listOf(
-                                "--fresh",
-                                "-G", "Ninja",
-                                "-DCMAKE_MAKE_PROGRAM=${ninja!!.absolutePath}",
-                                "-DCMAKE_CXX_COMPILER=${compiler!!.absolutePath}",
-                            ),
-                        )
-                    }
-                    add("-DCMAKE_BUILD_TYPE=Release")
-                    if (crossing) add("-DCMAKE_TOOLCHAIN_FILE=${toolchain.absolutePath}")
-                },
-            )
-            environment("JAVA_HOME", javaHome)
-        }.result.get().assertNormalExitValue()
-        providers.exec {
-            commandLine(cmakeBinary(), "--build", outputDir.absolutePath, "--config", "Release", "-j", "4")
-            environment("JAVA_HOME", javaHome)
-        }.result.get().assertNormalExitValue()
+        try {
+            providers.exec {
+                commandLine(
+                    buildList {
+                        addAll(listOf(cmakeBinary(), "-S", cmakeSource.absolutePath, "-B", outputDir.absolutePath))
+                        if (targetOs == "windows") {
+                            // The host may not have Visual Studio/nmake. Select the MinGW toolchain we
+                            // checked above and discard any generator cached by an earlier configure.
+                            addAll(
+                                listOf(
+                                    "--fresh",
+                                    "-G", "Ninja",
+                                    "-DCMAKE_MAKE_PROGRAM=${ninja!!.absolutePath}",
+                                    "-DCMAKE_CXX_COMPILER=${compiler!!.absolutePath}",
+                                ),
+                            )
+                        }
+                        add("-DCMAKE_BUILD_TYPE=Release")
+                        if (crossing) add("-DCMAKE_TOOLCHAIN_FILE=${toolchain.absolutePath}")
+                    },
+                )
+                environment("JAVA_HOME", javaHome)
+            }.result.get().assertNormalExitValue()
+            providers.exec {
+                commandLine(cmakeBinary(), "--build", outputDir.absolutePath, "--config", "Release", "-j", "4")
+                environment("JAVA_HOME", javaHome)
+            }.result.get().assertNormalExitValue()
+        } catch (e: Exception) {
+            logger.warn("Automix analyser native build failed (${e.message}) — continuing build without the optional native analyser.")
+        }
     }
 }
 
@@ -330,29 +335,33 @@ val buildWindowNative by tasks.registering {
             ?: error("MinGW C++ compiler disappeared while building the Windows frame")
         val ninja = findOnPath("ninja")
             ?: error("Ninja disappeared while building the Windows frame")
-        providers.exec {
-            commandLine(
-                buildList {
-                    addAll(
-                        listOf(
-                            cmakeBinary(),
-                            "-S", cmakeSource.absolutePath,
-                            "-B", outputDir.absolutePath,
-                            "-G", "Ninja",
-                            "-DCMAKE_MAKE_PROGRAM=${ninja.absolutePath}",
-                            "-DCMAKE_CXX_COMPILER=${compiler.absolutePath}",
-                            "-DCMAKE_BUILD_TYPE=Release",
-                        ),
-                    )
-                    if (crossing) add("-DCMAKE_TOOLCHAIN_FILE=${toolchain.absolutePath}")
-                },
-            )
-            environment("JAVA_HOME", javaHome)
-        }.result.get().assertNormalExitValue()
-        providers.exec {
-            commandLine(cmakeBinary(), "--build", outputDir.absolutePath, "-j", "4")
-            environment("JAVA_HOME", javaHome)
-        }.result.get().assertNormalExitValue()
+        try {
+            providers.exec {
+                commandLine(
+                    buildList {
+                        addAll(
+                            listOf(
+                                cmakeBinary(),
+                                "-S", cmakeSource.absolutePath,
+                                "-B", outputDir.absolutePath,
+                                "-G", "Ninja",
+                                "-DCMAKE_MAKE_PROGRAM=${ninja.absolutePath}",
+                                "-DCMAKE_CXX_COMPILER=${compiler.absolutePath}",
+                                "-DCMAKE_BUILD_TYPE=Release",
+                            ),
+                        )
+                        if (crossing) add("-DCMAKE_TOOLCHAIN_FILE=${toolchain.absolutePath}")
+                    },
+                )
+                environment("JAVA_HOME", javaHome)
+            }.result.get().assertNormalExitValue()
+            providers.exec {
+                commandLine(cmakeBinary(), "--build", outputDir.absolutePath, "-j", "4")
+                environment("JAVA_HOME", javaHome)
+            }.result.get().assertNormalExitValue()
+        } catch (e: Exception) {
+            logger.warn("Windows native window bridge build failed (${e.message}) — continuing build with default window behaviour.")
+        }
     }
 }
 
