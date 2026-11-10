@@ -3,6 +3,7 @@
 Additional BitChord project and development information will be maintained here.
 
 ## Project
+- [Desktop Application Guide](DESKTOP.md): Multiplatform setup, package formats (Windows, macOS, Linux), and build instructions.
 - [Listen Together Server Documentation](backend/README.md): Architecture, synchronization protocol, and deployment instructions for the party server.
 - [Lyrics Translation](docs/LYRICS_TRANSLATION.md): Pipeline documentation for on-demand lyrics translation, timing projection, and UI transitions.
 

@@ -41,19 +41,23 @@
   <tr>
     <td width="50%" valign="top">
 
-#### Playback
+#### Playback & DSP
 - **Search, browse and play** anything available on YouTube Music.
 - **Hi-Res lossless audio** — FLAC/ALAC from your own addons, plus FLAC from [Monochrome](https://monochrome.st), a built-in source that is off until you opt in (up to 24-bit, as each file states), with YouTube Music as fallback.
+- **Harmonic Automix [Beta]** — DJ-style transitions with Camelot Wheel harmonic key matching, BPM stretch guards, lyric and vocal clash protection, and real-time analyzing feedback.
+- **Sing / Karaoke Mode** — Real-time vocal remover with DSP engine selector and liquid capsule fader.
 - **Gapless playback with true crossfade**, adjustable 0–12s.
-- **Automix [Beta]** — DJ-style transitions with beat-matching and tempo-stretching.
-- **Offline downloads** — save tracks with embedded metadata.
-- **Local music library** integration.
+- **Offline downloads & smart caching** — save tracks with embedded metadata and automatic background upgrades to higher-tier copies.
+- **Audio DSP engines & formats** — system EQ, ReplayGain, and DSD support.
+- **Local music library & network streaming** — local audio files, plus SMB and WebDAV network folders.
 - **Background playback** via a proper foreground media session.
 - **Apple-like lyrics animation** — credit to [binimum](https://github.com/binimum/am-lyrics).
 
 #### Connectivity & Accounts
 - **Sign in with your Google account** for personalized content.
-- **Spotify integration** — connect your account to play your playlists and Liked Songs.
+- **Spotify integration** — import and sync your playlists and Liked Songs with destination selection and retry.
+- **Listen Together (Party Mode)** — synchronize playback with friends with permanent QR code sharing and instant code joins.
+- **Dynamic Radio & Origin Tracking** — contextual radio stations and source badges.
 - **Discord Rich Presence** — in-app login, live track/artist/album and progress.
 - **Scrobbling** to Last.fm and ListenBrainz.
 - **Pluggable sources** — add, edit, test and health-check addon sources, ranked ahead of Monochrome, JioSaavn and YouTube Music.
@@ -61,18 +65,20 @@
     </td>
     <td width="50%" valign="top">
 
-#### Experience
+#### Experience & Interface
+- **Cross-Platform** — Native experience on Android (Jetpack Compose) and Desktop for Windows, macOS, and Linux (Compose Multiplatform).
+- **Liquid Glass & 120 FPS UI** — translucent frosted-glass styling via Haze, dock compaction on scroll with inline miniplayer, and fluid spring animations.
+- **Kinetic & Morph Controls** — native play/pause icon morphing, kinetic skips with elastic spring kick, and hold-and-slide navigation gestures.
+- **Immersive Player Mode** — cover art reflection, atmospheric veil, and HSL-based dynamic ambient lighting.
 - **Animated album canvas** — motion artwork on the now-playing screen.
-- **Word-synced lyrics** — word/syllable-level highlighting from multiple sources.
+- **Word-synced lyrics** — syllable-level highlighting, centered active line, and optional lyric line above scrubber.
 - **Lyrics providers** — credit to [lrc.red](https://lrc.red), [BiniLyrics](https://github.com/binimum), [BetterLyrics](https://github.com/better-lyrics/better-lyrics), [PaxSenix](https://lyrics.paxsenix.org), [LyricsPlus](https://github.com/ibratabian17/YouLyPlus), [SimpMusic](https://github.com/maxrave-dev/SimpMusic), [Unison](https://unison.boidu.dev), [Megalobiz](https://www.megalobiz.com), [KuGou](https://www.kugou.com), [LRCLIB](https://lrclib.net), [Musixmatch](https://www.musixmatch.com) and [Genius](https://genius.com).
-- **Dynamic, artwork-driven theming** — Material palette extracted from album art.
-- **Frosted-glass UI** — Telegram-style translucent bars via Haze, Material 3 theming.
+- **Replay & Artist Facts** — listening stats with stories, artist biographies, signatures, and lyric share cards.
 
 #### Controls & Tweaks
 - **Per-network audio quality** — separate quality ceilings for Wi-Fi and mobile data.
 - **Playback speed control** (0.5×–2.0×) and **skip silence**.
 - **Sleep timer** — fixed presets or "stop after this track".
-- **System equalizer** integration.
 - **Bit-perfect USB exclusive output** — sends lossless tracks to a USB DAC unchanged, at each track's own rate and bit depth. Thanks to [Mornye](https://github.com/mornyeapp/Mornye) for the reference.
 - **Stats for nerds** — codec, bit depth, sample rate, and more on the now-playing screen.
 
@@ -92,15 +98,21 @@
 
 On top of the original feature set, BitChord-X adds:
 
-- **Hi-Res Lossless source** — FLAC up to 24-bit with latency-ranked provider failover and providers you can type in by hand. Off until you switch it on.
-- **Smarter downloads and cache** — one download planner, a separate cache budget for lossless files, and in-place upgrades of cached songs to a better copy.
-- **Opening links from other services** — Spotify, Apple Music, Deezer, SoundCloud, Tidal and Amazon Music links open in the app.
-- **Spotify import and sync** — whole library or chosen playlists, incremental updates, and retry for the ones that failed.
-- **Export playlists to YouTube Music**, paced to stay within the API limits.
-- **Interface** — library as grid or rows, artwork prefetch, a morphing search bar with a persistent mini player, a lyric line above the scrubber, and a redesigned ⋮ menu.
-- **Updates** — the in-app check reads this project's releases.
+- **Desktop Compose Multiplatform** — Native desktop applications for Windows (DWM frame, snap layouts, JNA-powered mica/acrylic), macOS (.dmg/.pkg), and Linux (.AppImage/.deb/.rpm). See [DESKTOP.md](DESKTOP.md).
+- **Harmonic Automix with Camelot Key Guard** — DJ-style beat matching guided by the 24-key Camelot Wheel, BPM stretch guards ($\le 16\%$), equal-power gain curves, reactive analyzing indicators, and lyric/vocal clash prevention (`lastVocalTime`, `firstVocalTime`).
+- **Sing / Karaoke Mode** — Integrated real-time vocal suppression with liquid capsule fader and DSP engine selector.
+- **Liquid Dock & Kinetic Player** — Dock compaction on scroll into an inline miniplayer flanked by the active tab and search pill, smooth morph play/pause, kinetic skip springs, and spring pop miniplayer transitions.
+- **Immersive Visuals** — Cover art reflection, atmospheric veil, 120fps liquid glass optimizations, and HSL-tuned artist gradients.
+- **Listen Together (Party Mode)** — Real-time synchronized listening with interactive QR code zoom modal and code sharing enabled by default.
+- **Enhanced Spotify Sync** — Dedicated import dialog with destination selection, match diagnostics, skipped tracks review, and background retry.
+- **Hi-Res Lossless & Network Streaming** — Real FLAC up to 24-bit with failover and custom providers, plus SMB and WebDAV network folders.
+- **Dynamic Radio & Source Origin** — Rich radio detail pages and contextual playback origin indicators.
+- **Replay & Discovery** — End-of-year/periodic Replay with stories, Artist Facts, signatures, and shareable lyric cards.
+- **Smarter Downloads & Cache** — Tiered download planner, separate lossless cache budget, and background upgrades for cached tracks.
+- **Universal Links** — Open tracks and playlists directly from Spotify, Apple Music, Deezer, SoundCloud, Tidal, and Amazon Music.
+- **Full Spanish Localization** — Complete translation across mobile, desktop, and Wear OS.
 
-The full list is in [ADDITIONS.md](ADDITIONS.md).
+The full list with technical details is in [ADDITIONS.md](ADDITIONS.md).
 
 ---
 
@@ -110,10 +122,23 @@ The full list is in [ADDITIONS.md](ADDITIONS.md).
 
 <a href="https://github.com/AnGorRoc/BitChord-X/releases" target="_blank" rel="noopener noreferrer"><img src="https://cdn.jsdelivr.net/gh/JMcrafter26/badges@main/src/assets/supported/android/cozy.svg" alt="Download for Android" height="55"/></a>
 
-Grab the latest signed APK from the [Releases](https://github.com/AnGorRoc/BitChord-X/releases) page. Sideloading requires enabling "Install unknown apps" for whichever app you download it with.
+<br/>
+<br/>
 
+BitChord-X is available for Android and Desktop (Windows, macOS, and Linux).
 
 </div>
+
+### Android
+Grab the latest signed APK from the [Releases](https://github.com/AnGorRoc/BitChord-X/releases) page. Sideloading requires enabling "Install unknown apps" for whichever app you download it with.
+
+### Desktop (Windows, macOS, Linux)
+Standalone installers and portable packages are provided for each release with all dependencies bundled (no separate JDK required):
+- **Windows**: Setup installer (`.exe`), Windows Installer (`.msi`), and portable archive (`.zip`).
+- **macOS**: Apple Silicon (`arm64.dmg`) and Intel (`x64.dmg`) disk images, plus `.pkg` installers.
+- **Linux**: Universal `.AppImage`, Debian/Ubuntu (`.deb`), and Fedora/RHEL/openSUSE (`.rpm`).
+
+For complete desktop setup, system requirements, and manual build commands, see [DESKTOP.md](DESKTOP.md).
 
 ---
 
