@@ -81,6 +81,8 @@ Previamente se desarrollaron e integraron las siguientes funcionalidades clave p
 - **Branch Activa**: `main` (commits de `fvkinGordo` consolidados y verificados)
 - **Estado Actual**:
   - Commits de `fvkinGordo` integrados en `main`:
+    - `fd03c8fb` chore(release): bump version to 1.9.2 and add multiplatform desktop release workflow
+    - `0b033cb5` fix(ci): synchronize missing locale strings and adapt LoopMixTest to harmonic guards
     - `ca11746f` feat(spotify): enhance playlist import with intro dialog, destination selector and smooth animations
     - `679cd6f0` feat(sing): redesign sing sheet with liquid capsule fader and dsp engine selector
     - `18ea0e83` feat(radio): support dynamic radio detail pages and playback source origin
