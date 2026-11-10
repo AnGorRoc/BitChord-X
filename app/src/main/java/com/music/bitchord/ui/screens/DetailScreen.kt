@@ -194,9 +194,16 @@ import com.music.bitchord.ui.theme.ArtworkPalette
 import com.music.bitchord.ui.theme.rememberArtworkPalette
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.layout.layout
 import com.music.bitchord.ui.graphics.ColorUtils
+import com.music.bitchord.ui.graphics.FADE_CURVE_STOPS
+import com.music.bitchord.ui.graphics.smootherStep
 import kotlin.math.roundToInt
 import java.util.Locale
+
+private const val FULL_BLEED_MAX_HEIGHT = 0.62f
+private const val FULL_BLEED_FADE_FRACTION = 0.42f
+private val FULL_BLEED_TITLE_OVERLAP = 44.dp
 
 private const val MAX_ARTIST_SONGS = 20
 private const val SONGS_PER_COLUMN = 4
@@ -491,6 +498,7 @@ fun DetailScreen(
     // Albums only: a playlist's artwork is a collage and an artist page's is a
     // photograph, and neither is something a label publishes a canvas for.
     val canvasEnabled by AppSettings.animatedCanvas.collectAsStateWithLifecycle()
+    val fullBleedArtwork by AppSettings.fullBleedDetailArtwork.collectAsStateWithLifecycle()
     val prioritizeSpotifyCanvas by AppSettings.prioritizeSpotifyCanvas.collectAsStateWithLifecycle()
     // The credit line the header shows is the artist as far as the catalogue
     // services are concerned. A browse card's subtitle sometimes omits it, in
@@ -563,6 +571,7 @@ fun DetailScreen(
                 // the narrow one it was written for.
                 val artHeight = (maxWidth / ARTIST_PHOTO_RATIO).coerceAtMost(maxHeight * 0.65f)
                 val sleeveSize = (maxWidth * SLEEVE_FRACTION).coerceAtMost(maxHeight * SLEEVE_MAX_HEIGHT)
+                val fullBleedSleeve = fullBleedArtwork && maxWidth <= maxHeight * FULL_BLEED_MAX_HEIGHT
                 // A folder's grid view: the same column count the Library's
                 // "Show all" grids reach at this width.
                 val gridColumns = libraryGrid(maxWidth - PAGE_GUTTER * 2).columns
@@ -622,6 +631,7 @@ fun DetailScreen(
                         page = page,
                         palette = palette,
                         sleeveSize = sleeveSize,
+                        fullBleed = fullBleedSleeve,
                         canvas = canvas,
                         songs = songs,
                         onPlay = { (onPlayAll ?: { onSongClick(it, 0) })(songs) },
@@ -968,6 +978,7 @@ private fun ReleaseHeader(
     page: DetailPage,
     palette: ArtworkPalette,
     sleeveSize: Dp,
+    fullBleed: Boolean = false,
     canvas: CanvasArtwork?,
     songs: List<Song>,
     onPlay: () -> Unit,
@@ -983,15 +994,70 @@ private fun ReleaseHeader(
     // the first one speaks for the whole page, the same source the rows'
     // own long-press "Open artist" already reads from.
     val artist = songs.firstOrNull()
+    var artFailed by remember(page.thumbnailUrl) { mutableStateOf(false) }
+    val bleed = fullBleed && page.thumbnailUrl != null && !artFailed
 
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            // Clear of the floating bar, which the sleeve no longer runs under.
-            .padding(top = topBarContentPadding(), bottom = 18.dp),
+            // Clear of the floating bar, which only a full-bleed sleeve runs under.
+            .padding(top = if (bleed) 0.dp else topBarContentPadding(), bottom = 18.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box(
+        if (bleed) {
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    // Laid out shorter than it draws, so the title rides up into
+                    // the dissolve rather than starting under a band of page
+                    // colour where the sleeve has already gone.
+                    .layout { measurable, constraints ->
+                        val placeable = measurable.measure(constraints)
+                        val height = (placeable.height - FULL_BLEED_TITLE_OVERLAP.roundToPx()).coerceAtLeast(0)
+                        layout(placeable.width, height) { placeable.place(0, 0) }
+                    }
+                    .aspectRatio(1f),
+            ) {
+                AsyncImage(
+                    model = page.thumbnailUrl.artworkAt(HEADER_ART_PX),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    onState = { artFailed = it is AsyncImagePainter.State.Error },
+                    modifier = Modifier
+                        .matchParentSize()
+                        // The mask below erases part of what this layer drew,
+                        // which it can only do in a buffer of its own.
+                        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                        .drawWithContent {
+                            drawContent()
+                            // The player banner's dissolve, along smootherstep so
+                            // neither end of it shows as a line.
+                            drawRect(
+                                brush = Brush.verticalGradient(
+                                    colorStops = Array(FADE_CURVE_STOPS + 1) { i ->
+                                        val t = i / FADE_CURVE_STOPS.toFloat()
+                                        t to Color.Black.copy(alpha = 1f - smootherStep(t))
+                                    },
+                                    startY = size.height * (1f - FULL_BLEED_FADE_FRACTION),
+                                    endY = size.height,
+                                ),
+                                blendMode = BlendMode.DstIn,
+                            )
+                        }
+                        .background(palette.elevated),
+                )
+                // Beside the still rather than inside its layer: a clip's
+                // TextureView takes no Compose mask, so it dissolves itself.
+                canvas?.let { clip ->
+                    CanvasArtworkPlayer(
+                        canvas = clip,
+                        isPlaying = true,
+                        bottomFade = FULL_BLEED_FADE_FRACTION,
+                        modifier = Modifier.matchParentSize(),
+                    )
+                }
+            }
+        } else Box(
             Modifier
                 .size(sleeveSize)
                 .shadow(SLEEVE_SHADOW, SLEEVE_SHAPE)
@@ -1003,7 +1069,6 @@ private fun ReleaseHeader(
             // placeholder sleeve rather than an empty square. Not shown while a
             // real one is still on its way, so a loading cover doesn't flash
             // a glyph first.
-            var artFailed by remember(page.thumbnailUrl) { mutableStateOf(false) }
             if (page.thumbnailUrl == null || artFailed) {
                 CoverPlaceholder(
                     icon = page.placeholderIcon(),

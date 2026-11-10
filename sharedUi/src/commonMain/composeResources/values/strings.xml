@@ -275,4 +275,5 @@
     <string name="save_as_playlist">Save as playlist</string>
     <string name="save_queue_as_playlist">Save queue as playlist</string>
     <string name="save_radio_as_playlist">Save radio as playlist</string>
+    <string name="automix_overview_unavailable">No Automix transition coming up</string>
 </resources>

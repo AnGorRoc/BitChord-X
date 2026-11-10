@@ -77,6 +77,22 @@ data class AddonManifest(
 
     val requiresLosslessOutput: Boolean get() = checkValidLossless.asFlag() ?: false
 
+    /**
+     * The renditions the listener can choose between, from a declared `quality`
+     * select. Empty when there is no choice to offer: no such setting, or a
+     * setting enumerating fewer than two usable values.
+     */
+    val qualityOptions: List<AddonQualityOption>
+        get() = settings.firstOrNull { it.key == AddonClient.QUALITY_KEY }
+            ?.options.orEmpty()
+            .mapNotNull { option ->
+                val value = option.stringValue ?: return@mapNotNull null
+                AddonQualityOption(value, option.labelText ?: value)
+            }
+            .distinctBy { it.value }
+            .takeIf { it.size > 1 }
+            .orEmpty()
+
     fun declares(resource: String): Boolean =
         resources.any { it.equals(resource, ignoreCase = true) }
 
@@ -121,9 +137,23 @@ data class AddonSetting(
 @Serializable
 data class AddonSettingOption(
     @SerialName("value") val value: JsonElement? = null,
+    /** Read as an element so an addon's odd label costs the label, not the whole manifest. */
+    @SerialName("label") val label: JsonElement? = null,
 ) {
     val stringValue: String? get() = value?.asQueryValue()
+
+    val labelText: String? get() = label?.asQueryValue()
 }
+
+/**
+ * One entry of an addon's quality picker, as stored with the source — see
+ * [SourceConfig.qualityOptions][com.music.bitchord.data.sources.SourceConfig.qualityOptions].
+ */
+@Serializable
+data class AddonQualityOption(
+    val value: String,
+    val label: String,
+)
 
 // ── Search ───────────────────────────────────────────────────────────────
 

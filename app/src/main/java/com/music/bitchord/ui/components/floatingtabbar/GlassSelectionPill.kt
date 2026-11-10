@@ -35,6 +35,8 @@ import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.music.bitchord.data.settings.AppSettings
 import com.music.bitchord.ui.components.LocalAppBackdrop
 import com.music.bitchord.ui.components.backdrop.Backdrop
 import com.music.bitchord.ui.components.backdrop.backdrops.LayerBackdrop
@@ -525,11 +527,16 @@ internal fun GlassSelectionPill(
 ) {
     val page = LocalAppBackdrop.current
     val shape = remember { RoundedCornerShape(percent = 50) }
-    val backdrop = remember(page, barGlass, tabRow, fillColor) {
+    val glassPerformance by AppSettings.glassPerformance.collectAsStateWithLifecycle()
+    val backdrop = remember(page, barGlass, tabRow, fillColor, glassPerformance) {
         SelectionPillBackdrop(page, barGlass, tabRow) {
-            val minAlpha = (fillColor.alpha * 0.15f).coerceAtLeast(0.03f)
-            val computedAlpha = (fillColor.alpha * (1f - motion.material)).coerceAtLeast(minAlpha)
-            fillColor.copy(alpha = computedAlpha)
+            if (glassPerformance) {
+                fillColor
+            } else {
+                val minAlpha = (fillColor.alpha * 0.15f).coerceAtLeast(0.03f)
+                val computedAlpha = (fillColor.alpha * (1f - motion.material)).coerceAtLeast(minAlpha)
+                fillColor.copy(alpha = computedAlpha)
+            }
         }
     }
     Box(
@@ -537,7 +544,7 @@ internal fun GlassSelectionPill(
             backdrop = backdrop,
             shape = { shape },
             effects = {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                if (!glassPerformance && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     lens(
                         refractionHeight = LENS_HEIGHT.toPx() * motion.glassPresence,
                         refractionAmount = LENS_AMOUNT.toPx() * motion.material,

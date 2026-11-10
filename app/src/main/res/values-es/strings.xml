@@ -934,7 +934,21 @@
     <string name="playlist_action">Lista de reproducción</string>
 
 
-    <string name="lyrics_offset">Lyrics offset</string>
+    <string name="lyrics_offset">Ajuste de letra</string>
+    <string name="automix_overview">Vista previa de Automix</string>
+    <string name="content_preferences">Preferencias de contenido</string>
+    <string name="hide_recents">Ocultar recientes</string>
+    <string name="hide_home_videos">Ocultar videos de Inicio</string>
+    <string name="hide_home_videos_subtitle">También se eliminan las filas de solo videos. Búsqueda, artistas y playlists seguirán mostrándolos</string>
+    <string name="hide_top_picks">Ocultar Selecciones para ti</string>
+    <string name="hide_home_moods">Ocultar Encuentra tu estado de ánimo</string>
+    <string name="square_video_thumbnails">Miniaturas de video cuadradas</string>
+    <string name="square_video_thumbnails_subtitle">Muestra los videos musicales en formato cuadrado en todas partes, incluido el reproductor</string>
+    <string name="prefer_music_only">Preferir versión solo música</string>
+    <string name="prefer_music_only_subtitle">Los videos musicales se reproducen como versión de audio, y el siguiente tema de la cola se convierte con anticipación para que Automix y crossfade funcionen</string>
+    <string name="glass_performance">Mejor rendimiento para cristal</string>
+    <string name="full_screen_detail_cover">Portada a pantalla completa en álbum/playlist</string>
+    <string name="full_screen_detail_cover_subtitle">Extiende las portadas de álbumes y playlists hasta los bordes con un desvanecimiento suave</string>
 
 
 

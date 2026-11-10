@@ -250,6 +250,7 @@ internal object DesktopPlayerSettings : PlayerSettingsSource {
     override val smartMixBlend = MutableStateFlow<MixBlend?>(null)
     override val smartMixView = MutableStateFlow<MixTransitionView?>(null)
     override val smartMixProgress = MutableStateFlow(0f)
+    override val smartMixPreview = MutableStateFlow<MixTransitionView?>(null)
     override val smartTransitionWindow = MutableStateFlow<TransitionWindow?>(null)
     override val spotifyCanvasAutoHide = MutableStateFlow(true)
     override val syncedLyrics = MutableStateFlow(true)
@@ -267,6 +268,8 @@ internal object DesktopPlayerSettings : PlayerSettingsSource {
         lyricsOffsetMs.value = clamped
         persistence.saveInt(KEY_LYRICS_OFFSET, clamped)
     }
+
+    override fun setMixViewOpen(open: Boolean) = Unit
 
     private const val KEY_LAST_SCREEN = "last_player_screen"
     private const val KEY_LYRICS_OFFSET = "lyrics_offset_ms"

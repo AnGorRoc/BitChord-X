@@ -57,6 +57,9 @@ interface PlayerHost {
     @Composable
     fun MusicVideo(videoId: String, fit: Boolean, onRenderedChanged: (Boolean) -> Unit, modifier: Modifier) = Unit
 
+    /** Whether [videoId] shows its picture, rather than playing as audio by the listener's choice. */
+    fun showsMusicVideoPicture(videoId: String): Boolean = true
+
     /** The playing music video's width over its height. */
     val musicVideoAspect: StateFlow<Float> get() = DefaultVideoAspect
 
@@ -183,7 +186,8 @@ internal fun videoQualityLabel(height: Int): String = when {
 
 /** Whether [song]'s picture can be shown here — a music video, on a platform that plays one. */
 internal fun showsMusicVideo(song: Song): Boolean =
-    song.isVideo && PlayerPlatform.host.musicVideoSupported
+    song.isVideo && PlayerPlatform.host.musicVideoSupported &&
+        PlayerPlatform.host.showsMusicVideoPicture(song.videoId)
 
 /** @see PlayerHost.MusicVideo */
 @Composable
@@ -272,6 +276,8 @@ interface PlayerSettingsSource {
     val smartMixView: StateFlow<MixTransitionView?>
     /** Progress through [smartMixView]'s blend, 0..1. */
     val smartMixProgress: StateFlow<Float>
+    /** The next transition as planned, while the mix popup is open between blends; null otherwise. */
+    val smartMixPreview: StateFlow<MixTransitionView?>
     val smartTransitionWindow: StateFlow<TransitionWindow?>
     val spotifyCanvasAutoHide: StateFlow<Boolean>
     val syncedLyrics: StateFlow<Boolean>
@@ -281,6 +287,8 @@ interface PlayerSettingsSource {
 
     fun setLastPlayerScreen(value: LastPlayerScreen)
     fun setLyricsOffsetMs(value: Int)
+    /** Whether the mix popup is up, so the host lays out [smartMixPreview] for it. */
+    fun setMixViewOpen(open: Boolean)
 }
 
 /** The player's name for the installed host's settings, read where AppSettings used to be. */
