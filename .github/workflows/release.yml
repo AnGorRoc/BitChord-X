@@ -1,38 +1,55 @@
 name: Release
 
-# Pushing a tag such as v1.9.1 builds the signed phone and TV APKs and
-# publishes them as a GitHub release. The in-app updater reads
-# releases/latest and the release body ("what's new"), so this is the one
-# place a release is made.
+# Pushing a tag such as v1.9.2 builds the signed phone/TV APKs, the Desktop
+# packages (Windows, Linux, macOS) and publishes them as a GitHub release.
+# The in-app updater (Android & Desktop) reads releases/latest and its assets.
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to stamp (e.g. 1.9.2 or v1.9.2)'
+        required: false
 
 permissions:
   contents: write
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
-  # A release published by hand from a local build (same file names) already
-  # owns this tag; building it again here would only fail on the duplicate.
   check:
     runs-on: ubuntu-24.04
     outputs:
       exists: ${{ steps.release.outputs.exists }}
+      version: ${{ steps.tag.outputs.version }}
+      tag: ${{ steps.tag.outputs.tag }}
     steps:
+    - id: tag
+      run: |
+        raw="${{ inputs.version }}"
+        [ -n "$raw" ] || raw="${GITHUB_REF_NAME}"
+        v="${raw#v}"
+        echo "version=$v" >> "$GITHUB_OUTPUT"
+        echo "tag=v$v" >> "$GITHUB_OUTPUT"
     - id: release
       env:
         GH_TOKEN: ${{ github.token }}
         GH_REPO: ${{ github.repository }}
       run: |
-        if gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1; then
+        tag="${{ steps.tag.outputs.tag }}"
+        if gh release view "$tag" >/dev/null 2>&1; then
+          echo "Release $tag already exists, skipping."
           echo "exists=true" >> "$GITHUB_OUTPUT"
         fi
 
-  release:
+  android:
+    name: Android · Phone & TV APKs
     needs: check
     if: needs.check.outputs.exists != 'true'
     runs-on: ubuntu-24.04
-
     steps:
     - name: Checkout Repository
       uses: actions/checkout@v5
@@ -47,14 +64,15 @@ jobs:
     - name: Setup Secrets (Keystore & local.properties)
       env:
         KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
-        LISTEN_TOGETHER_SERVER: ${{ secrets.LISTEN_TOGETHER_SERVER }}
       run: |
-        # An empty LISTEN_TOGETHER_SERVER is not "use the default": it builds an app
-        # with no server. Better to stop here than to publish that.
-        [ -n "$KEYSTORE_PASSWORD" ] && [ -n "$LISTEN_TOGETHER_SERVER" ] || { echo "Missing repository secrets"; exit 1; }
+        [ -n "$KEYSTORE_PASSWORD" ] || { echo "Missing KEYSTORE_PASSWORD secret"; exit 1; }
+
+        LT_SERVER="${{ secrets.LISTEN_TOGETHER_SERVER }}"
+        [ -n "$LT_SERVER" ] || LT_SERVER="https://bitchord-listen-together.onrender.com"
+
         echo "LASTFM_API_KEY=${{ secrets.LASTFM_API_KEY }}" > local.properties
         echo "LASTFM_SECRET=${{ secrets.LASTFM_SECRET }}" >> local.properties
-        echo "LISTEN_TOGETHER_SERVER=${{ secrets.LISTEN_TOGETHER_SERVER }}" >> local.properties
+        echo "LISTEN_TOGETHER_SERVER=$LT_SERVER" >> local.properties
 
         echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > bitchord-release.jks
         {
@@ -70,16 +88,208 @@ jobs:
     - name: Build the signed phone and TV APKs
       run: ./gradlew releaseAssets
 
-    # The tag has to be the version the build carries: the file names come
-    # from the Gradle version, and the updater compares the tag with it.
     - name: Check the tag matches the build
-      run: test -f "build/release-assets/BitChord-${GITHUB_REF_NAME}.apk"
+      run: |
+        tag="${{ needs.check.outputs.tag }}"
+        test -f "build/release-assets/BitChord-${tag}.apk"
 
-    - name: Publish the release
+    - name: Collect Android artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: android-artifacts
+        path: build/release-assets/*.apk
+
+  linux:
+    name: Linux · AppImage, deb, rpm
+    needs: check
+    if: needs.check.outputs.exists != 'true'
+    runs-on: ubuntu-24.04
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v5
+
+    - name: Set up JDK 21
+      uses: actions/setup-java@v5
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: gradle
+
+    - name: Write local.properties
+      run: |
+        LT_SERVER="${{ secrets.LISTEN_TOGETHER_SERVER }}"
+        [ -n "$LT_SERVER" ] || LT_SERVER="https://bitchord-listen-together.onrender.com"
+        echo "LASTFM_API_KEY=${{ secrets.LASTFM_API_KEY }}" > local.properties
+        echo "LASTFM_SECRET=${{ secrets.LASTFM_SECRET }}" >> local.properties
+        echo "LISTEN_TOGETHER_SERVER=$LT_SERVER" >> local.properties
+
+    - name: Install packaging tools
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y rpm fakeroot binutils file
+        curl -sSL -o appimagetool.AppImage \
+          https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
+        chmod +x appimagetool.AppImage
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    - name: Build deb, rpm and desktop app image
+      run: |
+        v="${{ needs.check.outputs.version }}"
+        ./gradlew :desktopApp:packageDeb :desktopApp:packageRpm :desktopApp:createDistributable -Pbitchord.version=$v
+
+    - name: Build AppImage
+      run: |
+        v="${{ needs.check.outputs.version }}"
+        mkdir -p dist
+        desktopApp/packaging/appimage.sh \
+          desktopApp/build/compose/binaries/main/app/BitChord \
+          dist/BitChord-$v-linux-x86_64.AppImage \
+          "$PWD/appimagetool.AppImage"
+
+    - name: Collect Linux artifacts
+      run: |
+        v="${{ needs.check.outputs.version }}"
+        mkdir -p dist
+        cp desktopApp/build/compose/binaries/main/deb/*.deb "dist/BitChord-$v-linux-amd64.deb"
+        cp desktopApp/build/compose/binaries/main/rpm/*.rpm "dist/BitChord-$v-linux-x86_64.rpm"
+        ls -lh dist
+
+    - name: Upload Linux artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: linux-artifacts
+        path: dist/*
+
+  windows:
+    name: Windows · exe, msi, portable
+    needs: check
+    if: needs.check.outputs.exists != 'true'
+    runs-on: windows-latest
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v5
+
+    - name: Set up JDK 21
+      uses: actions/setup-java@v5
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: gradle
+
+    - name: Install WiX Toolset 3
+      shell: pwsh
+      run: |
+        $url = "https://github.com/wixtoolset/wix3/releases/download/wix3141rtm/wix314-binaries.zip"
+        Invoke-WebRequest -Uri $url -OutFile wix.zip
+        Expand-Archive wix.zip -DestinationPath "$env:RUNNER_TEMP\wix"
+        "$env:RUNNER_TEMP\wix" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+    - name: Write local.properties
+      shell: bash
+      run: |
+        LT_SERVER="${{ secrets.LISTEN_TOGETHER_SERVER }}"
+        [ -n "$LT_SERVER" ] || LT_SERVER="https://bitchord-listen-together.onrender.com"
+        echo "LASTFM_API_KEY=${{ secrets.LASTFM_API_KEY }}" > local.properties
+        echo "LASTFM_SECRET=${{ secrets.LASTFM_SECRET }}" >> local.properties
+        echo "LISTEN_TOGETHER_SERVER=$LT_SERVER" >> local.properties
+
+    - name: Build msi, exe and app image
+      shell: bash
+      run: |
+        v="${{ needs.check.outputs.version }}"
+        ./gradlew.bat :desktopApp:packageMsi :desktopApp:packageExe :desktopApp:createDistributable "-Pbitchord.version=$v"
+
+    - name: Collect Windows artifacts
+      shell: pwsh
+      run: |
+        $v = "${{ needs.check.outputs.version }}"
+        New-Item -ItemType Directory -Force dist | Out-Null
+        Copy-Item desktopApp/build/compose/binaries/main/msi/*.msi "dist/BitChord-$v-windows-x64.msi"
+        Copy-Item desktopApp/build/compose/binaries/main/exe/*.exe "dist/BitChord-$v-windows-x64-setup.exe"
+        7z a -tzip -mx=5 "dist/BitChord-$v-windows-x64-portable.zip" `
+          "desktopApp/build/compose/binaries/main/app/BitChord/*" | Out-Null
+        Get-ChildItem dist | Format-Table Name, Length
+
+    - name: Upload Windows artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: windows-artifacts
+        path: dist/*
+
+  macos:
+    name: macOS · dmg, pkg, zip (arm64)
+    needs: check
+    if: needs.check.outputs.exists != 'true'
+    runs-on: macos-14
+    steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v5
+
+    - name: Set up JDK 21
+      uses: actions/setup-java@v5
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: gradle
+
+    - name: Write local.properties
+      run: |
+        LT_SERVER="${{ secrets.LISTEN_TOGETHER_SERVER }}"
+        [ -n "$LT_SERVER" ] || LT_SERVER="https://bitchord-listen-together.onrender.com"
+        echo "LASTFM_API_KEY=${{ secrets.LASTFM_API_KEY }}" > local.properties
+        echo "LASTFM_SECRET=${{ secrets.LASTFM_SECRET }}" >> local.properties
+        echo "LISTEN_TOGETHER_SERVER=$LT_SERVER" >> local.properties
+
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
+
+    - name: Build DMG, PKG and app bundle
+      run: |
+        v="${{ needs.check.outputs.version }}"
+        ./gradlew :desktopApp:packageDmg :desktopApp:packagePkg :desktopApp:createDistributable -Pbitchord.version=$v
+
+    - name: Collect macOS artifacts
+      run: |
+        v="${{ needs.check.outputs.version }}"
+        mkdir -p dist
+        for f in desktopApp/build/compose/binaries/main/dmg/*.dmg; do
+          [ -f "$f" ] && cp "$f" "dist/BitChord-$v-macos-arm64.dmg"
+        done
+        for f in desktopApp/build/compose/binaries/main/pkg/*.pkg; do
+          [ -f "$f" ] && cp "$f" "dist/BitChord-$v-macos-arm64.pkg"
+        done
+        ditto -c -k --keepParent desktopApp/build/compose/binaries/main/app/BitChord.app "dist/BitChord-$v-macos-arm64.zip"
+        ls -lh dist
+
+    - name: Upload macOS artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: macos-artifacts
+        path: dist/*
+
+  publish:
+    name: Publish Release
+    needs: [check, android, linux, windows, macos]
+    if: needs.check.outputs.exists != 'true'
+    runs-on: ubuntu-24.04
+    steps:
+    - name: Download all release artifacts
+      uses: actions/download-artifact@v4
+      with:
+        path: release-dist
+        merge-multiple: true
+
+    - name: List collected release assets
+      run: ls -lh release-dist
+
+    - name: Create GitHub Release
       env:
         GH_TOKEN: ${{ github.token }}
       run: |
+        tag="${{ needs.check.outputs.tag }}"
         flags=""
-        case "$GITHUB_REF_NAME" in *-*) flags="--prerelease" ;; esac
-        gh release create "$GITHUB_REF_NAME" build/release-assets/*.apk \
-          --title "BitChord-X $GITHUB_REF_NAME" --generate-notes $flags
+        case "$tag" in *-*) flags="--prerelease" ;; esac
+        gh release create "$tag" release-dist/* \
+          --title "BitChord-X $tag" --generate-notes $flags

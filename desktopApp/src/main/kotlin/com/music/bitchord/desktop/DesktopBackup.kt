@@ -22,7 +22,7 @@ object DesktopBackup {
             val buckets = ListeningStats.exportAll()
             val persistence = DesktopPersistence()
             val text = Backup.createBackupJson(
-                versionName = "1.9.1",
+                versionName = "1.9.2",
                 settings = persistence.exportPrefs(),
                 listening = buckets,
             )

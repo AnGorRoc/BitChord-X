@@ -244,6 +244,6 @@ class PageFetcher(
 
         private const val TAG = "BitChord"
         @Volatile
-        var userAgent: String = "BitChord/1.9.1 (link preview)"
+        var userAgent: String = "BitChord/1.9.2 (link preview)"
     }
 }
