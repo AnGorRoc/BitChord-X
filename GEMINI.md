@@ -81,6 +81,12 @@ Previamente se desarrollaron e integraron las siguientes funcionalidades clave p
 - **Branch Activa**: `main` (commits de `fvkinGordo` consolidados y verificados)
 - **Estado Actual**:
   - Commits de `fvkinGordo` integrados en `main`:
+    - `ca11746f` feat(spotify): enhance playlist import with intro dialog, destination selector and smooth animations
+    - `679cd6f0` feat(sing): redesign sing sheet with liquid capsule fader and dsp engine selector
+    - `18ea0e83` feat(radio): support dynamic radio detail pages and playback source origin
+    - `55c4359d` feat(party): add interactive qr code zoom modal and tune keyboard compaction
+    - `3360f30c` feat(ui): enhance compact dock and search transitions with spring animations
+    - `cea79dd8` fix(spotify): show pull-to-refresh spinner only on manual reload
     - `2a2c5f1a` feat(ui): add spring pop and scale transitions for floating miniplayer
     - `546c8c8d` feat(player): add morph play/pause transition and kinetic skip kick to native icons
     - `79e4b8f7` feat(ui): compact dock on scroll down with inline miniplayer and active tab circle
