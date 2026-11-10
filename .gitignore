@@ -41,7 +41,10 @@ keystore.properties
 .debug/
 
 # AI agent configuration
+GEMINI.md
+gemini.md
 AGENTS.md
+.gemini/
 /output/
 
 # Built packages — release APKs/bundles are handed out, never committed
