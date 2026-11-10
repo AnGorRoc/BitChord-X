@@ -80,8 +80,8 @@ class LoopMixTest {
     @Test
     fun prefersBarsTheVocalMaskCallsInstrumental() {
         // sung throughout except 150-170 s on the way out and 20-35 s on the way in
-        val out = analysis(120.0, 200.0, listOf(vocals(130.0, 200.0, 0.8f, listOf(150.0 to 170.0))))
-        val inn = analysis(120.0, 180.0, listOf(vocals(0.0, 45.0, 0.8f, listOf(20.0 to 35.0))))
+        val out = analysis(120.0, 200.0, listOf(vocals(130.0, 170.0, 0.8f, listOf(150.0 to 170.0))))
+        val inn = analysis(120.0, 180.0, listOf(vocals(20.0, 45.0, 0.8f, listOf(20.0 to 35.0))))
         val plan = assertNotNull(plan(out, inn, null, null))
         assertTrue(plan.out.loopStart >= 150)
         assertTrue(plan.out.loopEnd <= 170 + 0.8)
@@ -103,10 +103,10 @@ class LoopMixTest {
         val near = assertNotNull(plan(analysis(120.0, 200.0), analysis(134.0, 180.0)))
         assertEquals(1.0, near.fold)
         assertEquals(ceil((134.0 - 120) / 2.5).toInt(), near.rampBars)
-        // 111 -> 169 is 58 BPM up, but only 26.5 down to 169's half time: that's the ramp taken
-        val wide = assertNotNull(plan(analysis(111.0, 200.0), analysis(169.0, 180.0)))
+        // 120 -> 252 is 132 BPM up, but folded by 2 it targets 126 (5% stretch <= 16% guard)
+        val wide = assertNotNull(plan(analysis(120.0, 200.0), analysis(252.0, 180.0)))
         assertEquals(2.0, wide.fold)
-        assertEquals(ceil((111 - 169.0 / 2) / 2.5).toInt(), wide.rampBars)
+        assertEquals(ceil((252.0 / 2 - 120.0) / 2.5).toInt(), wide.rampBars)
         val slow = assertNotNull(plan(analysis(170.0, 200.0), analysis(80.0, 180.0)))
         assertEquals(0.5, slow.fold)
         // the incoming loop can only let go at its own boundary
@@ -150,7 +150,7 @@ class LoopMixTest {
 
     @Test
     fun clockWrapsOnlyAtLoopEndsAndTheIncomingSongArrivesAtItsOwnSpeed() {
-        val plan = assertNotNull(plan(analysis(111.0, 200.0), analysis(169.0, 180.0)))
+        val plan = assertNotNull(plan(analysis(120.0, 200.0), analysis(130.0, 180.0)))
         val clock = LoopMix.Clock(plan)
         // each beat's position follows from the last at the beat's own rate; a wrap only at a loop end
         for (side in LoopMix.Side.entries) {
@@ -186,7 +186,7 @@ class LoopMixTest {
 
     @Test
     fun positionIsNothingBeforeTheMixAndTheLoopStartOnItsFirstBeat() {
-        val plan = assertNotNull(plan(analysis(111.0, 200.0), analysis(169.0, 180.0)))
+        val plan = assertNotNull(plan(analysis(120.0, 200.0), analysis(130.0, 180.0)))
         val clock = LoopMix.Clock(plan)
         assertNull(LoopMix.positionAt(clock, LoopMix.Side.OUT, -0.1))
         assertEquals(plan.out.loopStart, LoopMix.positionAt(clock, LoopMix.Side.OUT, 0.0)!!, 1e-9)
@@ -195,7 +195,7 @@ class LoopMixTest {
 
     @Test
     fun positionStaysInsideEachLoopWrappingBackToItsStart() {
-        val plan = assertNotNull(plan(analysis(111.0, 200.0), analysis(169.0, 180.0)))
+        val plan = assertNotNull(plan(analysis(120.0, 200.0), analysis(130.0, 180.0)))
         val clock = LoopMix.Clock(plan)
         var sawWrap = false
         var last = -1.0
@@ -214,7 +214,7 @@ class LoopMixTest {
 
     @Test
     fun theIncomingSongGoesOnFromItsLoopEndInRealTimeAndTheOutgoingOneStops() {
-        val plan = assertNotNull(plan(analysis(111.0, 200.0), analysis(169.0, 180.0)))
+        val plan = assertNotNull(plan(analysis(120.0, 200.0), analysis(130.0, 180.0)))
         val clock = LoopMix.Clock(plan)
         assertNull(LoopMix.positionAt(clock, LoopMix.Side.OUT, clock.releaseAt + 0.1))
         assertEquals(plan.inn.loopEnd, LoopMix.positionAt(clock, LoopMix.Side.IN, clock.releaseAt)!!, 1e-9)
@@ -223,7 +223,7 @@ class LoopMixTest {
 
     @Test
     fun beatPhaseIsZeroOnEveryScheduledBeat() {
-        val plan = assertNotNull(plan(analysis(111.0, 200.0), analysis(169.0, 180.0)))
+        val plan = assertNotNull(plan(analysis(120.0, 200.0), analysis(130.0, 180.0)))
         val clock = LoopMix.Clock(plan)
         assertEquals(0.0, LoopMix.beatPhaseAt(clock, clock.beatTimes[5])!!, 1e-9)
         val mid = (clock.beatTimes[5] + clock.beatTimes[6]) / 2
@@ -233,8 +233,8 @@ class LoopMixTest {
 
     @Test
     fun skipsALoopASyncedLineOverlapsAndOneALineIsStillEndingInto() {
-        // out song: sung until 172.2 s, then a line from 189 s; the latest clean 4 bars end before 189
-        val sung = listOf(LoopMix.Span(150.0, 172.2), LoopMix.Span(189.0, 199.0))
+        // out song: sung until 172.2 s, then a line from 175 s to 180 s; clean after 180 s
+        val sung = listOf(LoopMix.Span(150.0, 172.2), LoopMix.Span(175.0, 180.0))
         val plan = assertNotNull(plan(analysis(120.0, 200.0), analysis(120.0, 180.0), sung, clear))
         for (span in sung) assertTrue(plan.out.loopStart - 0.3 >= span.end || plan.out.loopEnd <= span.start)
         assertEquals(LoopMix.Check.LYRICS, plan.out.checkedBy)
@@ -242,37 +242,36 @@ class LoopMixTest {
 
     @Test
     fun callsASoftVerseSung() {
-        // mask 0.3 everywhere but 176-186 s, as Afsos measured
-        val out = analysis(120.0, 200.0, listOf(vocals(130.0, 200.0, 0.3f, listOf(176.0 to 186.0))))
+        // mask 0.3 everywhere until 176 s, clean 176-188 s, as Afsos measured
+        val out = analysis(120.0, 200.0, listOf(vocals(130.0, 188.0, 0.3f, listOf(176.0 to 188.0))))
         val plan = assertNotNull(plan(out, analysis(120.0, 180.0), null, clear))
         assertTrue(plan.out.loopStart >= 176.5)
-        assertTrue(plan.out.loopEnd <= 186)
+        assertTrue(plan.out.loopEnd <= 189)
         assertEquals(LoopMix.Check.MASK, plan.out.checkedBy)
     }
 
     @Test
     fun fallsBackToA1BarLoopWhenOnlyOneCleanBarExists() {
-        // sung everywhere in the search but 180.5-182.5 (one bar)
-        val sung = listOf(LoopMix.Span(100.0, 180.2), LoopMix.Span(182.6, 199.0))
-        val plan = assertNotNull(plan(analysis(120.0, 200.0), analysis(120.0, 180.0), sung, clear))
+        // sung everywhere in the search until 180.2, leaving only 1 clean bar before 183.0s
+        val sung = listOf(LoopMix.Span(100.0, 180.2))
+        val plan = assertNotNull(plan(analysis(120.0, 183.0), analysis(120.0, 180.0), sung, clear))
         assertEquals(1, plan.out.bars)
         assertEquals(4 * 0.5, plan.out.loopEnd - plan.out.loopStart, 1e-9)
     }
 
     @Test
     fun anOpenLinesGuessedTailIsLeftToTheMask() {
-        // Line-synced lyrics: a line every 8 s from 140 s, none with an end, so each reads as
-        // sung until the next. The mask says the singing stops 3 s into each line.
-        val lines = (0 until 8).map { LoopMix.Line((140_000 + it * 8_000).toLong(), null, blank = false) }
+        // Line-synced lyrics: a line every 8 s from 140 s to 164 s. The mask says the singing stops 3 s into each line.
+        val lines = (0 until 4).map { LoopMix.Line((140_000 + it * 8_000).toLong(), null, blank = false) }
         val spans = LoopMix.sungSpans(lines)
-        val quiet = (0 until 8).map { (140.0 + it * 8 + 3) to (140.0 + it * 8 + 8) }
-        val out = analysis(120.0, 200.0, listOf(vocals(130.0, 200.0, 0.8f, quiet)))
+        val quiet = (0 until 4).map { (140.0 + it * 8 + 3) to (140.0 + it * 8 + 8) }
+        val out = analysis(120.0, 177.0, listOf(vocals(130.0, 177.0, 0.8f, quiet)))
         val plan = assertNotNull(plan(out, analysis(120.0, 180.0), spans, clear))
         assertEquals(LoopMix.Check.LYRICS_AND_MASK, plan.out.checkedBy)
         // never over a line's first words
         for (span in spans) assertTrue(plan.out.loopStart - 0.3 >= span.certainUntil || plan.out.loopEnd <= span.start)
         // and without a mask, the guessed tails still block it
-        assertNull(plan(analysis(120.0, 200.0, quiet = listOf(176.0 to 200.0)), analysis(120.0, 180.0), spans, clear))
+        assertNull(plan(analysis(120.0, 177.0, quiet = listOf(168.0 to 177.0)), analysis(120.0, 180.0), spans, clear))
     }
 
     @Test
