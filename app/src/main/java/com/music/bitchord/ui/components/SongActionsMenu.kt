@@ -846,7 +846,11 @@ private fun SleepOption(
 private fun singStatus(): String? {
     val level by AppSettings.singLevel.collectAsStateWithLifecycle()
     if (level <= 0.001f) return null
-    return stringResource(R.string.sing_level_percent, (level * 100).roundToInt())
+    return when {
+        level >= 0.98f -> stringResource(R.string.sing_status_karaoke)
+        level in 0.45f..0.55f -> stringResource(R.string.sing_status_duet)
+        else -> stringResource(R.string.sing_level_percent, ((1f - level) * 100).roundToInt())
+    }
 }
 
 /** What the sleep timer row shows on the right, or null when none is armed. */
