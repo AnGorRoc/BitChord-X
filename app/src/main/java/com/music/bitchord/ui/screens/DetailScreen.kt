@@ -889,7 +889,9 @@ fun DetailScreen(
             }
 
             // Albums / Singles & EPs carousels (artist pages).
-            items(page.sections) { shelf ->
+            // Keyed so a section that reloads or reorders keeps its carousel's scroll
+            // position instead of rebinding by slot; the index keeps a repeated title unique.
+            itemsIndexed(page.sections, key = { index, shelf -> "section_${index}_${shelf.title}" }) { _, shelf ->
                 val canShowAll = shelf.items.size > ARTIST_ROW_MAX_ITEMS
                 val displayItems = remember(shelf.items) {
                     if (canShowAll) shelf.items.take(ARTIST_ROW_MAX_ITEMS) else shelf.items
