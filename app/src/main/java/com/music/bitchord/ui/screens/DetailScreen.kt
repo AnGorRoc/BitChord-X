@@ -188,6 +188,7 @@ import com.music.bitchord.ui.components.trackColumnWidth
 import com.music.bitchord.ui.haptics.Haptic
 import com.music.bitchord.ui.haptics.rememberHaptics
 import com.music.bitchord.ui.icons.BitChordIcons
+import com.music.bitchord.ui.icons.SfIcons
 import com.music.bitchord.ui.player.CanvasArtworkPlayer
 import com.music.bitchord.ui.theme.ArtworkPalette
 import com.music.bitchord.ui.theme.rememberArtworkPalette
@@ -484,7 +485,7 @@ fun DetailScreen(
     // rest of the page. Null on any page that is itself a reading of this
     // device — the Downloads folder, one downloaded playlist — where every row
     // qualifies and the badge would be decoration rather than information.
-    val downloadedTint = palette.accent.takeUnless { page.browseId.startsWith("local:") }
+    val downloadedTint = palette.accent.takeUnless { page.browseId.startsWith("local:") || page.browseId.startsWith("radio:") }
 
     // Animated cover art on the header, the same feature the player has.
     // Albums only: a playlist's artwork is a collage and an artist page's is a
@@ -1091,11 +1092,9 @@ private fun ReleaseHeader(
                 horizontalArrangement = Arrangement.spacedBy(RELEASE_ACTION_GAP),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                if (page.browseId.startsWith("local:")) {
-                    // Already on this device — a folder, a download, a local
-                    // playlist — so there is no library to add it to, and a
-                    // greyed-out plus would only promise one. Apple Music's
-                    // own pair for that case: Play and Shuffle, side by side.
+                if (page.browseId.startsWith("local:") || page.browseId.startsWith("radio:")) {
+                    // Already on this device or dynamic radio — so there is no library
+                    // to add it to. Apple Music's own pair for that case: Play and Shuffle, side by side.
                     if (songs.isNotEmpty()) {
                         ActionPill(
                             icon = BitChordIcons.Play,
@@ -1113,6 +1112,9 @@ private fun ReleaseHeader(
                             size = RELEASE_SIDE_BUTTON,
                             modifier = Modifier.weight(1f),
                         )
+                    }
+                    if (page.browseId.startsWith("radio:")) {
+                        return@Row
                     }
                     // The song cache's copies, saved to Downloads in one go —
                     // from disk, so it works offline. See [LocalFolder.onDownload].
@@ -2528,6 +2530,7 @@ private fun DetailPage.headerLines(trackCount: Int, playtime: String? = null): P
     // artist page, but it is still billed as the artist it is.
     // A device directory plays like a playlist, but it is billed as a folder.
     val localKind = when {
+        browseId.startsWith("radio:") -> "Radio"
         LocalGroups.isArtist(browseId) -> stringResource(R.string.artist)
         LocalGroups.isDirectory(browseId) -> stringResource(R.string.folder)
         else -> null
@@ -2545,6 +2548,7 @@ private fun DetailPage.headerLines(trackCount: Int, playtime: String? = null): P
 
 /** The glyph on a release page's placeholder sleeve: what kind of thing has no cover. */
 private fun DetailPage.placeholderIcon(): ImageVector = deviceFolderIcon(browseId) ?: when {
+    browseId.startsWith("radio:") -> SfIcons.Radio
     LocalGroups.isArtist(browseId) -> Icons.Rounded.Person
     OfflinePlaylists.isLikedPage(browseId) -> Icons.Rounded.Favorite
     LocalGroups.isDirectory(browseId) -> Icons.Rounded.Folder
@@ -2561,7 +2565,7 @@ private fun String.capitalizeWords(): String =
 
 /** Subtitle words that name what a page *is* rather than who made it. */
 private val KIND_WORDS = setOf(
-    "album", "single", "ep", "playlist", "artist", "podcast", "episode", "song", "video",
+    "album", "single", "ep", "playlist", "artist", "podcast", "episode", "song", "video", "radio",
 )
 
 @Composable

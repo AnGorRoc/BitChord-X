@@ -369,6 +369,7 @@ enum class PlaybackSourceType {
     BROWSE,
     SHARED_LINK,
     QUEUE,
+    RADIO,
 }
 
 /** A non-track search result: album, artist or playlist. */

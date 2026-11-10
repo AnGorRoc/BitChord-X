@@ -11,6 +11,7 @@ import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.unit.isSpecified
 import com.music.bitchord.data.model.ArtistCredit
 import com.music.bitchord.data.model.CreditSegment
+import com.music.bitchord.data.model.PlaybackSourceType
 import com.music.bitchord.data.model.creditSegments
 import com.music.bitchord.sharedui.resources.*
 
@@ -160,7 +161,7 @@ private const val AUTOPLAY_TAP_WINDOW_MS = 700L
 internal fun playbackOriginText(song: Song, playedBy: String?): String =
     playedBy?.let {
         stringResource(Res.string.played_by, it)
-    } ?: song.radioName?.let {
+    } ?: (song.radioName ?: song.playbackSource.takeIf { song.playbackSourceType == PlaybackSourceType.RADIO })?.let {
         stringResource(Res.string.playing_radio, it)
     } ?: stringResource(
         Res.string.playing_from,
