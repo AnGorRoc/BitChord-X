@@ -276,6 +276,9 @@ jobs:
     if: always() && needs.check.outputs.exists != 'true' && needs.android.result == 'success' && !cancelled()
     runs-on: ubuntu-24.04
     steps:
+    - name: Checkout Repository
+      uses: actions/checkout@v5
+
     - name: Download all release artifacts
       uses: actions/download-artifact@v4
       with:
@@ -288,9 +291,11 @@ jobs:
     - name: Create GitHub Release
       env:
         GH_TOKEN: ${{ github.token }}
+        GH_REPO: ${{ github.repository }}
       run: |
         tag="${{ needs.check.outputs.tag }}"
         flags=""
         case "$tag" in *-*) flags="--prerelease" ;; esac
         gh release create "$tag" release-dist/* \
+          --repo "$GH_REPO" \
           --title "BitChord-X $tag" --generate-notes $flags

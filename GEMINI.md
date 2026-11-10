@@ -81,7 +81,8 @@ Previamente se desarrollaron e integraron las siguientes funcionalidades clave p
 - **Branch Activa**: `main` (commits de `fvkinGordo` consolidados y verificados)
 - **Estado Actual**:
   - Commits de `fvkinGordo` integrados en `main`:
-    - `7e93b11a` fix(release): tune multiplatform packaging tasks and add resilient fallbacks
+    - `e5f12a3b` fix(release): checkout repository in publish job for release notes generation
+    - `41121338` fix(release): tune multiplatform packaging tasks and add resilient fallbacks
     - `fd03c8fb` chore(release): bump version to 1.9.2 and add multiplatform desktop release workflow
     - `0b033cb5` fix(ci): synchronize missing locale strings and adapt LoopMixTest to harmonic guards
     - `ca11746f` feat(spotify): enhance playlist import with intro dialog, destination selector and smooth animations
