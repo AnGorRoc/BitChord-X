@@ -229,6 +229,9 @@ fun findOnPath(tool: String): File? {
 fun cmakeBinary(): String = findOnPath("cmake")?.absolutePath ?: "cmake"
 
 val buildAnalysisNative by tasks.registering {
+    // onlyIf / doLast call script-level helpers (findOnPath, cmakeBinary), which the configuration
+    // cache cannot serialise. Builds that include this task simply skip the cache.
+    notCompatibleWithConfigurationCache("uses script-level helpers at execution time")
     val cmakeSource = project.file("native")
     val outputDir = analysisNativeDir.get().asFile
     val crossing = crossBuildingForWindows
@@ -309,6 +312,9 @@ val buildAnalysisNative by tasks.registering {
  * sole owner of decoration and behaviour.
  */
 val buildWindowNative by tasks.registering {
+    // onlyIf / doLast call script-level helpers (findOnPath, cmakeBinary), which the configuration
+    // cache cannot serialise. Builds that include this task simply skip the cache.
+    notCompatibleWithConfigurationCache("uses script-level helpers at execution time")
     val cmakeSource = project.file("native/window")
     val outputDir = windowNativeDir.get().asFile
     val crossing = crossBuildingForWindows
