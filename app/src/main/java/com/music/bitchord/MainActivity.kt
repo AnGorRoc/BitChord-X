@@ -38,6 +38,7 @@ import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
@@ -206,9 +207,15 @@ import com.music.bitchord.ui.screens.SourceEditorAlert
 import com.music.bitchord.ui.screens.SourcesScreen
 import com.music.bitchord.data.sources.TrackMatcher
 import com.music.bitchord.ui.screens.SpotifyCanvasAuthScreen
+import com.music.bitchord.ui.screens.SpotifyLibraryIntroDialog
 import com.music.bitchord.ui.screens.SpotifyLibraryScreen
 import com.music.bitchord.ui.screens.SpotifyLibraryState
 import com.music.bitchord.data.spotify.SPOTIFY_PAGE_PREFIX
+import com.music.bitchord.data.spotify.SpotifyLibrary
+import com.music.bitchord.data.spotify.SpotifyImporter
+import com.music.bitchord.data.spotify.SpotifyImportTrack
+import com.music.bitchord.data.model.PlaylistPrivacy
+import kotlin.coroutines.cancellation.CancellationException
 import com.music.bitchord.playback.AudioCache
 import com.music.bitchord.playback.SharedLinkOutcome
 import com.music.bitchord.playback.SharedLinkResolver
@@ -1718,7 +1725,7 @@ private fun BitChordApp(
                 val seed = song.copy(
                     radioName = song.title,
                     playbackSource = song.title,
-                    playbackSourceType = PlaybackSourceType.SHARED_LINK,
+                    playbackSourceType = PlaybackSourceType.RADIO,
                     playbackSourceId = song.videoId,
                 )
                 val related = loadAutoplayTracks(
@@ -2529,6 +2536,7 @@ private fun BitChordApp(
         top = topBarContentPadding(),
         bottom = if (player.song != null) 210.dp else 140.dp,
     )
+    val floatingBarsHeight = remember { mutableIntStateOf(0) }
 
     // Whether the keyboard is up. Only the flip is read here — never its
     // height, which changes every frame of the animation and would recompose
@@ -2627,7 +2635,7 @@ private fun BitChordApp(
                 effectiveSong.copy(
                     radioName = name,
                     playbackSource = name,
-                    playbackSourceType = PlaybackSourceType.SHARED_LINK,
+                    playbackSourceType = PlaybackSourceType.RADIO,
                     playbackSourceId = videoId,
                 )
             }
@@ -2829,12 +2837,30 @@ private fun BitChordApp(
                 dismissPlayer()
                 navigator.clear()
 
+                val isRadio = sourceType == PlaybackSourceType.RADIO || displayedSong.radioName != null
+                if (isRadio) {
+                    val id = sourceId ?: displayedSong.videoId
+                    viewModel.closeMoodGenre()
+                    val radioSongs = player.queue.takeIf { it.isNotEmpty() }
+                        ?: controller?.let { c -> (0 until c.mediaItemCount).map { c.getMediaItemAt(it).toSong() } }
+                        ?: listOf(displayedSong)
+                    viewModel.openRadioDetail(
+                        seedVideoId = id,
+                        title = displayedSong.radioName ?: displayedSong.playbackSource ?: displayedSong.title,
+                        artist = displayedSong.artist,
+                        thumbnailUrl = displayedSong.thumbnailUrl,
+                        songs = radioSongs,
+                    )
+                    return@openSource
+                }
+
                 when (sourceType) {
                     PlaybackSourceType.BROWSE -> {
                         val id = sourceId ?: return@openSource
                         viewModel.closeMoodGenre()
                         viewModel.openDetail(id, sourceTitle)
                     }
+                    PlaybackSourceType.RADIO -> Unit
                     PlaybackSourceType.HOME -> {
                         viewModel.closeMoodGenre()
                         selectedTab = TAB_HOME
@@ -3146,6 +3172,9 @@ private fun BitChordApp(
                         } else if (pageRoute == AppRoute.Spotify) {
                             SpotifyLibraryScreen(
                                 state = spotifyLibraryState,
+                                hazeState = hazeState,
+                                signedIn = signedIn,
+                                bottomBarsHeight = with(LocalDensity.current) { floatingBarsHeight.intValue.toDp() },
                                 onOpenPlaylist = { playlist ->
                                     viewModel.openDetail(
                                         browseId = SPOTIFY_PAGE_PREFIX + playlist.id,
@@ -3157,6 +3186,34 @@ private fun BitChordApp(
                                 },
                                 onOpenLogin = { showSpotifyLogin = true },
                                 onOpenTokenSetup = { showSpotifyCanvasAuth = true },
+                                onOpenLinkImport = { showSpotifyImportDialog = true },
+                                onImportToYouTube = { playlists ->
+                                    scope.launch {
+                                        playlists.forEach { playlist ->
+                                            try {
+                                                val tracks = SpotifyLibrary.tracks(playlist.id)
+                                                val (songs, _) = SpotifyImporter.resolveToSongs(
+                                                    tracks = tracks.map { SpotifyImportTrack(title = it.title, artist = it.artist) },
+                                                ) { _, _ -> }
+                                                if (songs.isNotEmpty()) {
+                                                    viewModel.createPlaylistWithVideoIds(
+                                                        title = playlist.name,
+                                                        privacy = PlaylistPrivacy.PRIVATE,
+                                                        videoIds = songs.map { it.videoId },
+                                                        songs = songs,
+                                                        forceLocal = false,
+                                                    ) { _, pTitle, _ ->
+                                                        showQueueNotice(context.getString(R.string.spotify_import_done, pTitle))
+                                                    }
+                                                }
+                                            } catch (e: CancellationException) {
+                                                throw e
+                                            } catch (e: Exception) {
+                                                showQueueNotice(context.getString(R.string.spotify_import_failed, e.message.orEmpty()))
+                                            }
+                                        }
+                                    }
+                                },
                                 contentPadding = listPadding,
                             )
                         } else if (pageRoute == AppRoute.Discord) {
@@ -3361,9 +3418,10 @@ private fun BitChordApp(
                                     refusedByHost()
                                     return
                                 }
+                                val isRadio = page.browseId.startsWith("radio:")
                                 val source = QueueSource(
                                     page.title,
-                                    PlaybackSourceType.BROWSE,
+                                    if (isRadio) PlaybackSourceType.RADIO else PlaybackSourceType.BROWSE,
                                     page.browseId,
                                 )
                                 val selected = songs.getOrNull(index)
@@ -3372,6 +3430,7 @@ private fun BitChordApp(
                                 val pageSongSort = detailSongSorts[page.browseId] ?: SongSort.DEFAULT
                                 val isCustomOrder = pageSongSort != SongSort.DEFAULT || songs.size != rawPageSongs.size
                                 val useBounded =
+                                    !isRadio &&
                                     !isCustomOrder &&
                                     (page.type == BrowseType.ALBUM || page.type == BrowseType.PLAYLIST) &&
                                         selected?.contextEntryKey()?.let(pageSongKeys::contains) == true &&
@@ -4281,7 +4340,7 @@ private fun BitChordApp(
                                         add(
                                             TopBarActionItem(key = "spotify") {
                                                 IconButton(
-                                                    onClick = spotifyLibraryState::startSelecting,
+                                                    onClick = spotifyLibraryState::requestStartSelecting,
                                                     modifier = Modifier.size(TOP_CONTROL_SIZE),
                                                 ) {
                                                     Icon(
@@ -4388,7 +4447,6 @@ private fun BitChordApp(
 
                 // Whichever bar is drawing reports its height here, for the
                 // guard to read at layout — never in composition, see the guard.
-                val floatingBarsHeight = remember { mutableIntStateOf(0) }
                 FloatingBarsTapGuard(
                     barsHeight = { if (selectedTab == TAB_SEARCH) 0 else floatingBarsHeight.intValue },
                     modifier = Modifier.align(Alignment.BottomCenter),
@@ -4436,12 +4494,6 @@ private fun BitChordApp(
                         .align(Alignment.BottomCenter)
                         .widthIn(max = FLOATING_BAR_MAX_WIDTH)
                         .fillMaxWidth()
-                        .animateContentSize(
-                            animationSpec = spring(
-                                dampingRatio = 0.82f,
-                                stiffness = 380f,
-                            ),
-                        )
                         .onSizeChanged { floatingBarsHeight.intValue = it.height },
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
@@ -4452,39 +4504,29 @@ private fun BitChordApp(
                         enter = if (reducePlayerMotion) {
                             fadeIn(tween(180)) + expandVertically(tween(200))
                         } else {
-                            fadeIn(tween(220)) +
+                            fadeIn(tween(200)) +
                                 expandVertically(
                                     expandFrom = Alignment.Bottom,
-                                    clip = false,
-                                    animationSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
-                                ) +
-                                slideInVertically(
-                                    initialOffsetY = { (it * 0.45f).toInt() },
-                                    animationSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                                    animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
                                 ) +
                                 scaleIn(
-                                    initialScale = 0.72f,
+                                    initialScale = 0.80f,
                                     transformOrigin = TransformOrigin(0.5f, 1f),
-                                    animationSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                                    animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
                                 )
                         },
                         exit = if (reducePlayerMotion) {
                             fadeOut(tween(140)) + shrinkVertically(tween(180))
                         } else {
-                            fadeOut(tween(180)) +
+                            fadeOut(tween(160)) +
                                 shrinkVertically(
                                     shrinkTowards = Alignment.Bottom,
-                                    clip = false,
-                                    animationSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
-                                ) +
-                                slideOutVertically(
-                                    targetOffsetY = { (it * 0.45f).toInt() },
-                                    animationSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                                    animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
                                 ) +
                                 scaleOut(
-                                    targetScale = 0.72f,
+                                    targetScale = 0.80f,
                                     transformOrigin = TransformOrigin(0.5f, 1f),
-                                    animationSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                                    animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
                                 )
                         },
                     ) {
@@ -5372,21 +5414,34 @@ private fun BitChordApp(
             )
         }
 
+        if (spotifyLibraryState.showIntroModal) {
+            BackHandler { spotifyLibraryState.dismissIntroModal() }
+            SpotifyLibraryIntroDialog(
+                hazeState = hazeState,
+                signedIn = signedIn,
+                destination = spotifyLibraryState.destination,
+                onDestinationChange = { spotifyLibraryState.destination = it },
+                onStartSelecting = spotifyLibraryState::startSelecting,
+                onDismiss = spotifyLibraryState::dismissIntroModal,
+            )
+        }
+
         if (showSpotifyImportDialog) {
             BackHandler { showSpotifyImportDialog = false }
             SpotifyImportAlert(
                 hazeState = hazeState,
                 signedIn = signedIn,
-                onImported = { title, privacy, songs ->
+                onImported = { title, privacy, songs, saveLocally ->
                     viewModel.createPlaylistWithVideoIds(
-                        title,
-                        privacy,
-                        songs.map { it.videoId },
-                        songs,
+                        title = title,
+                        privacy = privacy,
+                        videoIds = songs.map { it.videoId },
+                        songs = songs,
+                        forceLocal = saveLocally,
                     ) { browseId, pTitle, savedLocally ->
                         showQueueNotice(
                             context.getString(
-                                if (savedLocally && signedIn) R.string.spotify_import_local_fallback
+                                if (savedLocally && signedIn && !saveLocally) R.string.spotify_import_local_fallback
                                 else R.string.spotify_import_done,
                                 pTitle,
                             ),
@@ -6088,6 +6143,7 @@ private fun BitChordApp(
             BackHandler { showSing = false }
             ModalBottomSheet(
                 onDismissRequest = { showSing = false },
+                sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
                 containerColor = MaterialTheme.colorScheme.background,
             ) {
                 SingSheet(onDismiss = { showSing = false })

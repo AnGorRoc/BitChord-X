@@ -2,12 +2,18 @@ package com.music.bitchord.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,13 +36,17 @@ import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.Sync
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Switch
@@ -69,8 +79,12 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.music.bitchord.R
@@ -89,11 +103,20 @@ import kotlinx.coroutines.CancellationException
 import androidx.compose.ui.platform.LocalContext
 import com.music.bitchord.sharedui.resources.Res
 import com.music.bitchord.sharedui.resources.spotify_logo
+import com.music.bitchord.ui.components.DestinationOptionCard
+import com.music.bitchord.ui.components.MenuFrostDark
 import com.music.bitchord.ui.components.PAGE_GUTTER
+import com.music.bitchord.ui.components.SpotifyImportDestination
+import com.music.bitchord.ui.components.dialogFrostBackground
+import com.music.bitchord.ui.components.liveMenuFrost
+import com.music.bitchord.ui.components.optimizedHazeEffect
 import com.music.bitchord.ui.haptics.Haptic
 import com.music.bitchord.ui.haptics.rememberHaptics
 import com.music.bitchord.ui.components.thumbnailBorder
 import com.music.bitchord.ui.components.topBarContentPadding
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
+import dev.chrisbanes.haze.materials.HazeMaterials
 import org.jetbrains.compose.resources.painterResource
 
 /**
@@ -111,9 +134,20 @@ class SpotifyLibraryState {
         private set
     var selectedIds by mutableStateOf<Set<String>>(emptySet())
         private set
+    var showIntroModal by mutableStateOf(false)
+    var destination by mutableStateOf(SpotifyImportDestination.LOCAL)
+
+    fun requestStartSelecting() {
+        showIntroModal = true
+    }
+
+    fun dismissIntroModal() {
+        showIntroModal = false
+    }
 
     /** Starts choosing, with what is not on the device yet already ticked. */
     fun startSelecting() {
+        showIntroModal = false
         val imported = LocalPlaylistStore.playlists.value.mapNotNull { it.spotifyId }.toSet()
         selectedIds = playlists.map { it.id }.filter { it !in imported }.toSet()
         selecting = true
@@ -135,12 +169,18 @@ class SpotifyLibraryState {
     fun clear() {
         selecting = false
         selectedIds = emptySet()
+        showIntroModal = false
     }
 
     /** Imports what is ticked and leaves the choosing. */
-    fun importSelected() {
-        SpotifySync.dismiss()
-        SpotifySync.start(playlists.filter { it.id in selectedIds })
+    fun importSelected(onYouTubeImport: ((List<SpotifyPlaylist>) -> Unit)? = null) {
+        val selected = playlists.filter { it.id in selectedIds }
+        if (destination == SpotifyImportDestination.YOUTUBE && onYouTubeImport != null) {
+            onYouTubeImport(selected)
+        } else {
+            SpotifySync.dismiss()
+            SpotifySync.start(selected)
+        }
         clear()
     }
 }
@@ -154,7 +194,7 @@ class SpotifyLibraryState {
  * action. The same bar then reports the import while it runs and once it
  * ends, so the page never leaves for a dialog.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalHazeMaterialsApi::class)
 @Composable
 fun SpotifyLibraryScreen(
     state: SpotifyLibraryState,
@@ -163,6 +203,11 @@ fun SpotifyLibraryScreen(
     onOpenTokenSetup: () -> Unit,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
+    hazeState: HazeState? = null,
+    signedIn: Boolean = false,
+    bottomBarsHeight: Dp = 0.dp,
+    onOpenLinkImport: (() -> Unit)? = null,
+    onImportToYouTube: ((List<SpotifyPlaylist>) -> Unit)? = null,
 ) {
     val cookie by AppSettings.spotifySpdcToken.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -236,7 +281,9 @@ fun SpotifyLibraryScreen(
     val activeId = (sync as? SpotifySyncState.Running)?.playlist?.id
     var unmatchedDialogTracks by remember { mutableStateOf<List<SpotifyTrack>?>(null) }
 
-    BackHandler(enabled = state.selecting) { state.clear() }
+    BackHandler(enabled = state.selecting) {
+        state.clear()
+    }
 
     // Pulling down from the top reads the library again. The indicator sits
     // where the page's own content starts, and only appears during explicit manual refresh.
@@ -270,7 +317,7 @@ fun SpotifyLibraryScreen(
                     Icon(
                         painter = painterResource(Res.drawable.spotify_logo),
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onBackground,
+                        tint = Color.White,
                         modifier = Modifier.size(38.dp),
                     )
                     Spacer(Modifier.width(12.dp))
@@ -301,7 +348,7 @@ fun SpotifyLibraryScreen(
                 }
             } else {
                 if (state.selecting) {
-                    item { SelectionHeader(state) }
+                    item { SelectionHeader(state = state, signedIn = signedIn) }
                 }
                 // The pull's own indicator covers a reload of a list already on
                 // screen; this spinner is only for the first read.
@@ -364,30 +411,45 @@ fun SpotifyLibraryScreen(
             )
         }
 
-        // The one action of choosing sits where the thumb is, just clear of the
-        // tab bar and mini player the list already leaves room for.
+        // The one action of choosing sits where the thumb is, resting right above
+        // the miniplayer with its respective gap.
         val haptics = rememberHaptics()
+        val bottomOffset = if (bottomBarsHeight > 0.dp) {
+            bottomBarsHeight + 14.dp
+        } else {
+            (contentPadding.calculateBottomPadding() - 50.dp).coerceAtLeast(16.dp)
+        }
         AnimatedVisibility(
             visible = state.selecting,
-            enter = fadeIn() + slideInVertically { it / 2 },
-            exit = fadeOut() + slideOutVertically { it / 2 },
+            enter = fadeIn(spring(0.82f, 380f)) +
+                    slideInVertically(spring(0.82f, 380f)) { it } +
+                    scaleIn(spring(0.82f, 380f), initialScale = 0.85f),
+            exit = fadeOut(spring(0.82f, 380f)) +
+                   slideOutVertically(spring(0.82f, 380f)) { it } +
+                   scaleOut(spring(0.82f, 380f), targetScale = 0.85f),
             modifier = Modifier
                 .align(Alignment.BottomCenter)
-                .padding(bottom = (contentPadding.calculateBottomPadding() - 8.dp).coerceAtLeast(0.dp)),
+                .padding(bottom = bottomOffset),
         ) {
             val count = state.selectedIds.size
             val import = stringResource(R.string.spotify_import_button)
+            val destTag = if (state.destination == SpotifyImportDestination.LOCAL) {
+                stringResource(R.string.spotify_import_destination_tag_local)
+            } else {
+                stringResource(R.string.spotify_import_destination_tag_youtube)
+            }
             BarPill(
-                icon = Icons.Rounded.Download,
-                label = if (count > 0) "$import · $count" else import,
+                icon = if (state.destination == SpotifyImportDestination.LOCAL) Icons.Rounded.PhoneAndroid else Icons.Rounded.Cloud,
+                label = if (count > 0) "$import ($destTag) · $count" else "$import ($destTag)",
                 filled = true,
                 enabled = count > 0,
                 onClick = {
                     haptics.play(Haptic.Resume)
-                    state.importSelected()
+                    state.importSelected(onImportToYouTube)
                 },
                 modifier = Modifier
-                    .shadow(10.dp, CircleShape)
+                    .shadow(12.dp, CircleShape)
+                    .animateContentSize(spring(0.82f, 380f))
                     .widthIn(min = 200.dp),
             )
         }
@@ -396,20 +458,21 @@ fun SpotifyLibraryScreen(
 }
 
 /**
- * What choosing looks like, as the top of the list rather than a card over it:
- * how many are ticked with a single control to tick or untick them all, what
- * the import does, and the one setting that goes with it as a switch, so its
- * state is plain to see.
+ * Clean and comfortable selection header showing selected count, interactive destination pill,
+ * select/deselect action, and auto-sync switch without cluttered raw text.
  */
 @Composable
-private fun SelectionHeader(state: SpotifyLibraryState) {
+private fun SelectionHeader(
+    state: SpotifyLibraryState,
+    signedIn: Boolean,
+) {
     val count = state.selectedIds.size
     val allSelected = state.playlists.isNotEmpty() && count == state.playlists.size
     val autoSync by AppSettings.spotifyAutoSync.collectAsStateWithLifecycle()
     val haptics = rememberHaptics()
     Column(Modifier.fillMaxWidth()) {
         Row(
-            modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 8.dp),
+            modifier = Modifier.fillMaxWidth().padding(start = 8.dp, end = 12.dp, top = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             IconButton(onClick = state::clear) {
@@ -422,21 +485,59 @@ private fun SelectionHeader(state: SpotifyLibraryState) {
             }
             Text(
                 text = stringResource(R.string.selected_count, count),
-                style = MaterialTheme.typography.titleMedium,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
                 color = MaterialTheme.colorScheme.onBackground,
                 modifier = Modifier.weight(1f),
             )
+            // Interactive destination toggle pill
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(percent = 50))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .clickable(enabled = signedIn) {
+                        state.destination = if (state.destination == SpotifyImportDestination.LOCAL) {
+                            SpotifyImportDestination.YOUTUBE
+                        } else {
+                            SpotifyImportDestination.LOCAL
+                        }
+                    }
+                    .padding(horizontal = 9.dp, vertical = 4.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    Icon(
+                        imageVector = if (state.destination == SpotifyImportDestination.LOCAL) {
+                            Icons.Rounded.PhoneAndroid
+                        } else {
+                            Icons.Rounded.Cloud
+                        },
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(13.dp),
+                    )
+                    Text(
+                        text = if (state.destination == SpotifyImportDestination.LOCAL) {
+                            stringResource(R.string.spotify_import_destination_tag_local)
+                        } else {
+                            stringResource(R.string.spotify_import_destination_tag_youtube)
+                        },
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp, fontWeight = FontWeight.SemiBold),
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
+            Spacer(Modifier.width(8.dp))
             TextButton(onClick = { if (allSelected) state.deselectAll() else state.selectAll() }) {
-                Text(stringResource(if (allSelected) R.string.deselect_all else R.string.select_all))
+                Text(
+                    text = stringResource(if (allSelected) R.string.deselect_all else R.string.select_all),
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+                )
             }
         }
-        Text(
-            text = stringResource(R.string.spotify_sync_description),
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.padding(horizontal = PAGE_GUTTER).padding(bottom = 12.dp),
-        )
-        HorizontalDivider(Modifier.padding(horizontal = PAGE_GUTTER))
+        HorizontalDivider(Modifier.padding(horizontal = PAGE_GUTTER, vertical = 6.dp))
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -448,16 +549,16 @@ private fun SelectionHeader(state: SpotifyLibraryState) {
                         AppSettings.setSpotifyAutoSync(it)
                     },
                 )
-                .padding(horizontal = PAGE_GUTTER, vertical = 12.dp),
+                .padding(horizontal = PAGE_GUTTER, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Icon(
                 Icons.Rounded.Sync,
                 contentDescription = null,
                 tint = if (autoSync) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(22.dp),
+                modifier = Modifier.size(20.dp),
             )
-            Spacer(Modifier.width(16.dp))
+            Spacer(Modifier.width(14.dp))
             Column(Modifier.weight(1f)) {
                 Text(
                     text = stringResource(R.string.spotify_sync_auto),
@@ -818,4 +919,158 @@ private fun LibraryRow(
 private fun TrailingIcon(icon: ImageVector, tint: Color, description: String?) {
     Spacer(Modifier.width(12.dp))
     Icon(icon, contentDescription = description, tint = tint, modifier = Modifier.size(22.dp))
+}
+
+/**
+ * Modern introductory modal for importing Spotify library playlists.
+ * Informs the user they are entering the import system and gives them a clear choice
+ * between local on-device storage and directly syncing to YouTube Music.
+ */
+@OptIn(ExperimentalHazeMaterialsApi::class)
+@Composable
+internal fun SpotifyLibraryIntroDialog(
+    hazeState: HazeState?,
+    signedIn: Boolean,
+    destination: SpotifyImportDestination,
+    onDestinationChange: (SpotifyImportDestination) -> Unit,
+    onStartSelecting: () -> Unit,
+    onDismiss: () -> Unit,
+    onOpenLinkImport: (() -> Unit)? = null,
+) {
+    val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
+    val dialogShape = RoundedCornerShape(26.dp)
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.55f))
+            .clickable(
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() },
+                onClick = onDismiss,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(horizontal = 24.dp)
+                .widthIn(min = 300.dp, max = 360.dp)
+                .fillMaxWidth()
+                .dialogFrostBackground(hazeState, reduceDynamicBlur, dialogShape)
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() },
+                    onClick = {},
+                )
+                .animateContentSize(
+                    animationSpec = spring(
+                        dampingRatio = 0.82f,
+                        stiffness = 380f,
+                    ),
+                )
+                .padding(horizontal = 22.dp, vertical = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Icon(
+                painter = painterResource(Res.drawable.spotify_logo),
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(42.dp),
+            )
+
+            Spacer(Modifier.height(14.dp))
+
+            Text(
+                text = stringResource(R.string.spotify_library_intro_title),
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.Bold,
+                    fontSize = 20.sp,
+                ),
+                color = Color.White,
+                textAlign = TextAlign.Center,
+            )
+
+            Text(
+                text = stringResource(R.string.spotify_library_intro_desc),
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontSize = 13.sp,
+                    lineHeight = 17.sp,
+                ),
+                color = Color.White.copy(alpha = 0.70f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 6.dp, bottom = 16.dp),
+            )
+
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                // Local
+                val isLocal = destination == SpotifyImportDestination.LOCAL
+                DestinationOptionCard(
+                    title = stringResource(R.string.spotify_import_target_local_title),
+                    subtitle = stringResource(R.string.spotify_import_target_local_desc),
+                    icon = Icons.Rounded.PhoneAndroid,
+                    selected = isLocal,
+                    enabled = true,
+                    onClick = { onDestinationChange(SpotifyImportDestination.LOCAL) },
+                )
+
+                // YouTube
+                val isYoutube = destination == SpotifyImportDestination.YOUTUBE
+                DestinationOptionCard(
+                    title = stringResource(R.string.spotify_import_target_youtube_title),
+                    subtitle = if (signedIn) {
+                        stringResource(R.string.spotify_import_target_youtube_desc)
+                    } else {
+                        stringResource(R.string.spotify_import_target_youtube_login_req)
+                    },
+                    icon = Icons.Rounded.Cloud,
+                    selected = isYoutube && signedIn,
+                    enabled = signedIn,
+                    onClick = {
+                        if (signedIn) onDestinationChange(SpotifyImportDestination.YOUTUBE)
+                    },
+                )
+            }
+
+            Spacer(Modifier.height(20.dp))
+
+            Button(
+                onClick = onStartSelecting,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(percent = 50),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color.White,
+                    contentColor = Color.Black,
+                ),
+            ) {
+                Text(
+                    text = stringResource(R.string.spotify_library_intro_start_selecting),
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold, fontSize = 14.sp),
+                )
+                Spacer(Modifier.width(8.dp))
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+
+            Spacer(Modifier.height(4.dp))
+
+            TextButton(
+                onClick = onDismiss,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = stringResource(R.string.spotify_import_cancel),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.White.copy(alpha = 0.60f),
+                )
+            }
+        }
+    }
 }

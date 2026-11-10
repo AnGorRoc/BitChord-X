@@ -1157,12 +1157,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         privacy: PlaylistPrivacy,
         videoIds: List<String>,
         songs: List<Song> = emptyList(),
+        forceLocal: Boolean = false,
         /** [savedLocally] is true when the playlist went to this device, not YouTube Music. */
         onResult: ((browseId: String?, title: String, savedLocally: Boolean) -> Unit)? = null,
     ) {
         val name = title.trim().ifBlank { text(R.string.new_playlist) }
         viewModelScope.launch {
-            if (authStore.isSignedIn) {
+            if (authStore.isSignedIn && !forceLocal) {
                 val initialBatch = videoIds.take(50)
                 YtMusicRepository.createPlaylist(
                     title = name,
@@ -2932,6 +2933,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             openSpotifyPage(browseId, title, subtitle, thumbnailUrl)
             return
         }
+        if (browseId.startsWith("radio:")) {
+            val videoId = browseId.removePrefix("radio:")
+            openRadioDetail(
+                seedVideoId = videoId,
+                title = title,
+                artist = subtitle,
+                thumbnailUrl = thumbnailUrl,
+                songs = emptyList(),
+            )
+            return
+        }
         val resolved = browseTypeOf(browseId, type)
         _detailStack.value += DetailPage(
             browseId = browseId,
@@ -3286,6 +3298,72 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             songs = if (group.songs.isEmpty()) UiState.Error(text(R.string.no_tracks_here)) else UiState.Success(group.songs),
             type = group.type,
         )
+    }
+
+    /**
+     * Opens a dedicated station/radio page with its tracks loaded immediately
+     * from the active queue or fetched from the radio endpoint.
+     */
+    fun openRadioDetail(
+        seedVideoId: String,
+        title: String,
+        artist: String = "",
+        thumbnailUrl: String? = null,
+        songs: List<Song> = emptyList(),
+    ) {
+        val browseId = "radio:$seedVideoId"
+        val existingIndex = _detailStack.value.indexOfLast { it.browseId == browseId }
+        val radioTitle = if (title.endsWith("Radio", ignoreCase = true) || title.startsWith("Radio", ignoreCase = true)) {
+            title
+        } else {
+            "$title Radio"
+        }
+        val seedSong = songs.firstOrNull { it.videoId == seedVideoId } ?: songs.firstOrNull()
+        val cover = thumbnailUrl ?: seedSong?.thumbnailUrl
+        val artistName = artist.ifBlank { seedSong?.artist.orEmpty() }
+        val subtitle = if (artistName.isNotBlank()) "Radio • $artistName" else "Radio"
+
+        if (existingIndex >= 0) {
+            if (songs.isNotEmpty()) {
+                _detailStack.value = _detailStack.value.mapIndexed { index, page ->
+                    if (index == existingIndex) {
+                        page.copy(
+                            title = radioTitle,
+                            subtitle = subtitle,
+                            thumbnailUrl = cover ?: page.thumbnailUrl,
+                            songs = UiState.Success(songs),
+                        )
+                    } else page
+                }
+            }
+            if (existingIndex == _detailStack.value.lastIndex) return
+        } else {
+            _detailStack.value += DetailPage(
+                browseId = browseId,
+                title = radioTitle,
+                subtitle = subtitle,
+                thumbnailUrl = cover,
+                songs = if (songs.isNotEmpty()) UiState.Success(songs) else UiState.Loading,
+                type = BrowseType.OTHER,
+            )
+        }
+
+        if (songs.isEmpty()) {
+            viewModelScope.launch {
+                val result = YtMusicRepository.radio(seedVideoId).getOrNull().orEmpty()
+                _detailStack.value = _detailStack.value.map {
+                    if (it.browseId == browseId) {
+                        it.copy(
+                            songs = if (result.isNotEmpty()) {
+                                UiState.Success(result)
+                            } else {
+                                UiState.Error(text(R.string.no_tracks_here))
+                            },
+                        )
+                    } else it
+                }
+            }
+        }
     }
 
     /** Renames an open page in place — a device playlist, whose title is the store's. */
