@@ -908,6 +908,7 @@ private fun InAParty(
                 QrCode(
                     content = inviteLink,
                     size = 160.dp,
+                    codeText = state.code,
                     modifier = Modifier.border(
                         1.dp,
                         Color.Black.copy(alpha = 0.08f),

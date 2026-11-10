@@ -22,6 +22,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -164,9 +165,9 @@ fun MorphingBottomBar(
     val isInlineEffective = isInline && !isSearching
     val inlineProgress by animateFloatAsState(
         targetValue = if (isInlineEffective) 1f else 0f,
-        animationSpec = if (reduceAnimation) snap() else spring(
-            dampingRatio = 0.82f,
-            stiffness = 380f,
+        animationSpec = if (reduceAnimation) snap() else tween(
+            durationMillis = 220,
+            easing = FastOutSlowInEasing,
         ),
         label = "inlineProgress",
     )
@@ -291,12 +292,14 @@ fun MorphingBottomBar(
             .fillMaxWidth(),
     ) {
         val totalWidth = maxWidth
-        val spacing = 8.dp * (1f - searchProgress)
-        val searchWidth = restingCircleSize + (totalWidth - restingCircleSize) * searchProgress
+        val safeSearchProgress = searchProgress.coerceIn(0f, 1f)
+        val safeInlineProgress = inlineProgress.coerceIn(0f, 1f)
+        val spacing = (8.dp * (1f - safeSearchProgress)).coerceAtLeast(0.dp)
+        val searchWidth = (restingCircleSize + (totalWidth - restingCircleSize) * safeSearchProgress).coerceAtLeast(0.dp)
         val fullTabsWidth = (totalWidth - searchWidth - spacing).coerceAtLeast(0.dp)
-        val showInline = inlineProgress > 0.001f && inlineSong != null && searchProgress < 0.1f
+        val showInline = safeInlineProgress > 0.001f && inlineSong != null && safeSearchProgress < 0.1f
         val effectiveTabsWidth = if (showInline) {
-            lerp(fullTabsWidth, restingCircleSize, inlineProgress)
+            lerp(fullTabsWidth, restingCircleSize, safeInlineProgress).coerceAtLeast(0.dp)
         } else {
             fullTabsWidth
         }
@@ -314,7 +317,7 @@ fun MorphingBottomBar(
 
                 Box(
                     modifier = Modifier
-                        .width(effectiveTabsWidth)
+                        .width(effectiveTabsWidth.coerceAtLeast(0.dp))
                         .fillMaxHeight()
                         .graphicsLayer {
                             alpha = tabsAlpha
@@ -334,15 +337,13 @@ fun MorphingBottomBar(
                         ),
                     contentAlignment = Alignment.Center,
                 ) {
-                    if (inlineProgress < 0.8f) {
+                    if (safeInlineProgress < 0.85f) {
                         Box(
                             modifier = Modifier
                                 .fillMaxSize()
                                 .clipToBounds()
                                 .graphicsLayer {
-                                    alpha = (1f - inlineProgress * 1.5f).coerceIn(0f, 1f)
-                                    scaleX = 1f - inlineProgress * 0.15f
-                                    scaleY = 1f - inlineProgress * 0.15f
+                                    alpha = (1f - safeInlineProgress * 1.4f).coerceIn(0f, 1f)
                                 }
                                 .padding(horizontal = PILL_INSET, vertical = 4.dp),
                         ) {
@@ -490,11 +491,10 @@ fun MorphingBottomBar(
 
             // 2. MIDDLE PILL: Inline MiniPlayer (between Active Tab and Search)
             if (showInline) {
-                Spacer(Modifier.width(8.dp * inlineProgress))
+                Spacer(Modifier.width((8.dp * safeInlineProgress).coerceAtLeast(0.dp)))
 
-                val middleAlpha = ((inlineProgress - 0.05f) / 0.95f).coerceIn(0f, 1f)
-                val middleScale = 0.82f + 0.18f * inlineProgress
-                val middleOffsetY = -14f * (1f - inlineProgress)
+                val middleAlpha = ((safeInlineProgress - 0.05f) / 0.95f).coerceIn(0f, 1f)
+                val middleScale = 0.85f + 0.15f * safeInlineProgress
 
                 Box(
                     modifier = Modifier
@@ -504,7 +504,6 @@ fun MorphingBottomBar(
                             alpha = middleAlpha
                             scaleX = middleScale
                             scaleY = middleScale
-                            translationY = middleOffsetY
                         }
                         .clip(pillShape)
                         .then(surfaceModifier())
@@ -621,17 +620,17 @@ fun MorphingBottomBar(
                     }
                 }
 
-                Spacer(Modifier.width(8.dp * (1f - searchProgress)))
+                Spacer(Modifier.width((8.dp * (1f - safeSearchProgress)).coerceAtLeast(0.dp)))
             } else if (spacing > 0.dp && searchProgress < 0.99f) {
-                Spacer(Modifier.width(spacing))
+                Spacer(Modifier.width(spacing.coerceAtLeast(0.dp)))
             }
 
             // 2. RIGHT PILL: Search button -> Expanding Mega-Pill
             // Starts on the right as a circle (58x58dp) and expands leftward to take the full bar
-            val searchBoxModifier = if (searchProgress >= 0.99f) {
+            val searchBoxModifier = if (safeSearchProgress >= 0.99f) {
                 Modifier.fillMaxWidth().fillMaxHeight()
             } else {
-                Modifier.width(searchWidth).fillMaxHeight()
+                Modifier.width(searchWidth.coerceAtLeast(0.dp)).fillMaxHeight()
             }
 
             Box(

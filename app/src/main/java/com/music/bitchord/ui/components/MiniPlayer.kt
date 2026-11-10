@@ -361,7 +361,7 @@ private val COMPACT_PADDING_VERTICAL = 5.dp
 private val COMPACT_GLYPH_SLOT_HEIGHT = 34.dp
 
 /** Roughly the keyboard's own animation, so the bar settles with it. */
-private const val COMPACT_MILLIS = 250
+private const val COMPACT_MILLIS = 220
 
 /** Frosted mini player that rides just above the floating tab bar. */
 @OptIn(ExperimentalHazeMaterialsApi::class)
@@ -397,17 +397,15 @@ fun MiniPlayer(
     // twitched as the last of them landed.
     val compaction by animateFloatAsState(
         targetValue = if (compact) 1f else 0f,
-        animationSpec = spring(
-            dampingRatio = 0.82f,
-            stiffness = 380f,
-        ),
+        animationSpec = tween(durationMillis = COMPACT_MILLIS, easing = FastOutSlowInEasing),
         label = "miniCompaction",
     )
-    val artHeight = lerp(40.dp, COMPACT_ART_HEIGHT, compaction)
-    val rowPadding = lerp(ROW_PADDING_VERTICAL, COMPACT_PADDING_VERTICAL, compaction)
+    val clampedCompaction = compaction.coerceIn(0f, 1f)
+    val artHeight = lerp(40.dp, COMPACT_ART_HEIGHT, clampedCompaction)
+    val rowPadding = lerp(ROW_PADDING_VERTICAL, COMPACT_PADDING_VERTICAL, clampedCompaction)
     // Only the slots' height gives: their width stays, so play and skip keep
     // the places they have on the full bar.
-    val glyphSlotHeight = lerp(GLYPH_SLOT, COMPACT_GLYPH_SLOT_HEIGHT, compaction)
+    val glyphSlotHeight = lerp(GLYPH_SLOT, COMPACT_GLYPH_SLOT_HEIGHT, clampedCompaction)
     // percent rather than a dp figure, so the corner stays exactly half the
     // height if the row's contents ever change it — which is what keeps a pill
     // a pill instead of a rounded rectangle. Same idiom as [FloatingBottomBar]
@@ -419,12 +417,6 @@ fun MiniPlayer(
     Box(
         modifier = modifier
             .padding(horizontal = BAR_GUTTER)
-            .animateContentSize(
-                animationSpec = spring(
-                    dampingRatio = 0.82f,
-                    stiffness = 380f,
-                ),
-            )
             // Ahead of the surface, so a pull lifts the whole of it, frost and all.
             .miniPlayerGestures(
                 pull = pull,
@@ -471,10 +463,7 @@ fun MiniPlayer(
             // mini player does, rather than cropped into the square cover.
             val artWidth by animateDpAsState(
                 targetValue = if (song.isVideo) artHeight * (16f / 9f) else artHeight,
-                animationSpec = spring(
-                    dampingRatio = 0.82f,
-                    stiffness = 380f,
-                ),
+                animationSpec = tween(durationMillis = COMPACT_MILLIS, easing = FastOutSlowInEasing),
                 label = "miniArtWidth",
             )
             Box(
@@ -522,10 +511,11 @@ fun MiniPlayer(
                     modifier = Modifier
                         .layout { measurable, constraints ->
                             val placeable = measurable.measure(constraints)
-                            val height = (placeable.height * (1f - compaction)).roundToInt()
+                            val factor = (1f - compaction).coerceIn(0f, 1f)
+                            val height = (placeable.height * factor).roundToInt().coerceAtLeast(0)
                             layout(placeable.width, height) { placeable.place(0, 0) }
                         }
-                        .graphicsLayer { alpha = 1f - compaction },
+                        .graphicsLayer { alpha = (1f - compaction).coerceIn(0f, 1f) },
                 )
             }
             if (isLoading) {

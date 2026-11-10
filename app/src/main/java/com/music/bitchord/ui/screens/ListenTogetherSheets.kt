@@ -692,6 +692,7 @@ internal fun InviteSheet(
             QrCode(
                 content = link,
                 size = 160.dp,
+                codeText = code,
                 modifier = Modifier.border(
                     1.dp,
                     Color.Black.copy(alpha = 0.08f),
