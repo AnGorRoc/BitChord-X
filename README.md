@@ -120,7 +120,10 @@ The full list with technical details is in [ADDITIONS.md](ADDITIONS.md).
 
 <h1><a id="download"></a>Download</h1>
 
-<a href="https://github.com/AnGorRoc/BitChord-X/releases" target="_blank" rel="noopener noreferrer"><img src="https://cdn.jsdelivr.net/gh/JMcrafter26/badges@main/src/assets/supported/android/cozy.svg" alt="Download for Android" height="55"/></a>
+<a href="https://github.com/AnGorRoc/BitChord-X/releases" target="_blank" rel="noopener noreferrer"><img src="docs/badges/android-cozy.svg" alt="Download for Android" height="55"/></a>
+<a href="https://github.com/AnGorRoc/BitChord-X/releases" target="_blank" rel="noopener noreferrer"><img src="docs/badges/windows-cozy.svg" alt="Download for Windows" height="55"/></a>
+<a href="https://github.com/AnGorRoc/BitChord-X/releases" target="_blank" rel="noopener noreferrer"><img src="docs/badges/macos-cozy.svg" alt="Download for macOS" height="55"/></a>
+<a href="https://github.com/AnGorRoc/BitChord-X/releases" target="_blank" rel="noopener noreferrer"><img src="docs/badges/linux-cozy.svg" alt="Download for Linux" height="55"/></a>
 
 <br/>
 <br/>
