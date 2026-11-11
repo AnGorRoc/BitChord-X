@@ -28,6 +28,9 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.spring
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.animation.core.CubicBezierEasing
@@ -3042,10 +3045,57 @@ private fun BitChordApp(
                             (this as? AppDestination.Route)?.entry?.route is AppRoute.LibraryShowAll
                         val libraryShowAllSwap = (initial.isShowAll() && target == libraryTab) ||
                             (target.isShowAll() && initial == libraryTab)
-                        if (tabSwap || libraryShowAllSwap) {
-                            EnterTransition.None togetherWith ExitTransition.None
-                        } else {
-                            fadeIn(tween(180)) togetherWith fadeOut(tween(180))
+                        when {
+                            tabSwap -> {
+                                val forward = target.index >= initial.index
+                                if (forward) {
+                                    (slideInHorizontally(tween(220, easing = FastOutSlowInEasing)) { (it * 0.12f).toInt() } +
+                                        fadeIn(tween(200, easing = FastOutSlowInEasing))) togetherWith
+                                    (slideOutHorizontally(tween(180, easing = FastOutLinearInEasing)) { (-it * 0.12f).toInt() } +
+                                        fadeOut(tween(140, easing = FastOutLinearInEasing)))
+                                } else {
+                                    (slideInHorizontally(tween(220, easing = FastOutSlowInEasing)) { (-it * 0.12f).toInt() } +
+                                        fadeIn(tween(200, easing = FastOutSlowInEasing))) togetherWith
+                                    (slideOutHorizontally(tween(180, easing = FastOutLinearInEasing)) { (it * 0.12f).toInt() } +
+                                        fadeOut(tween(140, easing = FastOutLinearInEasing)))
+                                }
+                            }
+                            libraryShowAllSwap -> {
+                                val enteringShowAll = target.isShowAll()
+                                if (enteringShowAll) {
+                                    (fadeIn(tween(200, easing = FastOutSlowInEasing)) + scaleIn(initialScale = 0.95f, animationSpec = tween(220, easing = FastOutSlowInEasing))) togetherWith
+                                    (fadeOut(tween(140, easing = FastOutLinearInEasing)) + scaleOut(targetScale = 1.02f, animationSpec = tween(140)))
+                                } else {
+                                    (fadeIn(tween(180, easing = FastOutSlowInEasing)) + scaleIn(initialScale = 1.02f, animationSpec = tween(180, easing = FastOutSlowInEasing))) togetherWith
+                                    (fadeOut(tween(140, easing = FastOutLinearInEasing)) + scaleOut(targetScale = 0.95f, animationSpec = tween(140)))
+                                }
+                            }
+                            else -> {
+                                val isPush = when {
+                                    initial is AppDestination.Tab -> true
+                                    target is AppDestination.Tab -> false
+                                    initial is AppDestination.Route && target is AppDestination.Route -> target.entry.id > initial.entry.id
+                                    initial is AppDestination.Release && target is AppDestination.Release -> {
+                                        val targetIdx = detailStack.indexOfFirst { it.browseId == target.browseId }
+                                        val initialIdx = detailStack.indexOfFirst { it.browseId == initial.browseId }
+                                        if (targetIdx >= 0 && initialIdx >= 0) targetIdx >= initialIdx else true
+                                    }
+                                    target is AppDestination.Route && initial is AppDestination.Release -> target.entry.detailDepth >= detailStack.size
+                                    target is AppDestination.Release && initial is AppDestination.Route -> detailStack.size > initial.entry.detailDepth
+                                    else -> true
+                                }
+                                if (isPush) {
+                                    (slideInHorizontally(tween(240, easing = FastOutSlowInEasing)) { (it * 0.16f).toInt() } +
+                                        fadeIn(tween(200, easing = FastOutSlowInEasing))) togetherWith
+                                    (slideOutHorizontally(tween(180, easing = FastOutLinearInEasing)) { (-it * 0.10f).toInt() } +
+                                        fadeOut(tween(150, easing = FastOutLinearInEasing)))
+                                } else {
+                                    (slideInHorizontally(tween(200, easing = FastOutSlowInEasing)) { (-it * 0.10f).toInt() } +
+                                        fadeIn(tween(180, easing = FastOutSlowInEasing))) togetherWith
+                                    (slideOutHorizontally(tween(220, easing = FastOutLinearInEasing)) { (it * 0.16f).toInt() } +
+                                        fadeOut(tween(160, easing = FastOutLinearInEasing)))
+                                }
+                            }
                         }
                     },
                     modifier = Modifier
@@ -5807,13 +5857,17 @@ private fun BitChordApp(
                 tween<IntOffset>(durationMillis = 560, easing = OnboardingDismissEasing),
             ) { it },
         ) {
+            val spotifySpdcToken by AppSettings.spotifySpdcToken.collectAsStateWithLifecycle()
             OnboardingScreen(
                 signedIn = signedIn,
+                spotifyConnected = spotifySpdcToken.isNotBlank(),
                 initialName = remember {
                     ListenTogether.nickname().ifBlank { account?.name.orEmpty() }
                 },
                 onNameChosen = ListenTogether::setNickname,
                 onSignIn = { webSession = WebSessionMode.SIGN_IN },
+                onConnectSpotify = { showSpotifyLogin = true },
+                onOpenSpotifyTokenSetup = { showSpotifyCanvasAuth = true },
                 onFinish = AppSettings::setOnboardingComplete,
             )
         }

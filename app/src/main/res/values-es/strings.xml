@@ -1330,6 +1330,12 @@
     <string name="onboarding_sign_in_google">Iniciar sesión con Google</string>
     <string name="onboarding_skip_sign_in">Omitir inicio de sesión</string>
     <string name="onboarding_back">Atrás</string>
+    <string name="onboarding_spotify_title">Conecta tu Spotify</string>
+    <string name="onboarding_spotify_body">Trae tus listas de reproducción y canciones favoritas contigo. La música se reproduce a través de YouTube Music.</string>
+    <string name="onboarding_sign_in_spotify">Conectar con Spotify</string>
+    <string name="onboarding_spotify_connected">Spotify conectado</string>
+    <string name="onboarding_spotify_finish">Empezar</string>
+    <string name="onboarding_skip_spotify">Más tarde</string>
     <string name="wear_os_section">BitChord para Wear OS</string>
     <string name="wear_os_page_title">Wear OS</string>
     <string name="wear_os_your_watches">Tus relojes</string>

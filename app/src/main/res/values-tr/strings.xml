@@ -1518,4 +1518,11 @@
     <string name="sing_engine_title">Acoustic Engine</string>
     <string name="sing_badge_dsp">BITCHORD SING</string>
 
+    <!-- Spotify Onboarding -->
+    <string name="onboarding_spotify_title">Connect your Spotify</string>
+    <string name="onboarding_spotify_body">Bring your playlists and favorite music with you. Songs are matched on YouTube Music.</string>
+    <string name="onboarding_sign_in_spotify">Connect with Spotify</string>
+    <string name="onboarding_spotify_connected">Spotify connected</string>
+    <string name="onboarding_spotify_finish">Get started</string>
+    <string name="onboarding_skip_spotify">Maybe later</string>
 </resources>

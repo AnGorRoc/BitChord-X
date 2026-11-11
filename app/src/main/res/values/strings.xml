@@ -1275,6 +1275,12 @@
     <string name="onboarding_sign_in_google">Sign in with Google</string>
     <string name="onboarding_skip_sign_in">Skip sign in</string>
     <string name="onboarding_back">Back</string>
+    <string name="onboarding_spotify_title">Connect your Spotify</string>
+    <string name="onboarding_spotify_body">Bring your playlists and favorite music with you. Songs are matched on YouTube Music.</string>
+    <string name="onboarding_sign_in_spotify">Connect with Spotify</string>
+    <string name="onboarding_spotify_connected">Spotify connected</string>
+    <string name="onboarding_spotify_finish">Get started</string>
+    <string name="onboarding_skip_spotify">Maybe later</string>
     <string name="song_info">Song Info</string>
     <string name="song_info_album">Album</string>
     <string name="song_info_release_date">Release date</string>
