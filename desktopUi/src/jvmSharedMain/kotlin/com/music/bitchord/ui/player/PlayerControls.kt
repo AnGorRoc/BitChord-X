@@ -23,8 +23,11 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.Spring
@@ -34,6 +37,10 @@ import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.material.icons.rounded.AutoAwesome
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -184,6 +191,42 @@ internal fun PlaybackOriginCaption(
     )
 }
 
+@Composable
+private fun ScrubberTimestamps(
+    shown: () -> Float,
+    durationMs: Long,
+    tint: Color,
+) {
+    val elapsedSeconds by remember(shown, durationMs) {
+        derivedStateOf {
+            if (durationMs <= 0L) 0L else ((shown().coerceIn(0f, 1f) * durationMs).toLong() / 1000L)
+        }
+    }
+    val elapsedText = remember(elapsedSeconds) {
+        formatTime(elapsedSeconds * 1000L)
+    }
+    val remainingText = remember(elapsedSeconds, durationMs) {
+        val totalSeconds = durationMs / 1000L
+        "-" + formatTime((totalSeconds - elapsedSeconds).coerceAtLeast(0L) * 1000L)
+    }
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            text = elapsedText,
+            style = MaterialTheme.typography.labelMedium,
+            color = tint.copy(alpha = 0.55f),
+        )
+        Text(
+            text = remainingText,
+            style = MaterialTheme.typography.labelMedium,
+            color = tint.copy(alpha = 0.55f),
+        )
+    }
+}
+
 /**
  * The seek bar, with elapsed and remaining either side under it and
  * [centerLabel] — the quality badge — between them.
@@ -210,7 +253,7 @@ internal fun PlayerScrubber(
     onScrubFinished: () -> Unit,
     centerLabel: @Composable BoxScope.() -> Unit = {},
 ) {
-    val shown = shown()
+    val currentShown = shown()
     // Held as a State and read only inside the bar's draw: the blend republishes
     // every fade tick, and collecting it by value here would recompose the
     // scrubber and its labels thirty times a second for a change only the
@@ -226,7 +269,7 @@ internal fun PlayerScrubber(
     )
     Column(Modifier.fillMaxWidth()) {
         ThinSlider(
-            value = shown,
+            value = currentShown,
             onValueChange = onScrub,
             onValueChangeFinished = onScrubFinished,
             loading = loading,
@@ -241,21 +284,11 @@ internal fun PlayerScrubber(
                 // so pull the labels back up under it.
                 .offset(y = (-9).dp),
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(
-                    text = formatTime((shown * durationMs).toLong()),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = LocalPlayerTint.current.copy(alpha = 0.55f),
-                )
-                Text(
-                    text = "-" + formatTime(durationMs - (shown * durationMs).toLong()),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = LocalPlayerTint.current.copy(alpha = 0.55f),
-                )
-            }
+            ScrubberTimestamps(
+                shown = shown,
+                durationMs = durationMs,
+                tint = LocalPlayerTint.current,
+            )
             // Pinned to the box's own centre rather than squeezed into the gap
             // between the two timestamps: that gap's width changes by a digit's
             // worth every time a minute rolls over. Cross-faded with "Mixing"
@@ -346,11 +379,27 @@ internal fun PlaybackQualityLabel(
     // should keep saying "loading" through that stretch rather than going
     // blank only to possibly say "loading" again a moment later.
     val racingLossless by NerdStats.racingLossless.collectAsStateWithLifecycle()
+    val smartFadeOn by PlayerSettings.smartFadeEnabled.collectAsStateWithLifecycle()
+    val smartAnalysis by PlayerSettings.smartAnalysis.collectAsStateWithLifecycle()
+    val smartTransitionWindow by PlayerSettings.smartTransitionWindow.collectAsStateWithLifecycle()
+    val inParty by remember {
+        PlayerPlatform.host.party.map { it.inParty }.distinctUntilChanged()
+    }.collectAsStateWithLifecycle(initialValue = PlayerPlatform.host.party.value.inParty)
+
+    val isAutomixAnalyzing = smartFadeOn &&
+        !inParty &&
+        !song.isVideoOrigin &&
+        smartTransitionWindow == null &&
+        (smartAnalysis.current == TrackAnalysisState.ANALYSING ||
+         smartAnalysis.next == TrackAnalysisState.ANALYSING ||
+         smartAnalysis.next == TrackAnalysisState.REFINING)
+
     LosslessOrStats(
         isLoading = isLoading,
         stillRacing = song.videoId in racingLossless,
         losslessRequested = effectiveQuality == AudioQuality.LOSSLESS,
         nerdStats = nerdStats,
+        isAutomixAnalyzing = isAutomixAnalyzing,
         modifier = modifier,
     )
 }
@@ -489,6 +538,7 @@ internal fun TransportRow(
             onClick = onPrevious,
             enabled = previousEnabled,
             haptic = Haptic.SkipPrevious,
+            kickDirection = -1f,
         )
         if (isLoading) {
             // Same footprint as the play/pause target — a smaller box here
@@ -501,13 +551,11 @@ internal fun TransportRow(
                 )
             }
         } else {
-            TransportGlyph(
-                icon = if (isPlaying) Res.drawable.ic_player_pause else Res.drawable.ic_player_play,
-                contentDescription = stringResource(if (isPlaying) Res.string.pause else Res.string.play),
+            MorphPlayPauseGlyph(
+                isPlaying = isPlaying,
                 size = playSize,
                 touchSize = playTouch,
                 onClick = onPlayPause,
-                haptic = if (isPlaying) Haptic.Pause else Haptic.Resume,
             )
         }
         TransportGlyph(
@@ -519,6 +567,7 @@ internal fun TransportRow(
             onClick = onNext,
             enabled = nextEnabled,
             haptic = Haptic.SkipNext,
+            kickDirection = 1f,
         )
     }
 
@@ -947,8 +996,19 @@ private fun TransportGlyph(
     haptic: Haptic = Haptic.Tap,
     /** Vertical squash of the glyph alone; its width and touch box are untouched. */
     heightScale: Float = 1f,
+    /** Kinetic horizontal kick direction: +1f for next, -1f for previous, 0f for none */
+    kickDirection: Float = 0f,
 ) {
     val haptics = rememberHaptics()
+    val scope = rememberCoroutineScope()
+    val kickOffset = remember { Animatable(0f) }
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val pressScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.86f else 1f,
+        animationSpec = spring(dampingRatio = 0.54f, stiffness = 720f),
+        label = "transportPressScale",
+    )
     // Faded rather than hidden: the row keeps its shape at the ends of a queue.
     val alpha by animateFloatAsState(
         targetValue = if (enabled) 1f else 0.3f,
@@ -957,12 +1017,22 @@ private fun TransportGlyph(
     Box(
         modifier = Modifier
             .size(touchSize)
+            .graphicsLayer {
+                scaleX = pressScale
+                scaleY = pressScale
+            }
             .clickable(
-                interactionSource = remember { MutableInteractionSource() },
+                interactionSource = interactionSource,
                 indication = null,
                 enabled = enabled,
             ) {
                 haptics.play(haptic)
+                if (kickDirection != 0f) {
+                    scope.launch {
+                        kickOffset.snapTo(kickDirection * 10f)
+                        kickOffset.animateTo(0f, spring(dampingRatio = 0.55f, stiffness = 420f))
+                    }
+                }
                 onClick()
             },
         contentAlignment = Alignment.Center,
@@ -973,8 +1043,76 @@ private fun TransportGlyph(
             tint = Color.White.copy(alpha = alpha),
             modifier = Modifier
                 .size(size)
-                .then(if (heightScale != 1f) Modifier.graphicsLayer { scaleY = heightScale } else Modifier),
+                .graphicsLayer {
+                    translationX = kickOffset.value.dp.toPx()
+                    if (heightScale != 1f) scaleY = heightScale
+                },
         )
+    }
+}
+
+@Composable
+private fun MorphPlayPauseGlyph(
+    isPlaying: Boolean,
+    size: androidx.compose.ui.unit.Dp,
+    touchSize: androidx.compose.ui.unit.Dp,
+    onClick: () -> Unit,
+    enabled: Boolean = true,
+) {
+    val haptics = rememberHaptics()
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val pressScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.86f else 1f,
+        animationSpec = spring(dampingRatio = 0.54f, stiffness = 720f),
+        label = "playPausePressScale",
+    )
+    val alpha by animateFloatAsState(
+        targetValue = if (enabled) 1f else 0.36f,
+        label = "playPauseAlpha",
+    )
+    Box(
+        modifier = Modifier
+            .size(touchSize)
+            .graphicsLayer {
+                scaleX = pressScale
+                scaleY = pressScale
+            }
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                enabled = enabled,
+            ) {
+                haptics.play(if (isPlaying) Haptic.Pause else Haptic.Resume)
+                onClick()
+            },
+        contentAlignment = Alignment.Center,
+    ) {
+        AnimatedContent(
+            targetState = isPlaying,
+            transitionSpec = {
+                (fadeIn(animationSpec = tween(140)) +
+                    scaleIn(
+                        initialScale = 0.45f,
+                        animationSpec = spring(dampingRatio = 0.42f, stiffness = 420f),
+                    )
+                ).togetherWith(
+                    fadeOut(animationSpec = tween(100)) +
+                    scaleOut(
+                        targetScale = 0.45f,
+                        animationSpec = tween(100, easing = FastOutLinearInEasing),
+                    )
+                )
+            },
+            label = "playPauseMorph",
+        ) { playing ->
+            Icon(
+                painter = painterResource(if (playing) Res.drawable.ic_player_pause else Res.drawable.ic_player_play),
+                contentDescription = stringResource(if (playing) Res.string.pause else Res.string.play),
+                tint = Color.White.copy(alpha = alpha),
+                modifier = Modifier.size(size),
+            )
+        }
     }
 }
 
@@ -1739,6 +1877,7 @@ private fun LosslessOrStats(
     stillRacing: Boolean,
     losslessRequested: Boolean,
     nerdStats: NerdStats.Snapshot?,
+    isAutomixAnalyzing: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     when {
@@ -1771,6 +1910,14 @@ private fun LosslessOrStats(
             // and the one badge state that is still going to change.
             pulsing = true,
             animated = false,
+            modifier = modifier,
+        )
+        isAutomixAnalyzing -> LosslessLabel(
+            text = stringResource(Res.string.automix_analyzing),
+            animated = true,
+            pulsing = true,
+            iconPainter = rememberVectorPainter(Icons.Rounded.AutoAwesome),
+            iconSize = 13.dp,
             modifier = modifier,
         )
         nerdStats?.isLossless == true -> LosslessLabel(

@@ -422,8 +422,8 @@ private fun RoomHero(state: DesktopListenTogether.State) {
         )
         Spacer(Modifier.height(16.dp))
 
-        // QR code always visible above the code
-        DesktopQrCode(invite, size = 160.dp)
+        // QR code always visible above the code, click to enlarge
+        DesktopQrCode(invite, size = 160.dp, clickableToEnlarge = true, codeText = state.code)
 
         Spacer(Modifier.height(16.dp))
 

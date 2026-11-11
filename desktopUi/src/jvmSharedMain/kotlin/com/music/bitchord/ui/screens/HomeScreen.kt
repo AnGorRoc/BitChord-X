@@ -163,6 +163,7 @@ fun HomeScreen(
     onMoodsShowAll: () -> Unit = {},
     /** Whether the Top Picks and mood artwork may animate — see [LocalArtworkMotion]. */
     artworkMotion: Boolean = true,
+    onOpenDownloads: (() -> Unit)? = null,
 ) {
     val recentsViewType by AppUi.host.homeRecentsViewType.collectAsStateWithLifecycle()
     // Top Picks' pictures and motion wait for the feed — see LocalArtworkImages.
@@ -235,7 +236,13 @@ fun HomeScreen(
                     }
                 }
                 is UiState.Error -> item {
-                    MessageState(state.message, actionLabel = stringResource(Res.string.retry), onAction = onRetry)
+                    MessageState(
+                        message = state.message,
+                        actionLabel = stringResource(Res.string.retry),
+                        onAction = onRetry,
+                        secondaryActionLabel = if (onOpenDownloads != null) stringResource(Res.string.downloaded) else null,
+                        onSecondaryAction = onOpenDownloads,
+                    )
                 }
                 is UiState.Success -> {
                     if (recentlyPlayedLoading) {

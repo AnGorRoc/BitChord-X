@@ -35,6 +35,7 @@ internal class DesktopOverlays {
     var songMenu by mutableStateOf(false)
     var downloadManager by mutableStateOf(false)
     var replay by mutableStateOf(false)
+    var equalizerDialog by mutableStateOf(false)
     var playlistDialog by mutableStateOf(false)
     var rename by mutableStateOf(false)
     var delete by mutableStateOf(false)
