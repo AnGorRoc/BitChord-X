@@ -48,6 +48,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import com.music.bitchord.ui.components.playlistRowsSkeleton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -350,14 +351,9 @@ fun SpotifyLibraryScreen(
                 if (state.selecting) {
                     item { SelectionHeader(state = state, signedIn = signedIn) }
                 }
-                // The pull's own indicator covers a reload of a list already on
-                // screen; this spinner is only for the first read.
+                // Clean playlist skeleton rows while loading initially
                 if (loading && state.playlists.isEmpty()) {
-                    item {
-                        Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator()
-                        }
-                    }
+                    playlistRowsSkeleton(count = 6, keyPrefix = "skeleton:spotify")
                 }
                 error?.let { message ->
                     item {

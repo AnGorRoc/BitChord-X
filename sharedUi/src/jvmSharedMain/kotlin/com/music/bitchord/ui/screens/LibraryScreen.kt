@@ -66,6 +66,7 @@ import com.music.bitchord.data.settings.LibrarySort
 import com.music.bitchord.data.settings.LibraryViewType
 import com.music.bitchord.ui.AppUi
 import com.music.bitchord.ui.icons.BitChordIcons
+import com.music.bitchord.ui.components.CleanSectionEntrance
 import com.music.bitchord.ui.components.LIBRARY_GRID_SPACING
 import com.music.bitchord.ui.components.MessageState
 import com.music.bitchord.ui.components.PAGE_GUTTER
@@ -214,26 +215,28 @@ fun LibraryScreen(
                             )
                         }
                     }
-                    shelves.forEach { shelf ->
+                    shelves.forEachIndexed { index, shelf ->
                         item(key = "shelf:${shelf.title}") {
-                            if (shelf.title == PLAYLISTS) {
-                                val pinnedFirst = shelf.pinnedFirst(pinnedPlaylists)
-                                PlaylistShelf(
-                                    shelf = pinnedFirst,
-                                    onItemClick = onShelfItemClick,
-                                    onItemLongPress = onShelfItemLongPress,
-                                    onNewPlaylist = onNewPlaylist,
-                                    onImportSpotifyPlaylist = onImportSpotifyPlaylist,
-                                    onShowAll = { onShowAll(pinnedFirst) },
-                                    pinnedPlaylists = pinnedPlaylists,
-                                )
-                            } else {
-                                LibraryGridShelf(
-                                    shelf = shelf,
-                                    onItemClick = onShelfItemClick,
-                                    onItemLongPress = onShelfItemLongPress,
-                                    onShowAll = { onShowAll(shelf) },
-                                )
+                            CleanSectionEntrance(index = index, modifier = Modifier.animateItem()) {
+                                if (shelf.title == PLAYLISTS) {
+                                    val pinnedFirst = shelf.pinnedFirst(pinnedPlaylists)
+                                    PlaylistShelf(
+                                        shelf = pinnedFirst,
+                                        onItemClick = onShelfItemClick,
+                                        onItemLongPress = onShelfItemLongPress,
+                                        onNewPlaylist = onNewPlaylist,
+                                        onImportSpotifyPlaylist = onImportSpotifyPlaylist,
+                                        onShowAll = { onShowAll(pinnedFirst) },
+                                        pinnedPlaylists = pinnedPlaylists,
+                                    )
+                                } else {
+                                    LibraryGridShelf(
+                                        shelf = shelf,
+                                        onItemClick = onShelfItemClick,
+                                        onItemLongPress = onShelfItemLongPress,
+                                        onShowAll = { onShowAll(shelf) },
+                                    )
+                                }
                             }
                         }
                     }
