@@ -52,6 +52,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -140,9 +141,14 @@ private fun leadingInset(hasBack: Boolean): Dp = if (hasBack) BackInset else Wor
  * hide it while it is open, and every page under the player would otherwise
  * slide up into the space it left behind.
  */
+internal val LocalLandscapeChrome = compositionLocalOf { false }
+
 @Composable
-fun topBarHeight(): Dp =
-    stableStatusBarInsets().asPaddingValues().calculateTopPadding() + TopBarContentHeight
+fun topBarHeight(): Dp {
+    val statusTop = stableStatusBarInsets().asPaddingValues().calculateTopPadding()
+    return if (LocalLandscapeChrome.current) statusTop else statusTop + TopBarContentHeight
+}
+
 
 /**
  * Where page content should start: clear of the bar, plus [TopBarContentGap].
@@ -383,7 +389,7 @@ fun FrostedTopBar(
 /** Circular floating back affordance, material-matched to the navbar. */
 @OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
-private fun ArtworkPageBackButton(
+internal fun ArtworkPageBackButton(
     onClick: () -> Unit,
     hazeState: HazeState?,
     modifier: Modifier = Modifier,
@@ -520,7 +526,7 @@ fun TopBarActions(
 }
 
 @Composable
-private fun TopBarAuxiliarySlot(
+internal fun TopBarAuxiliarySlot(
     item: TopBarActionItem?,
     slotIndex: Int,
     modifier: Modifier = Modifier,
@@ -601,7 +607,7 @@ private fun TopBarAuxiliarySlot(
 }
 
 @Composable
-private fun TopBarAnchorSlot(
+internal fun TopBarAnchorSlot(
     anchor: TopBarAnchor,
     modifier: Modifier = Modifier,
 ) {
@@ -789,7 +795,7 @@ private fun Modifier.artworkActionEdgePadding(): Modifier = layout { measurable,
 /** The navbar's exact material choice, reusable by every floating top control. */
 @OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
-private fun artworkPageSurface(
+internal fun artworkPageSurface(
     shape: CornerBasedShape,
     hazeState: HazeState?,
 ): Modifier {
@@ -983,8 +989,8 @@ internal val TOP_CONTROL_SIZE = 44.dp
  * measured off Apple Music's share-and-more pill: 101pt wide, its glyphs
  * centred 23.4pt in from the ends and 54pt apart.
  */
-private val ACTION_GAP = 10.dp
-private val ACTION_EDGE_INSET = 1.5.dp
+internal val ACTION_GAP = 10.dp
+internal val ACTION_EDGE_INSET = 1.5.dp
 
 /** How far below the bar's edge the puck rests while a refresh runs. */
 private val PUCK_REST = 16.dp
