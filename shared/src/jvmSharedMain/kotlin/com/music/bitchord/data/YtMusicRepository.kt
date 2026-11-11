@@ -643,7 +643,11 @@ object YtMusicRepository {
      */
     suspend fun radio(videoId: String, preferVideo: Boolean = false): Result<List<Song>> =
         call("radio:$videoId:$preferVideo") {
-            InnertubeParser.parseWatchQueue(Innertube.next(videoId), preferVideo = preferVideo)
+            InnertubeParser.parseWatchQueue(
+                Innertube.next(videoId),
+                preferAudio = !preferVideo,
+                preferVideo = preferVideo,
+            )
         }
 
     /**
@@ -1168,6 +1172,7 @@ object YtMusicRepository {
     suspend fun watchQueue(target: WatchTarget): Result<List<Song>> = call("watch:${target.playlistId}") {
         InnertubeParser.parseWatchQueue(
             Innertube.nextPlaylist(target.playlistId, target.videoId, target.params),
+            preferAudio = true,
         ).filterNot { it.isVideo }
     }
 

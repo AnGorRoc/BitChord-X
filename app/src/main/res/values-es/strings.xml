@@ -232,6 +232,7 @@
     <string name="clear_image_cache_subtitle">Libera espacio usado por las portadas</string>
     <string name="play_next_on_swipe">Reproducir siguiente al deslizar</string>
     <string name="dont_repeat_songs">No repetir canciones en esta sesión</string>
+    <string name="filter_music_videos_autoplay">Filtrar videos musicales en AutoPlay</string>
     <string name="stop_music_on_close">Detener música al cerrar desde recientes</string>
     <string name="stop_music_on_close_subtitle">Detiene la reproducción al quitar la app de recientes</string>
     <string name="hide_volume_bar">Ocultar barra de volumen</string>
@@ -254,6 +255,7 @@
     <string name="immersive_player_mode_subtitle">La portada se expande en la parte superior con reflejo ambiental en los controles</string>
     <string name="animated_cover_art_subtitle">Reproduce el video en bucle que incluyen algunos lanzamientos</string>
     <string name="dont_repeat_songs_subtitle">La reproducción automática no sugerirá una canción ya reproducida o sugerida en esta sesión</string>
+    <string name="filter_music_videos_autoplay_subtitle">Solo reproduce canciones de audio en AutoPlay y radio, excluyendo videos musicales</string>
     <string name="download_quality_subtitle">%1$s por pista, sin importar la conexión</string>
     <string name="filter_non_music_audio">Filtrar audios que no son música</string>
     <string name="filter_non_music_audio_subtitle">Oculta clips de menos de 30 segundos, archivos WAV, notas de voz, grabaciones y sonidos del sistema</string>

@@ -387,6 +387,7 @@
     <string name="clear_image_cache_subtitle">Frees space used by album artwork</string>
     <string name="play_next_on_swipe">Play next on swipe</string>
     <string name="dont_repeat_songs">Don’t repeat songs in current session</string>
+    <string name="filter_music_videos_autoplay">Filter music videos in AutoPlay</string>
     <string name="stop_music_on_close">Stop music on close from recents</string>
     <string name="stop_music_on_close_subtitle">Stops playback when swiped away from recent apps</string>
     <string name="hide_volume_bar">Hide volume bar</string>
@@ -409,6 +410,7 @@
     <string name="full_screen_cover_art_subtitle">Runs the cover to the edges of the player instead of a square sleeve</string>
     <string name="animated_cover_art_subtitle">Plays the looping video some releases ship instead of a still sleeve</string>
     <string name="dont_repeat_songs_subtitle">AutoPlay won’t suggest a song already played or suggested this session</string>
+    <string name="filter_music_videos_autoplay_subtitle">Only queue audio tracks in AutoPlay and radio recommendations, never music videos</string>
     <string name="download_quality_subtitle">%1$s per track, whatever the connection</string>
     <string name="filter_non_music_audio">Filter non-music audio</string>
     <string name="filter_non_music_audio_subtitle">Hides clips under 30 seconds, WAV files, voice notes, recordings and system sounds</string>

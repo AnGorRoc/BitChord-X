@@ -535,6 +535,9 @@ object AppSettings {
     /** Once a song has been suggested or played this session, AutoPlay won't offer it again. */
     val dontRepeatSuggestions = MutableStateFlow(false)
 
+    /** Strictly excludes music videos from AutoPlay recommendations and radio stations. */
+    val filterMusicVideosInAutoplay = MutableStateFlow(true)
+
     /** Analyzes audio waveform/envelope to align matching playback moment between versions. */
     val smartVersionAlignment = MutableStateFlow(true)
 
@@ -1182,6 +1185,7 @@ object AppSettings {
         hideHomeMoods.value = prefs.getBoolean(KEY_HIDE_HOME_MOODS, false)
         squareVideoThumbnails.value = prefs.getBoolean(KEY_SQUARE_VIDEO_THUMBNAILS, false)
         com.music.bitchord.ui.components.VideoThumbnails.square = squareVideoThumbnails.value
+        filterMusicVideosInAutoplay.value = prefs.getBoolean(KEY_FILTER_MUSIC_VIDEOS_IN_AUTOPLAY, true)
         smartVersionAlignment.value = prefs.getBoolean(KEY_SMART_VERSION_ALIGNMENT, true)
         smartSourceAlignment.value = prefs.getBoolean(KEY_SMART_SOURCE_ALIGNMENT, true)
         reduceDynamicBlur.value = prefs.getBoolean(KEY_REDUCE_BLUR, false)
@@ -1693,6 +1697,11 @@ object AppSettings {
 
     fun setMixViewOpen(value: Boolean) {
         mixViewOpen.value = value
+    }
+
+    fun setFilterMusicVideosInAutoplay(value: Boolean) {
+        filterMusicVideosInAutoplay.value = value
+        prefs.edit().putBoolean(KEY_FILTER_MUSIC_VIDEOS_IN_AUTOPLAY, value).apply()
     }
 
     fun setSmartVersionAlignment(value: Boolean) {
@@ -2572,6 +2581,7 @@ object AppSettings {
     private const val KEY_SQUARE_VIDEO_THUMBNAILS = "square_video_thumbnails"
     private const val KEY_GLASS_PERFORMANCE = "glass_performance"
     private const val KEY_FULL_BLEED_DETAIL_ARTWORK = "full_bleed_detail_artwork"
+    private const val KEY_FILTER_MUSIC_VIDEOS_IN_AUTOPLAY = "filter_music_videos_in_autoplay"
     private const val KEY_SMART_VERSION_ALIGNMENT = "smart_version_alignment"
     private const val KEY_SMART_SOURCE_ALIGNMENT = "smart_source_alignment"
     private const val KEY_REDUCE_BLUR = "reduce_dynamic_blur"

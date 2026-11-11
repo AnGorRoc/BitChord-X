@@ -6,6 +6,7 @@ import com.music.bitchord.data.model.SearchFilter
 import com.music.bitchord.data.model.SearchResult
 import com.music.bitchord.data.model.QueueTier
 import com.music.bitchord.data.model.Song
+import com.music.bitchord.data.settings.AppSettings
 import com.music.bitchord.data.sources.SourceRegistry
 import com.music.bitchord.data.sources.TrackMatcher
 import com.music.bitchord.playback.QueueCoordinator.asQueueEntry
@@ -100,13 +101,20 @@ suspend fun loadAutoplayTracks(
     existing: List<Song>,
     seedSong: Song,
     limit: Int = MAX_QUEUED_AUTOPLAY,
+    filterMusicVideos: Boolean = AppSettings.filterMusicVideosInAutoplay.value,
 ): Result<List<Song>> {
     val seed = youtubeSeedFor(seedSong) ?: return Result.success(emptyList())
     // A music video plays on with music videos, as YouTube Music does — unless
-    // they would only be converted again, when the station's songs are the answer.
-    val videos = seedSong.isVideo && seed == seedSong.videoId && !MusicOnlyPlayback.isActive()
+    // strict music-video filtering or MusicOnlyPlayback is active.
+    val videos = !filterMusicVideos && !MusicOnlyPlayback.isActive() && seedSong.isVideo && seed == seedSong.videoId
     val related = YtMusicRepository.radio(seed, preferVideo = videos).getOrElse { return Result.failure(it) }
-    val extra = QueueBuilder.extend(existing, related, limit, preferVideos = videos)
+    val extra = QueueBuilder.extend(
+        existing = existing,
+        candidates = related,
+        limit = limit,
+        preferVideos = videos,
+        allowVideoFallback = !filterMusicVideos,
+    )
     if (extra.isEmpty()) return Result.success(emptyList())
 
     return Result.success(extra.map {

@@ -1318,10 +1318,11 @@ object InnertubeParser {
             collectRenderers(root, "playlistPanelVideoWrapperRenderer").forEach { wrapper ->
                 val halves = wrapperRenderers(wrapper)
                 val primary = halves.firstOrNull() ?: return@forEach
-                val audio = halves.firstOrNull { if (preferVideo) !it.isAudioTrack() else it.isAudioTrack() }
-                    ?: return@forEach
                 val primaryId = primary.s("videoId") ?: return@forEach
-                replacements[primaryId] = audio
+                val preferred = halves.firstOrNull { if (preferVideo) !it.isAudioTrack() else it.isAudioTrack() }
+                if (preferred != null) {
+                    replacements[primaryId] = preferred
+                }
                 halves.filter { it !== primary }.mapNotNullTo(dropped) { it.s("videoId") }
             }
         }
@@ -1347,19 +1348,27 @@ object InnertubeParser {
         // Those same runs link out to the artist and album pages, which is
         // how a track started from the queue knows where it came from.
         val credits = creditsOf(bylineRuns)
+        val thumbnails = renderer.o("thumbnail").a("thumbnails")
+        // Check musicVideoType first (locale-independent); fall back to widescreen
+        // art or localized view counts when YouTube omits the endpoint config.
+        val isVideo = when (val type = renderer.musicVideoType()) {
+            MUSIC_VIDEO_TYPE_ATV,
+            "MUSIC_VIDEO_TYPE_PODCAST_EPISODE",
+            -> false
+            null -> thumbnails.isNotSquare() || byline.any { VIEWS_TEXT.containsMatchIn(it) }
+            else -> !type.contains("PRIVATELY_OWNED", ignoreCase = true)
+        }
         return Song(
             videoId = videoId,
             title = title,
             artist = artist,
-            thumbnailUrl = renderer.o("thumbnail").a("thumbnails").best(),
+            thumbnailUrl = thumbnails.best(),
             durationText = renderer.o("lengthText").runs().takeIf { it.isNotBlank() },
             artistId = credits.artistId,
             artists = completeArtistCredits(artist.orEmpty(), credits.artists),
             albumId = credits.albumId,
             albumName = credits.albumName,
-            // A catalogue track is credited "Artist • Album • Year"; the
-            // matching music video is "Artist • 417M views • 2.4M likes".
-            isVideo = byline.any { it.contains("views", ignoreCase = true) },
+            isVideo = isVideo,
             isExplicit = renderer.hasExplicitBadge(),
         )
     }
@@ -1760,6 +1769,10 @@ object InnertubeParser {
      * "Daily Top Music Videos".
      */
     private val VIDEO_WORD = Regex("""\bvideos?\b""", RegexOption.IGNORE_CASE)
+    private val VIEWS_TEXT = Regex(
+        """\b(?:views|vistas|reproducciones|visualizaciones|vues|aufrufe|visualizzazioni|visualizações)\b""",
+        RegexOption.IGNORE_CASE,
+    )
 }
 
 // ---- Tiny JSON navigation helpers (null-safe, never throw) ------------------
