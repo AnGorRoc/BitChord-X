@@ -1,6 +1,13 @@
 package com.music.bitchord.ui.components
 
+import android.provider.Settings
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -20,12 +27,20 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -41,6 +56,7 @@ import com.music.bitchord.data.settings.AppSettings
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import dev.chrisbanes.haze.materials.HazeMaterials
+import kotlinx.coroutines.launch
 
 /** UIAlertController's own metrics: fixed narrow width, 14pt corner, 44pt rows. */
 internal val ALERT_WIDTH = 270.dp
@@ -92,13 +108,66 @@ fun UpdateAvailableDialog(
     modifier: Modifier = Modifier,
 ) {
     val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
+    val appReduceAnimation by AppSettings.reduceAnimation.collectAsStateWithLifecycle()
     val state by AppUpdateChecker.download.collectAsStateWithLifecycle()
     val shape = RoundedCornerShape(ALERT_CORNER)
+
+    val context = LocalContext.current
+    val systemAnimationsOff = remember(context) {
+        runCatching {
+            Settings.Global.getFloat(context.contentResolver, Settings.Global.ANIMATOR_DURATION_SCALE, 1f) == 0f
+        }.getOrDefault(false)
+    }
+    val reduceMotion = appReduceAnimation || systemAnimationsOff
+
+    val scope = rememberCoroutineScope()
+    val animProgress = remember { Animatable(if (reduceMotion) 1f else 0f) }
+    var isDismissing by remember { mutableStateOf(false) }
+
+    val handleDismiss: () -> Unit = remember(onDismiss, reduceMotion) {
+        {
+            if (!isDismissing) {
+                isDismissing = true
+                if (reduceMotion) {
+                    onDismiss()
+                } else {
+                    scope.launch {
+                        animProgress.animateTo(
+                            targetValue = 0f,
+                            animationSpec = tween(durationMillis = 140, easing = FastOutSlowInEasing),
+                        )
+                        onDismiss()
+                    }
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        if (!reduceMotion) {
+            animProgress.animateTo(
+                targetValue = 1f,
+                animationSpec = spring(
+                    dampingRatio = 0.78f,
+                    stiffness = 380f,
+                ),
+            )
+        }
+    }
+
+    BackHandler(enabled = true, onBack = handleDismiss)
+
+    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+    val borderColor = if (isDark) GLASS_EDGE_COLOR else Color.Black.copy(alpha = 0.08f)
+
+    val scrimAlpha = if (reduceMotion) 0.28f else (0.28f * animProgress.value.coerceIn(0f, 1f))
+    val cardScale = if (reduceMotion) 1f else (0.88f + 0.12f * animProgress.value)
+    val cardAlpha = if (reduceMotion) 1f else animProgress.value.coerceIn(0f, 1f)
 
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(SCRIM_COLOR)
+            .background(Color.Black.copy(alpha = scrimAlpha))
             // Tapping the scrim reads the same as Remind Me Later — nothing
             // about this update is mandatory, so backing out of it should be as
             // easy as getting into it. Mid-download it only closes the sheet;
@@ -106,13 +175,19 @@ fun UpdateAvailableDialog(
             .clickable(
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() },
-                onClick = onDismiss,
+                onClick = handleDismiss,
             ),
         contentAlignment = Alignment.Center,
     ) {
         Column(
             modifier = Modifier
+                .graphicsLayer {
+                    scaleX = cardScale
+                    scaleY = cardScale
+                    alpha = cardAlpha
+                }
                 .width(ALERT_WIDTH)
+                .shadow(elevation = 16.dp, shape = shape)
                 .clip(shape)
                 .then(
                     if (reduceDynamicBlur) {
@@ -123,6 +198,11 @@ fun UpdateAvailableDialog(
                             style = HazeMaterials.regular(MaterialTheme.colorScheme.surface),
                         )
                     },
+                )
+                .border(
+                    width = GLASS_EDGE_WIDTH,
+                    color = borderColor,
+                    shape = shape,
                 )
                 // Swallows the tap before it reaches the scrim behind, so
                 // touching the card itself never dismisses it.
@@ -247,7 +327,7 @@ fun UpdateAvailableDialog(
                 is AppUpdateChecker.DownloadState.Ready -> {
                     AlertAction(label = stringResource(R.string.install_now), emphasised = true, onClick = onInstall)
                     AlertRule()
-                    AlertAction(label = stringResource(R.string.later), emphasised = false, onClick = onDismiss)
+                    AlertAction(label = stringResource(R.string.later), emphasised = false, onClick = handleDismiss)
                 }
                 is AppUpdateChecker.DownloadState.Failed -> {
                     AlertAction(label = stringResource(R.string.try_again), emphasised = true, onClick = onDownload)
@@ -257,7 +337,7 @@ fun UpdateAvailableDialog(
                 else -> {
                     AlertAction(label = stringResource(R.string.download_now), emphasised = true, onClick = onDownload)
                     AlertRule()
-                    AlertAction(label = stringResource(R.string.remind_me_later), emphasised = false, onClick = onDismiss)
+                    AlertAction(label = stringResource(R.string.remind_me_later), emphasised = false, onClick = handleDismiss)
                 }
             }
         }

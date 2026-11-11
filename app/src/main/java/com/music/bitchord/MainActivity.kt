@@ -3661,6 +3661,7 @@ private fun BitChordApp(
                                 onMoodClick = playMood.takeUnless { hideHomeMoods },
                                 onMoodsShowAll = { navigator.push(AppRoute.Moods) },
                                 artworkMotion = artworkMotion,
+                                onOpenDownloads = { selectedTab = TAB_LIBRARY },
                                 onTopPickLongPress = { pick ->
                                     pick.browseId?.let { browseId ->
                                         onShelfLongPress(
@@ -5932,7 +5933,11 @@ private fun BitChordApp(
         }
 
         // ---- Update available (once per launch; held until the welcome is done) ----
-        if (showUpdateDialog && onboardingComplete) {
+        AnimatedVisibility(
+            visible = showUpdateDialog && onboardingComplete && updateNotice != null,
+            enter = fadeIn(tween(durationMillis = 200)),
+            exit = fadeOut(tween(durationMillis = 180)),
+        ) {
             updateNotice?.let { update ->
                 UpdateAvailableDialog(
                     version = update.version,
