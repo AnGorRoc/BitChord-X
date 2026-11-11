@@ -13,19 +13,27 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntOffset
 import kotlin.math.roundToInt
 
-/**
- * Immersive styled controls shade gradient.
- * Oscurece sutilmente la zona inferior garantizando que el título, créditos y controles
- * sean 100% legibles sobre portadas claras o blancas.
- */
+// Shade starts at 53.8% of screen height (just above the title at 56.5%)
+internal const val SHADE_TOP_FRACTION = 0.538f
+
+// Vertical gradient: clear at top, 24% black at 46% of its way down, then held:
+// Just enough for white text over the blurred cover without muddying album vibrancy.
+private val ControlsShadeBrush = Brush.verticalGradient(
+    0f to Color.Transparent,
+    0.46f to Color.Black.copy(alpha = 0.24f),
+    1f to Color.Black.copy(alpha = 0.24f),
+)
+
 @Composable
 fun ControlsShade(
     progressProvider: () -> Float,
     maxHeightPx: Float,
+    topPxProvider: (() -> Float)? = null,
     modifier: Modifier = Modifier,
 ) {
-    val shadeTopPx = maxHeightPx * 0.538f
-    val shadeHeightPx = maxHeightPx * (1f - 0.538f)
+    val shadeTopPx = topPxProvider?.invoke() ?: (maxHeightPx * SHADE_TOP_FRACTION)
+    val shadeHeightPx = (maxHeightPx - shadeTopPx).coerceAtLeast(0f)
+
     Spacer(
         modifier = modifier
             .fillMaxWidth()
@@ -34,12 +42,7 @@ fun ControlsShade(
             .drawBehind {
                 val a = progressProvider().coerceIn(0f, 1f)
                 if (a <= 0.004f) return@drawBehind
-                val shade = Brush.verticalGradient(
-                    0f to Color.Transparent,
-                    0.46f to Color.Black.copy(alpha = 0.28f),
-                    1f to Color.Black.copy(alpha = 0.28f),
-                )
-                drawRect(shade, alpha = a)
+                drawRect(ControlsShadeBrush, alpha = a)
             }
     )
 }

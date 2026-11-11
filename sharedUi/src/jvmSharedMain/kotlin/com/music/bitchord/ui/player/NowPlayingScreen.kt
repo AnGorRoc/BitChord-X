@@ -24,6 +24,7 @@ import com.music.bitchord.ui.theme.rememberPlayerTint
 import androidx.compose.ui.graphics.toArgb
 import com.music.bitchord.ui.graphics.ColorUtils
 import com.music.bitchord.ui.theme.rememberArtworkPalette
+import com.music.bitchord.ui.theme.rememberArtworkTopBandLuminance
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.channels.Channel
 import androidx.compose.animation.core.AnimationVector1D
@@ -1732,7 +1733,7 @@ fun NowPlayingScreen(
         // Straight away when it is the main player's backdrop too: the decode
         // and blur run off the main thread, and the last cover's blur is held
         // on screen until this one is ready.
-        prepare = !legacyMesh || landscape || tabletArtworkBackdrop || lyricsOpen || queueOpen ||
+        prepare = isImmersive || !legacyMesh || landscape || tabletArtworkBackdrop || lyricsOpen || queueOpen ||
             playerPrewarmStage >= 1,
     )
     // One movable Image node, not two backdrop call sites. Compose carries it
@@ -2317,16 +2318,10 @@ fun NowPlayingScreen(
                 // Legacy mesh is the whole backdrop on every page, so the lyrics and
                 // queue panels must not crossfade the blurred artwork over it. A
                 // full-screen Spotify Canvas is its own backdrop until a panel opens.
+                val meshPalette = rememberArtworkColors(remoteArt, canvasFrame)
                 if (isImmersive) {
-                    val hsl = FloatArray(3)
-                    ColorUtils.colorToHSL(artworkPalette.background.toArgb(), hsl)
-                    val targetLightness = hsl[2].coerceIn(0.08f, 0.15f)
-                    val targetSat = hsl[1].coerceIn(0.18f, 0.40f)
-                    val playerBg = Color(ColorUtils.HSLToColor(floatArrayOf(hsl[0], targetSat, targetLightness)))
-                    Spacer(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .background(playerBg)
+                    fullArtworkBlurContent(
+                        Modifier.fillMaxSize(),
                     )
                 } else {
                 val legacyMeshBackdrop = !tabletArtworkBackdrop && !spotifyCanvasPresentation && legacyMesh
@@ -2902,11 +2897,23 @@ fun NowPlayingScreen(
                         // player and has to be centred in it; collapsed, it belongs
                         // hard against the left edge with the credits beside it.
                         fun artStart(): Dp = lerp((maxWidth - fullArt) / 2, 0.dp, p())
+                        // How far down the *screen* the sleeve's bottom edge sits.
+                        // Immersive mode matches the 3:4 portrait animated artwork bottom level,
+                        // ensuring both static and animated covers reach the exact same depth and level.
+                        val immersiveTitleNudge = if (isImmersive) 6.dp else 0.dp
                         fun regularTitleTop(): Dp = lerp(
-                            groupTop + fullArt + currentTitleGap,
+                            (groupTop + fullArt + currentTitleGap + immersiveTitleNudge).coerceAtMost(maxHeight - HEADER_HEIGHT),
                             0.dp,
                             p(),
                         )
+                        val animCoverBottom = with(density) {
+                            if (clipPortrait && clipBottom > 0.dp) clipBottom
+                            else if (isImmersive) {
+                                statusBarTop + topStrip + ART_BOX_TOP_PAD + regularTitleTop() + (HEADER_HEIGHT * 0.6f)
+                            }
+                            else if (playerBounds.width > 0) (playerBounds.width.toFloat() * (4f / 3f)).toDp()
+                            else 0.dp
+                        }
                         // Once Spotify's control deck has left, keep the only remaining
                         // player chrome against the bottom edge instead of stranding it
                         // where the artwork's title normally sits near mid-screen.
@@ -2933,15 +2940,7 @@ fun NowPlayingScreen(
                         val thumbWidth = if (videoMode) THUMB_SIZE * (16f / 9f) else THUMB_SIZE
                         fun titleStart(): Dp = lerp(0.dp, thumbWidth + 12.dp, p())
 
-                        // How far down the *screen* the sleeve's bottom edge sits.
-                        // Immersive mode matches the 3:4 portrait animated artwork bottom level,
-                        // ensuring both static and animated covers reach the exact same depth and level.
-                        val animCoverBottom = with(density) {
-                            if (clipPortrait && clipBottom > 0.dp) clipBottom
-                            else if (playerBounds.width > 0) (playerBounds.width.toFloat() * (4f / 3f)).toDp()
-                            else 0.dp
-                        }
-                        val bannerBottom = if (isImmersive && animCoverBottom > 0.dp) animCoverBottom else {
+                        val bannerBottom = if (animCoverBottom > 0.dp) animCoverBottom else {
                             statusBarTop + topStrip + ART_BOX_TOP_PAD +
                                 groupTop + fullArt + currentTitleGap / 2
                         }
@@ -3220,7 +3219,7 @@ fun NowPlayingScreen(
                                     clip = true
                                     // The mask below erases part of what this layer
                                     // drew, which it can only do in a buffer of its own.
-                                    compositingStrategy = if (sleeveShown() > 0f) {
+                                    compositingStrategy = if (sleeveShown() > 0f && !isImmersive) {
                                         CompositingStrategy.Offscreen
                                     } else {
                                         CompositingStrategy.Auto
@@ -3233,17 +3232,17 @@ fun NowPlayingScreen(
                                 .drawWithContent {
                                     drawContent()
                                     val shown = sleeveShown()
-                                    if (shown > 0f) {
+                                    val fadeActive = shown > 0f && !isImmersive
+                                    if (fadeActive) {
                                         val bottomFade = stillFadeFraction()
                                         val bottomFadeHeight = size.height * bottomFade
                                         val bottomStartY = size.height - bottomFadeHeight
                                         drawRect(
-                                            // Along smootherstep, not a straight ramp,
-                                            // so neither end of the dissolve shows as a line.
                                             brush = Brush.verticalGradient(
                                                 colorStops = Array(FADE_CURVE_STOPS + 1) { i ->
                                                     val t = i / FADE_CURVE_STOPS.toFloat()
-                                                    t to Color.Black.copy(alpha = 1f - shown * smootherStep(t))
+                                                    val curve = t * t * (3f - 2f * t)
+                                                    t to Color.Black.copy(alpha = 1f - shown * curve)
                                                 },
                                                 startY = bottomStartY,
                                                 endY = size.height,
@@ -3323,60 +3322,66 @@ fun NowPlayingScreen(
                             // Under the full cover, so it only shows while that is missing.
                             if (!canvasRendered) SleeveStandIn(remoteArt, fullLoaded = art.loaded)
 
+                            // Blurred copy of the exact same cover, upright and pixel-aligned underneath
+                            if (isImmersive && art.loaded) {
+                                BlurredCoverBackdrop(
+                                    imageUrl = remoteArt,
+                                    alpha = { 1f },
+                                    modifier = Modifier.fillMaxSize(),
+                                )
+                            }
 
-
-                            AsyncImage(
-                                // Decode at the sleeve's *expanded* size, always.
-                                // Coil otherwise sizes the decode to however large
-                                // this is when the request goes out — and changing
-                                // track from the queue does that while the sleeve is
-                                // collapsed to a thumbnail, leaving a thumbnail-sized
-                                // bitmap to be blown back up when the queue closes.
-                                // Skipping tracks with the transport keeps it sharp
-                                // only because the sleeve happens to be full size at
-                                // that moment.
-                                //
-                                // Asked for at the source's own size rather than the
-                                // sleeve's: the banner is taller than the card is
-                                // wide, and the one bitmap has to serve both shapes
-                                // with nothing to upscale between them.
-                                model = art.request,
-                                contentDescription = null,
-                                // Video thumbnails are 16:9; letterboxing them inside
-                                // the square sleeve looks like a broken frame.
-                                contentScale = ContentScale.Crop,
-                                onState = art::onState,
-                                // TextureView-backed canvas frames can arrive
-                                // before Coil has decoded the sleeve. Alpha alone
-                                // doesn't hide this layer for that window: a
-                                // TextureView composites through its own hardware
-                                // layer, and on some devices that layer wins the
-                                // stacking order against a sibling Compose layer
-                                // even when that layer's alpha is zero — so the
-                                // still image's empty placeholder still shows
-                                // through, above a perfectly healthy animated
-                                // cover. Skipping the draw call outright leaves
-                                // nothing there to composite, in the wrong order
-                                // or otherwise; the request stays mounted so
-                                // loading still finishes in the background and
-                                // [PlayerArtwork.loaded] still flips the moment it does.
+                            Box(
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .drawWithContent {
-                                        val frame = still()
-                                        if (frame == null) {
-                                            if (art.loaded || !canvasRendered) drawContent()
-                                        } else if (
-                                            // The clip's still in place of the cover —
-                                            // see [stillTakesOver] — and, for the reason
-                                            // above, drawn only while it can be seen.
-                                            stillTakesOver() || !canvasRendered ||
-                                            (heroMode && canvasCover.floatValue < 1f)
-                                        ) {
-                                            drawCropped(frame.image)
-                                        }
-                                    },
-                            )
+                                    .then(
+                                        if (isImmersive && art.loaded) {
+                                            Modifier
+                                                .graphicsLayer {
+                                                    compositingStrategy = CompositingStrategy.Offscreen
+                                                }
+                                                .drawWithContent {
+                                                    drawContent()
+                                                    val bottomFadeHeight = size.height * 0.13f
+                                                    val bottomStartY = size.height - bottomFadeHeight
+                                                    drawRect(
+                                                        brush = Brush.verticalGradient(
+                                                            colorStops = Array(FADE_CURVE_STOPS + 1) { i ->
+                                                                val t = i / FADE_CURVE_STOPS.toFloat()
+                                                                val curve = t * t * (3f - 2f * t)
+                                                                t to Color.Black.copy(alpha = 1f - curve)
+                                                            },
+                                                            startY = bottomStartY,
+                                                            endY = size.height,
+                                                        ),
+                                                        topLeft = Offset(0f, bottomStartY),
+                                                        size = Size(size.width, bottomFadeHeight),
+                                                        blendMode = BlendMode.DstIn,
+                                                    )
+                                                }
+                                        } else Modifier
+                                    )
+                            ) {
+                                AsyncImage(
+                                    model = art.request,
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    onState = art::onState,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .drawWithContent {
+                                            val frame = still()
+                                            if (frame == null) {
+                                                if (art.loaded || !canvasRendered) drawContent()
+                                            } else if (
+                                                stillTakesOver() || !canvasRendered ||
+                                                (heroMode && canvasCover.floatValue < 1f)
+                                            ) {
+                                                drawCropped(frame.image)
+                                            }
+                                        },
+                                )
+                            }
 
                             // Where the clip plays when it can't have the banner:
                             // inside the same clip as the still art, taking the
@@ -3416,7 +3421,92 @@ fun NowPlayingScreen(
                             }
                         }
 
+                        // Background continuo difuminado
+                        if (isImmersive) {
+                            val reflectionAlpha = {
+                                val shown = (1f - p() * 2f).coerceIn(0f, 1f)
+                                val dock = dockT().coerceIn(0f, 1f)
+                                val dockFade = dock * dock
+                                val panelsHidden = if (lyricsOpen || queueOpen) 0f else (1f - p()).coerceIn(0f, 1f)
+                                if (art.loaded) shown * dockFade * panelsHidden else 0f
+                            }
+                            val totalH = (playerBounds.height.takeIf { it > 0 } ?: (boxWidthPx * 2)).toFloat()
+                            val coverHeightPx = with(density) { animCoverBottom.roundToPx().toFloat() }
+                            val reflectionTopPx = bannerTopPx + coverHeightPx - 2f
+                            val reflectionHeightPx = (totalH - coverHeightPx + 2f).coerceAtLeast(0f)
+                            val dominantCoverColor = meshPalette.colors.firstOrNull() ?: Color(0xFF1E1E1E)
 
+                            CoverReflection(
+                                imageUrl = remoteArt,
+                                coverHeightPx = { coverHeightPx },
+                                alpha = reflectionAlpha,
+                                modifier = Modifier
+                                    .offset {
+                                        val leftPx = (-(playerBounds.width - boxWidthPx) / 2f).roundToInt()
+                                        IntOffset(leftPx, reflectionTopPx.roundToInt())
+                                    }
+                                    .layout { measurable, constraints ->
+                                        val w = playerBounds.width.takeIf { it > 0 } ?: boxWidthPx
+                                        val placeable = measurable.measure(
+                                            Constraints.fixed(w, reflectionHeightPx.roundToInt()),
+                                        )
+                                        layout(constraints.maxWidth, 0) {
+                                            placeable.placeRelative(0, 0)
+                                        }
+                                    }
+                                    .graphicsLayer {
+                                        val idle = cardScale()
+                                        scaleX = idle
+                                        scaleY = idle
+                                        translationX = swipeSettle.value * (1f - p())
+                                    },
+                            )
+
+                            CoverVeil(
+                                color = dominantCoverColor,
+                                alpha = reflectionAlpha,
+                                modifier = Modifier
+                                    .offset {
+                                        val leftPx = (-(playerBounds.width - boxWidthPx) / 2f).roundToInt()
+                                        IntOffset(leftPx, reflectionTopPx.roundToInt())
+                                    }
+                                    .layout { measurable, constraints ->
+                                        val w = playerBounds.width.takeIf { it > 0 } ?: boxWidthPx
+                                        val placeable = measurable.measure(
+                                            Constraints.fixed(w, reflectionHeightPx.roundToInt()),
+                                        )
+                                        layout(constraints.maxWidth, 0) {
+                                            placeable.placeRelative(0, 0)
+                                        }
+                                    },
+                            )
+
+                            val titleTopInScreenPx = with(density) {
+                                (statusBarTop + topStrip + ART_BOX_TOP_PAD + regularTitleTop()).toPx()
+                            }
+                            val shadeTopPx = (titleTopInScreenPx - with(density) { 24.dp.toPx() }).coerceAtLeast(0f)
+                            val shadeHeightPx = (totalH - shadeTopPx).coerceAtLeast(0f)
+
+                            ControlsShade(
+                                progressProvider = reflectionAlpha,
+                                maxHeightPx = shadeHeightPx,
+                                topPxProvider = { 0f },
+                                modifier = Modifier
+                                    .offset {
+                                        val leftPx = (-(playerBounds.width - boxWidthPx) / 2f).roundToInt()
+                                        IntOffset(leftPx, (bannerTopPx + shadeTopPx).roundToInt())
+                                    }
+                                    .layout { measurable, constraints ->
+                                        val w = playerBounds.width.takeIf { it > 0 } ?: boxWidthPx
+                                        val placeable = measurable.measure(
+                                            Constraints.fixed(w, shadeHeightPx.roundToInt()),
+                                        )
+                                        layout(constraints.maxWidth, 0) {
+                                            placeable.placeRelative(0, 0)
+                                        }
+                                    },
+                            )
+                        }
 
                         // The card's slot: where the sleeve sits as a card, whether or
                         // not it is being drawn as one. Holds the stats line and takes
@@ -3695,9 +3785,9 @@ fun NowPlayingScreen(
                                                 fontWeight = FontWeight.W500,
                                                 fontSize = 20.sp,
                                                 shadow = Shadow(
-                                                    color = Color.Black.copy(alpha = 0.45f),
-                                                    offset = Offset(0f, 1f),
-                                                    blurRadius = 8f,
+                                                    color = Color.Black.copy(alpha = 0.85f),
+                                                    offset = Offset(0f, 1.5f),
+                                                    blurRadius = 12f,
                                                 ),
                                             ),
                                             color = artistColor,

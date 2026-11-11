@@ -1,5 +1,6 @@
 package com.music.bitchord.ui.player
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
@@ -10,6 +11,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.painter.BitmapPainter
+import androidx.compose.ui.layout.ContentScale
 import coil3.SingletonImageLoader
 import coil3.compose.LocalPlatformContext
 import coil3.request.ImageRequest
@@ -22,8 +26,8 @@ import com.music.bitchord.ui.graphics.toImageBitmap
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
-private const val REFLECTION_PX = 96
-private const val REFLECTION_BLUR_PX = 6
+private const val REFLECTION_PX = 80
+private const val REFLECTION_BLUR_PX = 20
 
 internal expect class PlatformReflectionMesh() {
     fun draw(
@@ -36,7 +40,7 @@ internal expect class PlatformReflectionMesh() {
 }
 
 /**
- * Caches and shares the 96px 6px-blurred thumbnail across CoverPicture back layer and CoverReflection.
+ * Caches and shares the blurred thumbnail across CoverPicture back layer and player backdrops.
  */
 @Composable
 fun rememberBlurredCover(imageUrl: String?): State<ImageBitmap?> {
@@ -64,9 +68,31 @@ fun rememberBlurredCover(imageUrl: String?): State<ImageBitmap?> {
 }
 
 /**
+ * Continuous blurred cover backdrop.
+ * Proyecta la portada desenfocada en su orientación natural y alineación idéntica
+ * para que la portada nítida se funda de forma 100% invisible y continua.
+ */
+@Composable
+fun BlurredCoverBackdrop(
+    imageUrl: String?,
+    alpha: () -> Float,
+    modifier: Modifier = Modifier,
+) {
+    val bitmapState = rememberBlurredCover(imageUrl)
+    val bitmap = bitmapState.value ?: return
+    val painter = remember(bitmap) { BitmapPainter(bitmap) }
+    Image(
+        painter = painter,
+        contentDescription = null,
+        contentScale = ContentScale.Crop,
+        modifier = modifier.graphicsLayer {
+            this.alpha = alpha().coerceIn(0f, 1f)
+        },
+    )
+}
+
+/**
  * Inverted diffused reflection for album artwork in immersive mode.
- * Proyecta la portada invertida y difuminada hacia abajo con desvanecimiento analítico
- * suave usando [PlatformReflectionMesh].
  */
 @Composable
 fun CoverReflection(
@@ -177,4 +203,18 @@ private fun boxBlurVertical(src: IntArray, dst: IntArray, width: Int, height: In
             bAcc += (entering and 0xFF) - (leaving and 0xFF)
         }
     }
+}
+
+private fun ImageBitmap.flippedVertically(): ImageBitmap {
+    val w = width
+    val h = height
+    if (w <= 0 || h <= 0) return this
+    val pixels = argbPixels()
+    val flipped = IntArray(pixels.size)
+    for (y in 0 until h) {
+        val srcRow = y * w
+        val dstRow = (h - 1 - y) * w
+        pixels.copyInto(flipped, destinationOffset = dstRow, startIndex = srcRow, endIndex = srcRow + w)
+    }
+    return imageBitmapOf(flipped, w, h)
 }

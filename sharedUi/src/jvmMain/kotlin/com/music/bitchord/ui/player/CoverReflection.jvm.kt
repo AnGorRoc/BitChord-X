@@ -13,6 +13,12 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import kotlin.math.roundToInt
 
+private const val FADE_CURVE_STOPS = 16
+private fun smootherStep(t: Float): Float {
+    val x = t.coerceIn(0f, 1f)
+    return x * x * x * (x * (x * 6f - 15f) + 10f)
+}
+
 internal actual class PlatformReflectionMesh actual constructor() {
     actual fun draw(
         scope: DrawScope,
@@ -39,11 +45,12 @@ internal actual class PlatformReflectionMesh actual constructor() {
         }
 
         val gradientBrush = Brush.verticalGradient(
-            0.00f to Color.Black.copy(alpha = 0.65f * alpha),
-            0.15f to Color.Black.copy(alpha = 0.45f * alpha),
-            0.40f to Color.Black.copy(alpha = 0.22f * alpha),
-            0.70f to Color.Black.copy(alpha = 0.07f * alpha),
-            1.00f to Color.Transparent,
+            colorStops = Array(FADE_CURVE_STOPS + 1) { i ->
+                val t = i / FADE_CURVE_STOPS.toFloat()
+                t to Color.Black.copy(alpha = 0.85f * alpha * (1f - smootherStep(t)))
+            },
+            startY = 0f,
+            endY = h,
         )
         drawRect(
             brush = gradientBrush,

@@ -11,8 +11,6 @@ import kotlin.math.max
 import kotlin.math.roundToInt
 
 private const val MESH_ROWS = 32
-private const val REFLECTION_STRENGTH = 0.82f
-private const val REFLECTION_FADE_END = 0.95f
 
 internal actual class PlatformReflectionMesh actual constructor() {
     private val verts = FloatArray((MESH_ROWS + 1) * 2 * 2)
@@ -34,7 +32,7 @@ internal actual class PlatformReflectionMesh actual constructor() {
         val bw = bitmap.width.toFloat()
         val bh = bitmap.height.toFloat()
 
-        // Recorte proporcional idéntico al ContentScale.Crop de la portada
+        // La portada recorta su imagen para llenar su box; la reflexión recorta igual y hace zoom:
         val fit = max(w / bw, coverHeight / bh)
         val srcLeft = (bw - w / fit) / 2f
         val srcBottom = (bh + coverHeight / fit) / 2f
@@ -42,10 +40,9 @@ internal actual class PlatformReflectionMesh actual constructor() {
 
         for (row in 0..MESH_ROWS) {
             val v = bh * row / MESH_ROWS
-            // Invierte la coordenada: la fila inferior de la portada queda en la costura superior (y=0)
+            // flipped: la fila inferior de la portada esta arriba, y las filas superiores van hacia abajo
             val y = (srcBottom - v) * scale
-            val fade = fadeAt(y / h) * alpha
-            val colour = AndroidColor.argb((fade * 255f).roundToInt().coerceIn(0, 255), 255, 255, 255)
+            val colour = AndroidColor.argb((alpha * 255f).roundToInt().coerceIn(0, 255), 255, 255, 255)
             for (col in 0..1) {
                 val u = bw * col
                 val x = w / 2f + ((u - srcLeft) * fit - w / 2f) * magnify
@@ -55,6 +52,7 @@ internal actual class PlatformReflectionMesh actual constructor() {
                 colors[i] = colour
             }
         }
+
         drawIntoCanvas { canvas ->
             val native = canvas.nativeCanvas
             val saved = native.save()
@@ -62,12 +60,5 @@ internal actual class PlatformReflectionMesh actual constructor() {
             native.drawBitmapMesh(bitmap, 1, MESH_ROWS, verts, 0, colors, 0, paint)
             native.restoreToCount(saved)
         }
-    }
-
-    // Caída cúbica Hermite (smoothstep) que disipa suavemente el reflejo
-    private fun fadeAt(t: Float): Float {
-        val x = (t.coerceIn(0f, 1f) / REFLECTION_FADE_END).coerceIn(0f, 1f)
-        val eased = x * x * (3f - 2f * x)
-        return REFLECTION_STRENGTH * (1f - eased)
     }
 }
