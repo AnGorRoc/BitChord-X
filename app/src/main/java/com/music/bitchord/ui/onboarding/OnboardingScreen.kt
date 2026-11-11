@@ -41,6 +41,8 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -73,6 +75,7 @@ import com.music.bitchord.R
 import com.music.bitchord.sharedui.resources.Res
 import com.music.bitchord.sharedui.resources.ic_google_g
 import com.music.bitchord.sharedui.resources.ic_logo
+import com.music.bitchord.sharedui.resources.spotify_logo
 import org.jetbrains.compose.resources.painterResource
 import com.music.bitchord.ui.icons.BitChordIcons
 import com.music.bitchord.ui.player.MeshGradientBackground
@@ -82,12 +85,10 @@ import com.music.bitchord.ui.player.WelcomeMeshPalettes
 import com.music.bitchord.ui.player.cyclingMeshPalette
 
 /**
- * The two welcome pages: a name for Listen Together, then the YouTube sign-in.
+ * The welcome pages: a name for Listen Together, YouTube sign-in, and Spotify integration.
  *
  * Shown once — to new installs and, because the flag it sets is new, to anyone
- * updating from a build without it. The second page is skipped for an account
- * that is already signed in; asking somebody to connect what is connected
- * reads as the app having forgotten them.
+ * updating from a build without it.
  *
  * Always drawn dark, whatever the theme, for the same reason Replay is: the
  * mesh is colour, and white type is what sits on colour.
@@ -95,28 +96,46 @@ import com.music.bitchord.ui.player.cyclingMeshPalette
 @Composable
 fun OnboardingScreen(
     signedIn: Boolean,
+    spotifyConnected: Boolean = false,
     initialName: String,
     /** Saves the party name. Called on Next, before the second page. */
     onNameChosen: (String) -> Unit,
-    /** Opens the Google sign-in. The caller finishes onboarding once it lands. */
+    /** Opens the Google sign-in. */
     onSignIn: () -> Unit,
+    /** Opens the Spotify sign-in. */
+    onConnectSpotify: () -> Unit,
+    /** Opens the manual sp_dc token dialog/screen. */
+    onOpenSpotifyTokenSetup: (() -> Unit)? = null,
     onFinish: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var page by rememberSaveable { mutableIntStateOf(PAGE_NAME) }
     var name by rememberSaveable { mutableStateOf(initialName) }
+    var cameFromConnect by rememberSaveable { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
 
+    BackHandler(enabled = page == PAGE_SPOTIFY) {
+        page = if (cameFromConnect) PAGE_CONNECT else PAGE_NAME
+    }
     BackHandler(enabled = page == PAGE_CONNECT) { page = PAGE_NAME }
     // "Sign in with Google" goes through the app's own sign-in WebView, raised
-    // over this page; the account landing is what ends the welcome.
-    LaunchedEffect(signedIn, page) {
-        if (signedIn && page == PAGE_CONNECT) onFinish()
+    // over this page; once the account lands, advance to Spotify integration.
+    LaunchedEffect(signedIn) {
+        if (signedIn && page == PAGE_CONNECT) {
+            cameFromConnect = true
+            page = PAGE_SPOTIFY
+        }
     }
 
     // The mesh never settles on one palette: each crossfade is as long as the
     // hold, so one runs straight into the next.
-    val palette = cyclingMeshPalette(if (page == PAGE_NAME) WelcomeMeshPalettes else ConnectPalettes)
+    val palette = cyclingMeshPalette(
+        when (page) {
+            PAGE_NAME -> WelcomeMeshPalettes
+            PAGE_CONNECT -> ConnectPalettes
+            else -> SpotifyPalettes
+        }
+    )
 
     Box(
         modifier
@@ -130,7 +149,7 @@ fun OnboardingScreen(
         MeshGradientBackground(
             palette = palette,
             trackKey = page,
-            continuous = true,
+            continuous = false,
             driftMillis = 6_000,
             colorFadeMillis = MESH_CYCLE_MILLIS,
         )
@@ -174,13 +193,35 @@ fun OnboardingScreen(
                             if (chosen.isEmpty()) return@next
                             focusManager.clearFocus()
                             onNameChosen(chosen)
-                            if (signedIn) onFinish() else page = PAGE_CONNECT
+                            if (signedIn) {
+                                if (spotifyConnected) {
+                                    onFinish()
+                                } else {
+                                    cameFromConnect = false
+                                    page = PAGE_SPOTIFY
+                                }
+                            } else {
+                                cameFromConnect = true
+                                page = PAGE_CONNECT
+                            }
                         },
                     )
-                    else -> ConnectPage(
+                    PAGE_CONNECT -> ConnectPage(
                         onBack = { page = PAGE_NAME },
                         onSignIn = onSignIn,
-                        onSkip = onFinish,
+                        onSkip = {
+                            cameFromConnect = true
+                            page = PAGE_SPOTIFY
+                        },
+                    )
+                    else -> SpotifyPage(
+                        connected = spotifyConnected,
+                        onBack = {
+                            page = if (cameFromConnect) PAGE_CONNECT else PAGE_NAME
+                        },
+                        onConnect = onConnectSpotify,
+                        onOpenTokenSetup = onOpenSpotifyTokenSetup,
+                        onFinish = onFinish,
                     )
                 }
             }
@@ -296,6 +337,105 @@ private fun ColumnScope.ConnectPage(
         onClick = onSkip,
         primary = false,
     )
+    Spacer(Modifier.height(16.dp))
+}
+
+@Composable
+private fun ColumnScope.SpotifyPage(
+    connected: Boolean,
+    onBack: () -> Unit,
+    onConnect: () -> Unit,
+    onOpenTokenSetup: (() -> Unit)?,
+    onFinish: () -> Unit,
+) {
+    Spacer(Modifier.height(16.dp))
+    BackButton(onBack)
+    Spacer(Modifier.height(20.dp))
+    Title(stringResource(R.string.onboarding_spotify_title))
+    Spacer(Modifier.height(14.dp))
+    Text(
+        text = stringResource(R.string.onboarding_spotify_body),
+        style = MaterialTheme.typography.bodyLarge,
+        fontSize = 17.sp,
+        lineHeight = 23.sp,
+        color = Color.White.copy(alpha = 0.72f),
+    )
+
+    Spacer(Modifier.weight(1f))
+
+    if (connected) {
+        Row(
+            modifier = Modifier
+                .align(Alignment.CenterHorizontally)
+                .clip(CircleShape)
+                .background(Color.White.copy(alpha = 0.16f))
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+        ) {
+            Icon(
+                imageVector = Icons.Rounded.CheckCircle,
+                contentDescription = null,
+                tint = Color(0xFF1ED760),
+                modifier = Modifier.size(22.dp),
+            )
+            Spacer(Modifier.width(10.dp))
+            Text(
+                text = stringResource(R.string.onboarding_spotify_connected),
+                style = MaterialTheme.typography.titleMedium,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = Color.White,
+            )
+        }
+        Spacer(Modifier.height(24.dp))
+        PillButton(
+            label = stringResource(R.string.onboarding_spotify_finish),
+            onClick = onFinish,
+            primary = true,
+        )
+    } else {
+        PillButton(
+            label = stringResource(R.string.onboarding_sign_in_spotify),
+            onClick = onConnect,
+            primary = true,
+            leading = {
+                Icon(
+                    painter = painterResource(Res.drawable.spotify_logo),
+                    contentDescription = null,
+                    tint = Color(0xFF1ED760),
+                    modifier = Modifier.size(22.dp),
+                )
+            },
+        )
+        Spacer(Modifier.height(12.dp))
+        PillButton(
+            label = stringResource(R.string.onboarding_skip_spotify),
+            onClick = onFinish,
+            primary = false,
+        )
+        if (onOpenTokenSetup != null) {
+            Spacer(Modifier.height(14.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .align(Alignment.CenterHorizontally),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = stringResource(R.string.spotify_use_spdc_token),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontSize = 14.sp,
+                    color = Color.White.copy(alpha = 0.65f),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .clickable(onClick = onOpenTokenSetup)
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                )
+            }
+        }
+    }
     Spacer(Modifier.height(16.dp))
 }
 
@@ -435,6 +575,7 @@ private fun BackButton(onClick: () -> Unit) {
 
 private const val PAGE_NAME = 0
 private const val PAGE_CONNECT = 1
+private const val PAGE_SPOTIFY = 2
 
 /** Long enough for a full name; the party server keeps the first 80. */
 private const val NAME_LIMIT = 40
@@ -445,4 +586,12 @@ private val ConnectPalettes = listOf(
     MeshPalette(listOf(Color(0xFFE53935), Color(0xFFFF6E40), Color(0xFFAD1457), Color(0xFF311B92))),
     MeshPalette(listOf(Color(0xFFFF3D00), Color(0xFFD81B60), Color(0xFF8E24AA), Color(0xFFB71C1C))),
     MeshPalette(listOf(Color(0xFFF50057), Color(0xFFFF9100), Color(0xFFC51162), Color(0xFF4527A0))),
+)
+
+/** The Spotify page transitions to rich emeralds, forest greens and teals. */
+private val SpotifyPalettes = listOf(
+    MeshPalette(listOf(Color(0xFF1DB954), Color(0xFF107C41), Color(0xFF0D5231), Color(0xFF121212))),
+    MeshPalette(listOf(Color(0xFF1ED760), Color(0xFF00897B), Color(0xFF004D40), Color(0xFF191414))),
+    MeshPalette(listOf(Color(0xFF00E676), Color(0xFF1B5E20), Color(0xFF004D40), Color(0xFF121212))),
+    MeshPalette(listOf(Color(0xFF1DB954), Color(0xFF00B0FF), Color(0xFF004D40), Color(0xFF121212))),
 )
