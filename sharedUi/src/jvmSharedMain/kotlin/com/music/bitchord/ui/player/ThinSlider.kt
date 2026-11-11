@@ -45,9 +45,12 @@ import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.music.bitchord.data.settings.MixBlend
+import com.music.bitchord.ui.haptics.Haptic
+import com.music.bitchord.ui.haptics.rememberHaptics
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.cos
 
 /**
@@ -100,6 +103,7 @@ fun ThinSlider(
     /** Halfway between the two track colours: visible against unplayed, invisible under played. */
     markerColor: Color = Color.White.copy(alpha = 0.5f),
 ) {
+    val haptics = rememberHaptics()
     var dragging by remember { mutableStateOf(false) }
     val height by animateDpAsState(
         targetValue = if (dragging) activeHeight else idleHeight,
@@ -160,8 +164,11 @@ fun ThinSlider(
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
                     dragging = true
-                    onValueChange((down.position.x / size.width).coerceIn(0f, 1f))
+                    val initialVal = (down.position.x / size.width).coerceIn(0f, 1f)
+                    haptics.play(Haptic.Tick)
+                    onValueChange(initialVal)
 
+                    var lastHapticFraction = initialVal
                     while (true) {
                         val event = awaitPointerEvent()
                         val pointer = event.changes.firstOrNull { it.id == down.id } ?: break
@@ -170,12 +177,18 @@ fun ThinSlider(
                             break
                         }
                         if (pointer.positionChanged()) {
-                            onValueChange((pointer.position.x / size.width).coerceIn(0f, 1f))
+                            val newVal = (pointer.position.x / size.width).coerceIn(0f, 1f)
+                            if (abs(newVal - lastHapticFraction) >= 0.04f) {
+                                haptics.play(Haptic.Tick)
+                                lastHapticFraction = newVal
+                            }
+                            onValueChange(newVal)
                             pointer.consume()
                         }
                     }
 
                     dragging = false
+                    haptics.play(Haptic.Select)
                     onValueChangeFinished?.invoke()
                 }
             },
