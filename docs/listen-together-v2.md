@@ -5,6 +5,23 @@ pantalla actual de Listen Together como entrada principal.
 
 ---
 
+## Estado de la implementación
+
+| Fase | Estado |
+|---|---|
+| F0 Servidor: personas, `addedBy`, cola de 500, canal de cuenta | ✅ hecho y probado (Go, sockets reales) |
+| F1 Cliente compartido: `AccountDevices`, `HandoffRules`, modelos | ✅ hecho; prueba viva cliente real ↔ servidor real |
+| F2 Android: modal Conectar, altavoz de dispositivo, dispositivo objetivo | ✅ hecho; probado en un teléfono contra un servidor local (aparece, recibe cola, play/pause, snapshot). **Sin probar con dos dispositivos reales ni con la cuenta de Google real.** El arreglo del eco de la cola está compilado y no re-probado. |
+| F2 PC: modal Conectar y dispositivo en el escritorio | ⏳ pendiente. El PC tiene su propio motor de audio y su copia de la interfaz (`desktopUi`); necesita su propio altavoz/objetivo. |
+| F3 Party por persona (cliente), avatar en la cola, cola completa, crear sin nombre | ✅ Android. Los clientes envían la prueba de cuenta y el nombre del dispositivo, los miembros se agrupan por persona, la portada de la cola lleva la foto de quien añadió la canción y el límite de cola viene del servidor. ⏳ PC. |
+| F4 Configuración y limpieza | ⏳ pendiente: pantalla de configuración reducida, hoja "Party", retirar "Mis dispositivos" (`/api/devices/join`) y los textos sobrantes. |
+| Spotify | ⏸ fuera por ahora (ver `spotify-jam-bridge.md`). |
+
+Notas de lo aprendido al probar:
+- El temporizador de 5 s del servidor cerraba las salas que no son party; las de cuenta ya se saltan.
+- Un dispositivo que carga la cola de otro **no** debe devolvérsela: el reproductor avisa de sus propios movimientos con retraso, así que se guarda por ventana de tiempo y por la canción conocida del objetivo.
+- La playlist "BitChord devices ·" se crea sola al primer arranque con sesión de Google.
+
 ## 1. Qué cambia conceptualmente
 
 | Hoy | v2 |
