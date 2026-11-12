@@ -366,7 +366,16 @@ data class PartyUi(
     val members: List<PartyMember> = emptyList(),
     val you: PartyMember? = null,
     val code: String? = null,
+    /**
+     * Who queued each song, by video id, for the picture on its cover in the queue. Only songs
+     * somebody queued appear: AutoPlay's suggestions, and anything an older server did not stamp,
+     * have none. A song queued twice shows whoever queued it first.
+     */
+    val addedBy: Map<String, AddedByUi> = emptyMap(),
 )
+
+/** The person who queued a song. */
+data class AddedByUi(val name: String, val avatarUrl: String?)
 
 sealed interface LyricsTranslationResult {
     data class Translated(val lines: List<LyricLine>) : LyricsTranslationResult

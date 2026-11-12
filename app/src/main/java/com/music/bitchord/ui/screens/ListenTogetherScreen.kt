@@ -113,6 +113,7 @@ import com.music.bitchord.data.listentogether.PartyServers
 import com.music.bitchord.data.listentogether.ListenTogether
 import com.music.bitchord.data.listentogether.PartyActivity
 import com.music.bitchord.data.listentogether.PartyMember
+import com.music.bitchord.data.listentogether.byPerson
 import com.music.bitchord.data.listentogether.ServerConnectionState
 import com.music.bitchord.data.listentogether.ServerUrlError
 import androidx.core.content.FileProvider
@@ -1229,7 +1230,7 @@ private fun InAParty(
     SettingsGroup(
         header = stringResource(
             R.string.listen_together_listening,
-            state.members.size + (spotifySession?.members?.size ?: 0),
+            state.members.byPerson().size + (spotifySession?.members?.size ?: 0),
             state.maxMembers + (spotifySession?.members?.size ?: 0),
         ),
         footer = stringResource(R.string.listen_together_members_footer, state.maxMembers),
@@ -1265,9 +1266,16 @@ private fun InAParty(
             }
             RowDivider()
         }
-        state.members.forEachIndexed { index, member ->
+        // People, not devices: one row per person, with their devices under the name.
+        state.members.byPerson().forEachIndexed { index, person ->
             if (index > 0) RowDivider()
-            MemberRow(member = member, isYou = member.memberId == state.you?.memberId, canKick = state.you?.isHost == true && !member.isHost, onKick = { onKick(member.memberId) })
+            MemberRow(
+                member = person.asMember,
+                isYou = person.includes(state.you?.memberId),
+                canKick = state.you?.isHost == true && !person.isHost,
+                onKick = { onKick(person.lead.memberId) },
+                devices = person.devices,
+            )
         }
         if (spotifySession != null && spotifySession.members.isNotEmpty()) {
             RowDivider()
@@ -1470,7 +1478,14 @@ private fun PartyAvatar(url: String?, size: Dp = ICON_SIZE) {
 }
 
 @Composable
-private fun MemberRow(member: PartyMember, isYou: Boolean, canKick: Boolean = false, onKick: () -> Unit = {}) {
+private fun MemberRow(
+    member: PartyMember,
+    isYou: Boolean,
+    canKick: Boolean = false,
+    onKick: () -> Unit = {},
+    /** Every device of this person; shown under the name when there is more than one. */
+    devices: List<PartyMember> = emptyList(),
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1531,6 +1546,14 @@ private fun MemberRow(member: PartyMember, isYou: Boolean, canKick: Boolean = fa
                     text = stringResource(R.string.listen_together_away),
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            } else if (devices.size > 1) {
+                Text(
+                    text = devices.joinToString(" · ") { it.deviceName.ifBlank { it.displayName } },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }

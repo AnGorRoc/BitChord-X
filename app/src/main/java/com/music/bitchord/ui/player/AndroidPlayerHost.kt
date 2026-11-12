@@ -287,6 +287,12 @@ private fun ListenTogether.State.toPartyUi() = PartyUi(
     members = members,
     you = you,
     code = code,
+    addedBy = if (!inParty) emptyMap() else buildMap {
+        queue.items.forEach { track ->
+            val name = track.addedByName
+            if (!name.isNullOrBlank()) putIfAbsent(track.videoId, AddedByUi(name, track.addedByAvatar))
+        }
+    },
 )
 
 /**
