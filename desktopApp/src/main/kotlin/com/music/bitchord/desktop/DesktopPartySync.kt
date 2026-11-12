@@ -149,7 +149,7 @@ internal class DesktopPartySync(
     /** Something the listener asked for here, which the party should be told about. */
     fun onLocalIntent(expectedVideoId: String? = null) {
         val party = DesktopListenTogether.state.value
-        if (!party.inParty || party.controlsLocked || party.detached) return
+        if (!party.inParty || party.controlsLocked) return
         // Not playing the party here, so this engine's state is not the party's business.
         if (!DesktopListenTogether.listenHere.value) return
         // Queue/transport gestures can arrive while a preceding song selection is still loading.
@@ -216,12 +216,6 @@ internal class DesktopPartySync(
         // Following the party without playing it here: the music comes out of another device.
         // Nothing is loaded or started, and the engine is silenced once on the way in;
         // onLocalIntent is already closed to it by then, so that pause is never published.
-        // A computer in the person's own room that plays its own music: the room is not its business.
-        if (party.detached) {
-            startJob?.cancel()
-            silencedForParty = false
-            return
-        }
         if (!DesktopListenTogether.listenHere.value) {
             startJob?.cancel()
             if (!silencedForParty) {

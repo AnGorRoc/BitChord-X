@@ -980,7 +980,7 @@ fun BitChordDesktopApp() {
         if (partyTrackChangeBlocked()) return
         if (routedToRemote(listOf(song), 0)) return
         val tapped = canonicalSong(song).withSource(source)
-        val songs = if (DesktopListenTogether.state.value.let { it.inParty && !it.detached }) {
+        val songs = if (DesktopListenTogether.state.value.inParty) {
             partyPlaybackQueue(tapped)
         } else {
             // The phone's one-off queue: the song, then whatever the listener had queued by hand.
@@ -1054,7 +1054,7 @@ fun BitChordDesktopApp() {
         // Past the end still means the last row, as the clamp here always did.
         val at = resolved.indexOfFirst { it.index >= startIndex }.takeIf { it >= 0 } ?: resolved.lastIndex
         if (routedToRemote(playable, at)) return
-        if (DesktopListenTogether.state.value.let { it.inParty && !it.detached }) {
+        if (DesktopListenTogether.state.value.inParty) {
             liveQueue = DesktopQueue(partyPlaybackQueue(playable[at]), index = 0)
             preShuffleOrder = emptyList()
             playCurrent()

@@ -123,17 +123,6 @@ internal fun DesktopListenTogetherDialog(autoplayEnabled: Boolean, onDismiss: ()
             if (!LocalDesktopPanelIsPage.current) HorizontalDivider(color = DesktopCardEdge)
 
             when {
-                state.inParty && state.personal -> MyDevicesRoom(
-                    state = state,
-                    busy = busy,
-                    onLeave = {
-                        busy = true
-                        scope.launch {
-                            DesktopListenTogether.leaveParty()
-                            busy = false
-                        }
-                    },
-                )
                 state.inParty -> PartyRoom(
                     state = state,
                     activity = activity,
@@ -220,15 +209,6 @@ internal fun DesktopListenTogetherDialog(autoplayEnabled: Boolean, onDismiss: ()
                             busy = false
                         }
                     },
-                    onMyDevices = {
-                        busy = true
-                        localError = null
-                        scope.launch {
-                            DesktopListenTogether.joinMyDevices(nickname)
-                                .onFailure { localError = it.message }
-                            busy = false
-                        }
-                    },
                     onPreview = {
                         busy = true
                         localError = null
@@ -265,7 +245,6 @@ private fun PartyLanding(
     busy: Boolean,
     error: String?,
     onCreate: () -> Unit,
-    onMyDevices: () -> Unit,
     onPreview: () -> Unit,
 ) {
     LazyColumn(
@@ -317,14 +296,6 @@ private fun PartyLanding(
                         onClick = onPreview,
                     )
                 }
-            }
-        }
-        item {
-            PartyChoiceCard(
-                title = "My devices",
-                subtitle = "Play on one of your devices and choose the music from another. Devices signed in to the same Google account.",
-            ) {
-                PrimaryButton("Connect my devices", busy, enabled, onMyDevices)
             }
         }
         if (!signedIn) item { Notice("Sign in to YouTube Music before creating or joining a party.", true) }
@@ -434,89 +405,6 @@ private fun JoinConfirmation(
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             TextButton(onClick = onBack, enabled = !busy) { Text("Back") }
             PrimaryButton("Join party", busy, !preview.isFull, onJoin, Modifier.width(190.dp))
-        }
-    }
-}
-
-/**
- * A person's own devices as one: what is playing, where it plays, and a remote for it. Not
- * [PartyRoom]: there is no code to read out and nobody to invite or remove.
- */
-@Composable
-private fun MyDevicesRoom(state: DesktopListenTogether.State, busy: Boolean, onLeave: () -> Unit) {
-    val playHere by DesktopListenTogether.listenHere.collectAsState()
-    val independent = state.detached
-    // Following the room but nobody is making its sound: the playing device went away.
-    val nobodyPlays = !independent &&
-        state.members.none { it.playsAudio && !it.independent && it.connected }
-    LazyColumn(
-        Modifier.fillMaxSize().padding(horizontal = panelInset(24.dp), vertical = 24.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        if (!independent) item { NowPlayingCard(state) }
-        if (nobodyPlays) item {
-            Row(
-                Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(16.dp)).padding(18.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text("No device is playing")
-                    Text("Start the room on this computer.", color = DesktopSecondary, style = MaterialTheme.typography.bodySmall)
-                }
-                PrimaryButton("Play here", false, true, { DesktopListenTogether.setListenHere(true) })
-            }
-        }
-        if (!independent) item { PlayHereCard() }
-        // Each device can also go its own way: this one plays something else and the room carries on.
-        item {
-            Column(Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(16.dp)).padding(18.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.Person, null, modifier = Modifier.size(20.dp))
-                    Spacer(Modifier.width(10.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text("Play something different here")
-                        Text(
-                            if (independent) "This computer plays its own music and ignores the room until you switch back."
-                            else "This computer follows the room.",
-                            color = DesktopSecondary,
-                            style = MaterialTheme.typography.bodySmall,
-                        )
-                    }
-                    Switch(independent, onCheckedChange = DesktopListenTogether::setIndependent)
-                }
-            }
-        }
-        // A remote: this computer is not the one playing, so its own player would act on nothing.
-        if (!playHere && !independent) item {
-            Row(
-                Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(16.dp)).padding(12.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                IconButton(onClick = { DesktopListenTogether.previous() }) { Icon(Icons.Rounded.SkipPrevious, "Previous") }
-                IconButton(onClick = {
-                    val at = DesktopListenTogether.partyPositionMs()
-                    if (state.playback.isPlaying) DesktopListenTogether.pause(at) else DesktopListenTogether.play(at)
-                }) {
-                    Icon(if (state.playback.isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, "Play or pause")
-                }
-                IconButton(onClick = { DesktopListenTogether.next() }) { Icon(Icons.Rounded.SkipNext, "Next") }
-            }
-        }
-        item {
-            Column(Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(16.dp)).padding(18.dp)) {
-                Text("MY DEVICES", color = DesktopSecondary, style = MaterialTheme.typography.labelSmall)
-                Spacer(Modifier.height(6.dp))
-                state.members.forEach { member ->
-                    MemberRow(member, member.memberId == state.you?.memberId, canKick = false) {}
-                }
-            }
-        }
-        state.error?.let { item { Notice(it, true) } }
-        item {
-            TextButton(onClick = onLeave, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
-                Text("Disconnect", color = DesktopDestructive)
-            }
         }
     }
 }

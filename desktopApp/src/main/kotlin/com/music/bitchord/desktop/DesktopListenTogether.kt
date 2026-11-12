@@ -4,7 +4,6 @@ import com.music.bitchord.data.listentogether.ApiError
 import com.music.bitchord.data.listentogether.DeviceGroup
 import com.music.bitchord.data.listentogether.account.AccountDevices
 import com.music.bitchord.data.listentogether.account.DeviceSelf
-import com.music.bitchord.data.listentogether.DevicesJoinRequest
 import com.music.bitchord.data.listentogether.JoinRequest
 import com.music.bitchord.data.listentogether.PartyActivity
 import com.music.bitchord.data.listentogether.PartyMember
@@ -106,19 +105,8 @@ internal object DesktopListenTogether {
         val clockSynced: Boolean = false,
         val roundTripMs: Long = 0,
         val error: String? = null,
-        /**
-         * Whether this is the person's own room (see [joinMyDevices]) rather than a party shared
-         * with others. Every device in it is theirs, and exactly one plays.
-         */
-        val personal: Boolean = false,
     ) {
         val inParty: Boolean get() = code != null
-
-        /**
-         * In a personal room, whether this computer is playing its own music instead of following
-         * the room. Nothing is synchronised, loaded or published for it.
-         */
-        val detached: Boolean get() = personal && you?.independent == true
         val isFull: Boolean get() = members.size >= maxMembers
         val controlsLocked: Boolean get() = inParty && hostOnlyControl && you?.isHost != true
     }
@@ -510,13 +498,6 @@ internal object DesktopListenTogether {
         announceListening()
     }
 
-    /**
-     * In a personal room the server decides which device plays (the last to ask), so this
-     * computer's own switch follows what it says rather than what was chosen here.
-     */
-    private fun syncPersonalListening() {
-        _listenHere.value = _state.value.you?.playsAudio ?: true
-    }
 
     // ----------------------------------------------------------- my devices --
 
@@ -576,64 +557,6 @@ internal object DesktopListenTogether {
             ?: DeviceGroup.ensureSecret().getOrNull()?.also { persistence.saveString(key, it) }
             ?: return null
         return DeviceGroup.groupId(secret)
-    }
-
-    suspend fun joinMyDevices(nickname: String = nickname()): Result<String> = withContext(Dispatchers.IO) {
-        runCatching {
-            val who = identity(nickname) ?: throw PartyException("not_signed_in", "Sign in to use My devices.")
-            val server = resolveIdleServer()
-            if (server.isBlank()) throw PartyException("no_server", "Set the party server address first.")
-            if (PartyServers.FEATURE_MY_DEVICES !in serverFeatures(server)) {
-                throw PartyException("unsupported", "This party server doesn't have My devices yet. Redeploy it, or pick a server that has it.")
-            }
-            val secret = DeviceGroup.ensureSecret().getOrElse {
-                throw PartyException("no_account_proof", "Couldn't reach your YouTube Music library.")
-            }
-            val response = http.post("$server/api/devices/join") {
-                contentType(ContentType.Application.Json)
-                setBody(DevicesJoinRequest(who.userId, who.deviceId, who.name, who.avatar, DeviceGroup.groupId(secret)))
-            }
-            if (!response.status.isSuccess()) throw response.toPartyException()
-            val membership: PartyMembership = response.body()
-
-            activePartyServerBase = server
-            token = membership.token
-            persistence.saveString(KEY_CODE, membership.code)
-            persistence.saveString(KEY_TOKEN, membership.token)
-            persistence.saveString(KEY_ACTIVE_SERVER, server)
-            clock.reset()
-            _listenHere.value = membership.you.playsAudio
-            _state.value = State(
-                code = membership.code,
-                you = membership.you,
-                members = membership.party.members,
-                maxMembers = membership.party.maxMembers,
-                playback = membership.party.playback,
-                queue = membership.party.queue,
-                connection = Connection.CONNECTING,
-                personal = true,
-            )
-            connect()
-            membership.code
-        }.onFailure { failure ->
-            // Reported once, by the caller that asked: writing it to shared state as well
-            // showed the same line twice.
-            DesktopTrackLog.log("listen together: could not open My devices: ${redact(failure.message)}")
-        }
-    }
-
-    /**
-     * Chooses between following the personal room and playing something else here. Announced only
-     * to servers that understand it; the effect comes back on the members frame.
-     */
-    fun setIndependent(enabled: Boolean) {
-        val server = activePartyServerBase ?: return
-        if (!_state.value.personal) return
-        scope.launch {
-            if (PartyServers.FEATURE_INDEPENDENT_DEVICES in serverFeatures(server)) {
-                control("setIndependent") { put("enabled", enabled) }
-            }
-        }
     }
 
     /**
@@ -821,9 +744,8 @@ internal object DesktopListenTogether {
                         error = null,
                     )
                 }
-                // A first arrival has not yet said how it listens; a personal room tells it.
-                if (_state.value.personal) syncPersonalListening()
-                else if (!_listenHere.value) announceListening()
+                // A first arrival has not yet said how it listens.
+                if (!_listenHere.value) announceListening()
             }
 
             "pong" -> {
@@ -873,7 +795,6 @@ internal object DesktopListenTogether {
                             ?: current.you,
                     )
                 }
-                if (_state.value.personal) syncPersonalListening()
             }
 
             "activity" -> {

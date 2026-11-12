@@ -32,8 +32,6 @@ object PartyServers {
 
     /** Feature names an extended server lists at `/api/info`. */
     const val FEATURE_LISTENING_MODE = "listeningMode"
-    const val FEATURE_MY_DEVICES = "myDevices"
-    const val FEATURE_INDEPENDENT_DEVICES = "independentDevices"
     const val FEATURE_PEOPLE = "people"
     const val FEATURE_ADDED_BY = "addedBy"
     const val FEATURE_ACCOUNT_DEVICES = "accountDevices"

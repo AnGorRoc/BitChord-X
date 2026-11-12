@@ -59,7 +59,6 @@ func main() {
 	mux.HandleFunc("GET /healthz", handleHealthz)
 	mux.HandleFunc("GET /api/time", handleTime)
 	mux.HandleFunc("GET /api/info", handleInfo)
-	mux.HandleFunc("POST /api/devices/join", handleDevicesJoin)
 	mux.HandleFunc("POST /api/account/connect", handleAccountConnect)
 	mux.HandleFunc("GET /ws/account", handleAccountSocket)
 	mux.HandleFunc("GET /.well-known/assetlinks.json", handleAssetLinks)
@@ -290,8 +289,6 @@ var serverFeatures = []string{
 	"activity",        // activity frames
 	"inviteLanding",   // GET /invite/{code}
 	"listeningMode",   // setListening, and playsAudio on members
-	"myDevices",       // POST /api/devices/join: one person's devices as one room
-	"independentDevices", // setIndependent: a device in that room plays its own music
 	"people",             // accountProof on join: one person's devices are one seat; personId on members
 	"addedBy",            // tracks carry who queued them
 	"accountDevices",     // /api/account/connect + /ws/account: a person's devices see each other
@@ -509,12 +506,6 @@ func handleJoinParty(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, http.StatusNotFound, "no_such_party", "No party with that code.")
 		return
 	}
-	// A personal room is opened by its owner's devices, never by code.
-	if party.IsPersonal(p.Code) {
-		jsonError(w, http.StatusNotFound, "no_such_party", "No party with that code.")
-		return
-	}
-
 	p.Lock()
 	m, err := p.JoinAs(req.UserId, req.DeviceId, req.DisplayName, req.AvatarUrl, req.AccountProof, req.DeviceName)
 	if err != nil {
@@ -563,11 +554,6 @@ func handlePreviewParty(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, http.StatusNotFound, "no_such_party", "No party with that code.")
 		return
 	}
-	if party.IsPersonal(p.Code) {
-		jsonError(w, http.StatusNotFound, "no_such_party", "No party with that code.")
-		return
-	}
-
 	p.Lock()
 	// Joined order, as the snapshot uses: the caller draws the first few faces
 	// and counts the rest, so which faces those are must not change between two
@@ -917,7 +903,7 @@ func handleInviteLanding(w http.ResponseWriter, r *http.Request) {
 	}
 
 	p := store.Find(code)
-	if p == nil || party.IsPersonal(code) {
+	if p == nil {
 		w.WriteHeader(http.StatusNotFound)
 		_ = inviteTemplate.Execute(w, invitePageData{
 			Code:     code,
@@ -1091,7 +1077,6 @@ func handleSocketFrame(p *party.Party, member *party.Member, sc *hub.SafeConn, f
 			hubInst.Broadcast(p.Code, stateFrame(p), "")
 			if action == protocol.ActionKick ||
 				action == protocol.ActionSetListening ||
-				action == protocol.ActionSetIndependent ||
 				action == protocol.ActionSetMaxMembers ||
 				action == protocol.ActionSetHostOnlyControl {
 				hubInst.Broadcast(p.Code, membersFrame(p), "")
@@ -1265,28 +1250,12 @@ func applyControl(p *party.Party, member *party.Member, action string, frame map
 		}
 		return true, "", ""
 
-	case protocol.ActionSetIndependent:
-		enabled, ok := frame["enabled"].(bool)
-		if !ok {
-			return false, "bad_request", "enabled must be true or false."
-		}
-		if !party.IsPersonal(p.Code) {
-			return false, "not_personal", "Only your own devices can play independently."
-		}
-		p.SetIndependent(member, enabled)
-		return true, "", ""
-
 	case protocol.ActionSetListening:
 		enabled, ok := frame["enabled"].(bool)
 		if !ok {
 			return false, "bad_request", "enabled must be true or false."
 		}
-		if enabled && party.IsPersonal(p.Code) {
-			// One person's own devices: the one that asks to play is the only one that does.
-			p.PlayHere(member)
-		} else {
-			member.Silent = !enabled
-		}
+		member.Silent = !enabled
 		return true, "", ""
 
 	case protocol.ActionSetAutoplay:
@@ -1373,12 +1342,6 @@ func activityFrame(member *party.Member, action string, frame map[string]interfa
 	case protocol.ActionKick: detail = "Removed a listener from the party"
 	case protocol.ActionSetMaxMembers: detail = "Changed the party size"
 	case protocol.ActionSetAutoplay: detail = "Changed AutoPlay"
-	case protocol.ActionSetIndependent:
-		if enabled, ok := frame["enabled"].(bool); ok && enabled {
-			detail = "Switched to playing their own music"
-		} else {
-			detail = "Switched back to following the room"
-		}
 	case protocol.ActionSetListening:
 		if enabled, ok := frame["enabled"].(bool); ok && !enabled {
 			detail = "Switched to listening through the host"

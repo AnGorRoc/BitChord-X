@@ -15,7 +15,6 @@ import (
 
 	"github.com/KabirSinghBhatia/BitChord/backend/clock"
 	"github.com/KabirSinghBhatia/BitChord/backend/config"
-	"github.com/KabirSinghBhatia/BitChord/backend/party"
 	"github.com/KabirSinghBhatia/BitChord/backend/presence"
 	"github.com/KabirSinghBhatia/BitChord/backend/protocol"
 )
@@ -28,7 +27,6 @@ func setupTestServer() *httptest.Server {
 	mux.HandleFunc("GET /healthz", handleHealthz)
 	mux.HandleFunc("GET /api/time", handleTime)
 	mux.HandleFunc("GET /api/info", handleInfo)
-	mux.HandleFunc("POST /api/devices/join", handleDevicesJoin)
 	mux.HandleFunc("GET /.well-known/assetlinks.json", handleAssetLinks)
 	mux.HandleFunc("POST /api/parties", handleCreateParty)
 	mux.HandleFunc("POST /api/parties/{code}/join", handleJoinParty)
@@ -685,83 +683,3 @@ func TestSetListeningIsPerMember(t *testing.T) {
 	}
 }
 
-func TestIndependentDeviceIsNotSilencedByAnother(t *testing.T) {
-	p := party.NewParty("TESTAB")
-	p.Personal = true
-	a, _ := p.JoinPersonal("me", "phone", "Phone", nil)
-	b, _ := p.JoinPersonal("me", "pc", "PC", nil)
-	c, _ := p.JoinPersonal("me", "tablet", "Tablet", nil)
-	if a.Silent || !b.Silent || !c.Silent {
-		t.Fatalf("first plays, the rest follow: %v %v %v", a.Silent, b.Silent, c.Silent)
-	}
-	// The PC goes its own way, then the tablet takes the room over.
-	p.SetIndependent(b, true)
-	p.PlayHere(c)
-	if b.Silent || !b.Detached {
-		t.Fatalf("an independent device must keep playing its own music")
-	}
-	if !a.Silent || c.Silent {
-		t.Fatalf("the room should now play only on the tablet")
-	}
-	// Rejoining while another device plays makes it a controller again.
-	p.SetIndependent(b, false)
-	if !b.Silent || b.Detached {
-		t.Fatalf("a device rejoining the room should follow it")
-	}
-}
-
-func TestPersonalRoomMakesDevicesOne(t *testing.T) {
-	ts := setupTestServer()
-	defer ts.Close()
-
-	group := strings.Repeat("ab", 32)
-	join := func(device, groupID string) (int, map[string]interface{}) {
-		body, _ := json.Marshal(map[string]string{
-			"userId": "me", "deviceId": device, "displayName": "Me " + device, "groupId": groupID,
-		})
-		res, err := http.Post(ts.URL+"/api/devices/join", "application/json", bytes.NewReader(body))
-		if err != nil {
-			t.Fatalf("join: %v", err)
-		}
-		var out map[string]interface{}
-		_ = json.NewDecoder(res.Body).Decode(&out)
-		return res.StatusCode, out
-	}
-	plays := func(resp map[string]interface{}) bool {
-		you, _ := resp["you"].(map[string]interface{})
-		v, _ := you["playsAudio"].(bool)
-		return v
-	}
-
-	status, first := join("phone", group)
-	if status != http.StatusOK || !plays(first) {
-		t.Fatalf("first device should open the room and play: %d %v", status, first)
-	}
-	status, second := join("pc", group)
-	if status != http.StatusOK || plays(second) {
-		t.Fatalf("second device should join as a controller: %d %v", status, second)
-	}
-	if first["code"] != second["code"] {
-		t.Fatalf("both devices should share one room")
-	}
-	// A device coming back keeps the role it had.
-	_, again := join("phone", group)
-	if !plays(again) {
-		t.Fatalf("rejoining should keep the playing role")
-	}
-	// A different group is a different room.
-	_, other := join("tablet", strings.Repeat("cd", 32))
-	if other["code"] == first["code"] {
-		t.Fatalf("a different group must not share the room")
-	}
-	// The group id is the only way in: the code opens nothing.
-	body, _ := json.Marshal(map[string]string{"userId": "x", "deviceId": "x1", "displayName": "Stranger"})
-	res, _ := http.Post(ts.URL+"/api/parties/"+first["code"].(string)+"/join", "application/json", bytes.NewReader(body))
-	if res.StatusCode != http.StatusNotFound {
-		t.Fatalf("a personal room must not be joinable by code, got %d", res.StatusCode)
-	}
-	// And a malformed group id is refused.
-	if status, _ = join("pc", "short"); status != http.StatusUnprocessableEntity {
-		t.Fatalf("expected 422 for a bad group id, got %d", status)
-	}
-}

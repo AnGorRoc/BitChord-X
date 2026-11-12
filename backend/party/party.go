@@ -514,9 +514,6 @@ type Member struct {
 	// ordinary case, and sent as playsAudio so a client reading a server that
 	// predates it sees the field absent, which means true.
 	Silent             bool    `json:"-"`
-	// Detached is a device in a personal room that plays its own music instead
-	// of following the room. It is never silenced by another device playing.
-	Detached           bool    `json:"-"`
 	JoinedAtMs         int64   `json:"joinedAtMs"`
 	LastSeenMs         int64   `json:"lastSeenMs"`
 	ControlBudget      float64 `json:"-"`
@@ -536,7 +533,6 @@ func (m *Member) ToWire() map[string]interface{} {
 		"isHost":      m.IsHost,
 		"connected":   m.Connected,
 		"playsAudio":  !m.Silent,
-		"independent": m.Detached,
 		"joinedAtMs":  m.JoinedAtMs,
 		"lastSeenMs":  m.LastSeenMs,
 	}
@@ -559,9 +555,6 @@ type Party struct {
 	CreatedAtMs     int64
 	TouchedAtMs     int64
 	EmptySinceMs    *int64
-	// Personal marks one person's own room (see personal.go). Set once, before the
-	// party is shared, and never changed.
-	Personal bool
 }
 
 func NewParty(code string) *Party {
@@ -740,13 +733,7 @@ func (p *Party) IsExpired(now int64) bool {
 		return true
 	}
 	if p.EmptySinceMs != nil {
-		ttl := config.EmptyPartyTTLMs
-		// One person's own room outlives a pause in their listening: what was playing and
-		// queued is still there when the first device comes back.
-		if p.Personal {
-			ttl = config.PersonalRoomTTLMs
-		}
-		return now-*p.EmptySinceMs > ttl
+		return now-*p.EmptySinceMs > config.EmptyPartyTTLMs
 	}
 	return false
 }

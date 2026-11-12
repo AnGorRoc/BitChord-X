@@ -67,11 +67,3 @@ object DeviceGroup {
     }
 }
 
-@kotlinx.serialization.Serializable
-data class DevicesJoinRequest(
-    val userId: String,
-    val deviceId: String,
-    val displayName: String,
-    val avatarUrl: String? = null,
-    val groupId: String,
-)
