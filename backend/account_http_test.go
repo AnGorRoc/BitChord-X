@@ -186,6 +186,25 @@ func TestPickingADeviceHandsTheSoundOverAndLinksThem(t *testing.T) {
 	}
 }
 
+// The heartbeat closes rooms that belong to no party. Account rooms are not parties.
+func TestTheHeartbeatDoesNotDropAccountSockets(t *testing.T) {
+	ts := newAccountServer()
+	defer ts.Close()
+	phone := openDevice(t, ts, testProofAna, "phone", "Pixel", "phone")
+	defer phone.ws.Close()
+	pc := openDevice(t, ts, testProofAna, "pc", "IOP", "computer")
+	defer pc.ws.Close()
+
+	dropOrphanRooms()
+
+	// Both sockets must still work: a command goes through and arrives.
+	phone.send(map[string]interface{}{"type": "command", "to": "pc", "action": "playQueue",
+		"payload": map[string]interface{}{"tracks": []interface{}{map[string]interface{}{"videoId": "v"}}}})
+	if pc.next("command")["action"] != "playQueue" {
+		t.Fatalf("the sockets must survive the orphan sweep")
+	}
+}
+
 func TestASnapshotAnswerLinksNobody(t *testing.T) {
 	ts := newAccountServer()
 	defer ts.Close()

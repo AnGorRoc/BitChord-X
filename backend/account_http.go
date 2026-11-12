@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/gorilla/websocket"
+
 	"github.com/KabirSinghBhatia/BitChord/backend/account"
 	"github.com/KabirSinghBhatia/BitChord/backend/clock"
 	"github.com/KabirSinghBhatia/BitChord/backend/config"
@@ -146,6 +148,9 @@ func handleAccountSocket(w http.ResponseWriter, r *http.Request) {
 	for {
 		var frame map[string]interface{}
 		if err := conn.ReadJSON(&frame); err != nil {
+			if !websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+				log.Printf("account socket of %s ended: %v", d.DeviceID, err)
+			}
 			return
 		}
 		_ = conn.SetReadDeadline(time.Now().Add(idle))

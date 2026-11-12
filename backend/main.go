@@ -1450,16 +1450,27 @@ func startHeartbeatTicker() {
 			hubInst.Broadcast(p.Code, mf, "")
 		}
 
-		activeCodes := hubInst.ActiveCodes()
-		liveParties := store.All()
-		liveMap := make(map[string]bool)
-		for _, lp := range liveParties {
-			liveMap[lp.Code] = true
+		dropOrphanRooms()
+	}
+}
+
+// dropOrphanRooms closes the sockets of rooms that belong to no live party, which is what is
+// left when a party was swept while somebody still held a socket to it.
+//
+// Account rooms (see account_http.go) share the hub but are not parties, so they never are in the
+// store; they have their own lifetime and are skipped here. Closing them every heartbeat was a
+// real bug: every device's account socket dropped and reconnected every five seconds.
+func dropOrphanRooms() {
+	live := make(map[string]bool)
+	for _, lp := range store.All() {
+		live[lp.Code] = true
+	}
+	for _, code := range hubInst.ActiveCodes() {
+		if strings.HasPrefix(code, accountRoomPrefix) {
+			continue
 		}
-		for _, code := range activeCodes {
-			if !liveMap[code] {
-				hubInst.DropParty(code)
-			}
+		if !live[code] {
+			hubInst.DropParty(code)
 		}
 	}
 }

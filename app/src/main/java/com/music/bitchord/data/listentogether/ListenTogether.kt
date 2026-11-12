@@ -1820,6 +1820,12 @@ object ListenTogether {
      * offline). Made on first use and remembered, so the library is only asked once per account.
      */
     private suspend fun accountProof(): String? {
+        // A test seam for the dev build only: lets a device that is not signed in to Google be put in
+        // an account by writing a proof into its private preferences (adb run-as), so two devices can
+        // be exercised without the real library. Release builds never read it.
+        if (BuildConfig.FLAVOR == "dev") {
+            prefs.getString(KEY_DEBUG_PROOF, null)?.takeIf { it.length == 64 }?.let { return it }
+        }
         val who = identity() ?: return null
         val key = KEY_ACCOUNT_SECRET + who.userId
         val secret = prefs.getString(key, null)?.takeIf { it.isNotBlank() }
@@ -1975,6 +1981,7 @@ object ListenTogether {
     private const val KEY_DEVICE = "device_id"
     private const val KEY_NICKNAME = "party_nickname"
     private const val KEY_DEVICE_NAME = "device_name"
+    private const val KEY_DEBUG_PROOF = "debug_account_proof"
     private const val KEY_ACCOUNT_SECRET = "account_secret_"
     private const val KEY_KICKED = "party_kicked_until"
     private const val KEY_ACTIVE_SERVER = "party_active_server"
