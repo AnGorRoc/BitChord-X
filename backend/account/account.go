@@ -41,6 +41,9 @@ var deviceTypes = map[string]bool{"phone": true, "tablet": true, "computer": tru
 var Commands = map[string]bool{
 	"play": true, "pause": true, "seek": true, "next": true, "previous": true,
 	"setVolume": true, "playQueue": true, "enqueue": true, "release": true,
+	// snapshot asks the target to send its queue back (as a playQueue that links nobody), which is
+	// how a remote that picked a device already playing comes to show what that device plays.
+	"snapshot": true,
 }
 
 // NowPlaying is what a device says it is playing. The device is the only source of it.

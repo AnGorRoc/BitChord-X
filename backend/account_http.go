@@ -225,7 +225,13 @@ func handleAccountFrame(acc *account.Account, d *account.Device, sc *hub.SafeCon
 			targetID = target.DeviceID
 			// Handing music to a device is also how a remote starts: link them in the same step
 			// so the list shows who controls whom without a second round trip.
-			if action == "playQueue" || action == "enqueue" {
+			// "link": false marks a copy sent for display only (a snapshot answer, or giving the
+			// sound back): it must not make the sender the remote of the receiver.
+			link := true
+			if v, ok := payload["link"].(bool); ok && !v {
+				link = false
+			}
+			if (action == "playQueue" || action == "enqueue") && link {
 				if d.Controlling != targetID {
 					_ = acc.Attach(d, targetID)
 				}

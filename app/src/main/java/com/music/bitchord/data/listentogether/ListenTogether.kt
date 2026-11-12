@@ -3,6 +3,8 @@ package com.music.bitchord.data.listentogether
 import android.content.Context
 import android.os.SystemClock
 import android.content.SharedPreferences
+import com.music.bitchord.data.listentogether.account.AccountDevices
+import com.music.bitchord.data.listentogether.account.DeviceSelf
 import android.net.ConnectivityManager
 import android.net.Network
 import com.music.bitchord.BitChordApplication
@@ -687,6 +689,7 @@ object ListenTogether {
     }
 
     private lateinit var prefs: SharedPreferences
+    private lateinit var appContext: Context
     private var token: String? = null
 
     @Volatile
@@ -694,6 +697,7 @@ object ListenTogether {
     private var socketJob: Job? = null
 
     fun init(context: Context) {
+        appContext = context.applicationContext
         prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val rawSaved = prefs.getString(KEY_SERVER, null)?.trim().orEmpty()
         val normalizedSaved = when (val res = parseAndNormalizeServerUrl(rawSaved)) {
@@ -1761,6 +1765,69 @@ object ListenTogether {
      * from a sixth device — so it has to survive a sign-out, an account switch
      * and a process death, and must not survive an uninstall.
      */
+    // ----------------------------------------------------- my devices (account) --
+
+    /**
+     * This device's link to the person's other devices: who is online, what each is playing, and
+     * handing the sound from one to another. It runs for as long as the app does, with no button to
+     * start it. Servers without the channel make it settle into UNSUPPORTED by itself.
+     *
+     * @see AccountDevices
+     */
+    val account: AccountDevices by lazy {
+        AccountDevices(
+            http = http,
+            scope = scope,
+            serverBase = { effectiveIdleServerBase().takeIf { it.isNotBlank() }?.let(::resolveHttpBase) },
+            proof = { accountProof() },
+            self = { DeviceSelf(deviceId(), deviceName(), deviceType()) },
+        )
+    }
+
+    /** What this device is called in the person's Connect list. Their choice, else the model. */
+    fun deviceName(): String =
+        prefs.getString(KEY_DEVICE_NAME, null)?.trim()?.takeIf { it.isNotBlank() } ?: defaultDeviceName()
+
+    fun setDeviceName(name: String) {
+        prefs.edit().putString(KEY_DEVICE_NAME, name.trim()).apply()
+        if (name.isNotBlank()) account.rename(name.trim())
+    }
+
+    private fun defaultDeviceName(): String {
+        val model = android.os.Build.MODEL.orEmpty().trim()
+        val maker = android.os.Build.MANUFACTURER.orEmpty().trim()
+        return when {
+            model.isBlank() -> "Android"
+            maker.isNotBlank() && !model.startsWith(maker, ignoreCase = true) ->
+                "${maker.replaceFirstChar { it.uppercase() }} $model"
+            else -> model
+        }
+    }
+
+    private fun deviceType(): String {
+        val ui = appContext.resources.configuration
+        val television = (ui.uiMode and android.content.res.Configuration.UI_MODE_TYPE_MASK) ==
+            android.content.res.Configuration.UI_MODE_TYPE_TELEVISION
+        return when {
+            television -> "tv"
+            ui.smallestScreenWidthDp >= 600 -> "tablet"
+            else -> "phone"
+        }
+    }
+
+    /**
+     * The proof this account's devices share, or null when it cannot be had right now (signed out,
+     * offline). Made on first use and remembered, so the library is only asked once per account.
+     */
+    private suspend fun accountProof(): String? {
+        val who = identity() ?: return null
+        val key = KEY_ACCOUNT_SECRET + who.userId
+        val secret = prefs.getString(key, null)?.takeIf { it.isNotBlank() }
+            ?: DeviceGroup.ensureSecret().getOrNull()?.also { prefs.edit().putString(key, it).apply() }
+            ?: return null
+        return DeviceGroup.groupId(secret)
+    }
+
     private fun deviceId(): String {
         prefs.getString(KEY_DEVICE, null)?.let { return it }
         return UUID.randomUUID().toString().also {
@@ -1907,6 +1974,8 @@ object ListenTogether {
     private const val KEY_TOKEN = "party_token"
     private const val KEY_DEVICE = "device_id"
     private const val KEY_NICKNAME = "party_nickname"
+    private const val KEY_DEVICE_NAME = "device_name"
+    private const val KEY_ACCOUNT_SECRET = "account_secret_"
     private const val KEY_KICKED = "party_kicked_until"
     private const val KEY_ACTIVE_SERVER = "party_active_server"
 

@@ -186,6 +186,36 @@ func TestPickingADeviceHandsTheSoundOverAndLinksThem(t *testing.T) {
 	}
 }
 
+func TestASnapshotAnswerLinksNobody(t *testing.T) {
+	ts := newAccountServer()
+	defer ts.Close()
+	phone := openDevice(t, ts, testProofAna, "phone", "Pixel", "phone")
+	defer phone.ws.Close()
+	pc := openDevice(t, ts, testProofAna, "pc", "IOP", "computer")
+	defer pc.ws.Close()
+
+	// The phone picks the PC (control only) and asks what it is playing.
+	phone.send(map[string]interface{}{"type": "attach", "to": "pc"})
+	phone.devicesWhere(func(l []map[string]interface{}) bool { return find(l, "pc")["controlledBy"] == "phone" })
+	phone.send(map[string]interface{}{"type": "command", "to": "pc", "action": "snapshot"})
+	if pc.next("command")["action"] != "snapshot" {
+		t.Fatalf("the PC receives the request")
+	}
+	// The PC answers with its queue. It is the target, so it must stay the target.
+	pc.send(map[string]interface{}{
+		"type": "command", "to": "phone", "action": "playQueue",
+		"payload": map[string]interface{}{"link": false, "mirror": true, "tracks": []interface{}{map[string]interface{}{"videoId": "v9"}}},
+	})
+	got := phone.next("command")
+	if got["from"] != "pc" || got["action"] != "playQueue" {
+		t.Fatalf("the phone receives the snapshot: %v", got)
+	}
+	list := phone.devicesWhere(func(l []map[string]interface{}) bool { return len(l) == 2 })
+	if find(list, "pc")["controlledBy"] != "phone" || find(list, "pc")["controlling"] != nil {
+		t.Fatalf("answering a snapshot must not reverse the link: %v", list)
+	}
+}
+
 func TestACommandWithoutALinkIsRefused(t *testing.T) {
 	ts := newAccountServer()
 	defer ts.Close()
