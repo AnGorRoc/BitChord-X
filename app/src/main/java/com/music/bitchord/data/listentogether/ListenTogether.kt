@@ -1210,7 +1210,7 @@ object ListenTogether {
                 val server = resolveHttpBase(effectiveIdleServerBase())
                 if (server.isBlank()) throw PartyException("no_server", "Set the party server address first.")
                 if (PartyServers.FEATURE_MY_DEVICES !in serverFeatures(server)) {
-                    throw PartyException("unsupported", "This party server doesn't support My devices.")
+                    throw PartyException("unsupported", "This party server doesn't have My devices yet. Redeploy it, or pick a server that has it.")
                 }
                 val secret = DeviceGroup.ensureSecret().getOrElse {
                     throw PartyException("no_account_proof", "Couldn't reach your YouTube Music library.")
@@ -1246,8 +1246,9 @@ object ListenTogether {
                 connect()
                 membership.code
             }.onFailure { failure ->
+                // Reported once, by the caller that asked: writing it to shared state as well
+                // showed the same line twice.
                 Log.w(TAG, "could not open My devices: ${redact(failure.message)}")
-                _state.update { it.copy(error = failure.displayMessage()) }
             }
         }
     }
