@@ -445,14 +445,49 @@ private fun JoinConfirmation(
 @Composable
 private fun MyDevicesRoom(state: DesktopListenTogether.State, busy: Boolean, onLeave: () -> Unit) {
     val playHere by DesktopListenTogether.listenHere.collectAsState()
+    val independent = state.detached
+    // Following the room but nobody is making its sound: the playing device went away.
+    val nobodyPlays = !independent &&
+        state.members.none { it.playsAudio && !it.independent && it.connected }
     LazyColumn(
         Modifier.fillMaxSize().padding(horizontal = panelInset(24.dp), vertical = 24.dp),
         verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        item { NowPlayingCard(state) }
-        item { PlayHereCard() }
+        if (!independent) item { NowPlayingCard(state) }
+        if (nobodyPlays) item {
+            Row(
+                Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(16.dp)).padding(18.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text("No device is playing")
+                    Text("Start the room on this computer.", color = DesktopSecondary, style = MaterialTheme.typography.bodySmall)
+                }
+                PrimaryButton("Play here", false, true, { DesktopListenTogether.setListenHere(true) })
+            }
+        }
+        if (!independent) item { PlayHereCard() }
+        // Each device can also go its own way: this one plays something else and the room carries on.
+        item {
+            Column(Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(16.dp)).padding(18.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(Icons.Rounded.Person, null, modifier = Modifier.size(20.dp))
+                    Spacer(Modifier.width(10.dp))
+                    Column(Modifier.weight(1f)) {
+                        Text("Play something different here")
+                        Text(
+                            if (independent) "This computer plays its own music and ignores the room until you switch back."
+                            else "This computer follows the room.",
+                            color = DesktopSecondary,
+                            style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                    Switch(independent, onCheckedChange = DesktopListenTogether::setIndependent)
+                }
+            }
+        }
         // A remote: this computer is not the one playing, so its own player would act on nothing.
-        if (!playHere) item {
+        if (!playHere && !independent) item {
             Row(
                 Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(16.dp)).padding(12.dp),
                 horizontalArrangement = Arrangement.SpaceEvenly,

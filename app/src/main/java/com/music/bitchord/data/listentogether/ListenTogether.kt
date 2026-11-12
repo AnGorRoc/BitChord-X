@@ -195,6 +195,12 @@ object ListenTogether {
         val isFull: Boolean get() = members.size >= maxMembers
 
         /**
+         * In a personal room, whether this device is playing its own music instead of following the
+         * room. Nothing is synchronised, loaded or published for it.
+         */
+        val detached: Boolean get() = personal && you?.independent == true
+
+        /**
          * Whether this device may not drive the music.
          *
          * True only for a listener in a party whose host has taken control of
@@ -1244,6 +1250,31 @@ object ListenTogether {
                 _state.update { it.copy(error = failure.displayMessage()) }
             }
         }
+    }
+
+    /**
+     * Chooses between following the personal room and playing something else here. Announced only
+     * to servers that understand it; the effect comes back on the members frame.
+     */
+    fun setIndependent(enabled: Boolean) {
+        val server = activePartyServerBase ?: return
+        if (!_state.value.personal) return
+        scope.launch {
+            if (PartyServers.FEATURE_INDEPENDENT_DEVICES in serverFeatures(server)) {
+                control("setIndependent") { put("enabled", enabled) }
+            }
+        }
+    }
+
+    /**
+     * Adds what the listener queued to the device that is playing, when this one is only a remote
+     * for it. True means it was handled and the caller must not touch the local queue.
+     */
+    fun routeEnqueue(tracks: List<PartyTrack>, playNext: Boolean): Boolean {
+        val party = _state.value
+        if (!party.inParty || _listenHere.value) return false
+        if (!party.controlsLocked && tracks.isNotEmpty()) queueAdd(tracks, playNext)
+        return true
     }
 
     /**

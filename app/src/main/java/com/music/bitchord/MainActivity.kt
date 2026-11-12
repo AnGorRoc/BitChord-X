@@ -147,6 +147,7 @@ import com.music.bitchord.data.AppUpdateChecker
 import com.music.bitchord.data.LocalMediaRepository
 import com.music.bitchord.data.listentogether.JamInviteLink
 import com.music.bitchord.data.listentogether.ListenTogether
+import com.music.bitchord.playback.toPartyTrack
 import com.music.bitchord.data.listentogether.partyQueueIndexOf
 import com.music.bitchord.data.NerdStats
 import com.music.bitchord.data.TrackLog
@@ -1895,6 +1896,11 @@ private fun BitChordApp(
     val addToQueue: (Song) -> Unit = { song ->
         scope.launch {
             if (refusedByHost()) return@launch
+            // A remote for another device: the song joins the queue of the one that is playing.
+            if (ListenTogether.routeEnqueue(listOf(song.toPartyTrack(0L)), playNext = false)) {
+                showQueueNotice(context.getString(R.string.song_added_to_queue))
+                return@launch
+            }
             // The end of what the user queued, not the end of the queue: a song
             // asked for by name outranks whatever AutoPlay lined up behind it.
             controller?.let {
@@ -1927,6 +1933,10 @@ private fun BitChordApp(
     val playNext: (Song) -> Unit = { song ->
         scope.launch {
             if (refusedByHost()) return@launch
+            if (ListenTogether.routeEnqueue(listOf(song.toPartyTrack(0L)), playNext = true)) {
+                showQueueNotice(context.getString(R.string.song_will_play_next))
+                return@launch
+            }
             controller?.let {
                 if (ListenTogether.state.value.inParty) {
                     val upcoming = (it.mediaItemCount - (it.currentMediaItemIndex + 1)).coerceAtLeast(0)

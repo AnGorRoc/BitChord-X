@@ -962,7 +962,7 @@ fun BitChordDesktopApp() {
         if (partyTrackChangeBlocked()) return
         if (routedToRemote(listOf(song), 0)) return
         val tapped = canonicalSong(song).withSource(source)
-        val songs = if (DesktopListenTogether.state.value.inParty) {
+        val songs = if (DesktopListenTogether.state.value.let { it.inParty && !it.detached }) {
             partyPlaybackQueue(tapped)
         } else {
             // The phone's one-off queue: the song, then whatever the listener had queued by hand.
@@ -1036,7 +1036,7 @@ fun BitChordDesktopApp() {
         // Past the end still means the last row, as the clamp here always did.
         val at = resolved.indexOfFirst { it.index >= startIndex }.takeIf { it >= 0 } ?: resolved.lastIndex
         if (routedToRemote(playable, at)) return
-        if (DesktopListenTogether.state.value.inParty) {
+        if (DesktopListenTogether.state.value.let { it.inParty && !it.detached }) {
             liveQueue = DesktopQueue(partyPlaybackQueue(playable[at]), index = 0)
             preShuffleOrder = emptyList()
             playCurrent()
@@ -1121,6 +1121,11 @@ fun BitChordDesktopApp() {
     fun enqueue(song: Song, next: Boolean) {
         val party = DesktopListenTogether.state.value
         if (party.controlsLocked) return
+        // A remote for another device: the song joins the queue of the one that is playing.
+        if (DesktopListenTogether.routeEnqueue(listOf(song.toPartyTrack(0L)), next)) {
+            DesktopPlayerHost.showMessage(if (next) "Will play next" else "Added to the queue")
+            return
+        }
         if (party.inParty && liveQueue.upcoming.size >= DesktopPartySync.MAX_PARTY_UPCOMING_QUEUE) {
             DesktopPlayerHost.showMessage(
                 "Queue is full (maximum ${DesktopPartySync.MAX_PARTY_UPCOMING_QUEUE} songs in party)",

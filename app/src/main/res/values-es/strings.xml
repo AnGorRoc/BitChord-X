@@ -706,6 +706,11 @@
     <string name="listen_together_my_devices_subtitle">Reproduce en uno de tus dispositivos y elige la música desde otro.</string>
     <string name="listen_together_my_devices_footer">Dispositivos con la misma cuenta de Google. Solo uno suena a la vez.</string>
     <string name="listen_together_my_devices_disconnect">Desconectar</string>
+    <string name="listen_together_independent">Reproducir algo distinto aquí</string>
+    <string name="listen_together_independent_on">Este dispositivo reproduce su propia música e ignora la sala hasta que vuelvas.</string>
+    <string name="listen_together_independent_off">Este dispositivo sigue la sala.</string>
+    <string name="listen_together_no_player">Ningún dispositivo está reproduciendo</string>
+    <string name="listen_together_no_player_subtitle">Toca para reproducir aquí.</string>
     <string name="listen_together_play_here">Reproducir en este dispositivo</string>
     <string name="listen_together_play_here_on">Lo escuchas aquí y cada quien lo escucha en el suyo.</string>
     <string name="listen_together_play_here_off">El sonido sale solo del anfitrión. Sigues viendo y controlando la sesión.</string>

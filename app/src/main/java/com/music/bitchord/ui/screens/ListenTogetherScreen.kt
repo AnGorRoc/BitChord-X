@@ -1297,7 +1297,22 @@ private fun InAParty(
 @Composable
 private fun MyDevicesRoom(state: ListenTogether.State, onLeave: () -> Unit) {
     val playHere by ListenTogether.listenHere.collectAsStateWithLifecycle()
-    NowPlayingInTheParty(state)
+    val independent = state.detached
+    // Following the room but nobody is making its sound: the playing device went away.
+    val nobodyPlays = !independent &&
+        state.members.none { it.playsAudio && !it.independent && it.connected }
+    if (!independent) NowPlayingInTheParty(state)
+
+    if (nobodyPlays) {
+        SettingsGroup {
+            SettingsRow(
+                icon = SfIcons.VolumeUp,
+                title = stringResource(R.string.listen_together_no_player),
+                subtitle = stringResource(R.string.listen_together_no_player_subtitle),
+                onClick = { ListenTogether.setListenHere(true) },
+            )
+        }
+    }
 
     SettingsGroup(
         header = stringResource(R.string.listen_together_my_devices),
@@ -1307,17 +1322,33 @@ private fun MyDevicesRoom(state: ListenTogether.State, onLeave: () -> Unit) {
             if (index > 0) RowDivider()
             MemberRow(member = member, isYou = member.memberId == state.you?.memberId)
         }
-        RowDivider()
+        if (!independent) {
+            RowDivider()
+            SettingsRow(
+                icon = if (playHere) SfIcons.VolumeUp else Icons.AutoMirrored.Rounded.VolumeOff,
+                title = stringResource(R.string.listen_together_play_here),
+                trailing = { IosSwitch(checked = playHere, onCheckedChange = { ListenTogether.setListenHere(it) }) },
+                onClick = { ListenTogether.setListenHere(!playHere) },
+            )
+        }
+    }
+
+    // Each device can also go its own way: this one plays something else and the room carries on.
+    SettingsGroup(
+        footer = stringResource(
+            if (independent) R.string.listen_together_independent_on else R.string.listen_together_independent_off,
+        ),
+    ) {
         SettingsRow(
-            icon = if (playHere) SfIcons.VolumeUp else Icons.AutoMirrored.Rounded.VolumeOff,
-            title = stringResource(R.string.listen_together_play_here),
-            trailing = { IosSwitch(checked = playHere, onCheckedChange = { ListenTogether.setListenHere(it) }) },
-            onClick = { ListenTogether.setListenHere(!playHere) },
+            icon = SfIcons.MusicNote,
+            title = stringResource(R.string.listen_together_independent),
+            trailing = { IosSwitch(checked = independent, onCheckedChange = { ListenTogether.setIndependent(it) }) },
+            onClick = { ListenTogether.setIndependent(!independent) },
         )
     }
 
     // A remote: this device is not the one playing, so its own player buttons would act on nothing.
-    if (!playHere) {
+    if (!playHere && !independent) {
         val playing = state.playback.isPlaying
         SettingsGroup {
             Row(

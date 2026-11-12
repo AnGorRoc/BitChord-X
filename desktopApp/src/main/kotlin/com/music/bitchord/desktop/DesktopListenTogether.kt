@@ -111,6 +111,12 @@ internal object DesktopListenTogether {
         val personal: Boolean = false,
     ) {
         val inParty: Boolean get() = code != null
+
+        /**
+         * In a personal room, whether this computer is playing its own music instead of following
+         * the room. Nothing is synchronised, loaded or published for it.
+         */
+        val detached: Boolean get() = personal && you?.independent == true
         val isFull: Boolean get() = members.size >= maxMembers
         val controlsLocked: Boolean get() = inParty && hostOnlyControl && you?.isHost != true
     }
@@ -553,6 +559,31 @@ internal object DesktopListenTogether {
             DesktopTrackLog.log("listen together: could not open My devices: ${redact(failure.message)}")
             _state.update { it.copy(error = failure.displayMessage()) }
         }
+    }
+
+    /**
+     * Chooses between following the personal room and playing something else here. Announced only
+     * to servers that understand it; the effect comes back on the members frame.
+     */
+    fun setIndependent(enabled: Boolean) {
+        val server = activePartyServerBase ?: return
+        if (!_state.value.personal) return
+        scope.launch {
+            if (PartyServers.FEATURE_INDEPENDENT_DEVICES in serverFeatures(server)) {
+                control("setIndependent") { put("enabled", enabled) }
+            }
+        }
+    }
+
+    /**
+     * Adds what the listener queued to the device that is playing, when this computer is only a
+     * remote for it. True means it was handled and the caller must not touch the local queue.
+     */
+    fun routeEnqueue(tracks: List<PartyTrack>, playNext: Boolean): Boolean {
+        val party = _state.value
+        if (!party.inParty || _listenHere.value) return false
+        if (!party.controlsLocked && tracks.isNotEmpty()) queueAdd(tracks, playNext)
+        return true
     }
 
     /**

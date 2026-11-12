@@ -947,6 +947,11 @@
     <string name="listen_together_my_devices_subtitle">Play on one of your devices and choose the music from another.</string>
     <string name="listen_together_my_devices_footer">Devices signed in to the same Google account. Only one plays at a time.</string>
     <string name="listen_together_my_devices_disconnect">Disconnect</string>
+    <string name="listen_together_independent">Play something different here</string>
+    <string name="listen_together_independent_on">This device plays its own music and ignores the room until you switch back.</string>
+    <string name="listen_together_independent_off">This device follows the room.</string>
+    <string name="listen_together_no_player">No device is playing</string>
+    <string name="listen_together_no_player_subtitle">Tap to play here.</string>
     <string name="listen_together_play_here">Play on this device</string>
     <string name="listen_together_play_here_on">You hear it here and everyone else hears it on theirs.</string>
     <string name="listen_together_play_here_off">Sound comes only from the host. You still see and control the party.</string>

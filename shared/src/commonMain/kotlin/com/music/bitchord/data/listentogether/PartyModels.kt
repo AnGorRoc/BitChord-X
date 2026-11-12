@@ -50,6 +50,11 @@ data class PartyMember(
      * Absent on a server that predates the setting, which means everybody plays aloud.
      */
     val playsAudio: Boolean = true,
+    /**
+     * In a person's own room: this device plays its own music instead of following the room. Absent
+     * on a server that predates it, which means it follows.
+     */
+    val independent: Boolean = false,
     val joinedAtMs: Long = 0,
     val lastSeenMs: Long = 0,
 )
