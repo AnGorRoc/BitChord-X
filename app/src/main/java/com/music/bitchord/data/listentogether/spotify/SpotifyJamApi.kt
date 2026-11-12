@@ -96,36 +96,26 @@ object SpotifyJamApi {
         val headers = authHeaders() ?: return@withContext Result.failure(IllegalStateException("Not signed in to Spotify"))
         val deviceId = SpotifyToken.deviceId()
 
-        // POST was refused with 405; the endpoint reads "current session, creating it if there is
-        // none", which Spotify's own clients send as GET. The other methods stay as fallbacks in
-        // case it differs by account or version. Each attempt asks for the same session, so a
-        // later one cannot create a second.
-        var lastCode = 0
-        for (method in listOf("GET", "PUT", "POST")) {
-            val builder = Request.Builder()
-                .url("$SESSIONS_URL/current?create_if_not_found=true&device_id=$deviceId")
-                .apply { headers.forEach { (k, v) -> header(k, v) } }
-            val empty = "{}".toRequestBody(jsonMediaType)
-            when (method) {
-                "GET" -> builder.get()
-                "PUT" -> builder.put(empty)
-                else -> builder.post(empty)
-            }
-            val attempt = runCatching {
-                Http.client.newCall(builder.build()).execute().use { response ->
-                    val body = response.body.string()
-                    lastCode = response.code
-                    if (response.isSuccessful) parseSession(body, isHost = true) else {
-                        Log.w(TAG, "create jam via $method: HTTP ${response.code}: $body")
-                        null
-                    }
+        // Found by trying it on a real account: the endpoint is `current_or_new`, GET only, and it
+        // creates the jam when there is none. Sending any `type` is refused ("not supported"), and
+        // `sessions/current?create_if_not_found=…` only ever answered 404/405.
+        val request = Request.Builder()
+            .url("$SESSIONS_URL/current_or_new?local_device_id=$deviceId")
+            .get()
+            .apply { headers.forEach { (k, v) -> header(k, v) } }
+            .build()
+
+        runCatching {
+            Http.client.newCall(request).execute().use { response ->
+                val body = response.body.string()
+                if (!response.isSuccessful) {
+                    val msg = "Failed to create Spotify Jam (HTTP ${response.code})"
+                    Log.w(TAG, "$msg: $body")
+                    throw IllegalStateException(msg)
                 }
+                parseSession(body, isHost = true)
             }
-            attempt.getOrNull()?.let { return@withContext Result.success(it) }
-            // Only a "wrong method" answer is worth trying the next one for.
-            if (lastCode != 405 && lastCode != 404 && attempt.isSuccess) break
         }
-        Result.failure(IllegalStateException("Failed to create Spotify Jam (HTTP $lastCode)"))
     }
 
     /**
@@ -272,12 +262,24 @@ object SpotifyJamApi {
         val root = json.parseToJsonElement(jsonStr).jsonObject
         val sessionObj = root["session"]?.jsonObject ?: root
         val sessionId = sessionObj["session_id"]?.jsonPrimitive?.contentOrNull.orEmpty()
+        // The real answer names the token itself (`join_session_token`); the uri form is the
+        // fallback for older shapes.
+        val tokenField = sessionObj["join_session_token"]?.jsonPrimitive?.contentOrNull
         val joinUri = sessionObj["join_session_uri"]?.jsonPrimitive?.contentOrNull
+            ?: tokenField?.let { "spotify:socialsession:$it" }
             ?: "spotify:socialsession:$sessionId"
-        val token = joinUri.substringAfterLast(":")
+        val token = tokenField ?: joinUri.substringAfterLast(":")
+        val ownerId = sessionObj["session_owner_id"]?.jsonPrimitive?.contentOrNull
         val joinUrl = "https://open.spotify.com/socialsession/$token"
-        val hostUsername = sessionObj["host_username"]?.jsonPrimitive?.contentOrNull.orEmpty()
-        val activeDeviceId = sessionObj["active_device_id"]?.jsonPrimitive?.contentOrNull
+        val ownerUsername = (sessionObj["session_members"] as? JsonArray)
+            ?.map { it.jsonObject }
+            ?.firstOrNull { ownerId != null && it["id"]?.jsonPrimitive?.contentOrNull == ownerId }
+            ?.get("username")?.jsonPrimitive?.contentOrNull
+        val hostUsername = sessionObj["host_username"]?.jsonPrimitive?.contentOrNull ?: ownerUsername.orEmpty()
+        // Empty when no device of the host's is playing, which is the usual case here.
+        val activeDeviceId = (sessionObj["active_device_id"] ?: sessionObj["hostActiveDeviceId"])
+            ?.jsonPrimitive?.contentOrNull?.ifBlank { null }
+        val isOwner = sessionObj["is_session_owner"]?.jsonPrimitive?.contentOrNull?.toBooleanStrictOrNull()
 
         val membersArray = sessionObj["members"]?.jsonArray
             ?: sessionObj["session_members"]?.jsonArray
@@ -290,6 +292,7 @@ object SpotifyJamApi {
             val avatarUrl = m["avatar_url"]?.jsonPrimitive?.contentOrNull
                 ?: m["image_url"]?.jsonPrimitive?.contentOrNull
             val memberIsHost = m["is_host"]?.jsonPrimitive?.contentOrNull?.toBooleanStrictOrNull()
+                ?: (ownerId != null && m["id"]?.jsonPrimitive?.contentOrNull == ownerId)
                 ?: (username == hostUsername)
             SpotifyJamMember(
                 username = username,
@@ -305,7 +308,7 @@ object SpotifyJamApi {
             joinSessionUri = joinUri,
             joinSessionUrl = joinUrl,
             hostUsername = hostUsername,
-            isHost = isHost || (hostUsername.isNotBlank() && members.any { it.isHost && it.username == hostUsername }),
+            isHost = isHost || isOwner == true || (hostUsername.isNotBlank() && members.any { it.isHost && it.username == hostUsername }),
             members = members,
             activeDeviceId = activeDeviceId,
         )

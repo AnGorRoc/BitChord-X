@@ -44,6 +44,9 @@ object SpotifyJamProbe {
     private fun redact(text: String): String =
         secretPatterns.fold(text) { acc, (re, to) -> re.replace(acc, to) }
 
+    /** [redact], for the adb console. */
+    internal fun redactForReport(text: String): String = redact(text)
+
     suspend fun run(): String = withContext(Dispatchers.IO) {
         val out = StringBuilder()
         val startedAt = System.currentTimeMillis()

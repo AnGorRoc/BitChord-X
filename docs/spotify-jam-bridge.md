@@ -126,6 +126,41 @@ escribirlo: búsqueda en el catálogo de Spotify con el mismo `TrackMatcher` (t�
 
 ---
 
+## 4b. Resultados de S0 (probado en un teléfono real, cuenta Premium familiar)
+
+Hecho por adb con la consola de pruebas de la build dev. Lo marcado ✅ está **verificado**; lo marcado
+❓ sigue sin probar.
+
+| Pregunta | Respuesta |
+|---|---|
+| ¿Se detecta bien Premium? | ✅ `/v1/me` da **429** (límite de peticiones) con este token; el plan se lee de `melody/v1/product_state` (`product: premium`, `FAMILY_MANAGER`). Corregido. |
+| ¿Cómo se crea la jam? | ✅ `GET /social-connect/v2/sessions/current_or_new?local_device_id=<id>` (solo GET, **sin** `type`: cualquier `type` da 400 "not supported"). Devuelve `session_id`, `join_session_token`, miembros, `session_owner_id`. Corregido en `SpotifyJamApi`. |
+| ¿Se cierra? | ✅ `DELETE /social-connect/v2/sessions/<session_id>` → 200 y `current` pasa a 404. |
+| ¿Dónde está el enlace/QR? | ✅ `https://open.spotify.com/socialsession/<join_session_token>`. Cada jam tiene token nuevo. |
+| ¿Hay dispositivo activo en la jam recién creada? | ✅ No: `hostActiveDeviceId` viene vacío. La jam existe pero **no reproduce nada** hasta que un dispositivo la sirva. |
+| ¿Sirve la API web (`api.spotify.com/v1/me/player/*`) para cola y control? | ✅ **No**: 429 siempre con este token. El puente actual dependía de ella. |
+| ¿Sirven los comandos `connect-state/v1/player/command/<cmd>` sin destino? | ✅ **No**: 404 todos (add_to_queue, resume, pause, seek_to, skip_next, skip_prev, play). El puente actual dependía de ellos. |
+| ¿Puede la app registrarse como dispositivo de Spotify Connect? | ✅ **Sí**: `PUT /connect-state/v1/devices/hobs_<sha1 del id>` con la cabecera `X-Spotify-Connection-Id` (se obtiene del primer mensaje del Dealer) → 200, y la respuesta trae el **estado completo del clúster** (pista, `next_tracks`, modos). |
+| ¿Quién añadió una canción / cómo se ven los cambios de invitados? | ❓ No probado: hacía falta un segundo participante en la jam. |
+| ¿Puede nuestro dispositivo registrado hacerse el dispositivo activo de la jam y publicar su estado? | ❓ No probado. Es lo que decide si el puente es viable (ver abajo). |
+| ¿Suenan los dos a la vez en el teléfono si Spotify está abierto? | ❓ No probado. |
+| ¿Se puede cerrar la jam al cerrar la app? | ❓ No probado; el cierre es una sola petición DELETE, pero hay que lanzarla antes de que muera el proceso. |
+
+### Qué cambia en el diseño
+El puente **no puede ser** "mandar comandos a Spotify": esa vía está cerrada. Para que una jam suene,
+alguien tiene que ser su **dispositivo de reproducción**. La vía abierta es que BitChord se
+registre como un dispositivo de Spotify Connect y **publique su propio estado** (qué canción, en qué
+posición, qué viene después) con el URI equivalente de Spotify, y que reciba órdenes del Dealer. Es
+lo que hace un cliente de Spotify. Consecuencias:
+
+- Los invitados de la jam oyen **lo que BitChord anuncia**, reproducido por su propia app de Spotify.
+- Una canción "solo BitChord" no tiene URI de Spotify, así que se anuncia **pausa**, que es
+  justamente lo que describiste.
+- El 429 de la API web deja de importar: ya no se usa.
+- Es bastante más trabajo que el puente actual y **sigue habiendo dudas** (❓ arriba). El siguiente
+  paso es una segunda sonda: registrar el dispositivo, enviar un `PutStateRequest` y comprobar si la
+  jam adopta al dispositivo como activo, y hacerlo con un segundo participante.
+
 ## 5. Interfaz (según tu descripción)
 
 En la pantalla de **configuración** de Listen Together, sección "Spotify Jam":
