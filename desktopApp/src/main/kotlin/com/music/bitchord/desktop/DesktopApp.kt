@@ -922,6 +922,27 @@ fun BitChordDesktopApp() {
     }
 
     /**
+     * While this computer is only a remote for the device that is playing, a song picked here goes
+     * to the party, not to the local engine: starting it here would play it aloud on a computer
+     * that was asked to stay quiet. True means it was handled.
+     */
+    fun routedToRemote(songs: List<Song>, startIndex: Int): Boolean {
+        if (!DesktopListenTogether.isRemote) return false
+        val tracks = songs.drop(startIndex.coerceAtLeast(0))
+            .filter { it.localPath == null && it.localUri == null }
+            .take(1 + DesktopPartySync.MAX_PARTY_UPCOMING_QUEUE)
+            .map { it.toPartyTrack(0L) }
+        return DesktopListenTogether.routeToParty(tracks, 0)
+    }
+
+    /** Transport keys on a remote computer drive the party instead of the (silent) local engine. */
+    fun remoteTransport(send: () -> Unit): Boolean {
+        if (!DesktopListenTogether.isRemote) return false
+        if (!DesktopListenTogether.state.value.controlsLocked) send()
+        return true
+    }
+
+    /**
      * The phone's party queue for a track picked here: that track, then what the party's members
      * queued by hand. Never the album around it, and never the last track's AutoPlay — the party
      * shares one running order, and the phone builds it exactly this way.
@@ -939,6 +960,7 @@ fun BitChordDesktopApp() {
     /** A song played on its own — from a search row, a shelf card, history. */
     fun playSong(song: Song, startPlaying: Boolean = true, source: DesktopQueueSource? = null) {
         if (partyTrackChangeBlocked()) return
+        if (routedToRemote(listOf(song), 0)) return
         val tapped = canonicalSong(song).withSource(source)
         val songs = if (DesktopListenTogether.state.value.inParty) {
             partyPlaybackQueue(tapped)
@@ -1013,6 +1035,7 @@ fun BitChordDesktopApp() {
         val playable = resolved.map { canonicalSong(it.value).withSource(source) }
         // Past the end still means the last row, as the clamp here always did.
         val at = resolved.indexOfFirst { it.index >= startIndex }.takeIf { it >= 0 } ?: resolved.lastIndex
+        if (routedToRemote(playable, at)) return
         if (DesktopListenTogether.state.value.inParty) {
             liveQueue = DesktopQueue(partyPlaybackQueue(playable[at]), index = 0)
             preShuffleOrder = emptyList()
@@ -1530,6 +1553,7 @@ fun BitChordDesktopApp() {
 
     fun playNext() {
         if (DesktopListenTogether.state.value.controlsLocked) return
+        if (remoteTransport { DesktopListenTogether.next() }) return
         // Automix on skip: when enabled and the next deck is already prepared, blend into it over a
         // short crossfade instead of cutting. The blend's own hand-off advances the queue, so a
         // successful mix returns here without touching liveQueue; anything else falls through to the
@@ -1559,6 +1583,7 @@ fun BitChordDesktopApp() {
 
     fun playPrevious() {
         if (DesktopListenTogether.state.value.controlsLocked) return
+        if (remoteTransport { DesktopListenTogether.previous() }) return
         val positionMs = playbackEngine.state.value.positionMs
 
         // After 10 seconds, Previous restarts the current song.
@@ -1879,11 +1904,18 @@ fun BitChordDesktopApp() {
         }
     }
     fun togglePlayPauseFromUser() {
+        if (remoteTransport {
+                val at = DesktopListenTogether.partyPositionMs()
+                if (DesktopListenTogether.state.value.playback.isPlaying) DesktopListenTogether.pause(at)
+                else DesktopListenTogether.play(at)
+            }
+        ) return
         if (partySync.handleLockedPlayPause()) return
         playbackEngine.togglePlayPause()
         partySync.onLocalIntent()
     }
     fun playFromUser() {
+        if (remoteTransport { DesktopListenTogether.play(DesktopListenTogether.partyPositionMs()) }) return
         if (DesktopListenTogether.state.value.controlsLocked) {
             if (!playbackEngine.state.value.isPlaying) partySync.handleLockedPlayPause()
             return
@@ -1892,6 +1924,7 @@ fun BitChordDesktopApp() {
         partySync.onLocalIntent()
     }
     fun pauseFromUser() {
+        if (remoteTransport { DesktopListenTogether.pause(DesktopListenTogether.partyPositionMs()) }) return
         if (DesktopListenTogether.state.value.controlsLocked) {
             if (playbackEngine.state.value.isPlaying) partySync.handleLockedPlayPause()
             return

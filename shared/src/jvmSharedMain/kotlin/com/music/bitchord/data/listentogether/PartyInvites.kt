@@ -32,6 +32,7 @@ object PartyServers {
 
     /** Feature names an extended server lists at `/api/info`. */
     const val FEATURE_LISTENING_MODE = "listeningMode"
+    const val FEATURE_MY_DEVICES = "myDevices"
 
     /**
      * The features a server's `/api/info` body lists. Empty for anything unreadable, which is what

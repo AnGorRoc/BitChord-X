@@ -702,6 +702,10 @@
     <string name="listen_together_switched_to_default">Se cambió al servidor predeterminado</string>
     <string name="listen_together_create">Crear una fiesta</string>
     <string name="listen_together_nickname_hint">Apodo para esta fiesta</string>
+    <string name="listen_together_my_devices">Mis dispositivos</string>
+    <string name="listen_together_my_devices_subtitle">Reproduce en uno de tus dispositivos y elige la música desde otro.</string>
+    <string name="listen_together_my_devices_footer">Dispositivos con la misma cuenta de Google. Solo uno suena a la vez.</string>
+    <string name="listen_together_my_devices_disconnect">Desconectar</string>
     <string name="listen_together_play_here">Reproducir en este dispositivo</string>
     <string name="listen_together_play_here_on">Lo escuchas aquí y cada quien lo escucha en el suyo.</string>
     <string name="listen_together_play_here_off">El sonido sale solo del anfitrión. Sigues viendo y controlando la sesión.</string>

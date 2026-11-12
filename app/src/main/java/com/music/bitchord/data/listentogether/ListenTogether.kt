@@ -185,6 +185,11 @@ object ListenTogether {
         val roundTripMs: Long = 0,
         /** The last thing that went wrong, for the screen to show. */
         val error: String? = null,
+        /**
+         * Whether this is the person's own room (see [joinMyDevices]) rather than a party shared with
+         * others. Every device in it is theirs, and exactly one plays.
+         */
+        val personal: Boolean = false,
     ) {
         val inParty: Boolean get() = code != null
         val isFull: Boolean get() = members.size >= maxMembers
@@ -1175,6 +1180,89 @@ object ListenTogether {
         announceListening()
     }
 
+    /**
+     * In a personal room the server decides which device plays (the last to ask), so this device's
+     * own switch follows what it says rather than what was chosen here.
+     */
+    private fun syncPersonalListening() {
+        _listenHere.value = _state.value.you?.playsAudio ?: true
+    }
+
+    // ----------------------------------------------------------- my devices --
+
+    /**
+     * Opens this person's own room, shared by every device signed in to the same account.
+     *
+     * The key to it comes from the account itself (see [DeviceGroup]), so there is nothing to type,
+     * scan or approve. The first device in plays; later ones arrive as controllers, and "Play on
+     * this device" hands the sound over. Only servers that list `myDevices` have it.
+     */
+    suspend fun joinMyDevices(nickname: String = nickname()): Result<String> = switchMutex.withLock {
+        withContext(Dispatchers.IO) {
+            runCatching {
+                val who = identity(nickname) ?: throw PartyException("not_signed_in", "Sign in to use My devices.")
+                val server = resolveHttpBase(effectiveIdleServerBase())
+                if (server.isBlank()) throw PartyException("no_server", "Set the party server address first.")
+                if (PartyServers.FEATURE_MY_DEVICES !in serverFeatures(server)) {
+                    throw PartyException("unsupported", "This party server doesn't support My devices.")
+                }
+                val secret = DeviceGroup.ensureSecret().getOrElse {
+                    throw PartyException("no_account_proof", "Couldn't reach your YouTube Music library.")
+                }
+                val response = http.post("$server/api/devices/join") {
+                    contentType(ContentType.Application.Json)
+                    setBody(DevicesJoinRequest(who.userId, who.deviceId, who.name, who.avatar, DeviceGroup.groupId(secret)))
+                }
+                if (!response.status.isSuccess()) throw response.toPartyException()
+                val membership: PartyMembership = response.body()
+
+                withContext(NonCancellable) {
+                    activePartyServerBase = server
+                    token = membership.token
+                    prefs.edit()
+                        .putString(KEY_CODE, membership.code)
+                        .putString(KEY_TOKEN, membership.token)
+                        .putString(KEY_ACTIVE_SERVER, server)
+                        .apply()
+                    clock.reset()
+                    _listenHere.value = membership.you.playsAudio
+                    _state.value = State(
+                        code = membership.code,
+                        you = membership.you,
+                        members = membership.party.members,
+                        maxMembers = membership.party.maxMembers,
+                        playback = membership.party.playback,
+                        queue = membership.party.queue,
+                        connection = Connection.CONNECTING,
+                        personal = true,
+                    )
+                }
+                connect()
+                membership.code
+            }.onFailure { failure ->
+                Log.w(TAG, "could not open My devices: ${redact(failure.message)}")
+                _state.update { it.copy(error = failure.displayMessage()) }
+            }
+        }
+    }
+
+    /**
+     * Sends what the listener just picked to the device that is playing, when this one is only a
+     * remote for it. True means it was handled and the caller must not start the local player.
+     */
+    fun routeToParty(tracks: List<PartyTrack>, index: Int): Boolean {
+        val party = _state.value
+        if (!party.inParty || _listenHere.value) return false
+        // Locked out by the host: nothing to send, and starting it here would play it aloud.
+        if (party.controlsLocked || tracks.isEmpty()) return true
+        val at = index.coerceIn(tracks.indices)
+        // The queue first, then the track pointing into it, so nobody holds an index into a list
+        // they have not been given.
+        setQueue(tracks, at)
+        setTrack(tracks[at], 0L, true)
+        return true
+    }
+
     private fun announceListening() {
         val server = activePartyServerBase ?: return
         if (!_state.value.inParty) return
@@ -1399,7 +1487,8 @@ object ListenTogether {
                 ) }
                 // A reconnect forgets nothing on the server, but a first arrival has not yet said
                 // how it listens.
-                if (!_listenHere.value) announceListening()
+                if (_state.value.personal) syncPersonalListening()
+                else if (!_listenHere.value) announceListening()
             }
 
             "pong" -> {
@@ -1471,6 +1560,7 @@ object ListenTogether {
                             ?: current.you,
                     )
                 }
+                if (_state.value.personal) syncPersonalListening()
             }
 
             "activity" -> {

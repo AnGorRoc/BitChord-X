@@ -44,12 +44,17 @@ import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.Login
 import androidx.compose.material.icons.rounded.Logout
 import androidx.compose.material.icons.rounded.MusicNote
+import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.SkipNext
+import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
@@ -627,6 +632,34 @@ fun ListenTogetherScreen(
                     sheet = PartySheet.JoinCode
                 },
             )
+            // Your own devices as one: needs no code, since the account itself is the key.
+            SettingsGroup(footer = stringResource(R.string.listen_together_my_devices_footer)) {
+                SettingsRow(
+                    icon = SfIcons.VolumeUp,
+                    title = stringResource(R.string.listen_together_my_devices),
+                    subtitle = stringResource(R.string.listen_together_my_devices_subtitle),
+                    onClick = {
+                        if (signedIn && !busy) {
+                            failure = null
+                            busy = true
+                            scope.launch {
+                                failure = ListenTogether.joinMyDevices(nickname).exceptionOrNull()?.message
+                                busy = false
+                            }
+                        }
+                    },
+                )
+            }
+            failure?.let { message ->
+                Text(
+                    text = message,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.error,
+                    modifier = Modifier.padding(horizontal = ROW_INSET, vertical = 8.dp),
+                )
+            }
+        } else if (state.personal) {
+            MyDevicesRoom(state = state, onLeave = { scope.launch { ListenTogether.leaveParty() } })
         } else {
             InAParty(
                 state = state,
@@ -1250,6 +1283,65 @@ private fun InAParty(
             icon = SfIcons.Logout,
             title = stringResource(R.string.listen_together_leave),
             subtitle = stringResource(R.string.listen_together_leave_subtitle),
+            onClick = onLeave,
+        )
+    }
+}
+
+/**
+ * A person's own devices as one: what is playing, where it plays, and a remote for it.
+ *
+ * Deliberately not [InAParty]: there is no code to read out, nobody to invite and nobody to remove,
+ * since every member is this person's. What matters is which device is making the sound.
+ */
+@Composable
+private fun MyDevicesRoom(state: ListenTogether.State, onLeave: () -> Unit) {
+    val playHere by ListenTogether.listenHere.collectAsStateWithLifecycle()
+    NowPlayingInTheParty(state)
+
+    SettingsGroup(
+        header = stringResource(R.string.listen_together_my_devices),
+        footer = stringResource(R.string.listen_together_my_devices_footer),
+    ) {
+        state.members.forEachIndexed { index, member ->
+            if (index > 0) RowDivider()
+            MemberRow(member = member, isYou = member.memberId == state.you?.memberId)
+        }
+        RowDivider()
+        SettingsRow(
+            icon = if (playHere) SfIcons.VolumeUp else Icons.AutoMirrored.Rounded.VolumeOff,
+            title = stringResource(R.string.listen_together_play_here),
+            trailing = { IosSwitch(checked = playHere, onCheckedChange = { ListenTogether.setListenHere(it) }) },
+            onClick = { ListenTogether.setListenHere(!playHere) },
+        )
+    }
+
+    // A remote: this device is not the one playing, so its own player buttons would act on nothing.
+    if (!playHere) {
+        val playing = state.playback.isPlaying
+        SettingsGroup {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                IconButton(onClick = { ListenTogether.previous() }) {
+                    Icon(Icons.Rounded.SkipPrevious, contentDescription = null)
+                }
+                IconButton(onClick = { if (playing) ListenTogether.pause() else ListenTogether.play() }) {
+                    Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, contentDescription = null)
+                }
+                IconButton(onClick = { ListenTogether.next() }) {
+                    Icon(Icons.Rounded.SkipNext, contentDescription = null)
+                }
+            }
+        }
+    }
+
+    SettingsGroup {
+        SettingsRow(
+            icon = SfIcons.Logout,
+            title = stringResource(R.string.listen_together_my_devices_disconnect),
             onClick = onLeave,
         )
     }

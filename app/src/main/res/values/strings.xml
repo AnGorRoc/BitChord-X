@@ -943,6 +943,10 @@
     <string name="listen_together_switched_to_default">Switched to default server</string>
     <string name="listen_together_create">Create a party</string>
     <string name="listen_together_nickname_hint">Nickname for this party</string>
+    <string name="listen_together_my_devices">My devices</string>
+    <string name="listen_together_my_devices_subtitle">Play on one of your devices and choose the music from another.</string>
+    <string name="listen_together_my_devices_footer">Devices signed in to the same Google account. Only one plays at a time.</string>
+    <string name="listen_together_my_devices_disconnect">Disconnect</string>
     <string name="listen_together_play_here">Play on this device</string>
     <string name="listen_together_play_here_on">You hear it here and everyone else hears it on theirs.</string>
     <string name="listen_together_play_here_off">Sound comes only from the host. You still see and control the party.</string>
