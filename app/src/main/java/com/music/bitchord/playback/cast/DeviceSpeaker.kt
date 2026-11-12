@@ -87,6 +87,20 @@ internal class DeviceSpeaker(
     /** The remote's queue is being loaded into the quiet local player; its moves are not the person's. */
     var applyingMirror = false
 
+    /**
+     * The player reports its own moves a beat after they happen, so a flag raised around the load
+     * is already down when the report arrives. Anything reported before this time is the mirror
+     * settling, not the person, and must not be sent back to the device it came from.
+     */
+    private var ignoreLocalUntil = 0L
+
+    /** The remote's queue has just been put in this phone's player. */
+    fun markMirrorApplied() {
+        ignoreLocalUntil = SystemClock.elapsedRealtime() + MIRROR_SETTLE_MS
+    }
+
+    private fun settling() = applyingMirror || SystemClock.elapsedRealtime() < ignoreLocalUntil
+
     /** This device asked for the other's music and is waiting for it to arrive. */
     private var pulling = false
 
@@ -182,7 +196,9 @@ internal class DeviceSpeaker(
         confirmJob?.cancel()
         targetId = deviceId
         active = true
-        status = null
+        // What the target is already playing is known; starting from it is what keeps this phone's
+        // own mirror from looking like a change.
+        status = account.state.value.devices.firstOrNull { it.deviceId == deviceId }?.nowPlaying?.let(::statusOf)
         sink?.onRemoteRouteChanged()
         onChanged()
     }
@@ -300,7 +316,7 @@ internal class DeviceSpeaker(
     // ---- this phone's player moved ----------------------------------------------------------
 
     override fun onLocalTransition(item: MediaItem?, reason: Int) {
-        if (!active || applyingMirror || item == null || awaitingConfirm != null) return
+        if (!active || settling() || item == null || awaitingConfirm != null) return
         // Already there: the other device moved first and this is the phone catching up.
         if (item.mediaId == status?.mediaId) return
         val player = localPlayer() ?: return
@@ -312,7 +328,7 @@ internal class DeviceSpeaker(
     }
 
     override fun onLocalQueueChanged() {
-        if (!active || applyingMirror || awaitingConfirm != null) return
+        if (!active || settling() || awaitingConfirm != null) return
         val player = localPlayer() ?: return
         // Same song, new order after it: the target replaces its queue without restarting.
         sendQueue(player, wantsPlay, positionMs, keepPlaying = true)
@@ -339,15 +355,7 @@ internal class DeviceSpeaker(
         val np = target.nowPlaying
         if (np != null && np.updatedAtMs != status?.stamp) {
             val before = status
-            status = Status(
-                mediaId = np.videoId,
-                isPlaying = np.isPlaying,
-                positionMs = np.positionMs,
-                durationMs = np.durationMs,
-                volume = np.volume,
-                at = SystemClock.elapsedRealtime(),
-                stamp = np.updatedAtMs,
-            )
+            status = statusOf(np)
             requestedAt = 0L
             if (awaitingConfirm == null) wantsPlay = np.isPlaying
             // The other device moved on by itself: this phone's queue follows.
@@ -363,6 +371,16 @@ internal class DeviceSpeaker(
             onChanged()
         }
     }
+
+    private fun statusOf(np: AccountNowPlaying) = Status(
+        mediaId = np.videoId,
+        isPlaying = np.isPlaying,
+        positionMs = np.positionMs,
+        durationMs = np.durationMs,
+        volume = np.volume,
+        at = SystemClock.elapsedRealtime(),
+        stamp = np.updatedAtMs,
+    )
 
     // ---- sending the queue ------------------------------------------------------------------
 
@@ -394,6 +412,9 @@ internal class DeviceSpeaker(
         const val SEEK_GRACE_MS = 1_500L
         const val CONFIRM_TIMEOUT_MS = 8_000L
         const val CONFIRM_POLL_MS = 250L
+
+        /** How long after loading the remote's queue the player's own reports are not the person's. */
+        const val MIRROR_SETTLE_MS = 2_500L
 
         /** How much of the queue one hand-over carries; the server allows 500. */
         const val MAX_HANDOVER = 200
@@ -503,6 +524,7 @@ internal class DeviceTarget(
             return
         }
         speaker.applyingMirror = mirror
+        if (mirror) speaker.markMirrorApplied()
         try {
             p.setMediaItems(items, index, position)
             if (mirror) {
