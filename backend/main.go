@@ -285,6 +285,7 @@ var serverFeatures = []string{
 	"queueDelta",      // queueAdd / queueRemove / queueClear / queueMove
 	"activity",        // activity frames
 	"inviteLanding",   // GET /invite/{code}
+	"listeningMode",   // setListening, and playsAudio on members
 }
 
 // handleInfo describes this server so a client can tell an extended build from
@@ -1070,6 +1071,7 @@ func handleSocketFrame(p *party.Party, member *party.Member, sc *hub.SafeConn, f
 			}
 			hubInst.Broadcast(p.Code, stateFrame(p), "")
 			if action == protocol.ActionKick ||
+				action == protocol.ActionSetListening ||
 				action == protocol.ActionSetMaxMembers ||
 				action == protocol.ActionSetHostOnlyControl {
 				hubInst.Broadcast(p.Code, membersFrame(p), "")
@@ -1240,6 +1242,14 @@ func applyControl(p *party.Party, member *party.Member, action string, frame map
 		}
 		return true, "", ""
 
+	case protocol.ActionSetListening:
+		enabled, ok := frame["enabled"].(bool)
+		if !ok {
+			return false, "bad_request", "enabled must be true or false."
+		}
+		member.Silent = !enabled
+		return true, "", ""
+
 	case protocol.ActionSetAutoplay:
 		enabled, ok := frame["enabled"].(bool)
 		if !ok {
@@ -1317,6 +1327,12 @@ func activityFrame(member *party.Member, action string, frame map[string]interfa
 	case protocol.ActionKick: detail = "Removed a listener from the party"
 	case protocol.ActionSetMaxMembers: detail = "Changed the party size"
 	case protocol.ActionSetAutoplay: detail = "Changed AutoPlay"
+	case protocol.ActionSetListening:
+		if enabled, ok := frame["enabled"].(bool); ok && !enabled {
+			detail = "Switched to listening through the host"
+		} else {
+			detail = "Switched to listening on their own device"
+		}
 	}
 	return map[string]interface{}{"type": protocol.FrameActivity, "action": action, "by": member.DisplayName, "detail": detail, "atMs": clock.NowMs()}
 }

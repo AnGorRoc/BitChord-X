@@ -498,6 +498,11 @@ type Member struct {
 	Token              string  `json:"-"`
 	IsHost             bool    `json:"isHost"`
 	Connected          bool    `json:"connected"`
+	// Silent is true while this member follows the party without playing it
+	// aloud on their own device. Stored negated so the zero value is the
+	// ordinary case, and sent as playsAudio so a client reading a server that
+	// predates it sees the field absent, which means true.
+	Silent             bool    `json:"-"`
 	JoinedAtMs         int64   `json:"joinedAtMs"`
 	LastSeenMs         int64   `json:"lastSeenMs"`
 	ControlBudget      float64 `json:"-"`
@@ -514,6 +519,7 @@ func (m *Member) ToWire() map[string]interface{} {
 		"avatarUrl":   m.AvatarUrl,
 		"isHost":      m.IsHost,
 		"connected":   m.Connected,
+		"playsAudio":  !m.Silent,
 		"joinedAtMs":  m.JoinedAtMs,
 		"lastSeenMs":  m.LastSeenMs,
 	}

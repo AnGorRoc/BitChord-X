@@ -43,6 +43,10 @@ const (
 	ActionSetMaxMembers = "setMaxMembers"
 	ActionSetAutoplay = "setAutoplay"
 	ActionSetHostOnlyControl = "setHostOnlyControl"
+	// ActionSetListening is a member choosing whether sound comes out of their
+	// own device. It is about the sender only, so it is neither host-only nor
+	// held back by hostOnlyControl.
+	ActionSetListening = "setListening"
 )
 
 // ControlActions are the actions a party's HostOnlyControl setting restricts to
