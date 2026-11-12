@@ -102,10 +102,13 @@ internal object SpotifyToken {
             }
         }.getOrNull()
 
-        val tier = when (product) {
-            "premium" -> SpotifyAccountTier.PREMIUM
-            "free", "open" -> SpotifyAccountTier.FREE
-            else -> if (token.isNotBlank()) SpotifyAccountTier.FREE else SpotifyAccountTier.UNKNOWN
+        // A failed lookup says nothing about the plan: it used to be read as "free" and kept, which
+        // shut Premium accounts (family plans included) out until the app restarted. Only a plan
+        // Spotify actually named is remembered; "free" and "open" are the only unpaid ones.
+        val tier = when {
+            product == null -> return SpotifyAccountTier.UNKNOWN
+            product == "free" || product == "open" -> SpotifyAccountTier.FREE
+            else -> SpotifyAccountTier.PREMIUM
         }
         cachedTier = tier
         return tier

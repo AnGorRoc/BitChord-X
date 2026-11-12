@@ -55,9 +55,32 @@ object SpotifyJamProbe {
         line("Spotify Jam probe · flavor=${BuildConfig.FLAVOR} · Android ${Build.VERSION.RELEASE} · ${Build.MODEL}")
         val tier = runCatching { SpotifyToken.accountTier() }.getOrNull()
         line("tier=$tier  deviceId=${SpotifyToken.deviceId().take(6)}…")
-        if (tier?.canHostJam != true) {
-            line("STOP: needs a signed-in Spotify Premium account")
-            return@withContext out.toString()
+        // The plan check has been wrong before, so it is reported rather than trusted: Spotify
+        // itself refuses a jam to an account that cannot host one, and that answer is the real one.
+        run {
+            val token = SpotifyToken.accessToken()
+            if (token == null) {
+                line("STOP: no Spotify token (is the account signed in?)")
+                return@withContext out.toString()
+            }
+            val plan = Regex(""""product"\s*:\s*"([^"]*)"""")
+            val personal = Regex("""("(?:email|display_name|id)"\s*:\s*")[^"]*"""")
+            for ((label, url) in listOf(
+                "plan from /v1/me" to "https://api.spotify.com/v1/me",
+                "plan from product_state" to "$SPCLIENT/melody/v1/product_state?market=from_token",
+            )) {
+                val headers = SpotifyJamApi.authHeaders() ?: continue
+                val shown = runCatching {
+                    Http.client.newCall(
+                        Request.Builder().url(url).apply { headers.forEach { (k, v) -> header(k, v) } }.build(),
+                    ).execute().use { r ->
+                        val body = r.body.string()
+                        "HTTP ${r.code} product=${plan.find(body)?.groupValues?.get(1)} bodyStart=" +
+                            redact(body.replace(personal, "$1<cut>\"")).take(300)
+                    }
+                }.getOrElse { "ERROR ${it::class.simpleName}: ${it.message}" }
+                line("$label -> $shown")
+            }
         }
 
         val dealer = SpotifyDealerClient()
