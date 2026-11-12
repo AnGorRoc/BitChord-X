@@ -96,23 +96,36 @@ object SpotifyJamApi {
         val headers = authHeaders() ?: return@withContext Result.failure(IllegalStateException("Not signed in to Spotify"))
         val deviceId = SpotifyToken.deviceId()
 
-        val request = Request.Builder()
-            .url("$SESSIONS_URL/current?create_if_not_found=true&device_id=$deviceId")
-            .post("{}".toRequestBody(jsonMediaType))
-            .apply { headers.forEach { (k, v) -> header(k, v) } }
-            .build()
-
-        runCatching {
-            Http.client.newCall(request).execute().use { response ->
-                val body = response.body.string()
-                if (!response.isSuccessful) {
-                    val msg = "Failed to create Spotify Jam (HTTP ${response.code})"
-                    Log.w(TAG, "$msg: $body")
-                    throw IllegalStateException(msg)
-                }
-                parseSession(body, isHost = true)
+        // POST was refused with 405; the endpoint reads "current session, creating it if there is
+        // none", which Spotify's own clients send as GET. The other methods stay as fallbacks in
+        // case it differs by account or version. Each attempt asks for the same session, so a
+        // later one cannot create a second.
+        var lastCode = 0
+        for (method in listOf("GET", "PUT", "POST")) {
+            val builder = Request.Builder()
+                .url("$SESSIONS_URL/current?create_if_not_found=true&device_id=$deviceId")
+                .apply { headers.forEach { (k, v) -> header(k, v) } }
+            val empty = "{}".toRequestBody(jsonMediaType)
+            when (method) {
+                "GET" -> builder.get()
+                "PUT" -> builder.put(empty)
+                else -> builder.post(empty)
             }
+            val attempt = runCatching {
+                Http.client.newCall(builder.build()).execute().use { response ->
+                    val body = response.body.string()
+                    lastCode = response.code
+                    if (response.isSuccessful) parseSession(body, isHost = true) else {
+                        Log.w(TAG, "create jam via $method: HTTP ${response.code}: $body")
+                        null
+                    }
+                }
+            }
+            attempt.getOrNull()?.let { return@withContext Result.success(it) }
+            // Only a "wrong method" answer is worth trying the next one for.
+            if (lastCode != 405 && lastCode != 404 && attempt.isSuccess) break
         }
+        Result.failure(IllegalStateException("Failed to create Spotify Jam (HTTP $lastCode)"))
     }
 
     /**

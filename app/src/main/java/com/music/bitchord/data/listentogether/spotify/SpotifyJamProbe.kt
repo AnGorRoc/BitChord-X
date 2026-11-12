@@ -111,6 +111,12 @@ object SpotifyJamProbe {
 
         try {
             line("STEP 1: create the jam")
+            // Which verb the endpoint takes is the first thing to learn, so each is shown. They
+            // all ask for the current session, so none can make a second one.
+            for (verb in listOf("GET", "PUT", "POST")) {
+                call("create via $verb", verb, "$SESSIONS/current?create_if_not_found=true&device_id=${SpotifyToken.deviceId()}", "{}")
+                delay(1_000)
+            }
             val created = SpotifyJamApi.createSession()
             val session = created.getOrNull()
             if (session == null) {
