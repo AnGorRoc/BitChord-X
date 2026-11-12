@@ -29,7 +29,7 @@ object SpotifyJamApi {
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
 
-    private suspend fun authHeaders(): Map<String, String>? {
+    internal suspend fun authHeaders(): Map<String, String>? {
         val token = SpotifyToken.accessToken() ?: return null
         val headers = mutableMapOf(
             "Authorization" to "Bearer $token",

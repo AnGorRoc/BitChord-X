@@ -64,6 +64,7 @@ import com.music.bitchord.ui.components.QrCode
 import com.music.bitchord.ui.components.QrScannerDialog
 import com.music.bitchord.data.listentogether.spotify.SpotifyJamBridge
 import com.music.bitchord.data.listentogether.spotify.SpotifyJamApi
+import com.music.bitchord.data.listentogether.spotify.SpotifyJamProbe
 import com.music.bitchord.data.listentogether.spotify.SpotifyAccountTier
 import com.music.bitchord.data.listentogether.spotify.SpotifyJamMember
 import com.music.bitchord.data.listentogether.spotify.SpotifyJamSession
@@ -190,6 +191,7 @@ fun ListenTogetherScreen(
     var joinPlayHere by remember { mutableStateOf(true) }
     var pendingServerSwitchInvite by remember { mutableStateOf<Pair<String, String>?>(null) }
     var sharingApk by remember { mutableStateOf(false) }
+    var probing by remember { mutableStateOf(false) }
     var sheet by remember { mutableStateOf<PartySheet?>(null) }
     var showQrScanner by remember { mutableStateOf(false) }
     var spotifyTier by remember { mutableStateOf(SpotifyAccountTier.UNKNOWN) }
@@ -766,6 +768,37 @@ fun ListenTogetherScreen(
                 onClick = onEditServer,
                 trailing = if (busy) ({ Spinner() }) else null,
             )
+        }
+
+        if (BuildConfig.FLAVOR == "dev") {
+            SettingsGroup(
+                header = "Developer",
+                footer = "Creates a Spotify Jam, tries the bridge's commands and shares a log. " +
+                    "Needs Spotify Premium. Takes about a minute and ends the jam when done.",
+            ) {
+                SettingsRow(
+                    icon = SfIcons.Share,
+                    title = "Spotify Jam probe",
+                    subtitle = if (probing) "Running… keep the app open" else "Run and share the log",
+                    enabled = !probing,
+                    trailing = if (probing) ({ Spinner() }) else null,
+                    onClick = {
+                        if (probing) return@SettingsRow
+                        probing = true
+                        scope.launch {
+                            val report = runCatching { SpotifyJamProbe.run() }
+                                .getOrElse { "Probe crashed: ${it::class.simpleName}: ${it.message}" }
+                            probing = false
+                            val send = Intent(Intent.ACTION_SEND).apply {
+                                type = "text/plain"
+                                putExtra(Intent.EXTRA_SUBJECT, "spotify-jam-probe")
+                                putExtra(Intent.EXTRA_TEXT, report.takeLast(200_000))
+                            }
+                            context.startActivity(Intent.createChooser(send, "Spotify Jam probe"))
+                        }
+                    },
+                )
+            }
         }
 
         SettingsGroup(

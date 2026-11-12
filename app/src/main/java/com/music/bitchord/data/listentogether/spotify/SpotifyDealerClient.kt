@@ -48,6 +48,9 @@ class SpotifyDealerClient(
         install(WebSockets)
     }
 
+    /** Sees every raw message before it is parsed. Only the diagnostic probe sets it. */
+    @Volatile var rawTap: ((String) -> Unit)? = null
+
     private var socketJob: Job? = null
     @Volatile private var isRunning = false
 
@@ -118,6 +121,7 @@ class SpotifyDealerClient(
     }
 
     private suspend fun handleMessage(raw: String) {
+        rawTap?.invoke(raw)
         val root = runCatching { json.parseToJsonElement(raw).jsonObject }.getOrNull() ?: return
         val uri = root["uri"]?.jsonPrimitive?.contentOrNull.orEmpty()
         val payloads = root["payloads"]?.jsonArray
