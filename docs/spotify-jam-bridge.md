@@ -142,7 +142,8 @@ Hecho por adb con la consola de pruebas de la build dev. Lo marcado ✅ está **
 | ¿Sirven los comandos `connect-state/v1/player/command/<cmd>` sin destino? | ✅ **No**: 404 todos (add_to_queue, resume, pause, seek_to, skip_next, skip_prev, play). El puente actual dependía de ellos. |
 | ¿Puede la app registrarse como dispositivo de Spotify Connect? | ✅ **Sí**: `PUT /connect-state/v1/devices/hobs_<sha1 del id>` con la cabecera `X-Spotify-Connection-Id` (se obtiene del primer mensaje del Dealer) → 200, y la respuesta trae el **estado completo del clúster** (pista, `next_tracks`, modos). |
 | ¿Quién añadió una canción / cómo se ven los cambios de invitados? | ❓ No probado: hacía falta un segundo participante en la jam. |
-| ¿Puede nuestro dispositivo registrado hacerse el dispositivo activo de la jam y publicar su estado? | ❓ No probado. Es lo que decide si el puente es viable (ver abajo). |
+| ¿Puede nuestro dispositivo registrado hacerse el dispositivo activo y publicar su estado? | ✅ **Sí para el clúster**: al publicar `is_active` con un `player_state`, el clúster pasa a `active_device_id: hobs_<id>` con nuestra canción. ❌ **Pero la jam muere**: en cuanto publicamos "reproduciendo", Spotify cierra la jam (404), tanto si registramos antes como después de crearla. Con el dispositivo registrado y **en pausa** la jam sobrevive, y su `hostActiveDeviceId` sigue vacío (no nos adopta). |
+| ¿Se puede evitar que muera declarando la jam como contexto y `modes.jam`? | ❌ Spotify rechaza ese JSON (`400 INVALID_ENTITY "Invalid json"`). Sin la especificación del mensaje no se puede adivinar el formato. |
 | ¿Suenan los dos a la vez en el teléfono si Spotify está abierto? | ❓ No probado. |
 | ¿Se puede cerrar la jam al cerrar la app? | ❓ No probado; el cierre es una sola petición DELETE, pero hay que lanzarla antes de que muera el proceso. |
 
@@ -157,9 +158,10 @@ lo que hace un cliente de Spotify. Consecuencias:
 - Una canción "solo BitChord" no tiene URI de Spotify, así que se anuncia **pausa**, que es
   justamente lo que describiste.
 - El 429 de la API web deja de importar: ya no se usa.
-- Es bastante más trabajo que el puente actual y **sigue habiendo dudas** (❓ arriba). El siguiente
-  paso es una segunda sonda: registrar el dispositivo, enviar un `PutStateRequest` y comprobar si la
-  jam adopta al dispositivo como activo, y hacerlo con un segundo participante.
+- **Estado tras la segunda sonda: no es viable por adivinación.** Publicar "reproduciendo" desde un
+  dispositivo propio cierra la jam, y el formato que la mantiene viva (contexto/modo jam) no se
+  puede deducir a ciegas. Seguir exigiría ver cómo lo hace la app oficial (captura de su tráfico), y
+  aun así sería una API interna que Spotify puede cambiar. Ver las opciones en la respuesta al dueño.
 
 ## 5. Interfaz (según tu descripción)
 

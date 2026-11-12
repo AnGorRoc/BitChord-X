@@ -97,7 +97,7 @@ object SpotifyProbeConsole {
                 val o = step.jsonObject
                 val device = SpotifyToken.deviceId()
                 fun fill(text: String): String =
-                    saved.entries.fold(text.replace("{device}", device)) { acc, (k, v) -> acc.replace("{$k}", v) }
+                    saved.entries.fold(text.replace("{device}", device).replace("{now}", System.currentTimeMillis().toString())) { acc, (k, v) -> acc.replace("{$k}", v) }
                 when {
                     o["note"] != null -> line("NOTE ${o["note"]!!.jsonPrimitive.content}")
                     o["sleep"] != null -> delay(o["sleep"]!!.jsonPrimitive.content.toLong())
