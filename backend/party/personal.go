@@ -49,6 +49,8 @@ func (s *PartyStore) PersonalRoom(groupID string, maxParties, maxMembers int) (p
 		return nil, false, err
 	}
 	p.Personal = true
+	// Music keeps going on its own, as it does on a single device; the player's toggle changes it.
+	p.Playback.AutoplayEnabled = true
 	personal.byGroup[groupID] = p.Code
 	personal.codes[p.Code] = true
 	return p, true, nil

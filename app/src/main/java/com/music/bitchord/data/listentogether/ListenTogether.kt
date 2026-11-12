@@ -200,6 +200,9 @@ object ListenTogether {
          */
         val detached: Boolean get() = personal && you?.independent == true
 
+        /** In a party and following it, as opposed to playing on its own (see [detached]). */
+        val followsParty: Boolean get() = inParty && !detached
+
         /**
          * Whether this device may not drive the music.
          *
