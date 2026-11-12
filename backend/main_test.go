@@ -26,6 +26,8 @@ func setupTestServer() *httptest.Server {
 	mux.HandleFunc("GET /{$}", handleRoot)
 	mux.HandleFunc("GET /healthz", handleHealthz)
 	mux.HandleFunc("GET /api/time", handleTime)
+	mux.HandleFunc("GET /api/info", handleInfo)
+	mux.HandleFunc("GET /.well-known/assetlinks.json", handleAssetLinks)
 	mux.HandleFunc("POST /api/parties", handleCreateParty)
 	mux.HandleFunc("POST /api/parties/{code}/join", handleJoinParty)
 	mux.HandleFunc("GET /api/parties/{code}", handleGetParty)
@@ -548,5 +550,81 @@ func TestWebSocketTokenAsSubprotocol(t *testing.T) {
 	bad := websocket.Dialer{Subprotocols: []string{socketProtocol, socketTokenPrefix + "nottherighttoken"}}
 	if _, resp, err := bad.Dial(u.String(), nil); err == nil || resp == nil || resp.StatusCode != http.StatusUnauthorized {
 		t.Fatalf("expected 401 for a wrong subprotocol token, got %v", err)
+	}
+}
+
+func TestInfoListsFeatures(t *testing.T) {
+	ts := setupTestServer()
+	defer ts.Close()
+
+	res, err := http.Get(ts.URL + "/api/info")
+	if err != nil || res.StatusCode != http.StatusOK {
+		t.Fatalf("GET /api/info failed: %v %v", res, err)
+	}
+	var info struct {
+		Flavor   string   `json:"flavor"`
+		Protocol int      `json:"protocol"`
+		Features []string `json:"features"`
+	}
+	if err := json.NewDecoder(res.Body).Decode(&info); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if info.Flavor != "bitchord-x" || info.Protocol != 1 {
+		t.Fatalf("unexpected identity: %+v", info)
+	}
+	found := false
+	for _, f := range info.Features {
+		if f == "preview" {
+			found = true
+		}
+	}
+	if !found {
+		t.Fatalf("expected preview among features, got %v", info.Features)
+	}
+}
+
+func TestAssetLinks(t *testing.T) {
+	ts := setupTestServer()
+	defer ts.Close()
+
+	saved := config.AndroidAppLinks
+	defer func() { config.AndroidAppLinks = saved }()
+
+	config.AndroidAppLinks = nil
+	res, _ := http.Get(ts.URL + "/.well-known/assetlinks.json")
+	if res.StatusCode != http.StatusNotFound {
+		t.Fatalf("expected 404 with no app links, got %d", res.StatusCode)
+	}
+
+	fp := strings.Repeat("AB:", 31) + "AB"
+	config.AndroidAppLinks = []config.AppLink{{Package: "com.music.bitchord", Fingerprint: fp}}
+	res, _ = http.Get(ts.URL + "/.well-known/assetlinks.json")
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", res.StatusCode)
+	}
+	var statements []map[string]interface{}
+	_ = json.NewDecoder(res.Body).Decode(&statements)
+	target := statements[0]["target"].(map[string]interface{})
+	if target["package_name"] != "com.music.bitchord" {
+		t.Fatalf("unexpected statement: %v", statements)
+	}
+}
+
+func TestClientIPHeaderWinsBehindTrustedProxy(t *testing.T) {
+	savedTrust, savedHeader := config.TrustProxy, config.ClientIPHeader
+	defer func() { config.TrustProxy, config.ClientIPHeader = savedTrust, savedHeader }()
+
+	r := httptest.NewRequest("GET", "/", nil)
+	r.RemoteAddr = "10.0.0.2:1234"
+	r.Header.Set("X-Forwarded-For", "6.6.6.6, 1.2.3.4")
+	r.Header.Set("CF-Connecting-IP", "1.2.3.4")
+
+	config.TrustProxy, config.ClientIPHeader = true, "CF-Connecting-IP"
+	if got := clientIP(r); got != "1.2.3.4" {
+		t.Fatalf("expected the header's address, got %s", got)
+	}
+	config.TrustProxy = false
+	if got := clientIP(r); got != "10.0.0.2" {
+		t.Fatalf("expected the peer without a trusted proxy, got %s", got)
 	}
 }

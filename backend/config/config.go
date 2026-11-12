@@ -96,8 +96,43 @@ var (
 	AllowedOrigins       = getCSV("JAM_ALLOWED_ORIGINS", "")
 	TrustProxy           = getBool("JAM_TRUST_PROXY", false)
 	PublicOrigin         = getOrigin("JAM_PUBLIC_ORIGIN")
+	// A header a trusted proxy sets to the real client address, read before
+	// X-Forwarded-For when JAM_TRUST_PROXY is on. Behind Cloudflare that is
+	// CF-Connecting-IP: Cloudflare appends to an X-Forwarded-For the caller may
+	// already have written, so the first entry of that one is the caller's word.
+	ClientIPHeader       = strings.TrimSpace(os.Getenv("JAM_CLIENT_IP_HEADER"))
+	// "package:SHA256" pairs, comma separated, published as
+	// /.well-known/assetlinks.json so Android opens this server's invite links
+	// in the app directly. Empty publishes nothing.
+	AndroidAppLinks      = parseAppLinks(getCSV("JAM_ANDROID_APP_LINKS", ""))
+	// Build identifier reported by /api/info, e.g. a commit hash.
+	Version              = strings.TrimSpace(os.Getenv("JAM_VERSION"))
 	Port                 = getInt("PORT", 8000)
 )
+
+// AppLink is one Android app allowed to open this server's invite links.
+type AppLink struct {
+	Package     string
+	Fingerprint string
+}
+
+// parseAppLinks reads "package:AA:BB:..." entries. The fingerprint is the
+// signing certificate's SHA-256 in keytool's colon-separated form; the first
+// colon splits the package from it.
+func parseAppLinks(entries []string) []AppLink {
+	var links []AppLink
+	for _, entry := range entries {
+		pkg, fingerprint, ok := strings.Cut(entry, ":")
+		pkg = strings.TrimSpace(pkg)
+		fingerprint = strings.ToUpper(strings.TrimSpace(fingerprint))
+		if !ok || pkg == "" || len(strings.ReplaceAll(fingerprint, ":", "")) != 64 {
+			log.Printf("JAM_ANDROID_APP_LINKS entry %q is not package:SHA256; ignoring", entry)
+			continue
+		}
+		links = append(links, AppLink{Package: pkg, Fingerprint: fingerprint})
+	}
+	return links
+}
 
 // Open-app heartbeats. The interval is handed back on every ping, so it can be
 // raised here under load without an app update. An install stays counted for

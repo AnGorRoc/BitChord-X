@@ -57,6 +57,8 @@ func main() {
 	mux.HandleFunc("GET /{$}", handleRoot)
 	mux.HandleFunc("GET /healthz", handleHealthz)
 	mux.HandleFunc("GET /api/time", handleTime)
+	mux.HandleFunc("GET /api/info", handleInfo)
+	mux.HandleFunc("GET /.well-known/assetlinks.json", handleAssetLinks)
 	mux.HandleFunc("POST /api/parties", handleCreateParty)
 	mux.HandleFunc("POST /api/parties/{code}/join", handleJoinParty)
 	mux.HandleFunc("GET /api/parties/{code}", handleGetParty)
@@ -165,6 +167,11 @@ func (l *ipRateLimiter) Allow(ip string) bool {
 
 func clientIP(r *http.Request) string {
 	if config.TrustProxy {
+		if config.ClientIPHeader != "" {
+			if ip := strings.TrimSpace(r.Header.Get(config.ClientIPHeader)); ip != "" {
+				return ip
+			}
+		}
 		if forwarded := strings.TrimSpace(strings.Split(r.Header.Get("X-Forwarded-For"), ",")[0]); forwarded != "" {
 			return forwarded
 		}
@@ -262,6 +269,77 @@ func handleHealthz(w http.ResponseWriter, r *http.Request) {
 		"ok":       true,
 		"serverMs": clock.NowMs(),
 	})
+}
+
+// serverFeatures is what this build of the server understands beyond the
+// original protocol's baseline. Clients read it from /api/info and turn on only
+// what is listed, so a party on a server without an entry keeps working in the
+// reduced form both builds share. Add a name here in the same change that ships
+// the behaviour; never remove one while clients may rely on it.
+var serverFeatures = []string{
+	"preview",         // GET /api/parties/{code}/preview
+	"hostOnlyControl", // setHostOnlyControl
+	"autoplay",        // setAutoplay and autoplayEnabled on create
+	"kick",            // kick, and bye reason "kicked"
+	"maxMembers",      // setMaxMembers and maxMembers on create
+	"queueDelta",      // queueAdd / queueRemove / queueClear / queueMove
+	"activity",        // activity frames
+	"inviteLanding",   // GET /invite/{code}
+}
+
+// handleInfo describes this server so a client can tell an extended build from
+// an original one. The original server answers 404 here, which clients read as
+// "baseline protocol only".
+func handleInfo(w http.ResponseWriter, r *http.Request) {
+	version := config.Version
+	if version == "" {
+		version = "dev"
+	}
+	jsonResponse(w, http.StatusOK, map[string]interface{}{
+		"service":  "bitchord-listen-together",
+		"flavor":   "bitchord-x",
+		"protocol": 1,
+		"version":  version,
+		"features": serverFeatures,
+		"limits": map[string]interface{}{
+			"defaultMaxMembers": config.MaxMembers,
+			"minMembers":        2,
+			"maxMembers":        10,
+			"maxUpcomingQueue":  config.MaxUpcomingQueue,
+		},
+		"serverMs": clock.NowMs(),
+	})
+}
+
+// handleAssetLinks publishes the Digital Asset Links statement that lets
+// Android verify this domain for the apps in JAM_ANDROID_APP_LINKS, so a tapped
+// invite opens the app instead of the landing page.
+func handleAssetLinks(w http.ResponseWriter, r *http.Request) {
+	if len(config.AndroidAppLinks) == 0 {
+		http.NotFound(w, r)
+		return
+	}
+	byPackage := map[string][]string{}
+	var order []string
+	for _, link := range config.AndroidAppLinks {
+		if _, seen := byPackage[link.Package]; !seen {
+			order = append(order, link.Package)
+		}
+		byPackage[link.Package] = append(byPackage[link.Package], link.Fingerprint)
+	}
+	statements := make([]map[string]interface{}, 0, len(order))
+	for _, pkg := range order {
+		statements = append(statements, map[string]interface{}{
+			"relation": []string{"delegate_permission/common.handle_all_urls"},
+			"target": map[string]interface{}{
+				"namespace":                "android_app",
+				"package_name":             pkg,
+				"sha256_cert_fingerprints": byPackage[pkg],
+			},
+		})
+	}
+	w.Header().Set("Cache-Control", "public, max-age=3600")
+	jsonResponse(w, http.StatusOK, statements)
 }
 
 func handleTime(w http.ResponseWriter, r *http.Request) {
