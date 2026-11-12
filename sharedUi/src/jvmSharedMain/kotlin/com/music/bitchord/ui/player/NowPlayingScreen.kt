@@ -1610,8 +1610,12 @@ fun NowPlayingScreen(
     val skipSwipeGesture = Modifier.pointerInput(showAudioPipeline, showCast, panelScrolling, controlsLocked) {
         if (showAudioPipeline || showCast || panelScrolling) return@pointerInput
         var total = 0f
+        var thresholdHapticPlayed = false
         detectHorizontalDragGestures(
-            onDragStart = { total = 0f },
+            onDragStart = {
+                total = 0f
+                thresholdHapticPlayed = false
+            },
             onDragCancel = { setSwipeOffset(0f) },
             onDragEnd = {
                 // The same two buzzes the transport glyphs give, so swiping the
@@ -1636,6 +1640,13 @@ fun NowPlayingScreen(
             },
             onHorizontalDrag = { _, delta ->
                 total += delta
+                val crossed = abs(total) >= swipeThreshold
+                if (crossed && !thresholdHapticPlayed) {
+                    haptics.play(Haptic.Tick)
+                    thresholdHapticPlayed = true
+                } else if (!crossed && thresholdHapticPlayed) {
+                    thresholdHapticPlayed = false
+                }
                 // Damped: it's a hint, not a drag-to-position.
                 setSwipeOffset(total * 0.35f)
             },

@@ -7906,11 +7906,25 @@ class PlaybackService : MediaLibraryService() {
         scope.launch {
             SleepTimer.deadline.collectLatest { deadline ->
                 if (deadline == null) return@collectLatest
-                val remaining = deadline - SystemClock.elapsedRealtime()
-                if (remaining > 0) delay(remaining)
-                heldBySleepTimer = true
-                player?.pause()
-                SleepTimer.cancel()
+                val originalVolume = player?.volume ?: 1f
+                try {
+                    val remaining = deadline - SystemClock.elapsedRealtime()
+                    if (remaining > 4_000L) {
+                        delay(remaining - 4_000L)
+                    }
+                    while (true) {
+                        val currentRemaining = deadline - SystemClock.elapsedRealtime()
+                        if (currentRemaining <= 0) break
+                        val fraction = (currentRemaining.toFloat() / 4_000f).coerceIn(0f, 1f)
+                        player?.volume = originalVolume * fraction
+                        delay(100L)
+                    }
+                    heldBySleepTimer = true
+                    player?.pause()
+                    SleepTimer.cancel()
+                } finally {
+                    player?.volume = originalVolume
+                }
             }
         }
     }

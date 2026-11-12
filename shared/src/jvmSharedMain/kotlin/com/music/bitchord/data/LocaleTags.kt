@@ -55,11 +55,23 @@ object LocaleTags {
 
     /** Geo for Innertube context gl + InnerTubeX locale. */
     fun ytGl(appTag: String): String {
-        return when (normalizeAppTag(appTag)) {
-            ZH_HANT -> "TW"
-            ZH_HANS -> "SG"
-            else -> "US"
+        when (normalizeAppTag(appTag)) {
+            ZH_HANT -> return "TW"
+            ZH_HANS -> return "SG"
         }
+        val sysCountry = runCatching {
+            Locale.getDefault().country
+        }.getOrNull()
+        if (!sysCountry.isNullOrBlank() && sysCountry.length == 2) {
+            return sysCountry.uppercase()
+        }
+        val tag = appTag.trim().replace('_', '-')
+        if (tag.contains('-')) {
+            val part = tag.substringAfter('-').uppercase()
+            if (part.length == 2) return part
+        }
+        if (normalizeAppTag(appTag) == "es") return "AR"
+        return "US"
     }
 
     /**

@@ -25,7 +25,7 @@ private const val MUSIC_ORIGIN = "https://music.youtube.com"
 
 private const val LOGIN_URL =
     "https://accounts.google.com/ServiceLogin" +
-        "?ltmpl=music&service=youtube&prompt=select_account" +
+        "?ltmpl=music&service=youtube" +
     "&continue=https%3A%2F%2Fmusic.youtube.com%2F"
 
 private const val TAG = "BitChord"
@@ -40,9 +40,10 @@ private const val TAG = "BitChord"
  * Google redirects back to music.youtube.com the listener confirms the profile
  * shown by the live page. This deliberately leaves a multiple-channel account
  * enough time to choose its Personal or Brand identity before anything is
- * saved. The browser's local Google cookies are cleared on the way in without
- * visiting Google's logout endpoint, so adding an account cannot invalidate a
- * previously saved session.
+ * saved. The browser's Google login is kept on the way in, so an account already
+ * signed in on the device is detected and used without an account picker.
+ * Signing out of BitChord clears that login, so a signed-out account is not
+ * waved straight back through.
  *
  * [WebSessionMode.SWITCH_CHANNEL] keeps those cookies and opens YouTube Music
  * itself, so the listener can use the avatar menu's own Accounts list — the one
@@ -88,9 +89,10 @@ fun YtMusicLoginScreen(
     AndroidView(
         modifier = modifier.fillMaxSize(),
         factory = { context ->
-            if (mode == WebSessionMode.SIGN_IN) {
-                BrowserSession.clearGoogleCookies()
-            } else initialCookie?.let(BrowserSession::installGoogleCookies)
+            // SIGN_IN keeps the browser's Google login, so an account already
+            // signed in on this device is detected and used without a picker.
+            // Signing out of BitChord clears it (see [AuthStore.signOut]).
+            if (mode != WebSessionMode.SIGN_IN) initialCookie?.let(BrowserSession::installGoogleCookies)
             WebView(context).apply {
                 if (mode == WebSessionMode.SIGN_IN) {
                     clearCache(true)

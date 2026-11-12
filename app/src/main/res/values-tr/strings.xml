@@ -1522,4 +1522,47 @@
     <string name="swipe_hold_playlist_hint">Çalma listesine eklemek için kaydırıp basılı tutun</string>
     <string name="swipe_action_disabled">Kapalı</string>
 
+    <!-- Spotify Onboarding -->
+    <string name="onboarding_spotify_title">Connect your Spotify</string>
+    <string name="onboarding_spotify_body">Bring your playlists and favorite music with you. Songs are matched on YouTube Music.</string>
+    <string name="onboarding_sign_in_spotify">Connect with Spotify</string>
+    <string name="onboarding_spotify_connected">Spotify connected</string>
+    <string name="onboarding_spotify_finish">Get started</string>
+    <string name="onboarding_skip_spotify">Maybe later</string>
+
+    <string name="automix_overview">Automix overview</string>
+    <string name="content_preferences">Content Preferences</string>
+    <string name="hide_recents">Hide Recents</string>
+    <string name="hide_home_videos">Hide videos from Home</string>
+    <string name="hide_home_videos_subtitle">Shelves of only videos go too. Search, artists and playlists still show them</string>
+    <string name="hide_top_picks">Hide Top Picks for You</string>
+    <string name="hide_home_moods">Hide Find Your Mood</string>
+    <string name="square_video_thumbnails">Square video thumbnails</string>
+    <string name="square_video_thumbnails_subtitle">Show music videos as squares everywhere, including the player</string>
+    <string name="prefer_music_only">Prefer music-only version</string>
+    <string name="prefer_music_only_subtitle">Music videos play as their audio version, and the next track in the queue is converted ahead of time so Automix and crossfade work</string>
+    <string name="glass_performance">Better Performance for Glass</string>
+    <string name="full_screen_detail_cover">Full-screen album/playlist cover</string>
+    <string name="full_screen_detail_cover_subtitle">Runs album and playlist covers to the edges of the page instead of a framed sleeve</string>
+    <string name="listen_together_scan_qr_action">Scan QR code</string>
+    <string name="listen_together_camera_permission_title">Camera permission needed</string>
+    <string name="listen_together_camera_permission_desc">To scan party or Spotify Jam QR codes directly, allow camera access.</string>
+    <string name="listen_together_grant_permission">Grant permission</string>
+    <string name="listen_together_scan_qr_prompt">Point the camera at a BitChord or Spotify Jam QR code</string>
+    <string name="listen_together_gallery_qr">Scan from gallery</string>
+    <string name="listen_together_paste_link">Paste link from clipboard</string>
+    <string name="listen_together_invalid_qr">No valid party code or Spotify Jam link found</string>
+    <string name="listen_together_spotify_jam_title">Spotify Jam bridge</string>
+    <string name="listen_together_spotify_jam_premium_subtitle">Spotify Premium connected. Friends on Spotify can join your Jam directly.</string>
+    <string name="listen_together_spotify_jam_free_subtitle">Spotify Free account. You can join existing Jams; host Jam creation requires Premium.</string>
+    <string name="listen_together_spotify_jam_disconnected_subtitle">Connect Spotify in Settings to sync and host Spotify Jams.</string>
+    <string name="listen_together_share_spotify_jam">Share Spotify Jam link</string>
+    <string name="listen_together_share_spotify_jam_text">Join my Spotify Jam via BitChord</string>
+    <string name="listen_together_scan_spotify_jam_qr">Scan Spotify Jam QR</string>
+    <string name="listen_together_scan_spotify_jam_subtitle">Spotify users can scan this code using the Spotify app camera</string>
+    <string name="listen_together_spotify_members">Spotify Jam members</string>
+    <string name="created_by_bitchord">Created by BitChord</string>
+    <string name="trending_title">Trending</string>
+    <string name="region_global">Global</string>
+    <string name="region_auto">Automatic (IP)</string>
 </resources>

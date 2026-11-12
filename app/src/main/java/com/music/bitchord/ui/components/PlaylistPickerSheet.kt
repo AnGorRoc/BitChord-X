@@ -46,6 +46,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
+import com.music.bitchord.ui.components.playlistRowsSkeleton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -197,19 +198,19 @@ fun PlaylistPickerSheet(
                 )
 
                 when {
-                    // Only while there is nothing to show: re-fetching under a
-                    // list that is already up would replace it with a spinner
-                    // for no gain.
-                    loading && playlists.isEmpty() -> Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(120.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        CircularProgressIndicator(
-                            strokeWidth = 2.5.dp,
-                            modifier = Modifier.size(26.dp),
+                    // Clean skeleton rows while loading playlists
+                    loading && playlists.isEmpty() -> {
+                        HorizontalDivider(
+                            modifier = Modifier.padding(vertical = 6.dp),
+                            thickness = 0.5.dp,
+                            color = MaterialTheme.colorScheme.outline,
                         )
+                        LazyColumn(
+                            modifier = Modifier.weight(1f),
+                            contentPadding = WindowInsets.navigationBars.asPaddingValues(),
+                        ) {
+                            playlistRowsSkeleton(count = 4, keyPrefix = "skeleton:picker")
+                        }
                     }
 
                     playlists.isEmpty() -> Text(

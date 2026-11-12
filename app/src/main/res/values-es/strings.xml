@@ -775,6 +775,23 @@
     <string name="listen_together_status_custom_fallback">Servidor personalizado inaccesible · Usando respaldo predeterminado (%1$d ms)</string>
     <string name="listen_together_status_all_offline">El servidor personalizado y el predeterminado están desconectados</string>
     <string name="listen_together_top_bar_fallback">Respaldo · %1$s</string>
+    <string name="listen_together_scan_qr_action">Escanear código QR</string>
+    <string name="listen_together_camera_permission_title">Permiso de cámara necesario</string>
+    <string name="listen_together_camera_permission_desc">Para escanear códigos QR de fiestas o Spotify Jam directamente, permite el acceso a la cámara.</string>
+    <string name="listen_together_grant_permission">Conceder permiso</string>
+    <string name="listen_together_scan_qr_prompt">Apunta la cámara al código QR de BitChord o Spotify Jam</string>
+    <string name="listen_together_gallery_qr">Escanear desde galería</string>
+    <string name="listen_together_paste_link">Pegar enlace del portapapeles</string>
+    <string name="listen_together_invalid_qr">No se encontró un código de fiesta o enlace de Spotify Jam válido</string>
+    <string name="listen_together_spotify_jam_title">Puente con Spotify Jam</string>
+    <string name="listen_together_spotify_jam_premium_subtitle">Spotify Premium conectado. Amigos con Spotify pueden unirse a tu Jam directamente.</string>
+    <string name="listen_together_spotify_jam_free_subtitle">Cuenta Spotify Free. Puedes unirte a Jams existentes; crear Jams requiere Premium.</string>
+    <string name="listen_together_spotify_jam_disconnected_subtitle">Conecta Spotify en Ajustes para sincronizar y crear sesiones de Spotify Jam.</string>
+    <string name="listen_together_share_spotify_jam">Compartir enlace de Spotify Jam</string>
+    <string name="listen_together_share_spotify_jam_text">Únete a mi Spotify Jam a través de BitChord</string>
+    <string name="listen_together_scan_spotify_jam_qr">Escanear QR de Spotify Jam</string>
+    <string name="listen_together_scan_spotify_jam_subtitle">Usuarios de Spotify pueden escanear este código con la cámara de Spotify</string>
+    <string name="listen_together_spotify_members">Participantes de Spotify Jam</string>
 
     <string name="vietnamese">Vietnamita</string>
 
@@ -1339,6 +1356,12 @@
     <string name="onboarding_sign_in_google">Iniciar sesión con Google</string>
     <string name="onboarding_skip_sign_in">Omitir inicio de sesión</string>
     <string name="onboarding_back">Atrás</string>
+    <string name="onboarding_spotify_title">Conecta tu Spotify</string>
+    <string name="onboarding_spotify_body">Trae tus listas de reproducción y canciones favoritas contigo. La música se reproduce a través de YouTube Music.</string>
+    <string name="onboarding_sign_in_spotify">Conectar con Spotify</string>
+    <string name="onboarding_spotify_connected">Spotify conectado</string>
+    <string name="onboarding_spotify_finish">Empezar</string>
+    <string name="onboarding_skip_spotify">Más tarde</string>
     <string name="wear_os_section">BitChord para Wear OS</string>
     <string name="wear_os_page_title">Wear OS</string>
     <string name="wear_os_your_watches">Tus relojes</string>
@@ -1563,4 +1586,8 @@
     <string name="swipe_left_action">Deslizar canción a la izquierda</string>
     <string name="swipe_hold_playlist_hint">Mantené el deslizamiento para añadir a una playlist</string>
     <string name="swipe_action_disabled">Desactivado</string>
+    <string name="created_by_bitchord">Creada por BitChord</string>
+    <string name="trending_title">Tendencias</string>
+    <string name="region_global">Global</string>
+    <string name="region_auto">Automático (IP)</string>
 </resources>

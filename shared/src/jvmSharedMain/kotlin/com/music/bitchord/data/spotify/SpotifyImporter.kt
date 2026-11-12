@@ -10,6 +10,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
@@ -322,8 +323,36 @@ object SpotifyImporter {
                         "${track.title} ${track.artist}".trim()
                     }
 
-                    val searchResult = YtMusicRepository.search(query, SearchFilter.SONGS).getOrNull()
-                    val candidates = searchResult?.filterIsInstance<SearchResult.Track>()?.map { it.song }.orEmpty()
+                    var searchResult = YtMusicRepository.search(query, SearchFilter.SONGS).getOrNull()
+                    if (searchResult == null) {
+                        // Rate limit or transient network hiccup: brief backoff and retry once
+                        delay(350L)
+                        searchResult = YtMusicRepository.search(query, SearchFilter.SONGS).getOrNull()
+                    }
+                    var candidates = searchResult?.filterIsInstance<SearchResult.Track>()?.map { it.song }.orEmpty()
+
+                    if (candidates.isEmpty() && cleanLang != null) {
+                        // Language-constrained search yielded nothing: retry with standard title + artist
+                        val fallbackQuery = "${track.title} ${track.artist}".trim()
+                        val fallbackResult = YtMusicRepository.search(fallbackQuery, SearchFilter.SONGS).getOrNull()
+                        candidates = fallbackResult?.filterIsInstance<SearchResult.Track>()?.map { it.song }.orEmpty()
+                    }
+
+                    if (candidates.isEmpty()) {
+                        // Strip Spotify metadata decorators like "(feat. ...)", "- Remastered", "[Remix]"
+                        val cleanTitle = track.title.replace(
+                            Regex("""\s*[\(\[](feat\.|ft\.|remastered|remaster|deluxe|bonus|edit).*?[\)\]]""", RegexOption.IGNORE_CASE),
+                            "",
+                        ).replace(
+                            Regex("""\s*-\s*(remastered|remix|live|bonus track).*?""", RegexOption.IGNORE_CASE),
+                            "",
+                        ).trim()
+                        if (cleanTitle != track.title && cleanTitle.isNotBlank()) {
+                            val simplifiedQuery = "$cleanTitle ${track.artist}".trim()
+                            val simplifiedResult = YtMusicRepository.search(simplifiedQuery, SearchFilter.SONGS).getOrNull()
+                            candidates = simplifiedResult?.filterIsInstance<SearchResult.Track>()?.map { it.song }.orEmpty()
+                        }
+                    }
 
                     val target = TrackMatcher.Target(
                         title = track.title,

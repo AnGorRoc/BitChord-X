@@ -907,6 +907,7 @@ fun DetailScreen(
                 val displayItems = remember(shelf.items) {
                     if (canShowAll) shelf.items.take(ARTIST_ROW_MAX_ITEMS) else shelf.items
                 }
+                val isArtistSection = remember(shelf.items) { shelf.isArtistShelf() }
                 Column(Modifier.padding(top = 22.dp)) {
                     SectionHeading(
                         title = shelf.title,
@@ -927,6 +928,7 @@ fun DetailScreen(
                                 palette = palette,
                                 onClick = { onSectionItemClick(item) },
                                 onLongPress = onSectionItemLongPress?.let { { it(item) } },
+                                isCircular = isArtistSection,
                                 modifier = Modifier.width(if (item.isVideo) VIDEO_CARD_WIDTH else SHELF_CARD_WIDTH),
                             )
                         }
@@ -1007,8 +1009,12 @@ private fun ReleaseHeader(
     // the first one speaks for the whole page, the same source the rows'
     // own long-press "Open artist" already reads from.
     val artist = songs.firstOrNull()
+    val top4Artworks = remember(page.songs) {
+        (page.songs as? UiState.Success)?.data?.mapNotNull { it.thumbnailUrl }?.distinct()?.take(4).orEmpty()
+    }
+    val isGridCover = (page.browseId.startsWith("charts:trending") || (page.browseId.startsWith("topic:") && page.thumbnailUrl == null)) && top4Artworks.size >= 4
     var artFailed by remember(page.thumbnailUrl) { mutableStateOf(false) }
-    val bleed = fullBleed && page.thumbnailUrl != null && !artFailed
+    val bleed = fullBleed && page.thumbnailUrl != null && !artFailed && !isGridCover
 
     Column(
         modifier = Modifier
@@ -1077,26 +1083,59 @@ private fun ReleaseHeader(
                 .background(palette.elevated)
                 .thumbnailBorder(SLEEVE_SHAPE),
         ) {
-            // A cover that isn't there, or wouldn't load — a device folder, a
-            // playlist with nothing on it yet, files with no picture — gets a
-            // placeholder sleeve rather than an empty square. Not shown while a
-            // real one is still on its way, so a loading cover doesn't flash
-            // a glyph first.
-            if (page.thumbnailUrl == null || artFailed) {
-                CoverPlaceholder(
-                    icon = page.placeholderIcon(),
-                    base = palette.elevated,
-                    tint = palette.onBackgroundVariant,
+            if (isGridCover) {
+                Column(Modifier.matchParentSize()) {
+                    Row(Modifier.weight(1f)) {
+                        AsyncImage(
+                            model = top4Artworks[0].artworkAt(HEADER_ART_PX / 2),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                        )
+                        AsyncImage(
+                            model = top4Artworks[1].artworkAt(HEADER_ART_PX / 2),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                        )
+                    }
+                    Row(Modifier.weight(1f)) {
+                        AsyncImage(
+                            model = top4Artworks[2].artworkAt(HEADER_ART_PX / 2),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                        )
+                        AsyncImage(
+                            model = top4Artworks[3].artworkAt(HEADER_ART_PX / 2),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                        )
+                    }
+                }
+            } else {
+                // A cover that isn't there, or wouldn't load — a device folder, a
+                // playlist with nothing on it yet, files with no picture — gets a
+                // placeholder sleeve rather than an empty square. Not shown while a
+                // real one is still on its way, so a loading cover doesn't flash
+                // a glyph first.
+                if (page.thumbnailUrl == null || artFailed) {
+                    CoverPlaceholder(
+                        icon = page.placeholderIcon(),
+                        base = palette.elevated,
+                        tint = palette.onBackgroundVariant,
+                        modifier = Modifier.matchParentSize(),
+                    )
+                }
+                AsyncImage(
+                    model = page.thumbnailUrl.artworkAt(HEADER_ART_PX),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    onState = { artFailed = it is AsyncImagePainter.State.Error },
                     modifier = Modifier.matchParentSize(),
                 )
             }
-            AsyncImage(
-                model = page.thumbnailUrl.artworkAt(HEADER_ART_PX),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                onState = { artFailed = it is AsyncImagePainter.State.Error },
-                modifier = Modifier.matchParentSize(),
-            )
             // Animated cover art, inside the same frame. Always running:
             // unlike the player's sleeve there is no transport here to follow,
             // and the page is only up while it's being read.
@@ -2502,6 +2541,7 @@ private fun SectionCard(
     palette: ArtworkPalette,
     onClick: () -> Unit,
     modifier: Modifier = Modifier.width(SHELF_CARD_WIDTH),
+    isCircular: Boolean = false,
     onLongPress: (() -> Unit)? = null,
 ) {
     // An artist's Videos shelf: widescreen, as on the web player.
@@ -2517,7 +2557,9 @@ private fun SectionCard(
         )
         return
     }
+    val shape = if (isCircular) CircleShape else RoundedCornerShape(10.dp)
     Column(
+        horizontalAlignment = if (isCircular) Alignment.CenterHorizontally else Alignment.Start,
         modifier = modifier
             .longPressMenuClickable(onClick = onClick, onLongClick = onLongPress),
     ) {
@@ -2527,24 +2569,28 @@ private fun SectionCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(1f)
-                .clip(RoundedCornerShape(10.dp))
-                .thumbnailBorder(RoundedCornerShape(10.dp))
-                .background(palette.elevated),
+                .clip(shape)
+                .thumbnailBorder(shape)
+                .background(palette.elevated, shape),
         )
         Spacer(Modifier.height(8.dp))
         Text(
             text = item.title,
             style = MaterialTheme.typography.titleMedium,
             color = palette.onBackground,
+            textAlign = if (isCircular) TextAlign.Center else TextAlign.Start,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth(),
         )
         Text(
             text = item.subtitle,
             style = MaterialTheme.typography.bodyMedium,
             color = palette.onBackgroundVariant,
+            textAlign = if (isCircular) TextAlign.Center else TextAlign.Start,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 }
@@ -2559,6 +2605,7 @@ private fun ArtistShelfGridPage(
     modifier: Modifier = Modifier,
 ) {
     val gridState = rememberLazyGridState()
+    val isArtistSection = remember(shelf.items) { shelf.isArtistShelf() }
     BoxWithConstraints(modifier.fillMaxSize().background(palette.background)) {
         val grid = libraryGrid(maxWidth - PAGE_GUTTER * 2)
         LazyVerticalGrid(
@@ -2580,12 +2627,16 @@ private fun ArtistShelfGridPage(
                     palette = palette,
                     onClick = { onItemClick(item) },
                     onLongPress = onItemLongPress?.let { { it(item) } },
+                    isCircular = isArtistSection,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
         }
     }
 }
+
+private fun HomeShelf.isArtistShelf(): Boolean =
+    items.isNotEmpty() && items.count { it.browseId?.startsWith("UC") == true || LocalGroups.isArtist(it.browseId) } * 2 > items.size
 
 /**
  * Splits the one subtitle a browse row hands over — "Album • Travis Scott •

@@ -1,5 +1,6 @@
 package com.music.bitchord.desktop
 
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -21,7 +22,9 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -29,10 +32,14 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import org.jetbrains.compose.resources.painterResource
+import com.music.bitchord.sharedui.resources.Res
+import com.music.bitchord.sharedui.resources.spotify_logo
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -50,6 +57,7 @@ import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.spotify.SpotifyImportTrack
 import com.music.bitchord.data.spotify.SpotifyImporter
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 /**
@@ -323,7 +331,10 @@ internal fun DesktopSpotifyImportDialog(
     var working by remember { mutableStateOf(false) }
     var status by remember { mutableStateOf<String?>(null) }
     var failed by remember { mutableStateOf(false) }
+    var progressFraction by remember { mutableFloatStateOf(0f) }
+    var importedPlaylistName by remember { mutableStateOf<String?>(null) }
     var unmatched by remember { mutableStateOf<List<SpotifyImportTrack>?>(null) }
+    var importJob by remember { mutableStateOf<Job?>(null) }
     val focus = remember { FocusRequester() }
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
     val title = DesktopStrings["spotify_import_title", "Import Spotify playlist"]
@@ -337,11 +348,14 @@ internal fun DesktopSpotifyImportDialog(
         }
         working = true
         failed = false
+        progressFraction = 0f
         status = DesktopStrings["spotify_import_fetching", "Reading the Spotify playlist…"]
-        scope.launch {
+        importJob = scope.launch {
             try {
                 val (name, tracks) = SpotifyImporter.fetchPlaylistTracks(id)
+                importedPlaylistName = name
                 val (songs, missed) = SpotifyImporter.resolveToSongs(tracks) { done, total ->
+                    progressFraction = if (total > 0) (done.toFloat() / total.toFloat()).coerceIn(0f, 1f) else 0f
                     status = DesktopStrings.format("spotify_import_matching", done, total, fallback = "Matching songs %1\$d of %2\$d")
                 }
                 if (songs.isEmpty()) {
@@ -355,7 +369,7 @@ internal fun DesktopSpotifyImportDialog(
                     unmatched = missed
                 }
             } catch (cancelled: CancellationException) {
-                throw cancelled
+                // Cancelled by user
             } catch (failure: Exception) {
                 DesktopTrackLog.log("spotify import failed: ${failure.message}")
                 status = DesktopStrings.format(
@@ -364,26 +378,91 @@ internal fun DesktopSpotifyImportDialog(
                     fallback = "Couldn't import the playlist: %1\$s",
                 )
                 failed = true
+            } finally {
+                working = false
             }
-            working = false
+        }
+    }
+
+    fun retryUnmatched() {
+        val missed = unmatched ?: return
+        if (missed.isEmpty() || working) return
+        working = true
+        failed = false
+        progressFraction = 0f
+        status = DesktopStrings["spotify_import_fetching", "Reading the Spotify playlist…"]
+        importJob = scope.launch {
+            try {
+                val (songs, stillMissed) = SpotifyImporter.resolveToSongs(missed) { done, total ->
+                    progressFraction = if (total > 0) (done.toFloat() / total.toFloat()).coerceIn(0f, 1f) else 0f
+                    status = DesktopStrings.format("spotify_import_matching", done, total, fallback = "Matching songs %1\$d of %2\$d")
+                }
+                if (songs.isNotEmpty()) {
+                    onImported(importedPlaylistName ?: title, songs)
+                }
+                unmatched = stillMissed
+                if (stillMissed.isEmpty()) {
+                    onDismiss()
+                }
+            } catch (cancelled: CancellationException) {
+                // Cancelled by user
+            } catch (failure: Exception) {
+                DesktopTrackLog.log("spotify import retry failed: ${failure.message}")
+                status = DesktopStrings.format(
+                    "spotify_import_failed",
+                    failure.message.orEmpty(),
+                    fallback = "Couldn't import the playlist: %1\$s",
+                )
+                failed = true
+            } finally {
+                working = false
+            }
         }
     }
 
     // Not dismissed mid-import, which would leave the matching running with nowhere to report.
-    DesktopDialogPanel(onDismiss = { if (!working) onDismiss() }, maxWidth = 420, popup = true) {
+    DesktopDialogPanel(onDismiss = {
+        if (!working) {
+            onDismiss()
+        } else {
+            importJob?.cancel()
+            working = false
+            onDismiss()
+        }
+    }, maxWidth = 420, popup = true) {
         val missed = unmatched
         if (missed == null) {
-            DialogHeading(
-                title = title,
-                message = if (signedIn) {
-                    DesktopStrings["spotify_import_description", "Paste a public playlist link. Songs are matched on YouTube Music."]
-                } else {
-                    DesktopStrings[
-                        "spotify_import_description_local",
-                        "Paste a public playlist link. Songs are matched on YouTube Music and saved on this device.",
-                    ]
-                },
-            )
+            Column(
+                Modifier.fillMaxWidth().padding(horizontal = panelInset(22.dp), vertical = 18.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Icon(
+                    painter = painterResource(Res.drawable.spotify_logo),
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(36.dp).padding(bottom = 8.dp),
+                )
+                Text(
+                    title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    color = Color.White,
+                )
+                Text(
+                    if (signedIn) {
+                        DesktopStrings["spotify_import_description", "Paste a public playlist link. Songs are matched on YouTube Music."]
+                    } else {
+                        DesktopStrings[
+                            "spotify_import_description_local",
+                            "Paste a public playlist link. Songs are matched on YouTube Music and saved on this device.",
+                        ]
+                    },
+                    modifier = Modifier.padding(top = 5.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = DesktopSecondary,
+                    textAlign = TextAlign.Center,
+                )
+            }
             DialogField(
                 value = link,
                 onValueChange = {
@@ -396,21 +475,51 @@ internal fun DesktopSpotifyImportDialog(
                 onSubmit = ::start,
                 modifier = Modifier.focusRequester(focus),
             )
-            status?.let {
-                Text(
-                    it,
-                    modifier = Modifier.fillMaxWidth().padding(horizontal = panelInset(22.dp), vertical = 6.dp),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = if (failed) DesktopDestructive else DesktopSecondary,
-                    textAlign = TextAlign.Center,
-                )
+            if (working) {
+                val animatedProgress by animateFloatAsState(targetValue = progressFraction, label = "spotifyImportProgress")
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = panelInset(22.dp), vertical = 10.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    LinearProgressIndicator(
+                        progress = { animatedProgress },
+                        modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
+                        color = DesktopAccent,
+                        trackColor = Color.White.copy(alpha = 0.12f),
+                    )
+                    status?.let {
+                        Text(
+                            it,
+                            modifier = Modifier.padding(top = 6.dp),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = DesktopSecondary,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                }
+            } else {
+                status?.let {
+                    Text(
+                        it,
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = panelInset(22.dp), vertical = 6.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (failed) DesktopDestructive else DesktopSecondary,
+                        textAlign = TextAlign.Center,
+                    )
+                }
             }
             DialogActions(
                 confirm = DesktopStrings["spotify_import_button", "Import"],
                 confirmEnabled = link.isNotBlank() && !working,
                 busy = working,
                 onConfirm = ::start,
-                onDismiss = onDismiss,
+                onDismiss = {
+                    if (working) {
+                        importJob?.cancel()
+                        working = false
+                    }
+                    onDismiss()
+                },
             )
         } else {
             DialogHeading(
@@ -445,11 +554,52 @@ internal fun DesktopSpotifyImportDialog(
                     }
                 }
             }
+            if (working) {
+                val animatedProgress by animateFloatAsState(targetValue = progressFraction, label = "spotifyRetryProgress")
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = panelInset(22.dp), vertical = 8.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    LinearProgressIndicator(
+                        progress = { animatedProgress },
+                        modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
+                        color = DesktopAccent,
+                        trackColor = Color.White.copy(alpha = 0.12f),
+                    )
+                    status?.let {
+                        Text(
+                            it,
+                            modifier = Modifier.padding(top = 4.dp),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = DesktopSecondary,
+                            textAlign = TextAlign.Center,
+                        )
+                    }
+                }
+            }
             Row(
                 Modifier.fillMaxWidth().padding(horizontal = panelInset(16.dp), vertical = 12.dp),
-                horizontalArrangement = Arrangement.End,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                TextButton(onClick = onDismiss) { Text(DesktopStrings["done", "Done"], color = DesktopAccent) }
+                if (missed.isNotEmpty() && !working) {
+                    TextButton(onClick = ::retryUnmatched) {
+                        Icon(Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(16.dp), tint = DesktopAccent)
+                        Spacer(Modifier.size(4.dp))
+                        Text(DesktopStrings["retry", "Retry"], color = DesktopAccent)
+                    }
+                } else {
+                    Spacer(Modifier.size(1.dp))
+                }
+                TextButton(onClick = {
+                    if (working) {
+                        importJob?.cancel()
+                        working = false
+                    }
+                    onDismiss()
+                }) {
+                    Text(DesktopStrings["done", "Done"], color = DesktopAccent)
+                }
             }
         }
     }

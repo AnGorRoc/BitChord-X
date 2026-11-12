@@ -1014,6 +1014,23 @@
     <string name="listen_together_status_custom_fallback">Custom server unreachable · Using default fallback (%1$d ms)</string>
     <string name="listen_together_status_all_offline">Both custom server and default server are offline</string>
     <string name="listen_together_top_bar_fallback">Fallback · %1$s</string>
+    <string name="listen_together_scan_qr_action">Scan QR code</string>
+    <string name="listen_together_camera_permission_title">Camera permission needed</string>
+    <string name="listen_together_camera_permission_desc">To scan party or Spotify Jam QR codes directly, allow camera access.</string>
+    <string name="listen_together_grant_permission">Grant permission</string>
+    <string name="listen_together_scan_qr_prompt">Point the camera at a BitChord or Spotify Jam QR code</string>
+    <string name="listen_together_gallery_qr">Scan from gallery</string>
+    <string name="listen_together_paste_link">Paste link from clipboard</string>
+    <string name="listen_together_invalid_qr">No valid party code or Spotify Jam link found</string>
+    <string name="listen_together_spotify_jam_title">Spotify Jam bridge</string>
+    <string name="listen_together_spotify_jam_premium_subtitle">Spotify Premium connected. Friends on Spotify can join your Jam directly.</string>
+    <string name="listen_together_spotify_jam_free_subtitle">Spotify Free account. You can join existing Jams; host Jam creation requires Premium.</string>
+    <string name="listen_together_spotify_jam_disconnected_subtitle">Connect Spotify in Settings to sync and host Spotify Jams.</string>
+    <string name="listen_together_share_spotify_jam">Share Spotify Jam link</string>
+    <string name="listen_together_share_spotify_jam_text">Join my Spotify Jam via BitChord</string>
+    <string name="listen_together_scan_spotify_jam_qr">Scan Spotify Jam QR</string>
+    <string name="listen_together_scan_spotify_jam_subtitle">Spotify users can scan this code using the Spotify app camera</string>
+    <string name="listen_together_spotify_members">Spotify Jam members</string>
 
     <string name="vietnamese">Vietnamese</string>
 
@@ -1282,6 +1299,12 @@
     <string name="onboarding_sign_in_google">Sign in with Google</string>
     <string name="onboarding_skip_sign_in">Skip sign in</string>
     <string name="onboarding_back">Back</string>
+    <string name="onboarding_spotify_title">Connect your Spotify</string>
+    <string name="onboarding_spotify_body">Bring your playlists and favorite music with you. Songs are matched on YouTube Music.</string>
+    <string name="onboarding_sign_in_spotify">Connect with Spotify</string>
+    <string name="onboarding_spotify_connected">Spotify connected</string>
+    <string name="onboarding_spotify_finish">Get started</string>
+    <string name="onboarding_skip_spotify">Maybe later</string>
     <string name="song_info">Song Info</string>
     <string name="song_info_album">Album</string>
     <string name="song_info_release_date">Release date</string>
@@ -1429,4 +1452,8 @@
     <string name="swipe_left_action">Swipe left on a song</string>
     <string name="swipe_hold_playlist_hint">Hold the swipe to add to a playlist</string>
     <string name="swipe_action_disabled">Off</string>
+    <string name="created_by_bitchord">Created by BitChord</string>
+    <string name="trending_title">Trending</string>
+    <string name="region_global">Global</string>
+    <string name="region_auto">Automatic (IP)</string>
 </resources>

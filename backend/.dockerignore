@@ -1,0 +1,8 @@
+# Only the Go sources are needed to build the image.
+deploy/
+tools/
+render.yaml
+README.md
+*_test.go
+Dockerfile
+.dockerignore

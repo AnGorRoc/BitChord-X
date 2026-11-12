@@ -372,6 +372,14 @@ object ListenTogether {
     }
 
     /**
+     * Where idle operations go when [defaultServer] is down: the original BitChord's official
+     * server, which every build can reach. Blank when it already is the default.
+     */
+    val fallbackServer: String = PartyServers.ORIGINAL_OFFICIAL
+        .takeUnless { it.equals(defaultServer, ignoreCase = true) }
+        .orEmpty()
+
+    /**
      * The dynamic server currently determined to be healthy and available for IDLE operations.
      * Probes custom server first if configured; falls back to [defaultServer] if custom is down.
      */
@@ -517,7 +525,20 @@ object ListenTogether {
         defaultServer: String,
         probeCustom: suspend () -> ProbeResult,
         probeDefault: suspend () -> ProbeResult,
+        fallbackServer: String = "",
+        probeFallback: suspend () -> ProbeResult = { ProbeResult(isOnline = false) },
     ): Pair<String, ServerConnectionState> {
+        // The built-in servers in order: this build's own, then the original official one. Both
+        // are "the default" to the listener, and neither address is ever shown.
+        suspend fun builtIn(): Pair<String, ProbeResult> {
+            val primary = probeDefault()
+            if (primary.isOnline || fallbackServer.isBlank() || fallbackServer == defaultServer) {
+                return defaultServer to primary
+            }
+            val secondary = probeFallback()
+            return if (secondary.isOnline) fallbackServer to secondary else defaultServer to primary
+        }
+
         val normCustom = when (val res = parseAndNormalizeServerUrl(customServer)) {
             is ServerUrlValidationResult.Valid -> res.normalizedUrl
             is ServerUrlValidationResult.Invalid -> ""
@@ -529,18 +550,18 @@ object ListenTogether {
             if (customProbe.isOnline) {
                 normCustom to ServerConnectionState.CustomOnline(customProbe.latencyMs)
             } else {
-                val defaultProbe = probeDefault()
+                val (server, defaultProbe) = builtIn()
                 if (defaultProbe.isOnline) {
-                    // Invariant: CustomFallback latency is strictly the default server's latency
-                    defaultServer to ServerConnectionState.CustomFallback(defaultProbe.latencyMs)
+                    // Invariant: CustomFallback latency is strictly the built-in server's latency
+                    server to ServerConnectionState.CustomFallback(defaultProbe.latencyMs)
                 } else {
                     defaultServer to ServerConnectionState.Offline
                 }
             }
         } else {
-            val defaultProbe = probeDefault()
+            val (server, defaultProbe) = builtIn()
             if (defaultProbe.isOnline) {
-                defaultServer to ServerConnectionState.DefaultOnline(defaultProbe.latencyMs)
+                server to ServerConnectionState.DefaultOnline(defaultProbe.latencyMs)
             } else {
                 defaultServer to ServerConnectionState.Offline
             }
@@ -566,6 +587,8 @@ object ListenTogether {
             defaultServer = defaultServer,
             probeCustom = { probeHealthWithLatency(custom, CUSTOM_SERVER_TIMEOUT_MS) },
             probeDefault = { probeHealthWithLatency(defaultServer, DEFAULT_SERVER_TIMEOUT_MS) },
+            fallbackServer = fallbackServer,
+            probeFallback = { probeHealthWithLatency(fallbackServer, DEFAULT_SERVER_TIMEOUT_MS) },
         )
 
         resolutionMutex.withLock {
@@ -672,9 +695,10 @@ object ListenTogether {
 
         val code = prefs.getString(KEY_CODE, null)
         val saved = prefs.getString(KEY_TOKEN, null)
-        prefs.edit().remove(KEY_CODE).remove(KEY_TOKEN).apply()
+        val savedServer = prefs.getString(KEY_ACTIVE_SERVER, null)
+        prefs.edit().remove(KEY_CODE).remove(KEY_TOKEN).remove(KEY_ACTIVE_SERVER).apply()
         if (!code.isNullOrBlank() && !saved.isNullOrBlank()) {
-            releaseStaleSlot(code, saved)
+            releaseStaleSlot(code, saved, savedServer)
         }
 
         val manager = context.getSystemService(ConnectivityManager::class.java)
@@ -732,8 +756,10 @@ object ListenTogether {
         }
     }
 
-    private fun releaseStaleSlot(code: String, held: String) {
-        val server = activePartyServerBase ?: resolveHttpBase(effectiveIdleServerBase())
+    private fun releaseStaleSlot(code: String, held: String, savedServer: String? = null) {
+        val server = savedServer?.takeIf(String::isNotBlank)
+            ?: activePartyServerBase
+            ?: resolveHttpBase(effectiveIdleServerBase())
         releaseStaleSlotOnServer(server, code, held)
     }
 
@@ -824,6 +850,7 @@ object ListenTogether {
             prefs.edit()
                 .putString(KEY_CODE, membership.code)
                 .putString(KEY_TOKEN, membership.token)
+                .putString(KEY_ACTIVE_SERVER, activePartyServerBase)
                 .apply()
             clock.reset()
             _state.value = State(
@@ -881,6 +908,7 @@ object ListenTogether {
             prefs.edit()
                 .putString(KEY_CODE, membership.code)
                 .putString(KEY_TOKEN, membership.token)
+                .putString(KEY_ACTIVE_SERVER, activePartyServerBase)
                 .apply()
             clock.reset()
             _state.value = State(
@@ -1009,14 +1037,16 @@ object ListenTogether {
                 // Commit active party server authority
                 activePartyServerBase = targetBase
 
-                // Commit new server URL setting
-                setCustomServerUrl(normTarget)
+                // The user's own server setting is deliberately left alone: joining a
+                // friend's party on another server is a visit, not a move. The party's
+                // server lives in activePartyServerBase (and KEY_ACTIVE_SERVER) only.
 
                 // Commit new party session
                 token = membership.token
                 prefs.edit()
                     .putString(KEY_CODE, membership.code)
                     .putString(KEY_TOKEN, membership.token)
+                    .putString(KEY_ACTIVE_SERVER, activePartyServerBase)
                     .apply()
                 clock.reset()
                 _state.value = State(
@@ -1049,7 +1079,7 @@ object ListenTogether {
             clock.reset()
             token = null
             activePartyServerBase = null
-            prefs.edit().remove(KEY_CODE).remove(KEY_TOKEN).apply()
+            prefs.edit().remove(KEY_CODE).remove(KEY_TOKEN).remove(KEY_ACTIVE_SERVER).apply()
             _state.value = State()
             if (code != null && held != null) {
                 releaseStaleSlotOnServer(currentServer, code, held)
@@ -1701,6 +1731,7 @@ object ListenTogether {
     private const val KEY_DEVICE = "device_id"
     private const val KEY_NICKNAME = "party_nickname"
     private const val KEY_KICKED = "party_kicked_until"
+    private const val KEY_ACTIVE_SERVER = "party_active_server"
 
     /** How long a removal keeps this device out of that party. */
     private const val KICK_BLOCK_MS = 24L * 60 * 60 * 1000

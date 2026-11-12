@@ -8,6 +8,7 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -25,6 +26,10 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.rounded.Person
+import androidx.compose.material.icons.rounded.QrCodeScanner
+import androidx.compose.material3.OutlinedButton
+import com.music.bitchord.ui.components.IosSwitch
+import com.music.bitchord.data.listentogether.spotify.SpotifyAccountTier
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
@@ -32,6 +37,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.BlurredEdgeTreatment
@@ -312,6 +321,9 @@ internal fun CreatePartySheet(
     busy: Boolean,
     enabled: Boolean,
     error: String?,
+    spotifyTier: SpotifyAccountTier = SpotifyAccountTier.UNKNOWN,
+    spotifyJamEnabled: Boolean = false,
+    onSpotifyJamEnabledChange: (Boolean) -> Unit = {},
     onCreate: () -> Unit,
 ) {
     Column(
@@ -365,6 +377,55 @@ internal fun CreatePartySheet(
             StepperButton("+", enabled = enabled && maxMembers < 10) {
                 onMaxMembersChange(maxMembers + 1)
             }
+        }
+        Spacer(Modifier.height(16.dp))
+        // Spotify Jam compatibility switch
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        stringResource(R.string.listen_together_spotify_jam_title),
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                    )
+                    Spacer(Modifier.width(6.dp))
+                    Box(
+                        modifier = Modifier
+                            .background(Color(0xFF1DB954).copy(alpha = 0.15f), RoundedCornerShape(6.dp))
+                            .padding(horizontal = 6.dp, vertical = 2.dp)
+                    ) {
+                        Text(
+                            text = "Spotify",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color(0xFF1DB954),
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
+                }
+                Spacer(Modifier.height(2.dp))
+                Text(
+                    text = when (spotifyTier) {
+                        SpotifyAccountTier.PREMIUM -> stringResource(R.string.listen_together_spotify_jam_premium_subtitle)
+                        SpotifyAccountTier.FREE -> stringResource(R.string.listen_together_spotify_jam_free_subtitle)
+                        SpotifyAccountTier.UNKNOWN -> stringResource(R.string.listen_together_spotify_jam_disconnected_subtitle)
+                    },
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Spacer(Modifier.width(8.dp))
+            IosSwitch(
+                checked = spotifyJamEnabled && spotifyTier.canHostJam,
+                onCheckedChange = { if (spotifyTier.canHostJam) onSpotifyJamEnabledChange(it) },
+                enabled = enabled && spotifyTier.canHostJam,
+            )
         }
         Spacer(Modifier.height(24.dp))
         Button(
@@ -433,6 +494,7 @@ internal fun JoinPartySheet(
     busy: Boolean,
     enabled: Boolean,
     error: String?,
+    onScanQr: () -> Unit = {},
     onSubmit: () -> Unit,
 ) {
     Column(
@@ -463,6 +525,27 @@ internal fun JoinPartySheet(
                 ),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
+            )
+        }
+        Spacer(Modifier.height(10.dp))
+        OutlinedButton(
+            onClick = onScanQr,
+            enabled = enabled && !busy,
+            shape = RoundedCornerShape(percent = 50),
+            modifier = Modifier.fillMaxWidth().height(48.dp),
+        ) {
+            Icon(
+                Icons.Rounded.QrCodeScanner,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = MaterialTheme.colorScheme.primary,
+            )
+            Spacer(Modifier.width(8.dp))
+            Text(
+                text = stringResource(R.string.listen_together_scan_qr_action),
+                style = MaterialTheme.typography.titleSmall,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Medium,
             )
         }
         SheetError(error)
@@ -662,24 +745,82 @@ internal fun JoinConfirmSheet(
 internal fun InviteSheet(
     code: String,
     link: String,
+    spotifyJamUrl: String? = null,
     onShareLink: () -> Unit,
+    onShareSpotifyJam: () -> Unit = {},
     onCopyCode: () -> Unit,
 ) {
+    var selectedTab by remember { mutableIntStateOf(0) } // 0 = BitChord, 1 = Spotify Jam
+
     Column(
         modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         SheetHeader(title = stringResource(R.string.listen_together_invite_title))
+
+        if (!spotifyJamUrl.isNullOrBlank()) {
+            Spacer(Modifier.height(16.dp))
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(percent = 50))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .padding(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(percent = 50))
+                        .background(if (selectedTab == 0) MaterialTheme.colorScheme.surface else Color.Transparent)
+                        .clickable { selectedTab = 0 }
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    Text(
+                        text = "BitChord",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = if (selectedTab == 0) FontWeight.Bold else FontWeight.Normal,
+                        color = if (selectedTab == 0) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(percent = 50))
+                        .background(if (selectedTab == 1) Color(0xFF1DB954).copy(alpha = 0.2f) else Color.Transparent)
+                        .clickable { selectedTab = 1 }
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                ) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text(
+                            text = "Spotify Jam",
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = if (selectedTab == 1) FontWeight.Bold else FontWeight.Normal,
+                            color = if (selectedTab == 1) Color(0xFF1DB954) else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+        }
+
         Spacer(Modifier.height(20.dp))
         Button(
-            onClick = onShareLink,
+            onClick = if (selectedTab == 0 || spotifyJamUrl.isNullOrBlank()) onShareLink else onShareSpotifyJam,
             shape = RoundedCornerShape(percent = 50),
+            colors = if (selectedTab == 1 && !spotifyJamUrl.isNullOrBlank()) {
+                ButtonDefaults.buttonColors(containerColor = Color(0xFF1DB954), contentColor = Color.White)
+            } else {
+                ButtonDefaults.buttonColors()
+            },
             modifier = Modifier.fillMaxWidth().height(52.dp),
         ) {
             Icon(Icons.Rounded.Link, contentDescription = null, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(8.dp))
             Text(
-                text = stringResource(R.string.listen_together_share_link),
+                text = stringResource(
+                    if (selectedTab == 0 || spotifyJamUrl.isNullOrBlank()) {
+                        R.string.listen_together_share_link
+                    } else {
+                        R.string.listen_together_share_spotify_jam
+                    }
+                ),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
             )
@@ -689,19 +830,29 @@ internal fun InviteSheet(
             modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            val qrContent = if (selectedTab == 0 || spotifyJamUrl.isNullOrBlank()) link else spotifyJamUrl
+            val qrForeground = if (selectedTab == 1 && !spotifyJamUrl.isNullOrBlank()) Color(0xFF1DB954) else Color.Black
+
             QrCode(
-                content = link,
+                content = qrContent,
                 size = 160.dp,
-                codeText = code,
+                codeText = if (selectedTab == 0) code else null,
+                foreground = qrForeground,
                 modifier = Modifier.border(
                     1.dp,
-                    Color.Black.copy(alpha = 0.08f),
+                    if (selectedTab == 1 && !spotifyJamUrl.isNullOrBlank()) Color(0xFF1DB954).copy(alpha = 0.3f) else Color.Black.copy(alpha = 0.08f),
                     RoundedCornerShape(16.dp),
                 ),
             )
             Spacer(Modifier.height(16.dp))
             Text(
-                text = stringResource(R.string.listen_together_scan_qr),
+                text = stringResource(
+                    if (selectedTab == 0 || spotifyJamUrl.isNullOrBlank()) {
+                        R.string.listen_together_scan_qr
+                    } else {
+                        R.string.listen_together_scan_spotify_jam_qr
+                    }
+                ),
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
                 color = MaterialTheme.colorScheme.onSurface,
@@ -709,26 +860,36 @@ internal fun InviteSheet(
             )
             Spacer(Modifier.height(4.dp))
             Text(
-                text = stringResource(R.string.listen_together_scan_qr_subtitle),
+                text = stringResource(
+                    if (selectedTab == 0 || spotifyJamUrl.isNullOrBlank()) {
+                        R.string.listen_together_scan_qr_subtitle
+                    } else {
+                        R.string.listen_together_scan_spotify_jam_subtitle
+                    }
+                ),
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 textAlign = TextAlign.Center,
             )
-            Spacer(Modifier.height(10.dp))
-            // The code under the square, because reading six
-            // characters out is still the fastest way into a party in the same room.
-            TextButton(
-                onClick = onCopyCode,
-                contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
-            ) {
-                Text(
-                    text = code,
-                    style = MaterialTheme.typography.headlineSmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 6.sp,
-                    ),
-                    color = MaterialTheme.colorScheme.primary,
-                )
+            if (selectedTab == 0 || spotifyJamUrl.isNullOrBlank()) {
+                Spacer(Modifier.height(10.dp))
+                // The code under the square, because reading six
+                // characters out is still the fastest way into a party in the same room.
+                TextButton(
+                    onClick = onCopyCode,
+                    contentPadding = ButtonDefaults.TextButtonWithIconContentPadding,
+                ) {
+                    Text(
+                        text = code,
+                        style = MaterialTheme.typography.headlineSmall.copy(
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = 6.sp,
+                        ),
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            } else {
+                Spacer(Modifier.height(16.dp))
             }
         }
         Spacer(Modifier.height(16.dp))

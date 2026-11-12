@@ -1,6 +1,7 @@
 import java.util.Properties
 import java.security.MessageDigest
 import java.io.FileInputStream
+import java.net.URI
 
 plugins {
     id("com.android.application")
@@ -50,7 +51,7 @@ val lastfmSecret: String = (
 val listenTogetherServer: String = (
     localProps.getProperty("LISTEN_TOGETHER_SERVER")
         ?: System.getenv("LISTEN_TOGETHER_SERVER")
-        ?: "https://bitchord-listen-together.onrender.com"
+        ?: "https://bitchord.pymp.net"
     ).trim().trimEnd('/')
 
 // See the root build.gradle.kts: one version for the phone and its watch app.
@@ -88,6 +89,10 @@ android {
         // the same GitHub release, told apart by file name. See
         // AppUpdateChecker.apkAssetUrl.
         buildConfigField("String", "UPDATE_APK_PREFIX", "\"BitChord-\"")
+        // The party server's own invite links (https://<server>/invite/CODE) open the app
+        // directly once that server publishes assetlinks.json for this signing key.
+        manifestPlaceholders["partyInviteHost"] =
+            URI(listenTogetherServer).host ?: "bitchord.pymp.net"
     }
 
     splits {

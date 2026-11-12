@@ -2,6 +2,7 @@ package com.music.bitchord
 
 import com.music.bitchord.data.listentogether.JamInviteLink
 import com.music.bitchord.data.listentogether.ListenTogether
+import com.music.bitchord.data.listentogether.PartyServers
 import com.music.bitchord.data.listentogether.ProbeResult
 import com.music.bitchord.data.listentogether.ServerConnectionState
 import com.music.bitchord.data.listentogether.ServerUrlError
@@ -38,7 +39,6 @@ class JamInviteLinkTest {
     @Test
     fun `rejects other hosts schemes paths and malformed codes`() {
         assertNull(JamInviteLink.parse("http://bitchord.kushagrasingh.in/invite/ABC123"))
-        assertNull(JamInviteLink.parse("https://example.com/invite/ABC123"))
         assertNull(JamInviteLink.parse("https://bitchord.kushagrasingh.in/"))
         assertNull(JamInviteLink.parse("https://bitchord.kushagrasingh.in/download"))
         assertNull(JamInviteLink.parse("https://bitchord.kushagrasingh.in/invite/ABC123/"))
@@ -94,10 +94,17 @@ class JamInviteLinkTest {
     }
 
     @Test
-    fun `parses custom scheme invite without server`() {
+    fun `custom scheme invite without server means the original official server`() {
         val invite = JamInviteLink.parseInvite("bitchord://party/XYZ789")
         assertEquals("XYZ789", invite?.code)
-        assertNull(invite?.serverUrl)
+        assertEquals(PartyServers.ORIGINAL_OFFICIAL, invite?.serverUrl)
+    }
+
+    @Test
+    fun `a landing page link on any server points at that server`() {
+        val invite = JamInviteLink.parseInvite("https://example.com/invite/ABC123")
+        assertEquals("ABC123", invite?.code)
+        assertEquals("https://example.com", invite?.serverUrl)
     }
 
     @Test
@@ -127,15 +134,30 @@ class JamInviteLinkTest {
     // -------------------------------------------------------------------------
 
     @Test
-    fun `invariant 1 default server generates canonical invite`() {
-        val code = "JAM001"
-        val activePartyHost = ListenTogether.defaultServer
-        val link = if (activePartyHost == ListenTogether.defaultServer) {
-            JamInviteLink.url(code, null)
-        } else {
-            JamInviteLink.url(code, activePartyHost)
-        }
-        assertEquals("https://bitchord.kushagrasingh.in/invite/JAM001", link)
+    fun `invariant 1 invites always name the party's server`() {
+        // A party on the original official server shares the original app's own link...
+        assertEquals(
+            "https://bitchord.kushagrasingh.in/invite/JAM001",
+            JamInviteLink.url("JAM001", PartyServers.ORIGINAL_OFFICIAL),
+        )
+        // ...and any other, including this build's default, its server's landing page.
+        val own = "https://own-party.example.com"
+        assertEquals("$own/invite/JAM001", JamInviteLink.url("JAM001", own))
+        assertEquals(own, JamInviteLink.parseInvite(JamInviteLink.url("JAM001", own))?.serverUrl)
+    }
+
+    @Test
+    fun `built-in default falls back to the original official server`() = runBlocking {
+        val (server, state) = ListenTogether.resolveServerConnection(
+            customServer = "",
+            defaultServer = "https://own-party.example.com",
+            probeCustom = { ProbeResult(isOnline = false) },
+            probeDefault = { ProbeResult(isOnline = false) },
+            fallbackServer = PartyServers.ORIGINAL_OFFICIAL,
+            probeFallback = { ProbeResult(isOnline = true, latencyMs = 80L) },
+        )
+        assertEquals(PartyServers.ORIGINAL_OFFICIAL, server)
+        assertEquals(ServerConnectionState.DefaultOnline(80L), state)
     }
 
     @Test
@@ -574,6 +596,31 @@ class JamInviteLinkTest {
 
         assertEquals("Job A's late publication must be dropped", "https://server-b.example.com", currentEffective)
         assertEquals(ServerConnectionState.CustomOnline(25L), currentState)
+    }
+
+    // -------------------------------------------------------------------------
+    // Spotify Jam Scheme & Link Parsing
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `parses spotify jam web link`() {
+        val invite = JamInviteLink.parseInvite("https://open.spotify.com/socialsession/abcdef1234567890?si=sample")
+        assertTrue(invite?.isSpotifyJam == true)
+        assertEquals("abcdef1234567890", invite?.spotifyJamToken)
+    }
+
+    @Test
+    fun `parses spotify jam short path link`() {
+        val invite = JamInviteLink.parseInvite("https://open.spotify.com/jam/tok12345")
+        assertTrue(invite?.isSpotifyJam == true)
+        assertEquals("tok12345", invite?.spotifyJamToken)
+    }
+
+    @Test
+    fun `parses spotify uri scheme`() {
+        val invite = JamInviteLink.parseInvite("spotify:socialsession:abc_token_xyz")
+        assertTrue(invite?.isSpotifyJam == true)
+        assertEquals("abc_token_xyz", invite?.spotifyJamToken)
     }
 }
 

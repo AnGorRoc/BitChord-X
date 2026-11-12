@@ -132,25 +132,13 @@ fun <T : Any> HeldContextMenu(
     BackHandler(enabled = open, onBack = onDismiss)
 
     val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
-    // Plain white or black at half strength, so the blur shows through as
-    // frost rather than the surface greys reading as a flat slab over it. With
-    // no blur behind there is nothing for that to frost, so the plate firms up
-    // to stay legible over the bare scrim.
-    val plate = (if (dark) Color.Black else Color.White).copy(alpha = if (reduceDynamicBlur) 0.85f else 0.5f)
-    val hairline = if (dark) Color.White.copy(alpha = 0.10f) else Color.Black.copy(alpha = 0.06f)
-    // The scrim does less work when the blur is there to push the page back,
-    // and more when it is the only thing doing it.
-    val scrimColor = when {
-        reduceDynamicBlur && dark -> Color.Black.copy(alpha = 0.62f)
-        reduceDynamicBlur -> Color.Black.copy(alpha = 0.36f)
-        dark -> Color.Black.copy(alpha = 0.30f)
-        else -> Color.Black.copy(alpha = 0.10f)
-    }
+    val fill = if (dark) DIALOG_DARK_GREY else DIALOG_LIGHT_GREY
+    val rim = if (dark) DIALOG_EDGE_COLOR else DIALOG_LIGHT_EDGE_COLOR
+    val plate = if (reduceDynamicBlur) fill else fill.copy(alpha = if (dark) DIALOG_FROST_ALPHA else DIALOG_LIGHT_FROST_ALPHA)
+    val hairline = rim
+    val scrimColor = Color.Black.copy(alpha = if (dark) 0.55f else 0.28f)
     val cardShape = RoundedCornerShape(CARD_RADIUS)
     val platePadding = 8.dp
-    // The picture's corners run parallel to the plate's. It is taken inside
-    // whatever clip the item had, so a card rounded by a parent comes up
-    // square — and a square on a rounded plate reads as cut out of it.
     val pictureShape = RoundedCornerShape(CARD_RADIUS - platePadding)
 
     val insets = WindowInsets.safeDrawing
@@ -199,7 +187,7 @@ fun <T : Any> HeldContextMenu(
                     .pointerInput(Unit) {}
                     .clip(cardShape)
                     .background(plate)
-                    .border(0.5.dp, hairline, cardShape)
+                    .border(DIALOG_EDGE_WIDTH, hairline, cardShape)
                     .then(
                         if (onPreviewClick != null) {
                             Modifier.clickable(enabled = open) { onPreviewClick(menuItem) }
@@ -224,7 +212,7 @@ fun <T : Any> HeldContextMenu(
                     .pointerInput(Unit) {}
                     // The same frosted plate the held item sits on, so the
                     // item and its menu read as one thing lifted off the page.
-                    .iosMenuPanel(fillOverride = plate, rimOverride = hairline)
+                    .iosMenuPanel(fillOverride = plate, rimOverride = hairline, shape = cardShape)
                     .padding(vertical = 8.dp),
             ) {
                 actions(menuItem)
@@ -340,7 +328,7 @@ fun <T : Any> HeldContextMenu(
     }
 }
 
-private val CARD_RADIUS = 20.dp
+private val CARD_RADIUS = 26.dp
 
 private suspend fun PointerInputScope.swallowAll() {
     awaitPointerEventScope {

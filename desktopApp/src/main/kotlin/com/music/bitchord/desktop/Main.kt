@@ -14,8 +14,11 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
+import androidx.compose.ui.window.WindowPlacement
+import androidx.compose.ui.window.WindowPosition
 import androidx.compose.ui.window.application
 import androidx.compose.ui.window.rememberWindowState
 import bitchord.desktopapp.generated.resources.Res
@@ -23,6 +26,8 @@ import bitchord.desktopapp.generated.resources.logo
 import java.awt.Dimension
 import java.awt.Rectangle
 import java.awt.Toolkit
+import java.awt.event.ComponentAdapter
+import java.awt.event.ComponentEvent
 import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.painterResource
 
@@ -67,10 +72,33 @@ fun main() {
 }
 
 private fun desktopMain() = application {
+    val persistence = remember { DesktopPersistence() }
+    val savedWidth = remember { persistence.int("window_width", 1_220).coerceAtLeast(MIN_WINDOW_WIDTH_DP.toInt()).dp }
+    val savedHeight = remember { persistence.int("window_height", 780).coerceAtLeast(MIN_WINDOW_HEIGHT_DP.toInt()).dp }
+    val savedX = remember { persistence.int("window_x", -1) }
+    val savedY = remember { persistence.int("window_y", -1) }
+    val savedPlacement = remember {
+        if (persistence.boolean("window_maximized", false)) {
+            WindowPlacement.Maximized
+        } else {
+            WindowPlacement.Floating
+        }
+    }
+    val initialPosition = remember {
+        if (savedX >= 0 && savedY >= 0) {
+            WindowPosition(savedX.dp, savedY.dp)
+        } else {
+            WindowPosition.PlatformDefault
+        }
+    }
     // Closing puts the window away rather than ending the process, while there is a tray icon to
     // bring it back from — see [DesktopWindowVisibility].
     val visible by DesktopWindowVisibility.visible.collectAsState()
-    val state = rememberWindowState(width = 1_220.dp, height = 780.dp)
+    val state = rememberWindowState(
+        placement = savedPlacement,
+        position = initialPosition,
+        size = DpSize(savedWidth, savedHeight),
+    )
     LaunchedEffect(visible) {
         if (visible && state.isMinimized) {
             state.isMinimized = false
@@ -84,7 +112,10 @@ private fun desktopMain() = application {
     // ...and back, for the times the window is moved between placements by something that is not
     // us; see [DesktopWindowMode.adopt].
     LaunchedEffect(state) {
-        snapshotFlow { state.placement }.collect(DesktopWindowMode::adopt)
+        snapshotFlow { state.placement }.collect { currentPlacement ->
+            DesktopWindowMode.adopt(currentPlacement)
+            persistence.saveBoolean("window_maximized", currentPlacement == WindowPlacement.Maximized)
+        }
     }
     val maximized by DesktopWindowMode.maximized.collectAsState()
     LaunchedEffect(maximized) {
@@ -110,6 +141,30 @@ private fun desktopMain() = application {
         val composeWindow = window
         val openingSize = remember { state.size }
         LaunchedEffect(composeWindow) {
+            val componentListener = object : ComponentAdapter() {
+                override fun componentResized(e: ComponentEvent) = saveBounds()
+                override fun componentMoved(e: ComponentEvent) = saveBounds()
+                private fun saveBounds() {
+                    if (state.placement == WindowPlacement.Floating && !state.isMinimized) {
+                        val transform = composeWindow.graphicsConfiguration.defaultTransform
+                        val scaleX = transform.scaleX
+                        val scaleY = transform.scaleY
+                        val w = (composeWindow.width / scaleX).toInt()
+                        val h = (composeWindow.height / scaleY).toInt()
+                        val x = (composeWindow.x / scaleX).toInt()
+                        val y = (composeWindow.y / scaleY).toInt()
+                        if (w >= MIN_WINDOW_WIDTH_DP.toInt() && h >= MIN_WINDOW_HEIGHT_DP.toInt()) {
+                            persistence.saveInt("window_width", w)
+                            persistence.saveInt("window_height", h)
+                        }
+                        if (x >= 0 && y >= 0) {
+                            persistence.saveInt("window_x", x)
+                            persistence.saveInt("window_y", y)
+                        }
+                    }
+                }
+            }
+            composeWindow.addComponentListener(componentListener)
             DesktopWindowVisibility.attachWindow(composeWindow)
             if (DesktopPlatform.isWindows && !DesktopPlatform.drawsOwnWindowFrame) {
                 DesktopWindowsTheme.updateTitleBar(composeWindow, DesktopBackground)

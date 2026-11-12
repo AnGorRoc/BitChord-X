@@ -48,6 +48,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import com.music.bitchord.ui.components.playlistRowsSkeleton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
@@ -103,6 +104,13 @@ import kotlinx.coroutines.CancellationException
 import androidx.compose.ui.platform.LocalContext
 import com.music.bitchord.sharedui.resources.Res
 import com.music.bitchord.sharedui.resources.spotify_logo
+import androidx.compose.ui.graphics.luminance
+import com.music.bitchord.ui.components.DIALOG_DARK_GREY
+import com.music.bitchord.ui.components.DIALOG_EDGE_COLOR
+import com.music.bitchord.ui.components.DIALOG_FROST_ALPHA
+import com.music.bitchord.ui.components.DIALOG_LIGHT_EDGE_COLOR
+import com.music.bitchord.ui.components.DIALOG_LIGHT_FROST_ALPHA
+import com.music.bitchord.ui.components.DIALOG_LIGHT_GREY
 import com.music.bitchord.ui.components.DestinationOptionCard
 import com.music.bitchord.ui.components.MenuFrostDark
 import com.music.bitchord.ui.components.PAGE_GUTTER
@@ -350,14 +358,9 @@ fun SpotifyLibraryScreen(
                 if (state.selecting) {
                     item { SelectionHeader(state = state, signedIn = signedIn) }
                 }
-                // The pull's own indicator covers a reload of a list already on
-                // screen; this spinner is only for the first read.
+                // Clean playlist skeleton rows while loading initially
                 if (loading && state.playlists.isEmpty()) {
-                    item {
-                        Box(Modifier.fillMaxWidth().padding(32.dp), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator()
-                        }
-                    }
+                    playlistRowsSkeleton(count = 6, keyPrefix = "skeleton:spotify")
                 }
                 error?.let { message ->
                     item {
@@ -939,11 +942,16 @@ internal fun SpotifyLibraryIntroDialog(
 ) {
     val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
     val dialogShape = RoundedCornerShape(26.dp)
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val dialogFill = if (isDark) DIALOG_DARK_GREY else DIALOG_LIGHT_GREY
+    val dialogBorder = if (isDark) DIALOG_EDGE_COLOR else DIALOG_LIGHT_EDGE_COLOR
+    val dialogAlpha = if (isDark) DIALOG_FROST_ALPHA else DIALOG_LIGHT_FROST_ALPHA
+    val scrimAlpha = if (isDark) 0.55f else 0.28f
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.55f))
+            .background(Color.Black.copy(alpha = scrimAlpha))
             .clickable(
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() },
@@ -956,7 +964,14 @@ internal fun SpotifyLibraryIntroDialog(
                 .padding(horizontal = 24.dp)
                 .widthIn(min = 300.dp, max = 360.dp)
                 .fillMaxWidth()
-                .dialogFrostBackground(hazeState, reduceDynamicBlur, dialogShape)
+                .dialogFrostBackground(
+                    hazeState = hazeState,
+                    reduceDynamicBlur = reduceDynamicBlur,
+                    shape = dialogShape,
+                    fill = dialogFill,
+                    borderColor = dialogBorder,
+                    alpha = dialogAlpha,
+                )
                 .clickable(
                     indication = null,
                     interactionSource = remember { MutableInteractionSource() },

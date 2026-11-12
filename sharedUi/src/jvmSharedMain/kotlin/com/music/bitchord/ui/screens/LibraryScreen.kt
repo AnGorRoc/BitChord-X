@@ -48,7 +48,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import coil3.compose.LocalPlatformContext
+import com.music.bitchord.ui.components.PrefetchVerticalArtworkAhead
+import com.music.bitchord.ui.components.prefetchArtwork
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -133,6 +138,25 @@ fun LibraryScreen(
 ) {
     val pinnedPlaylists by AppUi.host.pinnedPlaylists.collectAsStateWithLifecycle()
     val onDevice = stringResource(Res.string.on_device)
+    val successLibrary = (state as? UiState.Success)?.data
+    if (successLibrary != null) {
+        val verticalShelvesArtwork = remember(successLibrary.shelves) {
+            successLibrary.shelves.map { shelf ->
+                shelf.items.take(6).map { it.thumbnailUrl.artworkAt(CARD_ART_PX) }
+            }
+        }
+        PrefetchVerticalArtworkAhead(
+            state = listState,
+            artworkByItem = verticalShelvesArtwork,
+            ahead = 3,
+        )
+        val context = LocalPlatformContext.current
+        LaunchedEffect(verticalShelvesArtwork) {
+            if (verticalShelvesArtwork.isNotEmpty()) {
+                prefetchArtwork(context, verticalShelvesArtwork.take(3).flatten())
+            }
+        }
+    }
     PullToRefresh(
         refreshing = refreshing,
         onRefresh = onRefresh,
@@ -214,7 +238,7 @@ fun LibraryScreen(
                             )
                         }
                     }
-                    shelves.forEach { shelf ->
+                    shelves.forEachIndexed { index, shelf ->
                         item(key = "shelf:${shelf.title}") {
                             if (shelf.title == PLAYLISTS) {
                                 val pinnedFirst = shelf.pinnedFirst(pinnedPlaylists)
@@ -434,7 +458,7 @@ internal fun LibraryGridShelf(
                     item = item,
                     onClick = { onItemClick(item) },
                     onLongPress = { onItemLongPress(item) },
-                    modifier = Modifier.width(SHELF_CARD_WIDTH).animateItem(),
+                    modifier = Modifier.width(SHELF_CARD_WIDTH).animateItem(fadeInSpec = null, fadeOutSpec = null),
                     isPinned = item.browseId != null && item.browseId in pinnedPlaylists,
                 )
             }
@@ -547,7 +571,7 @@ fun LibraryGridPage(
                         item = item,
                         onClick = { onItemClick(item) },
                         onLongPress = { onItemLongPress(item) },
-                        modifier = Modifier.animateItem(),
+                        modifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null),
                         isPinned = item.browseId != null && item.browseId in pinnedPlaylists,
                     )
                 } else {
@@ -555,7 +579,7 @@ fun LibraryGridPage(
                         item = item,
                         onClick = { onItemClick(item) },
                         onLongPress = { onItemLongPress(item) },
-                        modifier = Modifier.fillMaxWidth().animateItem(),
+                        modifier = Modifier.fillMaxWidth().animateItem(fadeInSpec = null, fadeOutSpec = null),
                         isPinned = item.browseId != null && item.browseId in pinnedPlaylists,
                     )
                 }

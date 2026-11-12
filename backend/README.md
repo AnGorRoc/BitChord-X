@@ -244,6 +244,31 @@ To keep memory, bandwidth, and latency strictly bounded:
   entirely such tracks succeeds without changing the queue. Hand-queued tracks
   are never filtered.
 
+## Deploying with Coolify (Docker)
+
+`Dockerfile` builds a small Alpine image with a built-in health check, which is
+what Coolify (or plain `docker run`) needs:
+
+- **Build pack** Dockerfile, **Base directory** `/backend`, **Dockerfile** `/Dockerfile`
+- **Ports exposes** `8000`
+- **One container only.** Parties live in memory, so a second replica is a
+  second, disjoint set of parties. A redeploy restarts the process and drops
+  every party, so deploy when nobody is listening.
+
+Behind Cloudflare (proxied DNS or a Cloudflare Tunnel) set:
+
+| Variable | Value | Why |
+|---|---|---|
+| `JAM_PUBLIC_ORIGIN` | `https://<your domain>` | Invite pages link back here; behind a tunnel the request itself says `http`. |
+| `JAM_TRUST_PROXY` | `true` | The peer is the proxy, not the listener. |
+| `JAM_CLIENT_IP_HEADER` | `CF-Connecting-IP` | Cloudflare's own record of the client; its `X-Forwarded-For` starts with whatever the caller sent. |
+| `JAM_ANDROID_APP_LINKS` | `package:SHA256,...` | Publishes `/.well-known/assetlinks.json` so Android opens `/invite/CODE` links in the app. |
+| `JAM_MAX_PARTIES` | e.g. `200` | The default of 50 is sized for Render's free tier. |
+
+`GET /api/info` reports the build (`flavor`, `protocol`, `features`, `limits`).
+Clients read it to switch extensions on; the original BitChord server answers
+404 there, which they read as "baseline protocol only".
+
 ## Deploying to Oracle Cloud (Always Free)
 
 This is what runs `https://api.bitchord.kushagrasingh.in`: one Always Free

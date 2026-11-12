@@ -32,6 +32,7 @@ import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.HighQuality
+import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material.icons.rounded.Share
@@ -93,6 +94,7 @@ internal data class DesktopSongActions(
     val onSleepTimer: (Int?) -> Unit,
     val onSleepAfterTrack: () -> Unit,
     val onShare: (Song) -> Unit,
+    val onOpenEqualizer: (() -> Unit)? = null,
 )
 
 /**
@@ -222,6 +224,7 @@ internal fun DesktopSongMenuFor(
         onSleepTimer = { actions.onSleepTimer(it); close() },
         onSleepAfterTrack = { actions.onSleepAfterTrack(); close() },
         onShare = { actions.onShare(song); close() },
+        onOpenEqualizer = actions.onOpenEqualizer?.let { { it(); close() } },
         onMore = onMore,
         onSwitchLyricsQueue = onSwitchLyricsQueue?.let { { it(); close() } },
         queueShowing = queueShowing,
@@ -266,6 +269,7 @@ internal fun DesktopSongMenu(
     onSleepTimer: (Int?) -> Unit,
     onSleepAfterTrack: () -> Unit,
     onShare: () -> Unit,
+    onOpenEqualizer: (() -> Unit)? = null,
     /** Opens the player's own overflow; null on a menu raised from a list. */
     onMore: (() -> Unit)? = null,
     /** Switch the player between lyrics and queue; null when there is no player. */
@@ -416,6 +420,9 @@ internal fun DesktopSongMenu(
         DesktopMenuRow(Icons.Rounded.Radio, DesktopStrings["start_radio", "Start radio"], onClick = onStartRadio)
         DesktopMenuRow(Icons.AutoMirrored.Rounded.PlaylistPlay, DesktopStrings["play_next", "Play next"], onClick = onPlayNext)
         DesktopMenuRow(Icons.AutoMirrored.Rounded.QueueMusic, DesktopStrings["add_to_queue", "Add to queue"], onClick = onAddToQueue)
+        onOpenEqualizer?.let {
+            DesktopMenuRow(Icons.Rounded.Mic, DesktopStrings["sing_karaoke", "Sing (Karaoke) & Equalizer"], onClick = it)
+        }
         // What the player's content column shows, and the ways of reading the
         // lyrics: one row switches the column between the sheet and the queue,
         // named for whichever is not on screen; the translation the overflow used

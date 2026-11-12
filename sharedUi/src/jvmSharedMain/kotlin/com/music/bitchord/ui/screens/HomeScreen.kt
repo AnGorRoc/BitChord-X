@@ -54,6 +54,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -62,9 +63,13 @@ import androidx.compose.material.icons.rounded.Cached
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Storage
 import com.music.bitchord.ui.icons.BitChordIcons
 import coil3.compose.AsyncImage
+import coil3.compose.LocalPlatformContext
+import com.music.bitchord.ui.components.PrefetchVerticalArtworkAhead
+import com.music.bitchord.ui.components.prefetchArtwork
 import com.music.bitchord.data.model.CARD_ART_PX
 import com.music.bitchord.data.model.HEADER_ART_PX
 import com.music.bitchord.data.model.HomeShelf
@@ -164,6 +169,7 @@ fun HomeScreen(
     onMoodsShowAll: () -> Unit = {},
     /** Whether the Top Picks and mood artwork may animate — see [LocalArtworkMotion]. */
     artworkMotion: Boolean = true,
+    onOpenDownloads: (() -> Unit)? = null,
 ) {
     // Top Picks' pictures and motion wait for the feed — see LocalArtworkImages.
     val feedReady = state !is UiState.Loading
@@ -181,6 +187,11 @@ fun HomeScreen(
         state = pullState,
         modifier = modifier,
     ) {
+        val spotlightItem = remember(state) {
+            (state as? UiState.Success)?.data
+                ?.firstOrNull { it.layout == ShelfLayout.CARDS && it.items.isNotEmpty() }
+                ?.items?.firstOrNull()
+        }
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
@@ -235,11 +246,31 @@ fun HomeScreen(
                     }
                 }
                 is UiState.Error -> item {
-                    MessageState(state.message, actionLabel = stringResource(Res.string.retry), onAction = onRetry)
+                    MessageState(
+                        message = state.message,
+                        actionLabel = stringResource(Res.string.retry),
+                        onAction = onRetry,
+                        secondaryActionLabel = if (onOpenDownloads != null) stringResource(Res.string.downloaded) else null,
+                        onSecondaryAction = onOpenDownloads,
+                    )
                 }
                 is UiState.Success -> {
                     if (recentlyPlayedLoading) {
                         recentlyPlayedSkeleton()
+                    }
+                    if (spotlightItem != null) {
+                        item(key = "home-hero-spotlight-billboard") {
+                            HeroBillboardSpotlight(
+                                item = spotlightItem,
+                                onClick = { onItemClick(spotlightItem, "Spotlight") },
+                                onLongPress = onItemLongPress?.let { { it(spotlightItem) } },
+                                modifier = Modifier.padding(
+                                    start = PAGE_GUTTER,
+                                    end = PAGE_GUTTER,
+                                    bottom = 20.dp,
+                                ),
+                            )
+                        }
                     }
                     // The loading skeleton already owns the hero slot. Until
                     // Recently Played lands, every real shelf must retain its
@@ -261,6 +292,30 @@ fun HomeScreen(
     }
 
     }
+    }
+
+    if (state is UiState.Success) {
+        val verticalShelvesArtwork = remember(state.data) {
+            state.data.map { shelf ->
+                val count = minOf(shelf.items.size, 6)
+                shelf.items.take(count).map { item ->
+                    if (shelf.layout == ShelfLayout.VIDEO) item.thumbnailUrl
+                    else if (shelf.layout == ShelfLayout.CARDS && shelf == state.data.firstOrNull()) item.thumbnailUrl.artworkAt(HEADER_ART_PX)
+                    else item.thumbnailUrl.artworkAt(CARD_ART_PX)
+                }
+            }
+        }
+        PrefetchVerticalArtworkAhead(
+            state = listState,
+            artworkByItem = verticalShelvesArtwork,
+            ahead = 3,
+        )
+        val context = LocalPlatformContext.current
+        LaunchedEffect(verticalShelvesArtwork) {
+            if (verticalShelvesArtwork.isNotEmpty()) {
+                prefetchArtwork(context, verticalShelvesArtwork.take(3).flatten())
+            }
+        }
     }
 
     if (onLoadMore != null && state is UiState.Success) {
@@ -300,7 +355,9 @@ private fun androidx.compose.foundation.lazy.LazyListScope.itemsIndexedShelves(
     shelves.forEachIndexed { index, shelf ->
         // Find Your Mood follows the lead shelf, as on Apple Music's Home.
         if (index == 1 && onMoodClick != null) {
-            item(key = "find-your-mood") { FindYourMoodShelf(onMoodClick, onMoodsShowAll) }
+            item(key = "find-your-mood") {
+                FindYourMoodShelf(onMoodClick, onMoodsShowAll)
+            }
         }
         item(key = shelf.title + index) {
             val openItem: (ShelfItem) -> Unit = { item -> onItemClick(item, shelf.title) }
@@ -352,9 +409,15 @@ private fun RecentShelf(
         BoxWithConstraints {
             val columnWidth = trackColumnWidth(maxWidth)
             val chunkedColumns = remember(shelf.items) { shelf.items.chunked(RECENT_TRACKS_PER_COLUMN) }
+            val columnArtwork = remember(chunkedColumns) {
+                chunkedColumns.map { col ->
+                    col.map { it.thumbnailUrl.artworkAt(ROW_ART_PX) }
+                }
+            }
             ShelfRow(
                 contentPadding = PaddingValues(horizontal = PAGE_GUTTER),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
+                artworkGroups = columnArtwork,
             ) {
                 items(
                     chunkedColumns,
@@ -774,6 +837,111 @@ private fun HeroShelf(
                         isPlaying = isCurrentItem(item) && isPlaying,
                     )
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HeroBillboardSpotlight(
+    item: ShelfItem,
+    onClick: () -> Unit,
+    onLongPress: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(210.dp)
+            .clip(RoundedCornerShape(24.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            .clickable(onClick = onClick),
+    ) {
+        AsyncImage(
+            model = item.thumbnailUrl.artworkAt(HEADER_ART_PX),
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            modifier = Modifier.fillMaxSize(),
+        )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            Color.Black.copy(alpha = 0.35f),
+                            Color.Transparent,
+                            Color.Black.copy(alpha = 0.88f),
+                        ),
+                    ),
+                ),
+        )
+        Row(
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(start = 16.dp, top = 16.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(Color.Black.copy(alpha = 0.55f))
+                .padding(horizontal = 10.dp, vertical = 5.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "DESTACADO",
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = FontWeight.Bold,
+                color = Color.White,
+            )
+        }
+        Row(
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .fillMaxWidth()
+                .padding(start = 18.dp, end = 18.dp, bottom = 16.dp),
+            verticalAlignment = Alignment.Bottom,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Column(
+                modifier = Modifier.weight(1f).padding(end = 12.dp),
+            ) {
+                Text(
+                    text = item.title,
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.White,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (item.subtitle.isNotBlank()) {
+                    Text(
+                        text = item.subtitle,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = Color.White.copy(alpha = 0.8f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(Color.White)
+                    .clickable(onClick = onClick)
+                    .padding(horizontal = 14.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.PlayArrow,
+                    contentDescription = null,
+                    tint = Color.Black,
+                    modifier = Modifier.size(18.dp),
+                )
+                Text(
+                    text = "Reproducir",
+                    style = MaterialTheme.typography.labelMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = Color.Black,
+                )
             }
         }
     }

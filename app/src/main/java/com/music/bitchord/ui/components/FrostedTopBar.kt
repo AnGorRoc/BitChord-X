@@ -2,6 +2,7 @@ package com.music.bitchord.ui.components
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
@@ -55,9 +56,11 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -156,6 +159,12 @@ fun topBarHeight(): Dp {
 @Composable
 fun topBarContentPadding(): Dp = topBarHeight() + TopBarContentGap
 
+private enum class TopBarLeadingSlot {
+    BACK,
+    LEADING,
+    NONE,
+}
+
 /**
  * The top bar's content — title, back affordance, actions — over no blur of its
  * own.
@@ -206,6 +215,7 @@ fun FrostedTopBar(
     actions: @Composable () -> Unit = {},
 ) {
     val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
+    val reduceAnimation by AppSettings.reduceAnimation.collectAsStateWithLifecycle()
     val useFloatingChrome = artworkPageChrome ||
         (LocalLiquidGlassEnabled.current && isGlassSupported())
     val titleAlpha by animateFloatAsState(
@@ -310,39 +320,82 @@ fun FrostedTopBar(
             }
              */
             // On a pushed page the back affordance is always visible, since
-            // there is no large in-list header to fall back on.
-            if (onBack != null) {
-                if (useFloatingChrome) {
-                    ArtworkPageBackButton(
-                        onClick = onBack,
-                        hazeState = backButtonHazeState,
-                        // The surface edge aligns with the floating navbar. The
-                        // padding belongs outside the circle; its icon remains
-                        // centred in the same 44dp control in every material.
-                        modifier = Modifier
-                            .align(Alignment.CenterStart)
-                            .padding(start = BAR_GUTTER),
-                    )
-                } else {
-                    IconButton(
-                        onClick = onBack,
-                        modifier = Modifier.align(Alignment.CenterStart).padding(start = 4.dp),
-                    ) {
-                        Icon(
-                            SfIcons.ArrowBack,
-                            contentDescription = stringResource(R.string.back),
-                            tint = MaterialTheme.colorScheme.onSurface,
+            // there is no large in-list header to fall back on. The leading slot
+            // morphs fluidly between back affordance, custom leading element (logo),
+            // and empty space.
+            val currentOnBack by rememberUpdatedState(onBack)
+            val currentLeading by rememberUpdatedState(leading)
+            var retainedLeading by remember { mutableStateOf<(@Composable () -> Unit)?>(null) }
+            if (currentLeading != null) {
+                retainedLeading = currentLeading
+            }
+
+            val leadingSlot = when {
+                onBack != null -> TopBarLeadingSlot.BACK
+                leading != null -> TopBarLeadingSlot.LEADING
+                else -> TopBarLeadingSlot.NONE
+            }
+
+            AnimatedContent(
+                targetState = leadingSlot,
+                transitionSpec = {
+                    if (reduceAnimation) {
+                        (fadeIn(animationSpec = snap()) togetherWith fadeOut(animationSpec = snap()))
+                            .using(SizeTransform(clip = false))
+                    } else {
+                        val enterTransition = fadeIn(
+                            animationSpec = tween(240, delayMillis = 30, easing = LinearOutSlowInEasing),
+                        ) + scaleIn(
+                            initialScale = 0.72f,
+                            animationSpec = spring(
+                                dampingRatio = 0.76f,
+                                stiffness = Spring.StiffnessMediumLow,
+                            ),
                         )
+                        val exitTransition = fadeOut(
+                            animationSpec = tween(170, easing = FastOutLinearInEasing),
+                        ) + scaleOut(
+                            targetScale = 0.72f,
+                            animationSpec = tween(170, easing = FastOutLinearInEasing),
+                        )
+                        (enterTransition togetherWith exitTransition).using(SizeTransform(clip = false))
                     }
-                }
-            } else if (leading != null) {
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.CenterStart)
-                        .padding(start = BAR_GUTTER),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    leading()
+                },
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .padding(start = if (useFloatingChrome) BAR_GUTTER else 4.dp),
+                contentAlignment = Alignment.CenterStart,
+                label = "topBarLeadingAnimation",
+            ) { slot ->
+                when (slot) {
+                    TopBarLeadingSlot.BACK -> {
+                        if (useFloatingChrome) {
+                            ArtworkPageBackButton(
+                                onClick = { currentOnBack?.invoke() },
+                                hazeState = backButtonHazeState,
+                            )
+                        } else {
+                            IconButton(
+                                onClick = { currentOnBack?.invoke() },
+                            ) {
+                                Icon(
+                                    SfIcons.ArrowBack,
+                                    contentDescription = stringResource(R.string.back),
+                                    tint = MaterialTheme.colorScheme.onSurface,
+                                )
+                            }
+                        }
+                    }
+                    TopBarLeadingSlot.LEADING -> {
+                        Box(
+                            contentAlignment = Alignment.CenterStart,
+                        ) {
+                            retainedLeading?.invoke()
+                        }
+                    }
+                    TopBarLeadingSlot.NONE -> {
+                        Spacer(Modifier.size(0.dp))
+                    }
                 }
             }
             // No wordmark at the leading end: the root tabs carry it above

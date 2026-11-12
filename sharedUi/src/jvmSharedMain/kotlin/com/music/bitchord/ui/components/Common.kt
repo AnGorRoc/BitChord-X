@@ -97,6 +97,7 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -1206,6 +1207,8 @@ fun MessageState(
     modifier: Modifier = Modifier,
     actionLabel: String? = null,
     onAction: (() -> Unit)? = null,
+    secondaryActionLabel: String? = null,
+    onSecondaryAction: (() -> Unit)? = null,
 ) {
     Column(
         modifier = modifier
@@ -1220,8 +1223,16 @@ fun MessageState(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
         )
-        if (actionLabel != null && onAction != null) {
-            Button(onClick = onAction) { Text(actionLabel) }
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            if (actionLabel != null && onAction != null) {
+                Button(onClick = onAction) { Text(actionLabel) }
+            }
+            if (secondaryActionLabel != null && onSecondaryAction != null) {
+                OutlinedButton(onClick = onSecondaryAction) { Text(secondaryActionLabel) }
+            }
         }
     }
 }

@@ -166,11 +166,17 @@ internal fun TopPicksShelf(
         SectionHeader(stringResource(Res.string.top_picks_for_you))
         BoxWithConstraints {
             val cardWidth = topPickWidth(maxWidth)
+            val pickArtwork = remember(picks) {
+                picks.map { pick ->
+                    pick.images.firstOrNull()?.let { it.artworkAt(CARD_ART_PX) }
+                }
+            }
             PausedWhileScrolling(rowState) {
                 ShelfRow(
                     contentPadding = PaddingValues(horizontal = PAGE_GUTTER),
                     horizontalArrangement = Arrangement.spacedBy(14.dp),
                     state = rowState,
+                    artwork = pickArtwork,
                 ) {
                     itemsIndexed(picks, key = { index, pick -> "$index:${pick.kind}:${pick.title}" }) { index, pick ->
                         CompositionLocalProvider(

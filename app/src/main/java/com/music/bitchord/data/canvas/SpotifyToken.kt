@@ -3,12 +3,13 @@ package com.music.bitchord.data.canvas
 import android.annotation.SuppressLint
 import android.content.Context
 import android.graphics.Bitmap
+import android.util.Log
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.WebStorage
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import com.music.bitchord.data.DebugLog as Log
+import com.music.bitchord.data.listentogether.spotify.SpotifyAccountTier
 import com.music.bitchord.data.Http
 import com.music.bitchord.data.settings.AppSettings
 import kotlinx.coroutines.CompletableDeferred
@@ -58,6 +59,7 @@ internal object SpotifyToken {
     @Volatile private var cachedSession: SessionInfo? = null
     @Volatile private var cachedClientToken: String? = null
     @Volatile private var clientTokenExpiresAtMs = 0L
+    @Volatile private var cachedTier: SpotifyAccountTier? = null
 
     private data class SessionInfo(val clientVersion: String, val deviceId: String)
     private data class HarvestedToken(val token: String, val expiresAt: Long, val clientId: String?)
@@ -72,6 +74,41 @@ internal object SpotifyToken {
         cachedClientId = null
         cachedClientToken = null
         clientTokenExpiresAtMs = 0L
+        cachedTier = null
+    }
+
+    fun deviceId(): String {
+        return session()?.deviceId ?: "bitchord_${java.util.UUID.randomUUID().toString().take(12)}"
+    }
+
+    suspend fun accountTier(): SpotifyAccountTier {
+        cachedTier?.let { return it }
+        val token = accessToken() ?: return SpotifyAccountTier.UNKNOWN
+        val cToken = clientToken()
+        val requestBuilder = Request.Builder()
+            .url("https://api.spotify.com/v1/me")
+            .header("Authorization", "Bearer $token")
+            .header("User-Agent", CANVAS_UA)
+            .header("Accept", "application/json")
+        if (cToken != null) {
+            requestBuilder.header("Client-Token", cToken)
+        }
+        val product = runCatching {
+            Http.client.newCall(requestBuilder.build()).execute().use { response ->
+                if (!response.isSuccessful) return@use null
+                val body = response.body.string()
+                val root = json.parseToJsonElement(body).jsonObject
+                root["product"]?.jsonPrimitive?.contentOrNull?.lowercase()
+            }
+        }.getOrNull()
+
+        val tier = when (product) {
+            "premium" -> SpotifyAccountTier.PREMIUM
+            "free", "open" -> SpotifyAccountTier.FREE
+            else -> if (token.isNotBlank()) SpotifyAccountTier.FREE else SpotifyAccountTier.UNKNOWN
+        }
+        cachedTier = tier
+        return tier
     }
 
     /**

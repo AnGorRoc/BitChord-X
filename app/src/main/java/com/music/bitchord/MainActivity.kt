@@ -28,6 +28,9 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.scaleIn
 import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.slideOutHorizontally
+import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.spring
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.animation.core.CubicBezierEasing
@@ -44,6 +47,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -933,6 +937,9 @@ private fun BitChordApp(
     val query by viewModel.query.collectAsStateWithLifecycle()
     val results by viewModel.results.collectAsStateWithLifecycle()
     val exploreState by viewModel.explore.collectAsStateWithLifecycle()
+    val chartsState by viewModel.charts.collectAsStateWithLifecycle()
+    val chartsRegion by viewModel.chartsRegion.collectAsStateWithLifecycle()
+    val newReleasesState by viewModel.newReleases.collectAsStateWithLifecycle()
     val selectedMoodGenre by viewModel.selectedMoodGenre.collectAsStateWithLifecycle()
     val moodGenreShelves by viewModel.moodGenreShelves.collectAsStateWithLifecycle()
     val libraryState by viewModel.library.collectAsStateWithLifecycle()
@@ -952,6 +959,7 @@ private fun BitChordApp(
     val incomingJamInvite by JamInviteLink.pending.collectAsStateWithLifecycle()
     var activeJamInviteCode by rememberSaveable { mutableStateOf<String?>(null) }
     var activeJamInviteServer by rememberSaveable { mutableStateOf<String?>(null) }
+    var activeJamInviteSpotifyToken by rememberSaveable { mutableStateOf<String?>(null) }
 
     // An invite is navigation and an action: reveal the Jam settings page now,
     // then let that page join once an account is available. Keeping the code
@@ -960,6 +968,7 @@ private fun BitChordApp(
         val invite = incomingJamInvite ?: return@LaunchedEffect
         activeJamInviteCode = invite.code
         activeJamInviteServer = invite.serverUrl
+        activeJamInviteSpotifyToken = invite.spotifyJamToken
         dismissPlayer()
         replayStory = null
         showReplayShare = false
@@ -3079,10 +3088,57 @@ private fun BitChordApp(
                             (this as? AppDestination.Route)?.entry?.route is AppRoute.LibraryShowAll
                         val libraryShowAllSwap = (initial.isShowAll() && target == libraryTab) ||
                             (target.isShowAll() && initial == libraryTab)
-                        if (tabSwap || libraryShowAllSwap) {
-                            EnterTransition.None togetherWith ExitTransition.None
-                        } else {
-                            fadeIn(tween(180)) togetherWith fadeOut(tween(180))
+                        when {
+                            tabSwap -> {
+                                val forward = target.index >= initial.index
+                                if (forward) {
+                                    (slideInHorizontally(tween(220, easing = FastOutSlowInEasing)) { (it * 0.12f).toInt() } +
+                                        fadeIn(tween(200, easing = FastOutSlowInEasing))) togetherWith
+                                    (slideOutHorizontally(tween(180, easing = FastOutLinearInEasing)) { (-it * 0.12f).toInt() } +
+                                        fadeOut(tween(140, easing = FastOutLinearInEasing)))
+                                } else {
+                                    (slideInHorizontally(tween(220, easing = FastOutSlowInEasing)) { (-it * 0.12f).toInt() } +
+                                        fadeIn(tween(200, easing = FastOutSlowInEasing))) togetherWith
+                                    (slideOutHorizontally(tween(180, easing = FastOutLinearInEasing)) { (it * 0.12f).toInt() } +
+                                        fadeOut(tween(140, easing = FastOutLinearInEasing)))
+                                }
+                            }
+                            libraryShowAllSwap -> {
+                                val enteringShowAll = target.isShowAll()
+                                if (enteringShowAll) {
+                                    (fadeIn(tween(200, easing = FastOutSlowInEasing)) + scaleIn(initialScale = 0.95f, animationSpec = tween(220, easing = FastOutSlowInEasing))) togetherWith
+                                    (fadeOut(tween(140, easing = FastOutLinearInEasing)) + scaleOut(targetScale = 1.02f, animationSpec = tween(140)))
+                                } else {
+                                    (fadeIn(tween(180, easing = FastOutSlowInEasing)) + scaleIn(initialScale = 1.02f, animationSpec = tween(180, easing = FastOutSlowInEasing))) togetherWith
+                                    (fadeOut(tween(140, easing = FastOutLinearInEasing)) + scaleOut(targetScale = 0.95f, animationSpec = tween(140)))
+                                }
+                            }
+                            else -> {
+                                val isPush = when {
+                                    initial is AppDestination.Tab -> true
+                                    target is AppDestination.Tab -> false
+                                    initial is AppDestination.Route && target is AppDestination.Route -> target.entry.id > initial.entry.id
+                                    initial is AppDestination.Release && target is AppDestination.Release -> {
+                                        val targetIdx = detailStack.indexOfFirst { it.browseId == target.browseId }
+                                        val initialIdx = detailStack.indexOfFirst { it.browseId == initial.browseId }
+                                        if (targetIdx >= 0 && initialIdx >= 0) targetIdx >= initialIdx else true
+                                    }
+                                    target is AppDestination.Route && initial is AppDestination.Release -> target.entry.detailDepth >= detailStack.size
+                                    target is AppDestination.Release && initial is AppDestination.Route -> detailStack.size > initial.entry.detailDepth
+                                    else -> true
+                                }
+                                if (isPush) {
+                                    (slideInHorizontally(tween(240, easing = FastOutSlowInEasing)) { (it * 0.16f).toInt() } +
+                                        fadeIn(tween(200, easing = FastOutSlowInEasing))) togetherWith
+                                    (slideOutHorizontally(tween(180, easing = FastOutLinearInEasing)) { (-it * 0.10f).toInt() } +
+                                        fadeOut(tween(150, easing = FastOutLinearInEasing)))
+                                } else {
+                                    (slideInHorizontally(tween(200, easing = FastOutSlowInEasing)) { (-it * 0.10f).toInt() } +
+                                        fadeIn(tween(180, easing = FastOutSlowInEasing))) togetherWith
+                                    (slideOutHorizontally(tween(220, easing = FastOutLinearInEasing)) { (it * 0.16f).toInt() } +
+                                        fadeOut(tween(160, easing = FastOutLinearInEasing)))
+                                }
+                            }
                         }
                     },
                     modifier = Modifier
@@ -3317,9 +3373,11 @@ private fun BitChordApp(
                                 signedIn = signedIn,
                                 inviteCode = activeJamInviteCode,
                                 inviteServer = activeJamInviteServer,
+                                inviteSpotifyToken = activeJamInviteSpotifyToken,
                                 onInviteHandled = {
                                     activeJamInviteCode = null
                                     activeJamInviteServer = null
+                                    activeJamInviteSpotifyToken = null
                                 },
                                 onSignIn = {
                                     navigator.clear()
@@ -3702,6 +3760,7 @@ private fun BitChordApp(
                                 onMoodClick = playMood.takeUnless { hideHomeMoods },
                                 onMoodsShowAll = { navigator.push(AppRoute.Moods) },
                                 artworkMotion = artworkMotion,
+                                onOpenDownloads = { selectedTab = TAB_LIBRARY },
                                 onTopPickLongPress = { pick ->
                                     pick.browseId?.let { browseId ->
                                         onShelfLongPress(
@@ -3758,6 +3817,89 @@ private fun BitChordApp(
                                 onRefresh = { viewModel.refresh(MainViewModel.Feed.EXPLORE) },
                                 pullState = explorePull,
                                 contentPadding = listPadding,
+                                chartsState = chartsState,
+                                newReleasesState = newReleasesState,
+                                chartsRegion = chartsRegion,
+                                onRegionChange = viewModel::setChartsRegion,
+                                onRefreshCharts = viewModel::refreshCharts,
+                                onSongClick = { item ->
+                                    item.videoId?.let { videoId ->
+                                        playRadio(
+                                            Song(
+                                                videoId = videoId,
+                                                title = item.title,
+                                                artist = InnertubeParser.artistFromSubtitle(item.subtitle),
+                                                thumbnailUrl = item.thumbnailUrl,
+                                                isVideo = item.isVideo,
+                                            ),
+                                            QueueSource("Charts", PlaybackSourceType.BROWSE, "FEmusic_charts"),
+                                        )
+                                    }
+                                },
+                                onSongOptionsClick = onShelfLongPress,
+                                onItemClick = { item ->
+                                    val song = shelfSong(item)
+                                    val browseId = item.browseId
+                                    when {
+                                        song != null -> playRadio(
+                                            song,
+                                            QueueSource("Explore", PlaybackSourceType.EXPLORE),
+                                        )
+                                        browseId != null -> viewModel.openDetail(
+                                            browseId = browseId,
+                                            title = item.title,
+                                            subtitle = item.subtitle,
+                                            thumbnailUrl = item.thumbnailUrl,
+                                        )
+                                    }
+                                },
+                                onPlayAll = { items ->
+                                    val songs = items.mapNotNull { item ->
+                                        item.videoId?.let { vid ->
+                                            Song(
+                                                videoId = vid,
+                                                title = item.title,
+                                                artist = InnertubeParser.artistFromSubtitle(item.subtitle),
+                                                thumbnailUrl = item.thumbnailUrl,
+                                            )
+                                        }
+                                    }
+                                    if (songs.isNotEmpty()) {
+                                        playFrom(songs, 0, QueueSource("Top Charts", PlaybackSourceType.BROWSE, "FEmusic_charts"))
+                                    }
+                                },
+                                onShufflePlay = { items ->
+                                    val songs = items.mapNotNull { item ->
+                                        item.videoId?.let { vid ->
+                                            Song(
+                                                videoId = vid,
+                                                title = item.title,
+                                                artist = InnertubeParser.artistFromSubtitle(item.subtitle),
+                                                thumbnailUrl = item.thumbnailUrl,
+                                            )
+                                        }
+                                    }.shuffled()
+                                    if (songs.isNotEmpty()) {
+                                        playFrom(songs, 0, QueueSource("Top Charts", PlaybackSourceType.BROWSE, "FEmusic_charts"))
+                                    }
+                                },
+                                onAddToQueue = { items ->
+                                    val songs = items.mapNotNull { item ->
+                                        item.videoId?.let { vid ->
+                                            Song(
+                                                videoId = vid,
+                                                title = item.title,
+                                                artist = InnertubeParser.artistFromSubtitle(item.subtitle),
+                                                thumbnailUrl = item.thumbnailUrl,
+                                            )
+                                        }
+                                    }
+                                    songs.forEach { addToQueue(it) }
+                                },
+                                onOpenTrendingPlaylist = { regionCode, regionName, allSongs, videoShelf, artistShelf ->
+                                    viewModel.openTrendingDetail(regionCode, regionName, allSongs, videoShelf, artistShelf)
+                                },
+                                onOpenTopicPlaylist = viewModel::openTopicPlaylist,
                             )
                             TAB_SEARCH -> SearchScreen(
                                 query = query,
@@ -6004,13 +6146,17 @@ private fun BitChordApp(
                 tween<IntOffset>(durationMillis = 560, easing = OnboardingDismissEasing),
             ) { it },
         ) {
+            val spotifySpdcToken by AppSettings.spotifySpdcToken.collectAsStateWithLifecycle()
             OnboardingScreen(
                 signedIn = signedIn,
+                spotifyConnected = spotifySpdcToken.isNotBlank(),
                 initialName = remember {
                     ListenTogether.nickname().ifBlank { account?.name.orEmpty() }
                 },
                 onNameChosen = ListenTogether::setNickname,
                 onSignIn = { webSession = WebSessionMode.SIGN_IN },
+                onConnectSpotify = { showSpotifyLogin = true },
+                onOpenSpotifyTokenSetup = { showSpotifyCanvasAuth = true },
                 onFinish = AppSettings::setOnboardingComplete,
             )
         }
@@ -6130,7 +6276,11 @@ private fun BitChordApp(
         }
 
         // ---- Update available (once per launch; held until the welcome is done) ----
-        if (showUpdateDialog && onboardingComplete) {
+        AnimatedVisibility(
+            visible = showUpdateDialog && onboardingComplete && updateNotice != null,
+            enter = fadeIn(tween(durationMillis = 200)),
+            exit = fadeOut(tween(durationMillis = 180)),
+        ) {
             updateNotice?.let { update ->
                 UpdateAvailableDialog(
                     version = update.version,

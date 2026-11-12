@@ -24,6 +24,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -369,3 +370,59 @@ private fun CompactSongRowSkeleton(index: Int) {
         }
     }
 }
+
+/**
+ * Stands in for a playlist row with a square artwork box and two lines of text.
+ */
+@Composable
+fun PlaylistRowSkeleton(index: Int = 0, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = PAGE_GUTTER, vertical = 9.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        ShimmerBox(
+            modifier = Modifier.size(54.dp),
+            shape = RoundedCornerShape(8.dp),
+        )
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            ShimmerBox(
+                modifier = Modifier
+                    .fillMaxWidth(TitleWidths[index % TitleWidths.size])
+                    .height(15.dp),
+                shape = LineShape,
+            )
+            Spacer(Modifier.height(8.dp))
+            ShimmerBox(
+                modifier = Modifier
+                    .fillMaxWidth(SubtitleWidths[index % SubtitleWidths.size])
+                    .height(12.dp),
+                shape = LineShape,
+            )
+        }
+    }
+}
+
+/** A run of playlist row placeholders, for picker sheets and sync lists. */
+fun LazyListScope.playlistRowsSkeleton(count: Int = 6, keyPrefix: String = "skeleton:playlist") {
+    items(count, key = { "$keyPrefix:$it" }) { index ->
+        PlaylistRowSkeleton(index = index)
+    }
+}
+
+/**
+ * Wraps content in a stable container without re-triggering entrance animations on scroll.
+ */
+@Composable
+fun CleanSectionEntrance(
+    index: Int = 0,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    Box(modifier = modifier) {
+        content()
+    }
+}
+

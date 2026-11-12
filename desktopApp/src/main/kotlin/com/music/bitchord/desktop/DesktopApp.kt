@@ -6,6 +6,7 @@ import com.music.bitchord.ui.components.ShelfRowChrome
 import com.music.bitchord.ui.components.ShelfRow
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.ui.input.key.isAltPressed
+import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.isMetaPressed
 import androidx.compose.ui.input.pointer.isBackPressed
 import androidx.compose.ui.input.pointer.isSecondaryPressed
@@ -70,7 +71,11 @@ import com.music.bitchord.ui.player.RepeatModes
 import com.music.bitchord.ui.player.rememberMixPulse
 import androidx.compose.runtime.SideEffect
 import com.music.bitchord.data.model.QueueTier
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -262,6 +267,7 @@ import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
@@ -335,6 +341,9 @@ import com.music.bitchord.data.spotify.SPOTIFY_PAGE_PREFIX
 import com.music.bitchord.data.spotify.SpotifyLibrary
 import com.music.bitchord.sharedui.resources.Res as SharedRes
 import com.music.bitchord.sharedui.resources.spotify_logo
+import com.music.bitchord.sharedui.resources.ic_player_next
+import com.music.bitchord.sharedui.resources.ic_player_pause
+import com.music.bitchord.sharedui.resources.ic_player_play
 import com.music.bitchord.data.model.withoutRepeatsOf
 import com.music.bitchord.data.settings.AutomixPerformanceMode
 import com.music.bitchord.data.settings.LastPlayerScreen
@@ -739,6 +748,7 @@ fun BitChordDesktopApp() {
     }
     var playbackSpeed by remember { mutableStateOf(persistence.string("playback_speed", "1.0").toFloatOrNull() ?: 1.0f) }
     var volume by remember { mutableStateOf(persistence.string("volume", "1.0").toFloatOrNull()?.coerceIn(0.0f, 1.0f) ?: 1.0f) }
+    var volumeBeforeMute by remember { mutableStateOf<Float?>(null) }
     var crossfadeSeconds by remember { mutableStateOf(persistence.string("crossfade_seconds", "0").toIntOrNull()?.coerceIn(0, 12) ?: 0) }
     var downloadQuality by remember { mutableStateOf(persistence.string("download_quality", "LOSSLESS")) }
     var trayIconEnabled by remember { mutableStateOf(persistence.boolean("tray_icon", true)) }
@@ -1110,13 +1120,25 @@ fun BitChordDesktopApp() {
     /** Starts the station YouTube Music builds around one track. */
     fun startRadio(song: Song) {
         if (partyTrackChangeBlocked()) return
-        val seed = canonicalSong(song).copy(radioName = song.title)
+        val radioTitle = if (song.title.endsWith("Radio", ignoreCase = true)) song.title else "${song.title} Radio"
+        val seed = canonicalSong(song).copy(
+            radioName = song.title,
+            playbackSource = radioTitle,
+            playbackSourceType = PlaybackSourceType.RADIO,
+        )
         scope.launch {
             // AutoPlay's section behind the seed, as the phone queues a station — which is also
             // what lets a party share it: a context tail is never published.
             val related = DesktopAutoplay.tracksFor(listOf(seed), seed, INITIAL_RADIO_TRACKS)
                 .getOrNull()
                 .orEmpty()
+                .map {
+                    it.copy(
+                        radioName = song.title,
+                        playbackSource = radioTitle,
+                        playbackSourceType = PlaybackSourceType.RADIO,
+                    )
+                }
             if (related.isEmpty()) {
                 DesktopTrackLog.log("radio: nothing to build a station on for '${song.title}'")
                 return@launch
@@ -1175,11 +1197,47 @@ fun BitChordDesktopApp() {
         collectionReloads++
     }
 
+    /** Opens dynamic radio detail page with tracks for a station. */
+    fun openRadioDetail(song: Song) {
+        val seed = canonicalSong(song)
+        val radioTitle = if (seed.title.endsWith("Radio", ignoreCase = true)) seed.title else "${seed.title} Radio"
+        val radioSubtitle = if (seed.artist.isNotBlank()) "Radio • ${seed.artist}" else "Radio"
+        val existingRadioSongs = liveQueue.songs.filter {
+            (it.playbackSourceType == PlaybackSourceType.RADIO || it.radioName != null) &&
+                (it.radioName == seed.title || it.playbackSource == radioTitle)
+        }
+        if (existingRadioSongs.isNotEmpty()) {
+            showCollection(
+                DesktopCollection(
+                    browseId = "radio:${seed.videoId}",
+                    title = radioTitle,
+                    subtitle = radioSubtitle,
+                    thumbnailUrl = seed.thumbnailUrl,
+                    type = BrowseType.PLAYLIST,
+                    songs = existingRadioSongs,
+                    loading = false,
+                ),
+            )
+        } else {
+            showCollection(
+                DesktopCollection(
+                    browseId = "radio:${seed.videoId}",
+                    title = radioTitle,
+                    subtitle = radioSubtitle,
+                    thumbnailUrl = seed.thumbnailUrl,
+                    type = BrowseType.PLAYLIST,
+                    songs = listOf(seed.copy(radioName = seed.title, playbackSource = radioTitle, playbackSourceType = PlaybackSourceType.RADIO)),
+                    loading = true,
+                ),
+            )
+        }
+    }
+
     // Keyed on the id, so a second page opened before the first answered cancels the first rather
     // than racing it; and a loading page restored by Back fetches again.
     LaunchedEffect(openedCollection?.browseId, openedCollection?.loading, collectionReloads) {
         val pending = openedCollection
-            ?.takeIf { it.loading && !it.browseId.startsWith(SPOTIFY_PAGE_PREFIX) }
+            ?.takeIf { it.loading && !it.browseId.startsWith(SPOTIFY_PAGE_PREFIX) && !it.browseId.startsWith("radio:") }
             ?: return@LaunchedEffect
         collectionError = null
         DesktopSearchClient.browse(
@@ -1218,6 +1276,27 @@ fun BitChordDesktopApp() {
                 // The error page stands in for the list only while there is no list.
                 update { if (it.songs.isEmpty()) it.copy(loading = true) else it }
             }
+    }
+
+    // Dynamic radio station: seeds the station with related tracks via DesktopAutoplay
+    LaunchedEffect(openedCollection?.browseId, collectionReloads) {
+        val page = openedCollection?.takeIf { it.browseId.startsWith("radio:") && it.loading }
+            ?: return@LaunchedEffect
+        collectionError = null
+        val seedVideoId = page.browseId.removePrefix("radio:")
+        val seed = page.songs.firstOrNull { it.videoId == seedVideoId }
+            ?: Song(videoId = seedVideoId, title = page.title.removeSuffix(" Radio"), artist = page.subtitle.removePrefix("Radio • "), thumbnailUrl = page.thumbnailUrl)
+        val related = DesktopAutoplay.tracksFor(listOf(seed), seed, INITIAL_RADIO_TRACKS).getOrNull().orEmpty()
+        val radioSongs = (listOf(seed) + related).map {
+            it.copy(
+                radioName = seed.title,
+                playbackSource = page.title,
+                playbackSourceType = PlaybackSourceType.RADIO,
+            )
+        }
+        if (openedCollection?.browseId == page.browseId) {
+            openedCollection = page.copy(songs = radioSongs, loading = false)
+        }
     }
 
     fun openAlbum(browseId: String) = openCollection(browseId)
@@ -1979,11 +2058,22 @@ fun BitChordDesktopApp() {
         }
     }
     LaunchedEffect(Unit) {
+        var isFadingForSleep = false
         while (currentCoroutineContext().isActive) {
-            delay(1_000L)
+            delay(100L)
+            val remainingMs = DesktopSleepTimer.remainingMs()
             if (DesktopSleepTimer.isExpired()) {
                 DesktopSleepTimer.cancel()
                 playbackEngine.pause()
+                playbackEngine.setVolume(volume)
+                isFadingForSleep = false
+            } else if (remainingMs != null && remainingMs in 1..4_000L && playbackEngine.state.value.isPlaying) {
+                isFadingForSleep = true
+                val fraction = (remainingMs.toFloat() / 4_000f).coerceIn(0f, 1f)
+                playbackEngine.setVolume(volume * fraction)
+            } else if (isFadingForSleep) {
+                isFadingForSleep = false
+                playbackEngine.setVolume(volume)
             }
         }
     }
@@ -2257,6 +2347,7 @@ fun BitChordDesktopApp() {
         },
         onSleepAfterTrack = { DesktopSleepTimer.startAfterTrack() },
         onShare = ::shareSong,
+        onOpenEqualizer = { overlays.equalizerDialog = true },
     )
 
     /** The "…" a song row hangs off, built the same way on every page that offers one. */
@@ -3366,6 +3457,7 @@ fun BitChordDesktopApp() {
         },
         onSleepAfterTrack = { DesktopSleepTimer.startAfterTrack() },
         onShare = ::shareSong,
+        onOpenEqualizer = { overlays.equalizerDialog = true },
     )
 
     // What the shared player reads as settings, kept in step with the window's own.
@@ -3529,71 +3621,130 @@ fun BitChordDesktopApp() {
                         transparentBase = transparentBase,
                     )
                 },
-                modifier = Modifier.onPreviewKeyEvent { event ->
-                    if (event.type != KeyEventType.KeyUp) return@onPreviewKeyEvent false
-                    when {
-                        event.key == Key.MediaPlayPause -> {
-                            if (selectedSong != null) togglePlayPauseFromUser()
-                            true
-                        }
-                        event.key == Key.MediaNext -> {
-                            playNext()
-                            true
-                        }
-                        event.key == Key.MediaPrevious -> {
-                            playPrevious()
-                            true
-                        }
-                        event.key == Key.F11 -> {
-                            DesktopWindowMode.toggle()
-                            true
-                        }
-                        event.key == Key.DirectionLeft && event.isAltPressed && !overlays.nowPlaying -> {
-                            goBack()
-                            true
-                        }
-                        DesktopPlatform.isMac && event.isMetaPressed && event.key == Key.Comma -> {
-                            openSettings()
-                            true
-                        }
-                        DesktopPlatform.isMac && event.isMetaPressed && event.key == Key.F -> {
-                            searchFocusRequested = true
-                            true
-                        }
-                        DesktopPlatform.isMac && event.isMetaPressed && event.key == Key.W -> {
-                            windowActions?.close?.invoke()
-                            true
-                        }
-                        DesktopPlatform.isMac && event.isMetaPressed && event.key == Key.M -> {
-                            windowActions?.minimize?.invoke()
-                            true
-                        }
-                        // One layer at a time, innermost first: the player's own side panel, then
-                        // the player.
-                        event.key == Key.Escape -> when {
-                            // The player's own layers first — the lyrics, the queue, a
-                            // drawer — in the order Android's back reaches them.
-                            overlays.nowPlaying && PlayerBack.dispatch() -> true
-                            overlays.nowPlaying -> {
-                                overlays.nowPlaying = false
+                modifier = Modifier
+                    .onPreviewKeyEvent { event ->
+                        if (event.type != KeyEventType.KeyUp) return@onPreviewKeyEvent false
+                        val isCmdOrCtrl = if (DesktopPlatform.isMac) event.isMetaPressed else event.isCtrlPressed
+                        when {
+                            event.key == Key.MediaPlayPause -> {
+                                if (selectedSong != null) togglePlayPauseFromUser()
                                 true
                             }
-                            overlays.sidePanel != null -> {
-                                overlays.sidePanel = null
+                            event.key == Key.MediaNext -> {
+                                playNext()
                                 true
                             }
-                            // A page of Settings steps back the way the back button does, unless
-                            // one of its prompts is up over it.
-                            overlays.settingsPage != null &&
-                                !overlays.lastfmLogin && !overlays.listenBrainzToken && !overlays.discordToken -> {
+                            event.key == Key.MediaPrevious -> {
+                                playPrevious()
+                                true
+                            }
+                            event.key == Key.F11 -> {
+                                DesktopWindowMode.toggle()
+                                true
+                            }
+                            event.key == Key.DirectionLeft && event.isAltPressed && !overlays.nowPlaying -> {
                                 goBack()
+                                true
+                            }
+                            isCmdOrCtrl && event.key == Key.Comma -> {
+                                openSettings()
+                                true
+                            }
+                            isCmdOrCtrl && (event.key == Key.F || event.key == Key.K) -> {
+                                searchFocusRequested = true
+                                true
+                            }
+                            isCmdOrCtrl && event.key == Key.W -> {
+                                when {
+                                    overlays.nowPlaying -> overlays.nowPlaying = false
+                                    overlays.sidePanel != null -> overlays.sidePanel = null
+                                    overlays.settingsPage != null -> goBack()
+                                    else -> windowActions?.close?.invoke()
+                                }
+                                true
+                            }
+                            isCmdOrCtrl && event.key == Key.M -> {
+                                if (volume > 0f) {
+                                    volumeBeforeMute = volume
+                                    volume = 0f
+                                    persistence.saveString("volume", "0.0")
+                                } else {
+                                    val restored = (volumeBeforeMute ?: 1.0f).coerceIn(0.05f, 1.0f)
+                                    volume = restored
+                                    volumeBeforeMute = null
+                                    persistence.saveString("volume", restored.toString())
+                                }
+                                true
+                            }
+                            DesktopPlatform.isMac && event.isMetaPressed && event.key == Key.M -> {
+                                windowActions?.minimize?.invoke()
+                                true
+                            }
+                            // One layer at a time, innermost first: the player's own side panel, then
+                            // the player.
+                            event.key == Key.Escape -> when {
+                                // The player's own layers first — the lyrics, the queue, a
+                                // drawer — in the order Android's back reaches them.
+                                overlays.nowPlaying && PlayerBack.dispatch() -> true
+                                overlays.nowPlaying -> {
+                                    overlays.nowPlaying = false
+                                    true
+                                }
+                                overlays.sidePanel != null -> {
+                                    overlays.sidePanel = null
+                                    true
+                                }
+                                // A page of Settings steps back the way the back button does, unless
+                                // one of its prompts is up over it.
+                                overlays.settingsPage != null &&
+                                    !overlays.lastfmLogin && !overlays.listenBrainzToken && !overlays.discordToken -> {
+                                    goBack()
+                                    true
+                                }
+                                else -> false
+                            }
+                            else -> false
+                        }
+                    }
+                    .onKeyEvent { event ->
+                        if (event.type != KeyEventType.KeyUp) return@onKeyEvent false
+                        val isCmdOrCtrl = if (DesktopPlatform.isMac) event.isMetaPressed else event.isCtrlPressed
+                        when {
+                            // Spacebar toggles playback when not consumed by an active text field
+                            event.key == Key.Spacebar && !isCmdOrCtrl && !event.isAltPressed -> {
+                                if (selectedSong != null) {
+                                    togglePlayPauseFromUser()
+                                    true
+                                } else false
+                            }
+                            // Left / Right arrow keys seek 5s
+                            event.key == Key.DirectionRight && !event.isAltPressed && !isCmdOrCtrl -> {
+                                val current = playback.positionMs
+                                val duration = playback.durationMs
+                                val nextPos = (current + 5_000L).coerceAtMost(if (duration > 0) duration else current + 5_000L)
+                                playbackEngine.seekTo(nextPos)
+                                true
+                            }
+                            event.key == Key.DirectionLeft && !event.isAltPressed && !isCmdOrCtrl -> {
+                                val current = playback.positionMs
+                                val nextPos = (current - 5_000L).coerceAtLeast(0L)
+                                playbackEngine.seekTo(nextPos)
+                                true
+                            }
+                            // Ctrl + Up / Down adjusts volume by 5%
+                            isCmdOrCtrl && event.key == Key.DirectionUp -> {
+                                volume = (volume + 0.05f).coerceAtMost(1.0f)
+                                persistence.saveString("volume", volume.toString())
+                                true
+                            }
+                            isCmdOrCtrl && event.key == Key.DirectionDown -> {
+                                volume = (volume - 0.05f).coerceAtLeast(0.0f)
+                                persistence.saveString("volume", volume.toString())
                                 true
                             }
                             else -> false
                         }
-                        else -> false
-                    }
-                },
+                    },
                 topBar = { compact ->
                     DesktopTopBar(
                         compact = compact,
@@ -3853,6 +4004,8 @@ fun BitChordDesktopApp() {
                                 overlays.nowPlaying = false
                                 if (playerSong.playbackSourceType == PlaybackSourceType.BROWSE && id != null) {
                                     openAlbum(id)
+                                } else if (playerSong.playbackSourceType == PlaybackSourceType.RADIO || playerSong.radioName != null) {
+                                    openRadioDetail(playerSong)
                                 }
                             },
                             onListenTogether = {
@@ -3981,6 +4134,9 @@ fun BitChordDesktopApp() {
                             },
                             onAddAccount = { overlays.accounts = false; overlays.signIn = true },
                             onRemoveAccount = { account ->
+                                // Signing out clears the window's Google login, so the removed account is
+                                // not detected again on the next sign-in.
+                                DesktopWebCookies.reset()
                                 scope.launch {
                                     accounts = withContext(Dispatchers.IO) {
                                         DesktopAccounts.remove(account.accountId)
@@ -4154,6 +4310,9 @@ fun BitChordDesktopApp() {
                             autoplayEnabled = autoplay,
                             onDismiss = { overlays.listenTogether = false },
                         )
+                    }
+                    if (overlays.equalizerDialog) {
+                        DesktopEqualizerDialog(onDismiss = { overlays.equalizerDialog = false })
                     }
                     if (overlays.audioOutput) {
                         DesktopAudioOutputDialog(onDismiss = { overlays.audioOutput = false })
@@ -4610,6 +4769,7 @@ fun BitChordDesktopApp() {
                             onMoodClick = ::openTopPickMood,
                             onMoodsShowAll = { selectDestination(DesktopDestination.EXPLORE) },
                             artworkMotion = animatedCanvas,
+                            onOpenDownloads = { selectDestination(DesktopDestination.DOWNLOADS) },
                         )
                         destination == DesktopDestination.EXPLORE && selectedMoodGenre != null -> Column(Modifier.fillMaxSize()) {
                             MoodGenrePlaylistsScreen(
@@ -6006,6 +6166,8 @@ private fun DesktopMiniPlayer(
     onNext: () -> Unit,
 ) {
     val shape = RoundedCornerShape(percent = 50)
+    val scope = rememberCoroutineScope()
+    val nextKickOffset = remember { Animatable(0f) }
     Row(
         Modifier
             .widthIn(max = 440.dp)
@@ -6023,10 +6185,39 @@ private fun DesktopMiniPlayer(
             Text(song.artist, color = DesktopSecondary, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
         IconButton(onClick = onPlayPause) {
-            Icon(if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (isPlaying) "Pause" else "Play", tint = Color.White)
+            AnimatedContent(
+                targetState = isPlaying,
+                transitionSpec = {
+                    (fadeIn(animationSpec = tween(140)) + scaleIn(initialScale = 0.45f, animationSpec = spring(dampingRatio = 0.42f, stiffness = 420f)))
+                        .togetherWith(fadeOut(animationSpec = tween(100)) + scaleOut(targetScale = 0.45f, animationSpec = tween(100, easing = LinearEasing)))
+                },
+                label = "miniPlayerPlayPauseMorph",
+            ) { playing ->
+                Icon(
+                    painter = painterResource(if (playing) SharedRes.drawable.ic_player_pause else SharedRes.drawable.ic_player_play),
+                    contentDescription = if (playing) "Pause" else "Play",
+                    tint = Color.White,
+                    modifier = Modifier.size(24.dp),
+                )
+            }
         }
-        IconButton(onClick = onNext) {
-            Icon(Icons.Rounded.FastForward, DesktopStrings["widget_next", "Next"], tint = Color.White)
+        IconButton(
+            onClick = {
+                scope.launch {
+                    nextKickOffset.snapTo(8f)
+                    nextKickOffset.animateTo(0f, spring(dampingRatio = 0.55f, stiffness = 420f))
+                }
+                onNext()
+            },
+        ) {
+            Icon(
+                painter = painterResource(SharedRes.drawable.ic_player_next),
+                contentDescription = DesktopStrings["widget_next", "Next"],
+                tint = Color.White,
+                modifier = Modifier
+                    .size(24.dp)
+                    .graphicsLayer { translationX = nextKickOffset.value.dp.toPx() },
+            )
         }
     }
 }

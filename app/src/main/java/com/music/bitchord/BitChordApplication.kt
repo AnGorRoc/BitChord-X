@@ -225,6 +225,13 @@ class BitChordApplication : Application(), SingletonImageLoader.Factory {
      */
     private val coilHttpClient: OkHttpClient by lazy {
         OkHttpClient.Builder()
+            .dispatcher(okhttp3.Dispatcher().apply {
+                maxRequestsPerHost = 24
+                maxRequests = 64
+            })
+            .connectionPool(okhttp3.ConnectionPool(24, 5, java.util.concurrent.TimeUnit.MINUTES))
+            .connectTimeout(15, java.util.concurrent.TimeUnit.SECONDS)
+            .readTimeout(20, java.util.concurrent.TimeUnit.SECONDS)
             .addInterceptor { chain ->
                 chain.proceed(
                     chain.request().newBuilder()
@@ -274,7 +281,7 @@ class BitChordApplication : Application(), SingletonImageLoader.Factory {
                 if (AppSettings.audioCacheLimitBytes.value == AppSettings.DISABLED_CACHE_LIMIT_BYTES) null
                 else DiskCache.Builder()
                     .directory(cacheDir.resolve("image_cache"))
-                    .maxSizeBytes(100L * 1024 * 1024)
+                    .maxSizeBytes(150L * 1024 * 1024)
                     .build()
             }
             // Covers arriving with a hard cut read as the list flickering as

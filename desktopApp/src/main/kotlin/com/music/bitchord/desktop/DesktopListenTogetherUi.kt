@@ -56,7 +56,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.music.bitchord.data.listentogether.JamInvite
+import com.music.bitchord.data.listentogether.PartyInvites
 import com.music.bitchord.data.listentogether.PartyActivity
 import com.music.bitchord.data.listentogether.PartyMember
 import com.music.bitchord.data.listentogether.PartyPreview
@@ -74,6 +74,9 @@ internal fun DesktopListenTogetherDialog(autoplayEnabled: Boolean, onDismiss: ()
     val serverStatus by DesktopListenTogether.serverStatus.collectAsState()
     val scope = rememberCoroutineScope()
     var code by remember { mutableStateOf("") }
+    // The server a pasted link named; null for a typed code, which uses the idle server.
+    var codeServer by remember { mutableStateOf<String?>(null) }
+    var previewServer by remember { mutableStateOf<String?>(null) }
     var nickname by remember { mutableStateOf(DesktopListenTogether.nickname()) }
     var maxMembers by remember { mutableStateOf(5) }
     var serverDraft by remember { mutableStateOf(server) }
@@ -126,6 +129,9 @@ internal fun DesktopListenTogetherDialog(autoplayEnabled: Boolean, onDismiss: ()
                 )
                 preview != null -> JoinConfirmation(
                     preview = preview!!,
+                    foreignServerHost = previewServer
+                        ?.takeUnless(DesktopListenTogether::isKnownServer)
+                        ?.let(DesktopListenTogether::serverHost),
                     nickname = nickname,
                     onNicknameChange = {
                         nickname = it.take(80)
@@ -138,7 +144,7 @@ internal fun DesktopListenTogetherDialog(autoplayEnabled: Boolean, onDismiss: ()
                         busy = true
                         localError = null
                         scope.launch {
-                            DesktopListenTogether.joinParty(preview!!.code, nickname)
+                            DesktopListenTogether.joinParty(preview!!.code, nickname, previewServer)
                                 .onFailure { localError = it.message }
                             busy = false
                         }
@@ -157,8 +163,11 @@ internal fun DesktopListenTogetherDialog(autoplayEnabled: Boolean, onDismiss: ()
                     onMaxMembersChange = { maxMembers = it.coerceIn(2, 10) },
                     code = code,
                     onCodeChange = {
-                        code = JamInvite.parse(it)
+                        // A pasted link of any shape carries its server; a typed code does not.
+                        val pasted = PartyInvites.parse(it)?.takeUnless { invite -> invite.isSpotifyJam }
+                        code = pasted?.code
                             ?: it.filter(Char::isLetterOrDigit).uppercase().take(DesktopListenTogether.CODE_LENGTH)
+                        codeServer = pasted?.serverUrl
                         localError = null
                     },
                     server = serverDraft,
@@ -190,8 +199,11 @@ internal fun DesktopListenTogetherDialog(autoplayEnabled: Boolean, onDismiss: ()
                         busy = true
                         localError = null
                         scope.launch {
-                            DesktopListenTogether.previewParty(code)
-                                .onSuccess { preview = it }
+                            DesktopListenTogether.previewParty(code, codeServer)
+                                .onSuccess {
+                                    preview = it
+                                    previewServer = codeServer
+                                }
                                 .onFailure { localError = it.message }
                             busy = false
                         }
@@ -340,6 +352,8 @@ private fun PartyChoiceCard(title: String, subtitle: String, modifier: Modifier 
 @Composable
 private fun JoinConfirmation(
     preview: PartyPreview,
+    /** Set when the invite points at a server this build does not already use. */
+    foreignServerHost: String?,
     nickname: String,
     onNicknameChange: (String) -> Unit,
     busy: Boolean,
@@ -360,6 +374,14 @@ private fun JoinConfirmation(
             fontWeight = FontWeight.Bold,
         )
         Text("${preview.memberCount} of ${preview.maxMembers} people · ${preview.code}", color = DesktopSecondary)
+        foreignServerHost?.let { host ->
+            Spacer(Modifier.height(6.dp))
+            Text(
+                "Hosted on $host. Your name and avatar will be shared with that server.",
+                color = DesktopSecondary,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
         Spacer(Modifier.height(20.dp))
         Row(horizontalArrangement = Arrangement.spacedBy((-10).dp)) {
             preview.members.take(5).forEach { PartyAvatar(it.avatarUrl, 50, it.displayName) }
@@ -422,8 +444,8 @@ private fun RoomHero(state: DesktopListenTogether.State) {
         )
         Spacer(Modifier.height(16.dp))
 
-        // QR code always visible above the code
-        DesktopQrCode(invite, size = 160.dp)
+        // QR code always visible above the code, click to enlarge
+        DesktopQrCode(invite, size = 160.dp, clickableToEnlarge = true, codeText = state.code)
 
         Spacer(Modifier.height(16.dp))
 

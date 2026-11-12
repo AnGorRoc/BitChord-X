@@ -31,6 +31,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import com.music.bitchord.ui.components.songListSkeleton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -147,17 +148,11 @@ fun ReorderPlaylistPage(
         HorizontalDivider(thickness = 0.5.dp, color = palette.divider)
 
         when (entries) {
-            UiState.Loading -> Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(200.dp),
-                contentAlignment = Alignment.Center,
+            UiState.Loading -> LazyColumn(
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                contentPadding = contentPadding,
             ) {
-                CircularProgressIndicator(
-                    strokeWidth = 2.5.dp,
-                    color = palette.onBackground,
-                    modifier = Modifier.size(26.dp),
-                )
+                songListSkeleton(count = 8, keyPrefix = "skeleton:reorder")
             }
 
             is UiState.Error -> Text(

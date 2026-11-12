@@ -1,6 +1,9 @@
 package config
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestGetOrigin(t *testing.T) {
 	t.Setenv("JAM_PUBLIC_ORIGIN", " https://party.example.com/ ")
@@ -104,5 +107,16 @@ func TestIsAllowedOrigin(t *testing.T) {
 	}
 	if IsAllowedOrigin("") {
 		t.Errorf("empty origin allowed")
+	}
+}
+
+func TestParseAppLinks(t *testing.T) {
+	fp := strings.Repeat("ab:", 31) + "ab"
+	links := parseAppLinks([]string{"com.music.bitchord:" + fp, "bad", "pkg:12:34"})
+	if len(links) != 1 {
+		t.Fatalf("expected one valid entry, got %v", links)
+	}
+	if links[0].Package != "com.music.bitchord" || links[0].Fingerprint != strings.ToUpper(fp) {
+		t.Fatalf("unexpected entry %+v", links[0])
 	}
 }
