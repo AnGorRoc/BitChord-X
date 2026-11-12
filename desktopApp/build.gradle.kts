@@ -52,7 +52,9 @@ val desktopModuleIndexUrl = localProperty("MODULE_INDEX_URL")
 
 // Last.fm signs every request with these, so signing in from inside the app
 // needs them at hand. Supplied locally and never committed, as on Android.
+// Same default as the phone app (app/build.gradle.kts), so the PC build has a server out of the box.
 val listenTogetherServer = localProperty("LISTEN_TOGETHER_SERVER")
+    .ifBlank { "https://bitchord-listen-together.onrender.com" }
 val lastfmApiKey = localProperty("LASTFM_API_KEY")
 val lastfmSecret = localProperty("LASTFM_SECRET")
 
