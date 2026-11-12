@@ -415,10 +415,6 @@ fun ListenTogetherScreen(
                 PartySheet.Create -> CreatePartySheet(
                     avatarUrl = ListenTogether.myAvatarUrl(),
                     nickname = nickname,
-                    onNicknameChange = {
-                        nickname = it.take(80)
-                        ListenTogether.setNickname(nickname)
-                    },
                     busy = busy,
                     enabled = signedIn && ListenTogether.hasServer,
                     error = failure,

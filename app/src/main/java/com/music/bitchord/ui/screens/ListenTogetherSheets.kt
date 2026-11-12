@@ -314,8 +314,8 @@ private fun SheetError(message: String?) {
 @Composable
 internal fun CreatePartySheet(
     avatarUrl: String?,
+    /** The name already configured; creating a party never asks for one. */
     nickname: String,
-    onNicknameChange: (String) -> Unit,
     busy: Boolean,
     enabled: Boolean,
     error: String?,
@@ -333,16 +333,16 @@ internal fun CreatePartySheet(
             subtitle = stringResource(R.string.listen_together_create_sheet_subtitle),
         )
         Spacer(Modifier.height(22.dp))
+        // Who they will see. The name is the one already set (Settings), or the account's own.
         Row(verticalAlignment = Alignment.CenterVertically) {
             PartySheetAvatar(url = avatarUrl)
             Spacer(Modifier.width(ICON_GAP))
-            PillTextField(
-                value = nickname,
-                onValueChange = onNicknameChange,
-                placeholder = stringResource(R.string.listen_together_nickname_hint),
-                container = MaterialTheme.colorScheme.surfaceVariant,
-                enabled = enabled,
-                keyboardOptions = KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Done),
+            Text(
+                text = nickname.ifBlank { stringResource(R.string.listen_together_you) },
+                style = MaterialTheme.typography.titleMedium,
+                color = MaterialTheme.colorScheme.onBackground,
+                maxLines = 1,
+                overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
             )
         }
         Spacer(Modifier.height(16.dp))
