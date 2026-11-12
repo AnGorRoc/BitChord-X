@@ -1053,7 +1053,11 @@ private fun OutputPartyPill(
     onOpenMembers: () -> Unit,
 ) {
     val badge = rememberPartyBadge()
-    val shown by PlayerSettings.showListenTogetherButton.collectAsStateWithLifecycle()
+    val settingShown by PlayerSettings.showListenTogetherButton.collectAsStateWithLifecycle()
+    // Also whenever there is another of the person's devices to pick, whatever the setting says:
+    // that is the reason to open it.
+    val devices by PlayerPlatform.host.devices.collectAsStateWithLifecycle()
+    val shown = settingShown || devices.others.any { it.connected }
     val output = rememberOutputGlyph()
     // Party half hidden only outside a party: once in one, this is the way to
     // who's in it. Without it the output glyph stands alone, drawn like the
@@ -1092,7 +1096,8 @@ private fun OutputPartyPill(
             // Already in a party, this opens who's in it rather than the
             // settings page directly; there is nothing to create or join once
             // there is a party, so [onParty] only ever fires beforehand.
-            onClick = if (badge.inParty) onOpenMembers else onParty,
+            // Always the Connect sheet now: it holds the devices as well as the party.
+            onClick = onOpenMembers,
             highlighted = badge.inParty,
             trailingLabel = badge.members.takeIf { badge.inParty }?.toString(),
         )

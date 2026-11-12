@@ -178,6 +178,14 @@ class AndroidPlayerHost(context: Context) : PlayerHost {
         )
     }
 
+    override val devices: StateFlow<com.music.bitchord.data.listentogether.account.AccountState>
+        get() = ListenTogether.account.state
+
+    override fun pickDevice(deviceId: String, force: com.music.bitchord.data.listentogether.account.HandoffForce?) =
+        com.music.bitchord.playback.DeviceLink.pick(deviceId, force)
+
+    override fun comeBackToThisDevice() = com.music.bitchord.playback.DeviceLink.comeBack()
+
     override val party: StateFlow<PartyUi> by lazy {
         ListenTogether.state
             .map { it.toPartyUi() }
