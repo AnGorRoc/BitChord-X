@@ -1540,5 +1540,9 @@
     <string name="sing_status_karaoke">Karaoke</string>
     <string name="sing_engine_title">Acoustic Engine</string>
     <string name="sing_badge_dsp">BITCHORD SING</string>
+    <string name="swipe_right_action">Geser kanan pada lagu</string>
+    <string name="swipe_left_action">Geser kiri pada lagu</string>
+    <string name="swipe_hold_playlist_hint">Tahan geseran untuk menambahkan ke playlist</string>
+    <string name="swipe_action_disabled">Nonaktif</string>
 
 </resources>

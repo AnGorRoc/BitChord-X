@@ -60,6 +60,7 @@ import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Delete
 import com.music.bitchord.download.Downloads
 import com.music.bitchord.data.model.LibraryState
+import com.music.bitchord.data.settings.SongSwipeAction
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.GraphicEq
@@ -309,6 +310,8 @@ fun DetailScreen(
     onSongClick: (List<Song>, Int) -> Unit,
     onSongLongPress: (Song) -> Unit,
     onSongSwipe: (Song) -> Unit,
+    onSongSwipeAction: ((Song, SongSwipeAction) -> Unit)? = null,
+    onSongHoldPlaylist: ((Song) -> Unit)? = null,
     onShuffle: (List<Song>) -> Unit,
     onPlayAll: ((List<Song>) -> Unit)? = null,
     onSectionItemClick: (ShelfItem) -> Unit,
@@ -766,6 +769,8 @@ fun DetailScreen(
                         onSongClick = onSongClick,
                         onSongLongPress = onSongLongPress,
                         onSongSwipe = onSongSwipe,
+                        onSongSwipeAction = onSongSwipeAction,
+                        onSongHoldPlaylist = onSongHoldPlaylist,
                     )
                 } else if (isArtist) {
                     // An artist's full song list would bury the album shelves, so
@@ -833,6 +838,12 @@ fun DetailScreen(
                             },
                             onLongPress = { onSongLongPress(song) },
                             onSwipeToQueue = { onSongSwipe(song) },
+                            onSwipeAction = onSongSwipeAction?.let { handler ->
+                                { action -> handler(song, action) }
+                            },
+                            onSwipeHoldPlaylist = onSongHoldPlaylist?.let { handler ->
+                                { handler(song) }
+                            },
                             rowBackground = Color.Transparent,
                             // The track's place on the release, not its place in
                             // what the filter — or a sort — left standing.

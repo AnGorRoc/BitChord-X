@@ -1565,5 +1565,9 @@
     <string name="sing_status_karaoke">Karaoke</string>
     <string name="sing_engine_title">Acoustic Engine</string>
     <string name="sing_badge_dsp">BITCHORD SING</string>
+    <string name="swipe_right_action">החלקה ימינה על שיר</string>
+    <string name="swipe_left_action">החלקה שמאלה על שיר</string>
+    <string name="swipe_hold_playlist_hint">החזק את ההחלקה להוספה לפלייליסט</string>
+    <string name="swipe_action_disabled">כבוי</string>
 
 </resources>

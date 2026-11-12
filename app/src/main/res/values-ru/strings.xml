@@ -1587,5 +1587,9 @@
     <string name="sing_status_karaoke">Karaoke</string>
     <string name="sing_engine_title">Acoustic Engine</string>
     <string name="sing_badge_dsp">BITCHORD SING</string>
+    <string name="swipe_right_action">Свайп вправо по треку</string>
+    <string name="swipe_left_action">Свайп влево по треку</string>
+    <string name="swipe_hold_playlist_hint">Удерживайте свайп для добавления в плейлист</string>
+    <string name="swipe_action_disabled">Выкл.</string>
 
 </resources>

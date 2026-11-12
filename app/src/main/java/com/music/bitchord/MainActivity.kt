@@ -158,6 +158,7 @@ import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.model.isUnresolvedSpotify
 import com.music.bitchord.data.model.UiState
 import com.music.bitchord.data.model.withoutVideos
+import com.music.bitchord.data.settings.SongSwipeAction
 import com.music.bitchord.data.model.UserPlaylist
 import com.music.bitchord.data.model.EntityType
 import com.music.bitchord.data.model.SearchHistoryEntity
@@ -1961,6 +1962,21 @@ private fun BitChordApp(
     val onSongSwipe: (Song) -> Unit = { song ->
         if (AppSettings.swipeToPlayNext.value) playNext(song) else addToQueue(song)
     }
+    val onSongSwipeAction: (Song, SongSwipeAction) -> Unit = { song, action ->
+        when (action) {
+            SongSwipeAction.PLAY_NEXT -> playNext(song)
+            SongSwipeAction.ADD_TO_QUEUE -> addToQueue(song)
+            SongSwipeAction.DISABLED -> Unit
+        }
+    }
+    val onSongHoldPlaylist: (Song) -> Unit = { song ->
+        if (song.localUri != null && (song.videoId.startsWith("content://") || song.videoId.startsWith("file://"))) {
+            offlinePlaylistTarget = song
+        } else {
+            viewModel.loadPlaylists()
+            playlistTarget = song
+        }
+    }
 
     /**
      * Opens an artist or release page given its browse id — or, failing that,
@@ -2806,7 +2822,6 @@ private fun BitChordApp(
             },
             onRemoveFromQueue = { controller?.removeMediaItem(it) },
             onMoveInQueue = { from, to -> controller?.moveMediaItem(from, to) },
-            onSaveQueue = saveQueueAsPlaylist,
             onQueueDragActiveChange = { active -> controller?.setQueueDragActive(active) },
             onOpenMenu = {
                 menuFromPlayer = true
@@ -3130,6 +3145,8 @@ private fun BitChordApp(
                                     openSongMenu(song)
                                 },
                                 onSongSwipe = onSongSwipe,
+                                onSongSwipeAction = onSongSwipeAction,
+                                onSongHoldPlaylist = onSongHoldPlaylist,
                                 onRetry = viewModel::loadHistory,
                                 contentPadding = listPadding,
                             )
@@ -3546,6 +3563,8 @@ private fun BitChordApp(
                                 },
                                 onSongLongPress = { openSongMenu(withAlbum(it)) },
                                 onSongSwipe = { onSongSwipe(withAlbum(it)) },
+                                onSongSwipeAction = { song, action -> onSongSwipeAction(withAlbum(song), action) },
+                                onSongHoldPlaylist = { song -> onSongHoldPlaylist(withAlbum(song)) },
                                 onShuffle = { songs ->
                                     if (songs.isNotEmpty()) {
                                         // Shuffle goes on first so the queue is built shuffled
@@ -3770,6 +3789,8 @@ private fun BitChordApp(
                                 },
                                 onSongLongPress = openSongMenu,
                                 onSongSwipe = onSongSwipe,
+                                onSongSwipeAction = onSongSwipeAction,
+                                onSongHoldPlaylist = onSongHoldPlaylist,
                                 onTopResultPlay = { song ->
                                     viewModel.recordEntity(SearchHistoryEntity(
                                         id = song.videoId,
@@ -4538,7 +4559,6 @@ private fun BitChordApp(
                                             onBlockedControl = showHostOnlyNotice,
                                             dock = activeDock,
                                             pull = playerSheetMotion.takeIf { !reducePlayerMotion },
-                                            compact = keyboardUp,
                                             modifier = Modifier.fillMaxWidth(),
                                         )
                                     }
@@ -4684,12 +4704,6 @@ private fun BitChordApp(
                             .align(Alignment.BottomCenter)
                             .widthIn(max = FLOATING_BAR_MAX_WIDTH)
                             .fillMaxWidth()
-                            .animateContentSize(
-                                animationSpec = spring(
-                                    dampingRatio = 0.82f,
-                                    stiffness = 380f,
-                                ),
-                            )
                             .onSizeChanged { floatingBarsHeight.intValue = it.height },
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
@@ -4747,7 +4761,6 @@ private fun BitChordApp(
                                         onBlockedControl = showHostOnlyNotice,
                                         dock = activeDock,
                                         pull = playerSheetMotion.takeIf { !reducePlayerMotion },
-                                        compact = keyboardUp,
                                         modifier = Modifier.fillMaxWidth(),
                                     )
                                     Spacer(Modifier.height(8.dp))

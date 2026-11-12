@@ -1565,5 +1565,9 @@
     <string name="sing_status_karaoke">Karaoke</string>
     <string name="sing_engine_title">Acoustic Engine</string>
     <string name="sing_badge_dsp">BITCHORD SING</string>
+    <string name="swipe_right_action">Deslizar música para a direita</string>
+    <string name="swipe_left_action">Deslizar música para a esquerda</string>
+    <string name="swipe_hold_playlist_hint">Segure o deslize para adicionar a uma playlist</string>
+    <string name="swipe_action_disabled">Desativado</string>
 
 </resources>

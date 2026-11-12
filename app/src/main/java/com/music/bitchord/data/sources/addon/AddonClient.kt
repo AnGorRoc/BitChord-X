@@ -541,8 +541,8 @@ class AddonClient(rawBaseUrl: String, private val pickedQuality: String? = null)
          */
         private val client: OkHttpClient by lazy {
             Http.client.newBuilder()
-                .readTimeout(60, TimeUnit.SECONDS)
-                .callTimeout(45, TimeUnit.SECONDS)
+                .readTimeout(120, TimeUnit.SECONDS)
+                .callTimeout(90, TimeUnit.SECONDS)
                 .build()
         }
     }

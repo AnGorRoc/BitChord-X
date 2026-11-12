@@ -1396,5 +1396,9 @@
     <string name="sing_status_karaoke">Karaoke</string>
     <string name="sing_engine_title">Acoustic Engine</string>
     <string name="sing_badge_dsp">BITCHORD SING</string>
+    <string name="swipe_right_action">곡을 오른쪽으로 스와이프</string>
+    <string name="swipe_left_action">곡을 왼쪽으로 스와이프</string>
+    <string name="swipe_hold_playlist_hint">길게 스와이프하여 플레이리스트에 추가</string>
+    <string name="swipe_action_disabled">끔</string>
 
 </resources>

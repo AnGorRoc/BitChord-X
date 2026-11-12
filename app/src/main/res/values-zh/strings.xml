@@ -1540,5 +1540,9 @@
     <string name="sing_status_karaoke">Karaoke</string>
     <string name="sing_engine_title">Acoustic Engine</string>
     <string name="sing_badge_dsp">BITCHORD SING</string>
+    <string name="swipe_right_action">向右滑动歌曲</string>
+    <string name="swipe_left_action">向左滑动歌曲</string>
+    <string name="swipe_hold_playlist_hint">滑动并按住即可添加到播放列表</string>
+    <string name="swipe_action_disabled">关闭</string>
 
 </resources>

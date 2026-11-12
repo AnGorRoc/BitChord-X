@@ -169,8 +169,10 @@ import com.music.bitchord.data.settings.AudioQuality
 import com.music.bitchord.data.settings.LosslessCacheLevel
 import com.music.bitchord.data.settings.LosslessDataNotice
 import com.music.bitchord.data.settings.DownloadQuality
+import com.music.bitchord.data.settings.SongSwipeAction
 import com.music.bitchord.data.settings.ThemeMode
 import com.music.bitchord.data.settings.AppFont
+import com.music.bitchord.data.settings.PlayerTheme
 import com.music.bitchord.data.stats.Backup
 import com.music.bitchord.data.stats.exportTo
 import com.music.bitchord.data.stats.importFrom
@@ -262,9 +264,8 @@ fun SettingsScreen(
     val signatureApiEnabled by AppSettings.signatureApiEnabled.collectAsStateWithLifecycle()
     val signatureApiUrl by AppSettings.signatureApiUrl.collectAsStateWithLifecycle()
     val fullBleedArtwork by AppSettings.fullBleedArtwork.collectAsStateWithLifecycle()
-    val fullBleedDetailArtwork by AppSettings.fullBleedDetailArtwork.collectAsStateWithLifecycle()
-    val immersivePlayerMode by AppSettings.immersivePlayerMode.collectAsStateWithLifecycle()
-    val legacyMeshGradient by AppSettings.legacyMeshGradient.collectAsStateWithLifecycle()
+    val playerTheme by AppSettings.playerTheme.collectAsStateWithLifecycle()
+    val disableBlendEffects by AppSettings.disableBlendEffects.collectAsStateWithLifecycle()
     val syncedLyrics by AppSettings.syncedLyrics.collectAsStateWithLifecycle()
     val lyricAboveScrubber by AppSettings.lyricAboveScrubber.collectAsStateWithLifecycle()
     val lyricsSources by AppSettings.lyricsSources.collectAsStateWithLifecycle()
@@ -300,7 +301,8 @@ fun SettingsScreen(
     val hideStatusBarInPlayer by AppSettings.hideStatusBarInPlayer.collectAsStateWithLifecycle()
     val hideSongStatus by AppSettings.hideSongStatus.collectAsStateWithLifecycle()
     val showQueueHistory by AppSettings.showQueueHistory.collectAsStateWithLifecycle()
-    val swipeToPlayNext by AppSettings.swipeToPlayNext.collectAsStateWithLifecycle()
+    val swipeRightAction by AppSettings.swipeRightAction.collectAsStateWithLifecycle()
+    val swipeLeftAction by AppSettings.swipeLeftAction.collectAsStateWithLifecycle()
     val dontRepeatSuggestions by AppSettings.dontRepeatSuggestions.collectAsStateWithLifecycle()
     val preferMusicOnly by AppSettings.preferMusicOnly.collectAsStateWithLifecycle()
     val squareVideoThumbnails by AppSettings.squareVideoThumbnails.collectAsStateWithLifecycle()
@@ -1152,6 +1154,21 @@ fun SettingsScreen(
                     onClick = { AppSettings.setReduceDynamicBlur(!reduceDynamicBlur) },
                 )
             }
+            val disableBlendEffectsTitle = stringResource(R.string.disable_blend_effects)
+            row(disableBlendEffectsTitle, "blend", "blending", "colour", "color", "tint", "player", "menu") {
+                SettingsRow(
+                    icon = SfIcons.Gradient,
+                    title = disableBlendEffectsTitle,
+                    subtitle = stringResource(R.string.disable_blend_effects_subtitle),
+                    trailing = {
+                        IosSwitch(
+                            checked = disableBlendEffects,
+                            onCheckedChange = AppSettings::setDisableBlendEffects,
+                        )
+                    },
+                    onClick = { AppSettings.setDisableBlendEffects(!disableBlendEffects) },
+                )
+            }
             val liquidGlassTitle = stringResource(R.string.liquid_glass)
             row(liquidGlassTitle, "glass", "blur") {
                 SettingsRow(
@@ -1218,49 +1235,18 @@ fun SettingsScreen(
                     )
                 }
             }
-            val fullScreenDetailCoverTitle = stringResource(R.string.full_screen_detail_cover)
-            row(fullScreenDetailCoverTitle, "artwork", "album", "playlist", "detail", "cover") {
-                SettingsRow(
-                    icon = SfIcons.Fullscreen,
-                    title = fullScreenDetailCoverTitle,
-                    subtitle = stringResource(R.string.full_screen_detail_cover_subtitle),
-                    trailing = {
-                        IosSwitch(
-                            checked = fullBleedDetailArtwork,
-                            onCheckedChange = AppSettings::setFullBleedDetailArtwork,
-                        )
-                    },
-                    onClick = { AppSettings.setFullBleedDetailArtwork(!fullBleedDetailArtwork) },
-                )
-            }
-            val immersiveModeTitle = stringResource(R.string.immersive_player_mode)
-            row(immersiveModeTitle, "immersive", "player") {
-                SettingsRow(
-                    icon = SfIcons.AutoAwesome,
-                    title = immersiveModeTitle,
-                    subtitle = stringResource(R.string.immersive_player_mode_subtitle),
-                    trailing = {
-                        IosSwitch(
-                            checked = immersivePlayerMode,
-                            onCheckedChange = AppSettings::setImmersivePlayerMode,
-                        )
-                    },
-                    onClick = { AppSettings.setImmersivePlayerMode(!immersivePlayerMode) },
-                )
-            }
-            val legacyMeshGradientTitle = stringResource(R.string.legacy_mesh_gradient)
-            row(legacyMeshGradientTitle, "background", "player") {
+            val playerThemeTitle = stringResource(R.string.player_theme)
+            row(playerThemeTitle, "background", "player", "mesh", "gradient", "legacy", "simple", "blur") {
                 SettingsRow(
                     icon = SfIcons.Gradient,
-                    title = legacyMeshGradientTitle,
-                    subtitle = stringResource(R.string.legacy_mesh_gradient_subtitle),
-                    trailing = {
-                        IosSwitch(
-                            checked = legacyMeshGradient,
-                            onCheckedChange = AppSettings::setLegacyMeshGradient,
-                        )
-                    },
-                    onClick = { AppSettings.setLegacyMeshGradient(!legacyMeshGradient) },
+                    title = playerThemeTitle,
+                    subtitle = playerTheme.description(),
+                )
+                SegmentedControl(
+                    options = PlayerTheme.entries.map { it.localizedLabel() },
+                    selectedIndex = PlayerTheme.entries.indexOf(playerTheme),
+                    onSelect = { AppSettings.setPlayerTheme(PlayerTheme.entries[it]) },
+                    modifier = Modifier.padding(start = ROW_INSET, end = ROW_INSET, bottom = 14.dp),
                 )
             }
             val animatedCoverArtTitle = stringResource(R.string.animated_cover_art)
@@ -1737,23 +1723,31 @@ fun SettingsScreen(
         // No footer: it only restated the stop-on-close row's own subtitle,
         // which sits four rows above it and says the same thing in fewer words.
         if (shows(SettingsCategory.MISCELLANEOUS)) SearchableSettingsGroup(search, header = stringResource(R.string.miscellaneous)) {
-            val playNextOnSwipeTitle = stringResource(R.string.play_next_on_swipe)
-            row(playNextOnSwipeTitle, "swipe", "queue") {
+            val swipeRightTitle = stringResource(R.string.swipe_right_action)
+            val swipeHoldHint = stringResource(R.string.swipe_hold_playlist_hint)
+            row(swipeRightTitle, "swipe", "queue", "playlist", "right", stringResource(R.string.play_next_on_swipe)) {
+                val rightLabel = swipeRightAction.label()
                 SettingsRow(
                     icon = SfIcons.PlaylistPlay,
-                    title = playNextOnSwipeTitle,
-                    subtitle = if (swipeToPlayNext) {
-                        stringResource(R.string.swipe_plays_next)
-                    } else {
-                        stringResource(R.string.swipe_adds_to_queue)
-                    },
+                    title = swipeRightTitle,
+                    subtitle = "$rightLabel · $swipeHoldHint",
                     trailing = {
-                        IosSwitch(
-                            checked = swipeToPlayNext,
-                            onCheckedChange = AppSettings::setSwipeToPlayNext,
-                        )
+                        SwipeActionPill(action = swipeRightAction, label = rightLabel)
                     },
-                    onClick = { AppSettings.setSwipeToPlayNext(!swipeToPlayNext) },
+                    onClick = { AppSettings.setSwipeRightAction(swipeRightAction.next()) },
+                )
+            }
+            val swipeLeftTitle = stringResource(R.string.swipe_left_action)
+            row(swipeLeftTitle, "swipe", "queue", "playlist", "left", stringResource(R.string.play_next_on_swipe)) {
+                val leftLabel = swipeLeftAction.label()
+                SettingsRow(
+                    icon = SfIcons.PlaylistAdd,
+                    title = swipeLeftTitle,
+                    subtitle = "$leftLabel · $swipeHoldHint",
+                    trailing = {
+                        SwipeActionPill(action = swipeLeftAction, label = leftLabel)
+                    },
+                    onClick = { AppSettings.setSwipeLeftAction(swipeLeftAction.next()) },
                 )
             }
             val dontRepeatSongsTitle = stringResource(R.string.dont_repeat_songs)
@@ -2265,6 +2259,24 @@ private fun ThemeMode.localizedLabel(): String = stringResource(
         ThemeMode.SYSTEM -> R.string.system
         ThemeMode.LIGHT -> R.string.light
         ThemeMode.DARK -> R.string.dark
+    },
+)
+
+@Composable
+private fun PlayerTheme.localizedLabel(): String = stringResource(
+    when (this) {
+        PlayerTheme.DEFAULT -> R.string.player_theme_default
+        PlayerTheme.LEGACY -> R.string.player_theme_legacy
+        PlayerTheme.SIMPLE -> R.string.player_theme_simple
+    },
+)
+
+@Composable
+private fun PlayerTheme.description(): String = stringResource(
+    when (this) {
+        PlayerTheme.DEFAULT -> R.string.player_theme_default_subtitle
+        PlayerTheme.LEGACY -> R.string.player_theme_legacy_subtitle
+        PlayerTheme.SIMPLE -> R.string.player_theme_simple_subtitle
     },
 )
 
@@ -2898,6 +2910,38 @@ internal fun Badge(text: String) {
             .clip(RoundedCornerShape(5.dp))
             .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.16f))
             .padding(horizontal = 6.dp, vertical = 2.dp),
+    )
+}
+
+internal fun SongSwipeAction.next(): SongSwipeAction = when (this) {
+    SongSwipeAction.PLAY_NEXT -> SongSwipeAction.ADD_TO_QUEUE
+    SongSwipeAction.ADD_TO_QUEUE -> SongSwipeAction.DISABLED
+    SongSwipeAction.DISABLED -> SongSwipeAction.PLAY_NEXT
+}
+
+@Composable
+internal fun SongSwipeAction.label(): String = when (this) {
+    SongSwipeAction.PLAY_NEXT -> stringResource(R.string.play_next)
+    SongSwipeAction.ADD_TO_QUEUE -> stringResource(R.string.add_to_queue)
+    SongSwipeAction.DISABLED -> stringResource(R.string.swipe_action_disabled)
+}
+
+@Composable
+private fun SwipeActionPill(action: SongSwipeAction, label: String) {
+    val accent = when (action) {
+        SongSwipeAction.PLAY_NEXT -> Color(0xFF5856D6)
+        SongSwipeAction.ADD_TO_QUEUE -> Color(0xFFFF9500)
+        SongSwipeAction.DISABLED -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Text(
+        text = label,
+        style = MaterialTheme.typography.labelMedium,
+        fontWeight = FontWeight.SemiBold,
+        color = accent,
+        modifier = Modifier
+            .clip(RoundedCornerShape(999.dp))
+            .background(accent.copy(alpha = 0.16f))
+            .padding(horizontal = 10.dp, vertical = 4.dp),
     )
 }
 

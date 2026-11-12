@@ -11,6 +11,7 @@ import com.music.bitchord.data.lyrics.LyricsSource
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.settings.AudioQuality
 import com.music.bitchord.data.settings.LastPlayerScreen
+import com.music.bitchord.data.settings.PlayerTheme
 import com.music.bitchord.data.settings.SmartAnalysis
 import com.music.bitchord.data.settings.MixBlend
 import com.music.bitchord.data.settings.MixTransitionView
@@ -239,14 +240,13 @@ interface PlayerSettingsSource {
     val audioQualityWifi: StateFlow<AudioQuality>
     val canvasOverCellular: StateFlow<Boolean>
     val fullBleedArtwork: StateFlow<Boolean>
-    val immersivePlayerMode: StateFlow<Boolean>
     val hideSongStatus: StateFlow<Boolean>
     val showQueueHistory: StateFlow<Boolean>
     val hideVolumeBar: StateFlow<Boolean>
     /** Hide the device status bar while the player is up. Always false where there is none. */
     val hideStatusBar: StateFlow<Boolean>
     val lastPlayerScreen: StateFlow<LastPlayerScreen>
-    val legacyMeshGradient: StateFlow<Boolean>
+    val playerTheme: StateFlow<PlayerTheme>
     val lyricsBlur: StateFlow<Boolean>
     val lyricsOffsetMs: StateFlow<Int>
     val lyricsSourceOrder: StateFlow<List<LyricsSource>>
@@ -257,6 +257,8 @@ interface PlayerSettingsSource {
     val prioritizeSpotifyCanvas: StateFlow<Boolean>
     val reduceAnimation: StateFlow<Boolean>
     val reduceDynamicBlur: StateFlow<Boolean>
+    /** Turns [LocalPlayerChrome] off: glyphs and text over the artwork in plain white. */
+    val disableBlendEffects: StateFlow<Boolean>
     val showNerdStats: StateFlow<Boolean>
     /** Whether the output / Listen Together pill sits under the transport. */
     val showListenTogetherButton: StateFlow<Boolean>
@@ -281,7 +283,6 @@ interface PlayerSettingsSource {
     val smartTransitionWindow: StateFlow<TransitionWindow?>
     val spotifyCanvasAutoHide: StateFlow<Boolean>
     val syncedLyrics: StateFlow<Boolean>
-    val lyricAboveScrubber: StateFlow<Boolean>
     val translationLanguage: StateFlow<String>
     val versionAlignmentInProgress: StateFlow<Boolean>
 
@@ -414,8 +415,11 @@ fun CanvasArtworkPlayer(
     onRenderedChanged: (Boolean) -> Unit = {},
     onFrameCaptured: (ImageBitmap) -> Unit = {},
     refreshFrameEveryMs: Long? = null,
-    /** 0 for no frames at all, which saves a main-thread readback on each fade-in. */
-    frameCapturePx: Int = CANVAS_FRAME_CAPTURE_PX,
+    /**
+     * 0 for no frames at all, which saves a main-thread readback on each
+     * fade-in: only a caller that takes [onFrameCaptured] asks for a size.
+     */
+    frameCapturePx: Int = 0,
     onCoverChanged: (Float) -> Unit = {},
     bottomFade: Float = 0f,
     bottomFadeEndPx: Float? = null,

@@ -76,6 +76,7 @@ import com.music.bitchord.data.model.artworkAt
 import com.music.bitchord.data.model.playingRowMatcher
 import com.music.bitchord.data.settings.LibraryViewType
 import com.music.bitchord.data.settings.LocalMusicSort
+import com.music.bitchord.data.settings.SongSwipeAction
 import com.music.bitchord.download.DownloadState
 import com.music.bitchord.download.DownloadedCollection
 import com.music.bitchord.download.Downloads
@@ -269,6 +270,8 @@ internal fun LazyListScope.localFolderItems(
     onSongClick: (List<Song>, Int) -> Unit,
     onSongLongPress: (Song) -> Unit,
     onSongSwipe: (Song) -> Unit,
+    onSongSwipeAction: ((Song, SongSwipeAction) -> Unit)? = null,
+    onSongHoldPlaylist: ((Song) -> Unit)? = null,
 ) {
     val tabs = folder.tabs
     item(key = "folder-tabs") {
@@ -360,6 +363,12 @@ internal fun LazyListScope.localFolderItems(
                     onLongPress = { songHold(song) },
                     onMore = { onSongLongPress(song) },
                     onSwipeToQueue = { onSongSwipe(song) },
+                    onSwipeAction = onSongSwipeAction?.let { handler ->
+                        { action -> handler(song, action) }
+                    },
+                    onSwipeHoldPlaylist = onSongHoldPlaylist?.let { handler ->
+                        { handler(song) }
+                    },
                     trailing = folder.onDownload?.let { download ->
                         { RowDownloadButton(song, palette) { download(listOf(song)) } }
                     },

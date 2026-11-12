@@ -251,8 +251,15 @@
     <string name="light">Claro</string>
     <string name="dark">Oscuro</string>
     <string name="full_screen_cover_art_subtitle">Lleva la portada a los bordes del reproductor en lugar de mostrarla cuadrada</string>
-    <string name="immersive_player_mode">Modo Inmersivo</string>
-    <string name="immersive_player_mode_subtitle">La portada se expande en la parte superior con reflejo ambiental en los controles</string>
+    <string name="disable_blend_effects">Desactivar efectos de fusión</string>
+    <string name="disable_blend_effects_subtitle">Muestra los iconos, el texto y los menús oscuros del reproductor en blanco, sin teñirlos con la portada</string>
+    <string name="player_theme">Tema del reproductor</string>
+    <string name="player_theme_default">Predeterminado</string>
+    <string name="player_theme_legacy">Clásico</string>
+    <string name="player_theme_simple">Simple</string>
+    <string name="player_theme_default_subtitle">Los colores de la portada continúan debajo de ella</string>
+    <string name="player_theme_simple_subtitle">La portada difuminada detrás de todo el reproductor</string>
+    <string name="player_theme_legacy_subtitle">Recupera las manchas de color en movimiento detrás del reproductor de la v1.5</string>
     <string name="animated_cover_art_subtitle">Reproduce el video en bucle que incluyen algunos lanzamientos</string>
     <string name="dont_repeat_songs_subtitle">La reproducción automática no sugerirá una canción ya reproducida o sugerida en esta sesión</string>
     <string name="filter_music_videos_autoplay_subtitle">Solo reproduce canciones de audio en AutoPlay y radio, excluyendo videos musicales</string>
@@ -1552,4 +1559,8 @@
     <string name="replaygain_prevent_clipping">Evitar distorsión por recorte</string>
     <string name="track_gain">Ganancia de pista</string>
     <string name="album_gain">Ganancia de álbum</string>
+    <string name="swipe_right_action">Deslizar canción a la derecha</string>
+    <string name="swipe_left_action">Deslizar canción a la izquierda</string>
+    <string name="swipe_hold_playlist_hint">Mantené el deslizamiento para añadir a una playlist</string>
+    <string name="swipe_action_disabled">Desactivado</string>
 </resources>
