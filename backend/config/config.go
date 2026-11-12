@@ -82,7 +82,7 @@ var (
 	EmptyPartyTTLMs      = int64(getInt("JAM_EMPTY_PARTY_TTL_MS", 120000))
 	PartyMaxAgeMs        = int64(getInt("JAM_PARTY_MAX_AGE_MS", 12*60*60*1000))
 	ControlRatePerSecond = float64(getInt("JAM_CONTROL_RATE_PER_SECOND", 25))
-	MaxUpcomingQueue     = getInt("JAM_MAX_UPCOMING_QUEUE", 25)
+	MaxUpcomingQueue     = getInt("JAM_MAX_UPCOMING_QUEUE", 500)
 	MaxQueueLength       = getInt("JAM_MAX_QUEUE_LENGTH", 1+MaxUpcomingQueue)
 	// Render Free has 0.1 CPU. Fifty rooms (at most 250 sockets) is a safe
 	// starting ceiling; raise it only after measuring CPU and memory usage.
@@ -90,7 +90,8 @@ var (
 	CreateRatePerMinute  = getInt("JAM_CREATE_RATE_PER_MINUTE", 2)
 	RateLimitMaxEntries  = getInt("JAM_RATE_LIMIT_MAX_ENTRIES", 10000)
 	RequestMaxBytes      = int64(getInt("JAM_REQUEST_MAX_BYTES", 16*1024))
-	WebSocketMaxBytes    = int64(getInt("JAM_WEBSOCKET_MAX_BYTES", 16*1024))
+	// A whole 500-song queue arrives in one frame, around 200 KB.
+	WebSocketMaxBytes    = int64(getInt("JAM_WEBSOCKET_MAX_BYTES", 512*1024))
 	ConnectionIdleMs     = int64(getInt("JAM_CONNECTION_IDLE_MS", 15*60*1000))
 	FrameRatePerSecond   = float64(getInt("JAM_FRAME_RATE_PER_SECOND", 30))
 	AllowedOrigins       = getCSV("JAM_ALLOWED_ORIGINS", "")

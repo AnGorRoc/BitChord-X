@@ -192,9 +192,6 @@ class BitChordApplication : Application(), SingletonImageLoader.Factory {
         // suspend call chain that reaches it (a track's canvas lookup) has
         // one to hand — see SpotifyToken's doc for why.
         SpotifyToken.init(this)
-        if (BuildConfig.FLAVOR == "dev") {
-            com.music.bitchord.data.listentogether.spotify.SpotifyProbeConsole.register(this)
-        }
         // A sideloaded update is just a new APK over the old one, so app data —
         // including whatever the old build left in the image cache — survives
         // it untouched. Wipe that on the first launch of a higher versionCode so

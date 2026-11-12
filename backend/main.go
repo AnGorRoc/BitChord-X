@@ -289,6 +289,8 @@ var serverFeatures = []string{
 	"listeningMode",   // setListening, and playsAudio on members
 	"myDevices",       // POST /api/devices/join: one person's devices as one room
 	"independentDevices", // setIndependent: a device in that room plays its own music
+	"people",             // accountProof on join: one person's devices are one seat; personId on members
+	"addedBy",            // tracks carry who queued them
 }
 
 // handleInfo describes this server so a client can tell an extended build from
@@ -310,6 +312,7 @@ func handleInfo(w http.ResponseWriter, r *http.Request) {
 			"minMembers":        2,
 			"maxMembers":        10,
 			"maxUpcomingQueue":  config.MaxUpcomingQueue,
+			"maxDevicesPerPerson": party.MaxDevicesPerPerson,
 		},
 		"serverMs": clock.NowMs(),
 	})
@@ -457,7 +460,7 @@ func handleCreateParty(w http.ResponseWriter, r *http.Request) {
 	}
 
 	p.Lock()
-	m, err := p.Join(req.UserId, req.DeviceId, req.DisplayName, req.AvatarUrl)
+	m, err := p.JoinAs(req.UserId, req.DeviceId, req.DisplayName, req.AvatarUrl, req.AccountProof, req.DeviceName)
 	if err != nil {
 		p.Unlock()
 		store.Drop(p.Code)
@@ -509,7 +512,7 @@ func handleJoinParty(w http.ResponseWriter, r *http.Request) {
 	}
 
 	p.Lock()
-	m, err := p.Join(req.UserId, req.DeviceId, req.DisplayName, req.AvatarUrl)
+	m, err := p.JoinAs(req.UserId, req.DeviceId, req.DisplayName, req.AvatarUrl, req.AccountProof, req.DeviceName)
 	if err != nil {
 		p.Unlock()
 		if pe, ok := err.(*party.PartyError); ok {
@@ -1150,6 +1153,7 @@ func applyControl(p *party.Party, member *party.Member, action string, frame map
 			qi := int(qIndex)
 			qIndexPtr = &qi
 		}
+		p.StampQueue([]*party.Track{t}, member)
 		p.Playback.SetTrack(&member.MemberId, t, pos, isPlaying, qIndexPtr, &member.DisplayName)
 		return true, "", ""
 
@@ -1167,6 +1171,7 @@ func applyControl(p *party.Party, member *party.Member, action string, frame map
 		if idxNum, ok := frame["queueIndex"].(float64); ok {
 			qIdx = int(idxNum)
 		}
+		p.StampQueue(tracks, member)
 		p.Playback.SetQueue(&member.MemberId, tracks, qIdx)
 		return true, "", ""
 
@@ -1186,6 +1191,7 @@ func applyControl(p *party.Party, member *party.Member, action string, frame map
 			}
 		}
 		playNext, _ := frame["playNext"].(bool)
+		p.StampAdded(tracksToAdd, member)
 		ok, reason := p.Playback.AddUpcoming(&member.MemberId, tracksToAdd, playNext)
 		if !ok {
 			if reason == "queue_full" {
@@ -1302,13 +1308,20 @@ func applyControl(p *party.Party, member *party.Member, action string, frame map
 		targetID, _ := frame["memberId"].(string)
 		if !member.IsHost { return false, "host_only", "Only the host can remove listeners." }
 		if targetID == "" || targetID == member.MemberId { return false, "invalid_member", "Choose another listener to remove." }
-		if p.Remove(targetID) == nil { return false, "not_found", "That listener is no longer in this party." }
-		hubInst.Send(p.Code, targetID, map[string]interface{}{
-			"type":    protocol.FrameBye,
-			"reason":  "kicked",
-			"message": "The host removed you from this party.",
-		})
-		hubInst.CloseMember(p.Code, targetID)
+		if target, found := p.Members[targetID]; found && target.PersonId == member.PersonId {
+			return false, "invalid_member", "Choose another listener to remove."
+		}
+		// A person leaves with all of their devices.
+		removed := p.RemovePerson(targetID)
+		if len(removed) == 0 { return false, "not_found", "That listener is no longer in this party." }
+		for _, gone := range removed {
+			hubInst.Send(p.Code, gone.MemberId, map[string]interface{}{
+				"type":    protocol.FrameBye,
+				"reason":  "kicked",
+				"message": "The host removed you from this party.",
+			})
+			hubInst.CloseMember(p.Code, gone.MemberId)
+		}
 		return true, "", ""
 
 	default:
