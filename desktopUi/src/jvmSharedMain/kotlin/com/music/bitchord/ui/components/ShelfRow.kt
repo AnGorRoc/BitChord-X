@@ -38,6 +38,7 @@ val LocalShelfRowChrome = staticCompositionLocalOf<ShelfRowChrome> { NoShelfRowC
  *
  * [artwork] lists each item's cover by lazy index, so the covers just past the
  * visible cells are fetched before the scroll reaches them — see [PrefetchArtworkAhead].
+ * [artworkGroups] supports columns holding multiple rows of tracks.
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -47,9 +48,14 @@ fun ShelfRow(
     modifier: Modifier = Modifier,
     state: LazyListState = rememberLazyListState(),
     artwork: List<String?> = emptyList(),
+    artworkGroups: List<List<String?>> = emptyList(),
     content: LazyListScope.() -> Unit,
 ) {
-    PrefetchArtworkAhead(state, artwork)
+    if (artworkGroups.isNotEmpty()) {
+        PrefetchArtworkGroupsAhead(state, artworkGroups)
+    } else if (artwork.isNotEmpty()) {
+        PrefetchArtworkAhead(state, artwork)
+    }
     LocalShelfRowChrome.current.Wrap(state) {
         LazyRow(
             modifier = modifier,

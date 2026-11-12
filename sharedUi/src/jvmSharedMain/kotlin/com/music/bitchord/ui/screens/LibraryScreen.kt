@@ -48,7 +48,12 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
+import coil3.compose.LocalPlatformContext
+import com.music.bitchord.ui.components.PrefetchVerticalArtworkAhead
+import com.music.bitchord.ui.components.prefetchArtwork
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -66,7 +71,6 @@ import com.music.bitchord.data.settings.LibrarySort
 import com.music.bitchord.data.settings.LibraryViewType
 import com.music.bitchord.ui.AppUi
 import com.music.bitchord.ui.icons.BitChordIcons
-import com.music.bitchord.ui.components.CleanSectionEntrance
 import com.music.bitchord.ui.components.LIBRARY_GRID_SPACING
 import com.music.bitchord.ui.components.MessageState
 import com.music.bitchord.ui.components.PAGE_GUTTER
@@ -134,6 +138,25 @@ fun LibraryScreen(
 ) {
     val pinnedPlaylists by AppUi.host.pinnedPlaylists.collectAsStateWithLifecycle()
     val onDevice = stringResource(Res.string.on_device)
+    val successLibrary = (state as? UiState.Success)?.data
+    if (successLibrary != null) {
+        val verticalShelvesArtwork = remember(successLibrary.shelves) {
+            successLibrary.shelves.map { shelf ->
+                shelf.items.take(6).map { it.thumbnailUrl.artworkAt(CARD_ART_PX) }
+            }
+        }
+        PrefetchVerticalArtworkAhead(
+            state = listState,
+            artworkByItem = verticalShelvesArtwork,
+            ahead = 3,
+        )
+        val context = LocalPlatformContext.current
+        LaunchedEffect(verticalShelvesArtwork) {
+            if (verticalShelvesArtwork.isNotEmpty()) {
+                prefetchArtwork(context, verticalShelvesArtwork.take(3).flatten())
+            }
+        }
+    }
     PullToRefresh(
         refreshing = refreshing,
         onRefresh = onRefresh,
@@ -217,26 +240,24 @@ fun LibraryScreen(
                     }
                     shelves.forEachIndexed { index, shelf ->
                         item(key = "shelf:${shelf.title}") {
-                            CleanSectionEntrance(index = index, modifier = Modifier.animateItem()) {
-                                if (shelf.title == PLAYLISTS) {
-                                    val pinnedFirst = shelf.pinnedFirst(pinnedPlaylists)
-                                    PlaylistShelf(
-                                        shelf = pinnedFirst,
-                                        onItemClick = onShelfItemClick,
-                                        onItemLongPress = onShelfItemLongPress,
-                                        onNewPlaylist = onNewPlaylist,
-                                        onImportSpotifyPlaylist = onImportSpotifyPlaylist,
-                                        onShowAll = { onShowAll(pinnedFirst) },
-                                        pinnedPlaylists = pinnedPlaylists,
-                                    )
-                                } else {
-                                    LibraryGridShelf(
-                                        shelf = shelf,
-                                        onItemClick = onShelfItemClick,
-                                        onItemLongPress = onShelfItemLongPress,
-                                        onShowAll = { onShowAll(shelf) },
-                                    )
-                                }
+                            if (shelf.title == PLAYLISTS) {
+                                val pinnedFirst = shelf.pinnedFirst(pinnedPlaylists)
+                                PlaylistShelf(
+                                    shelf = pinnedFirst,
+                                    onItemClick = onShelfItemClick,
+                                    onItemLongPress = onShelfItemLongPress,
+                                    onNewPlaylist = onNewPlaylist,
+                                    onImportSpotifyPlaylist = onImportSpotifyPlaylist,
+                                    onShowAll = { onShowAll(pinnedFirst) },
+                                    pinnedPlaylists = pinnedPlaylists,
+                                )
+                            } else {
+                                LibraryGridShelf(
+                                    shelf = shelf,
+                                    onItemClick = onShelfItemClick,
+                                    onItemLongPress = onShelfItemLongPress,
+                                    onShowAll = { onShowAll(shelf) },
+                                )
                             }
                         }
                     }
@@ -437,7 +458,7 @@ internal fun LibraryGridShelf(
                     item = item,
                     onClick = { onItemClick(item) },
                     onLongPress = { onItemLongPress(item) },
-                    modifier = Modifier.width(SHELF_CARD_WIDTH).animateItem(),
+                    modifier = Modifier.width(SHELF_CARD_WIDTH).animateItem(fadeInSpec = null, fadeOutSpec = null),
                     isPinned = item.browseId != null && item.browseId in pinnedPlaylists,
                 )
             }
@@ -550,7 +571,7 @@ fun LibraryGridPage(
                         item = item,
                         onClick = { onItemClick(item) },
                         onLongPress = { onItemLongPress(item) },
-                        modifier = Modifier.animateItem(),
+                        modifier = Modifier.animateItem(fadeInSpec = null, fadeOutSpec = null),
                         isPinned = item.browseId != null && item.browseId in pinnedPlaylists,
                     )
                 } else {
@@ -558,7 +579,7 @@ fun LibraryGridPage(
                         item = item,
                         onClick = { onItemClick(item) },
                         onLongPress = { onItemLongPress(item) },
-                        modifier = Modifier.fillMaxWidth().animateItem(),
+                        modifier = Modifier.fillMaxWidth().animateItem(fadeInSpec = null, fadeOutSpec = null),
                         isPinned = item.browseId != null && item.browseId in pinnedPlaylists,
                     )
                 }

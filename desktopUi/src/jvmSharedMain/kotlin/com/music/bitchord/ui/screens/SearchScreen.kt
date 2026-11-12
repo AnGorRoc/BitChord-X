@@ -67,6 +67,9 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import coil3.compose.AsyncImage
+import coil3.compose.LocalPlatformContext
+import com.music.bitchord.ui.components.PrefetchArtworkAhead
+import com.music.bitchord.ui.components.prefetchArtwork
 import com.music.bitchord.data.model.BrowseItem
 import com.music.bitchord.data.model.BrowseType
 import com.music.bitchord.data.model.ROW_ART_PX
@@ -252,6 +255,25 @@ fun SearchScreen(
             // The same selector as the sources above it and a folder's tabs, so
             // the app has one look for "pick one of these".
             if (results != null && !suggesting && !searchingLibrary && !searchingAddons) {
+                val successResults = (results as? UiState.Success)?.data
+                if (successResults != null) {
+                    val searchArtwork = remember(successResults) {
+                        successResults.mapNotNull { row ->
+                            when (row) {
+                                is SearchResult.TopTrack -> row.song.thumbnailUrl?.artworkAt(ROW_ART_PX)
+                                is SearchResult.Track -> row.song.thumbnailUrl?.artworkAt(ROW_ART_PX)
+                                is SearchResult.Browse -> row.item.thumbnailUrl?.artworkAt(ROW_ART_PX)
+                            }
+                        }
+                    }
+                    PrefetchArtworkAhead(state = listState, artwork = searchArtwork)
+                    val context = LocalPlatformContext.current
+                    LaunchedEffect(searchArtwork) {
+                        if (searchArtwork.isNotEmpty()) {
+                            prefetchArtwork(context, searchArtwork.take(12))
+                        }
+                    }
+                }
                 PillSegmentedControl(
                     options = SearchFilter.entries.map { it.label },
                     selectedIndex = filter.ordinal,

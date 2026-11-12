@@ -1,16 +1,10 @@
 package com.music.bitchord.ui.components
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -145,11 +139,7 @@ fun LazyListScope.songListSkeleton(
     alpha: Float = 1f,
 ) {
     items(count, key = { "$keyPrefix:$it" }) { index ->
-        Box(
-            Modifier
-                .animateItem()
-                .graphicsLayer { this.alpha = alpha }
-        ) {
+        Box(Modifier.graphicsLayer { this.alpha = alpha }) {
             SongRowSkeleton(index = index, circular = circular)
         }
     }
@@ -187,20 +177,18 @@ private fun HeroShelfSkeleton() {
 /** Reserved at the top of Play while Recents loads. */
 fun LazyListScope.recentlyPlayedSkeleton() {
     item(key = "skeleton:recently-played") {
-        Box(Modifier.animateItem()) {
-            Column(Modifier.padding(bottom = 26.dp)) {
-                RecentsHeaderSkeleton()
-                BoxWithConstraints {
-                    val columnWidth = trackColumnWidth(maxWidth)
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = PAGE_GUTTER),
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        userScrollEnabled = false,
-                    ) {
-                        item {
-                            Column(Modifier.width(columnWidth)) {
-                                repeat(4) { index -> CompactSongRowSkeleton(index) }
-                            }
+        Column(Modifier.padding(bottom = 26.dp)) {
+            RecentsHeaderSkeleton()
+            BoxWithConstraints {
+                val columnWidth = trackColumnWidth(maxWidth)
+                LazyRow(
+                    contentPadding = PaddingValues(horizontal = PAGE_GUTTER),
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    userScrollEnabled = false,
+                ) {
+                    item {
+                        Column(Modifier.width(columnWidth)) {
+                            repeat(4) { index -> CompactSongRowSkeleton(index) }
                         }
                     }
                 }
@@ -253,24 +241,20 @@ fun ShelfSkeleton(index: Int = 0, cardWidth: Dp = SHELF_CARD_WIDTH, cardCorner: 
 /** Home and Explore while the first page of shelves is still loading. */
 fun LazyListScope.feedSkeleton(shelves: Int = 3, firstIsHero: Boolean = true) {
     if (firstIsHero) {
-        item(key = "skeleton:hero") {
-            Box(Modifier.animateItem()) { HeroShelfSkeleton() }
-        }
+        item(key = "skeleton:hero") { HeroShelfSkeleton() }
         items(shelves - 1, key = { "skeleton:shelf:$it" }) { index ->
-            Box(Modifier.animateItem()) { ShelfSkeleton(index = index + 1) }
+            ShelfSkeleton(index = index + 1)
         }
     } else {
         items(shelves, key = { "skeleton:shelf:$it" }) { index ->
-            Box(Modifier.animateItem()) { ShelfSkeleton(index = index) }
+            ShelfSkeleton(index = index)
         }
     }
 }
 
 /** Appended to the feed while a further page of shelves is on its way. */
 fun LazyListScope.feedMoreSkeleton() {
-    item(key = "skeleton:more") {
-        Box(Modifier.animateItem()) { ShelfSkeleton() }
-    }
+    item(key = "skeleton:more") { ShelfSkeleton() }
 }
 
 /**
@@ -424,15 +408,12 @@ fun PlaylistRowSkeleton(index: Int = 0, modifier: Modifier = Modifier) {
 /** A run of playlist row placeholders, for picker sheets and sync lists. */
 fun LazyListScope.playlistRowsSkeleton(count: Int = 6, keyPrefix: String = "skeleton:playlist") {
     items(count, key = { "$keyPrefix:$it" }) { index ->
-        Box(Modifier.animateItem()) {
-            PlaylistRowSkeleton(index = index)
-        }
+        PlaylistRowSkeleton(index = index)
     }
 }
 
 /**
- * Wraps content in a smooth, clean entrance animation (staggered fade + subtle slide up)
- * that eliminates jarring visual snaps when sections load at app launch or data arrival.
+ * Wraps content in a stable container without re-triggering entrance animations on scroll.
  */
 @Composable
 fun CleanSectionEntrance(
@@ -440,29 +421,7 @@ fun CleanSectionEntrance(
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    val visibleState = remember {
-        MutableTransitionState(false).apply { targetState = true }
-    }
-    val delayMs = (index.coerceIn(0, 5) * 35)
-    AnimatedVisibility(
-        visibleState = visibleState,
-        enter = fadeIn(
-            animationSpec = tween(
-                durationMillis = 320,
-                delayMillis = delayMs,
-                easing = FastOutSlowInEasing,
-            ),
-        ) + slideInVertically(
-            animationSpec = tween(
-                durationMillis = 350,
-                delayMillis = delayMs,
-                easing = FastOutSlowInEasing,
-            ),
-            initialOffsetY = { (it * 0.06f).toInt().coerceAtMost(36) },
-        ),
-        exit = fadeOut(tween(140)),
-        modifier = modifier,
-    ) {
+    Box(modifier = modifier) {
         content()
     }
 }

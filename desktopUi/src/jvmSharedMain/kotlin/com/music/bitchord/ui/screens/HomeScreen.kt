@@ -64,6 +64,9 @@ import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Storage
 import com.music.bitchord.ui.icons.BitChordIcons
 import coil3.compose.AsyncImage
+import coil3.compose.LocalPlatformContext
+import com.music.bitchord.ui.components.PrefetchVerticalArtworkAhead
+import com.music.bitchord.ui.components.prefetchArtwork
 import com.music.bitchord.data.model.CARD_ART_PX
 import com.music.bitchord.data.model.HEADER_ART_PX
 import com.music.bitchord.data.model.HomeShelf
@@ -280,6 +283,30 @@ fun HomeScreen(
     }
     }
 
+    if (state is UiState.Success) {
+        val verticalShelvesArtwork = remember(state.data) {
+            state.data.map { shelf ->
+                val count = minOf(shelf.items.size, 6)
+                shelf.items.take(count).map { item ->
+                    if (shelf.layout == ShelfLayout.VIDEO) item.thumbnailUrl
+                    else if (shelf.layout == ShelfLayout.CARDS && shelf == state.data.firstOrNull()) item.thumbnailUrl.artworkAt(HEADER_ART_PX)
+                    else item.thumbnailUrl.artworkAt(CARD_ART_PX)
+                }
+            }
+        }
+        PrefetchVerticalArtworkAhead(
+            state = listState,
+            artworkByItem = verticalShelvesArtwork,
+            ahead = 3,
+        )
+        val context = LocalPlatformContext.current
+        LaunchedEffect(verticalShelvesArtwork) {
+            if (verticalShelvesArtwork.isNotEmpty()) {
+                prefetchArtwork(context, verticalShelvesArtwork.take(3).flatten())
+            }
+        }
+    }
+
     if (onLoadMore != null && state is UiState.Success) {
         val loadMore by rememberUpdatedState(onLoadMore)
         // Re-checked on every layout change, rather than on the rising edge of
@@ -380,9 +407,15 @@ private fun RecentShelf(
             BoxWithConstraints {
                 val columnWidth = trackColumnWidth(maxWidth)
                 val chunkedColumns = remember(shelf.items) { shelf.items.chunked(RECENT_TRACKS_PER_COLUMN) }
+                val columnArtwork = remember(chunkedColumns) {
+                    chunkedColumns.map { col ->
+                        col.map { it.thumbnailUrl.artworkAt(ROW_ART_PX) }
+                    }
+                }
                 ShelfRow(
                     contentPadding = PaddingValues(horizontal = PAGE_GUTTER),
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    artworkGroups = columnArtwork,
                 ) {
                     items(
                         chunkedColumns,
@@ -405,9 +438,13 @@ private fun RecentShelf(
         } else {
             BoxWithConstraints {
                 val cardWidth = heroCardWidth(maxWidth)
+                val heroArtwork = remember(shelf.items) {
+                    shelf.items.map { it.thumbnailUrl.artworkAt(HEADER_ART_PX) }
+                }
                 ShelfRow(
                     contentPadding = PaddingValues(horizontal = PAGE_GUTTER),
                     horizontalArrangement = Arrangement.spacedBy(14.dp),
+                    artwork = heroArtwork,
                 ) {
                     items(shelf.items) { item ->
                         HeroCard(
