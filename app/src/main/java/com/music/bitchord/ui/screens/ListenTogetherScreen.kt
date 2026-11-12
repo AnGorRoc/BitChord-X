@@ -3,6 +3,7 @@ package com.music.bitchord.ui.screens
 import com.music.bitchord.ui.icons.SfIcons
 import android.content.Intent
 import android.text.format.DateFormat
+import android.util.Log
 import android.widget.Toast
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.LinearEasing
@@ -49,8 +50,17 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.Surface
+import androidx.compose.foundation.clickable
 import com.music.bitchord.ui.components.IosSwitch
 import com.music.bitchord.ui.components.QrCode
+import com.music.bitchord.ui.components.QrScannerDialog
+import com.music.bitchord.data.listentogether.spotify.SpotifyJamBridge
+import com.music.bitchord.data.listentogether.spotify.SpotifyJamApi
+import com.music.bitchord.data.listentogether.spotify.SpotifyAccountTier
+import com.music.bitchord.data.listentogether.spotify.SpotifyJamMember
+import com.music.bitchord.data.listentogether.spotify.SpotifyJamSession
+import com.music.bitchord.data.canvas.SpotifyToken
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -137,6 +147,7 @@ fun ListenTogetherScreen(
     signedIn: Boolean,
     inviteCode: String? = null,
     inviteServer: String? = null,
+    inviteSpotifyToken: String? = null,
     onInviteHandled: () -> Unit = {},
     onSignIn: () -> Unit,
     contentPadding: PaddingValues,
@@ -156,6 +167,7 @@ fun ListenTogetherScreen(
     val customServer by ListenTogether.customServerUrl.collectAsStateWithLifecycle()
     val connectionState by ListenTogether.serverConnectionState.collectAsStateWithLifecycle()
     val activity by ListenTogether.activity.collectAsStateWithLifecycle()
+    val spotifySession by SpotifyJamBridge.session.collectAsStateWithLifecycle()
 
     var codeInput by remember(inviteCode) { mutableStateOf(inviteCode.orEmpty()) }
     var busy by remember { mutableStateOf(false) }
@@ -165,6 +177,16 @@ fun ListenTogetherScreen(
     var pendingServerSwitchInvite by remember { mutableStateOf<Pair<String, String>?>(null) }
     var sharingApk by remember { mutableStateOf(false) }
     var sheet by remember { mutableStateOf<PartySheet?>(null) }
+    var showQrScanner by remember { mutableStateOf(false) }
+    var spotifyTier by remember { mutableStateOf(SpotifyAccountTier.UNKNOWN) }
+    var spotifyJamEnabled by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        spotifyTier = runCatching { SpotifyToken.accountTier() }.getOrDefault(SpotifyAccountTier.UNKNOWN)
+        if (spotifyTier.canHostJam) {
+            spotifyJamEnabled = true
+        }
+    }
 
     // Hoisted so a sheet can be *animated* away rather than dropped out of the
     // composition, which is the only way one sheet can hand over to another:
@@ -252,7 +274,20 @@ fun ListenTogetherScreen(
 
     // A link tap is already an explicit request to join. Signed-out users keep
     // the populated code while the sign-in page is open.
-    LaunchedEffect(inviteCode, inviteServer, signedIn) {
+    LaunchedEffect(inviteCode, inviteServer, inviteSpotifyToken, signedIn) {
+        if (!inviteSpotifyToken.isNullOrBlank()) {
+            val token = inviteSpotifyToken
+            busy = true
+            failure = null
+            scope.launch {
+                SpotifyJamBridge.joinJam(token)
+                    .onFailure { failure = it.message }
+                busy = false
+            }
+            onInviteHandled()
+            return@LaunchedEffect
+        }
+
         val code = inviteCode ?: return@LaunchedEffect
         if (!signedIn || busy) return@LaunchedEffect
 
@@ -374,12 +409,20 @@ fun ListenTogetherScreen(
                     busy = busy,
                     enabled = signedIn && ListenTogether.hasServer,
                     error = failure,
+                    spotifyTier = spotifyTier,
+                    spotifyJamEnabled = spotifyJamEnabled,
+                    onSpotifyJamEnabledChange = { spotifyJamEnabled = it },
                     onCreate = {
                         busy = true
                         failure = null
                         scope.launch {
-                            failure = ListenTogether.createParty(nickname, maxMembers)
-                                .exceptionOrNull()?.message
+                            val res = ListenTogether.createParty(nickname, maxMembers)
+                            failure = res.exceptionOrNull()?.message
+                            if (failure == null && spotifyJamEnabled && spotifyTier.canHostJam) {
+                                SpotifyJamBridge.createJam().onFailure { err ->
+                                    Log.w("ListenTogether", "Spotify Jam creation failed: ${err.message}")
+                                }
+                            }
                             busy = false
                             if (failure == null) showInviteAfterCreate()
                         }
@@ -400,6 +443,7 @@ fun ListenTogetherScreen(
                     busy = busy,
                     enabled = signedIn && ListenTogether.hasServer,
                     error = failure,
+                    onScanQr = { showQrScanner = true },
                     onSubmit = { openPartyPreview(codeInput, null) },
                 )
 
@@ -460,9 +504,26 @@ fun ListenTogetherScreen(
                 PartySheet.Invite -> InviteSheet(
                     code = state.code.orEmpty(),
                     link = inviteLinkFor(state.code.orEmpty()),
+                    spotifyJamUrl = spotifySession?.joinSessionUrl,
                     onShareLink = {
                         sheet = null
                         shareInvite()
+                    },
+                    onShareSpotifyJam = {
+                        sheet = null
+                        spotifySession?.joinSessionUrl?.let { jamUrl ->
+                            val message = jamUrl + System.lineSeparator() + System.lineSeparator() +
+                                context.getString(R.string.listen_together_share_spotify_jam_text)
+                            context.startActivity(
+                                Intent.createChooser(
+                                    Intent(Intent.ACTION_SEND).apply {
+                                        type = "text/plain"
+                                        putExtra(Intent.EXTRA_TEXT, message)
+                                    },
+                                    null,
+                                ),
+                            )
+                        }
                     },
                     onCopyCode = {
                         scope.launch { clipboard.copyText(state.code.orEmpty()) }
@@ -475,6 +536,45 @@ fun ListenTogetherScreen(
                 )
             }
         }
+    }
+
+    if (showQrScanner) {
+        QrScannerDialog(
+            onDismiss = { showQrScanner = false },
+            onScanned = { scannedText ->
+                showQrScanner = false
+                scope.launch {
+                    val resolvedJam = SpotifyJamApi.resolveInvite(scannedText)
+                    if (resolvedJam != null) {
+                        busy = true
+                        failure = null
+                        SpotifyJamBridge.joinJam(resolvedJam.sessionToken)
+                            .onFailure { failure = it.message }
+                        busy = false
+                    } else {
+                        val parsed = JamInviteLink.parseInvite(scannedText)
+                        if (parsed != null) {
+                            if (parsed.isSpotifyJam && parsed.spotifyJamToken != null) {
+                                busy = true
+                                failure = null
+                                SpotifyJamBridge.joinJam(parsed.spotifyJamToken)
+                                    .onFailure { failure = it.message }
+                                busy = false
+                            } else {
+                                openPartyPreview(parsed.code, parsed.serverUrl)
+                            }
+                        } else {
+                            val code = scannedText.filter(Char::isLetterOrDigit).uppercase().take(ListenTogether.CODE_LENGTH)
+                            if (code.length == ListenTogether.CODE_LENGTH) {
+                                openPartyPreview(code, null)
+                            } else {
+                                failure = context.getString(R.string.listen_together_invalid_qr)
+                            }
+                        }
+                    }
+                }
+            }
+        )
     }
 
     Column(
@@ -514,10 +614,41 @@ fun ListenTogetherScreen(
             InAParty(
                 state = state,
                 inviteLink = inviteLinkFor(state.code.orEmpty()),
+                spotifySession = spotifySession,
                 onCopy = { scope.launch { clipboard.copyText(state.code.orEmpty()) } },
                 onShare = { sheet = PartySheet.Invite },
                 onShareLink = shareInvite,
-                onLeave = { scope.launch { ListenTogether.leaveParty() } },
+                onShareSpotifyJam = {
+                    spotifySession?.joinSessionUrl?.let { jamUrl ->
+                        val message = jamUrl + System.lineSeparator() + System.lineSeparator() +
+                            context.getString(R.string.listen_together_share_spotify_jam_text)
+                        context.startActivity(
+                            Intent.createChooser(
+                                Intent(Intent.ACTION_SEND).apply {
+                                    type = "text/plain"
+                                    putExtra(Intent.EXTRA_TEXT, message)
+                                },
+                                null,
+                            ),
+                        )
+                    }
+                },
+                onCopySpotifyJam = {
+                    spotifySession?.joinSessionUrl?.let { jamUrl ->
+                        scope.launch { clipboard.copyText(jamUrl) }
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.listen_together_share_spotify_jam),
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    }
+                },
+                onLeave = {
+                    scope.launch {
+                        SpotifyJamBridge.leaveJam()
+                        ListenTogether.leaveParty()
+                    }
+                },
                 onSetCapacity = ListenTogether::setMaxMembers,
                 onSetHostOnlyControl = ListenTogether::setHostOnlyControl,
                 onKick = ListenTogether::kick,
@@ -886,17 +1017,26 @@ private fun CodeCell(
 private fun InAParty(
     state: ListenTogether.State,
     inviteLink: String,
+    spotifySession: SpotifyJamSession? = null,
     onCopy: () -> Unit,
     onShare: () -> Unit,
     onShareLink: () -> Unit,
+    onShareSpotifyJam: () -> Unit = {},
+    onCopySpotifyJam: () -> Unit = {},
     onLeave: () -> Unit,
     onSetCapacity: (Int) -> Unit,
     onSetHostOnlyControl: (Boolean) -> Unit,
     onKick: (String) -> Unit,
 ) {
+    var activeQrTab by remember { mutableIntStateOf(0) }
+
     SettingsGroup(
         header = stringResource(R.string.listen_together_code),
-        footer = stringResource(R.string.listen_together_code_footer),
+        footer = if (activeQrTab == 1) {
+            stringResource(R.string.listen_together_scan_spotify_jam_subtitle)
+        } else {
+            stringResource(R.string.listen_together_code_footer)
+        },
     ) {
         Column(
             modifier = Modifier
@@ -904,42 +1044,117 @@ private fun InAParty(
                 .padding(vertical = 20.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            if (inviteLink.isNotBlank()) {
+            if (spotifySession != null && spotifySession.joinSessionUrl.isNotBlank()) {
+                Row(
+                    modifier = Modifier
+                        .padding(bottom = 16.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
+                        .padding(4.dp),
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    Surface(
+                        modifier = Modifier.clickable { activeQrTab = 0 },
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (activeQrTab == 0) MaterialTheme.colorScheme.surface else Color.Transparent,
+                        shadowElevation = if (activeQrTab == 0) 2.dp else 0.dp,
+                    ) {
+                        Text(
+                            text = "BitChord",
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                            color = if (activeQrTab == 0) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    Surface(
+                        modifier = Modifier.clickable { activeQrTab = 1 },
+                        shape = RoundedCornerShape(8.dp),
+                        color = if (activeQrTab == 1) MaterialTheme.colorScheme.surface else Color.Transparent,
+                        shadowElevation = if (activeQrTab == 1) 2.dp else 0.dp,
+                    ) {
+                        Text(
+                            text = "Spotify Jam",
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                            color = if (activeQrTab == 1) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+            }
+
+            if (activeQrTab == 1 && spotifySession != null && spotifySession.joinSessionUrl.isNotBlank()) {
                 QrCode(
-                    content = inviteLink,
+                    content = spotifySession.joinSessionUrl,
                     size = 160.dp,
-                    codeText = state.code,
+                    codeText = "Spotify Jam",
                     modifier = Modifier.border(
                         1.dp,
-                        Color.Black.copy(alpha = 0.08f),
+                        Color(0xFF1DB954).copy(alpha = 0.35f),
                         RoundedCornerShape(16.dp),
                     ),
                 )
                 Spacer(Modifier.height(16.dp))
+                Text(
+                    text = "SPOTIFY JAM",
+                    style = MaterialTheme.typography.titleMedium.copy(
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 4.sp,
+                    ),
+                    color = Color(0xFF1DB954),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            } else {
+                if (inviteLink.isNotBlank()) {
+                    QrCode(
+                        content = inviteLink,
+                        size = 160.dp,
+                        codeText = state.code,
+                        modifier = Modifier.border(
+                            1.dp,
+                            Color.Black.copy(alpha = 0.08f),
+                            RoundedCornerShape(16.dp),
+                        ),
+                    )
+                    Spacer(Modifier.height(16.dp))
+                }
+                Text(
+                    text = state.code.orEmpty(),
+                    style = MaterialTheme.typography.displaySmall.copy(
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 8.sp,
+                    ),
+                    color = MaterialTheme.colorScheme.onBackground,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth(),
+                )
             }
-            Text(
-                text = state.code.orEmpty(),
-                style = MaterialTheme.typography.displaySmall.copy(
-                    fontWeight = FontWeight.Bold,
-                    letterSpacing = 8.sp,
-                ),
-                color = MaterialTheme.colorScheme.onBackground,
-                textAlign = TextAlign.Center,
-                modifier = Modifier.fillMaxWidth(),
-            )
         }
         RowDivider()
-        SettingsRow(
-            icon = SfIcons.ContentCopy,
-            title = stringResource(R.string.copy_code),
-            onClick = onCopy,
-        )
-        RowDivider()
-        SettingsRow(
-            icon = SfIcons.Share,
-            title = stringResource(R.string.share),
-            onClick = onShare,
-        )
+        if (activeQrTab == 1 && spotifySession != null) {
+            SettingsRow(
+                icon = SfIcons.ContentCopy,
+                title = stringResource(R.string.listen_together_share_spotify_jam),
+                onClick = onCopySpotifyJam,
+            )
+            RowDivider()
+            SettingsRow(
+                icon = SfIcons.Share,
+                title = stringResource(R.string.share),
+                onClick = onShareSpotifyJam,
+            )
+        } else {
+            SettingsRow(
+                icon = SfIcons.ContentCopy,
+                title = stringResource(R.string.copy_code),
+                onClick = onCopy,
+            )
+            RowDivider()
+            SettingsRow(
+                icon = SfIcons.Share,
+                title = stringResource(R.string.share),
+                onClick = onShare,
+            )
+        }
     }
 
     NowPlayingInTheParty(state)
@@ -947,8 +1162,8 @@ private fun InAParty(
     SettingsGroup(
         header = stringResource(
             R.string.listen_together_listening,
-            state.members.size,
-            state.maxMembers,
+            state.members.size + (spotifySession?.members?.size ?: 0),
+            state.maxMembers + (spotifySession?.members?.size ?: 0),
         ),
         footer = stringResource(R.string.listen_together_members_footer, state.maxMembers),
     ) {
@@ -987,6 +1202,13 @@ private fun InAParty(
         state.members.forEachIndexed { index, member ->
             if (index > 0) RowDivider()
             MemberRow(member = member, isYou = member.memberId == state.you?.memberId, canKick = state.you?.isHost == true && !member.isHost, onKick = { onKick(member.memberId) })
+        }
+        if (spotifySession != null && spotifySession.members.isNotEmpty()) {
+            RowDivider()
+            spotifySession.members.forEach { spotifyMember ->
+                SpotifyMemberRow(member = spotifyMember)
+                RowDivider()
+            }
         }
     }
 
@@ -1152,6 +1374,57 @@ private fun MemberRow(member: PartyMember, isYou: Boolean, canKick: Boolean = fa
             Badge(stringResource(R.string.listen_together_host))
         } else if (canKick) {
             TextButton(onClick = onKick) { Text(stringResource(R.string.listen_together_remove)) }
+        }
+    }
+}
+
+@Composable
+private fun SpotifyMemberRow(member: SpotifyJamMember) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 52.dp)
+            .padding(horizontal = ROW_INSET, vertical = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(32.dp)
+                .clip(CircleShape)
+                .background(Color(0xFF1DB954).copy(alpha = 0.15f)),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (member.avatarUrl != null) {
+                AsyncImage(
+                    model = member.avatarUrl,
+                    contentDescription = null,
+                    modifier = Modifier.size(32.dp).clip(CircleShape),
+                )
+            } else {
+                Text(
+                    text = (member.displayName.ifBlank { member.username }).take(1).uppercase(),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = Color(0xFF1DB954),
+                )
+            }
+        }
+        Spacer(Modifier.width(14.dp))
+        Column(Modifier.weight(1f)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = member.displayName.ifBlank { member.username },
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Spacer(Modifier.width(8.dp))
+                Badge("Spotify")
+            }
+        }
+        if (member.isHost) {
+            Spacer(Modifier.width(8.dp))
+            Badge(stringResource(R.string.listen_together_host))
         }
     }
 }

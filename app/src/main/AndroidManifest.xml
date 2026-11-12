@@ -60,6 +60,10 @@
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
 
+    <!-- Camera permission for in-app QR code scanning (e.g. Listen Together & Spotify Jam). -->
+    <uses-permission android:name="android.permission.CAMERA" />
+    <uses-feature android:name="android.hardware.camera" android:required="false" />
+
     <application
         android:name=".BitChordApplication"
         android:allowBackup="true"
@@ -235,6 +239,8 @@
                 <data android:host="open.spotify.com" android:pathPattern=".*/album/.*" />
                 <data android:host="open.spotify.com" android:pathPattern=".*/playlist/.*" />
                 <data android:host="open.spotify.com" android:pathPattern=".*/artist/.*" />
+                <data android:host="open.spotify.com" android:pathPattern=".*/socialsession/.*" />
+                <data android:host="open.spotify.com" android:pathPattern=".*/jam/.*" />
                 <data android:host="music.apple.com" android:pathPattern=".*/song/.*" />
                 <data android:host="music.apple.com" android:pathPattern=".*/album/.*" />
                 <data android:host="music.apple.com" android:pathPattern=".*/playlist/.*" />
@@ -264,6 +270,15 @@
                 <data android:host="on.soundcloud.com" />
                 <data android:host="music.amazon.com" />
                 <data android:host="music.amazon.es" />
+            </intent-filter>
+
+            <!-- Spotify Jam custom scheme: spotify:socialsession:<token> or spotify:jam:<token> -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="spotify" android:host="socialsession" />
+                <data android:scheme="spotify" android:host="jam" />
             </intent-filter>
 
             <!-- Public Listen Together invites. autoVerify makes a tap open

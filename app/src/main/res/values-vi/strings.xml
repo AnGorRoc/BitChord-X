@@ -959,45 +959,108 @@
 
     <string name="listen_together">Listen together</string>
 
+    <string name="listen_together_subtitle">Share a code and play the same music, in time</string>
+
+    <string name="listen_together_in_party">In a party · %1$s</string>
+
+    <string name="listen_together_sign_in_footer">Listening together needs an account, so everyone in the party can see who else is in it.</string>
+
+    <string name="listen_together_server">Party server</string>
+
+    <string name="listen_together_server_online">Online · %1$d ms</string>
+
+    <string name="listen_together_server_offline">Can’t be reached right now</string>
+
+    <string name="listen_together_server_checking">Checking…</string>
+
+    <string name="listen_together_server_unknown">Tap to check</string>
+
+    <string name="listen_together_custom_server">Use your own server</string>
+
+    <string name="listen_together_custom_server_footer">Để trống mục này để sử dụng máy chủ mặc định. Nếu bạn chạy bản sao riêng, mọi người trong nhóm phải trỏ đến cùng một máy chủ.</string>
+
+    <string name="listen_together_using_default">Đang sử dụng máy chủ mặc định</string>
+    <string name="listen_together_remove_server">Xóa máy chủ</string>
+    <string name="listen_together_switched_to_default">Đã chuyển sang máy chủ mặc định</string>
+
+    <string name="listen_together_create">Create a party</string>
 
 
 
+    <string name="listen_together_join">Join a party</string>
 
+    <string name="listen_together_join_action">Join</string>
 
+    <string name="listen_together_code_hint">Six letters or digits</string>
 
+    <string name="listen_together_code">Party code</string>
 
-
-
-
-
-
-
-
-
-
-
-
+    <string name="listen_together_code_footer">Read it out or send it. O and I aren’t used, so an “oh” is always a zero.</string>
 
     <string name="copy_code">Copy code</string>
 
+    <string name="listen_together_share_text">Listen with me on BitChord — party code %1$s</string>
 
+    <string name="listen_together_now_playing">Now playing</string>
 
+    <string name="listen_together_nothing_playing">Nothing playing yet</string>
 
+    <string name="listen_together_listening">Listening · %1$d of %2$d</string>
 
+    <string name="listen_together_members_footer">A party holds %1$d devices. Anyone in it can control the music.</string>
 
+    <string name="listen_together_you">You</string>
 
+    <string name="listen_together_host">Host</string>
 
+    <string name="listen_together_away">Away — their slot is held</string>
 
+    <string name="listen_together_create_action">Tạo bữa tiệc</string>
+    <string name="listen_together_create_sheet_subtitle">Chọn cách bạn xuất hiện và số người có thể tham gia.</string>
+    <string name="listen_together_creating">Đang tạo…</string>
+    <string name="listen_together_full">Bữa tiệc đã đầy</string>
+    <string name="listen_together_invite_title">Mời bạn bè vào bữa tiệc</string>
+    <string name="listen_together_join_existing">Tham gia bữa tiệc có sẵn</string>
+    <string name="listen_together_join_question">Tham gia bữa tiệc của %1$s?</string>
+    <string name="listen_together_join_question_unnamed">Tham gia bữa tiệc này?</string>
+    <string name="listen_together_joining">Đang tham gia…</string>
+    <string name="listen_together_landing_subtitle">Vì âm nhạc hay hơn khi nghe cùng nhau. Mời bạn bè cùng nghe và thêm bài hát theo thời gian thực, dù họ ở đâu.</string>
+    <string name="listen_together_landing_title">Bắt đầu một bữa tiệc</string>
+    <string name="listen_together_not_now">Để sau</string>
+    <string name="listen_together_preview_footer">Mọi người trong bữa tiệc sẽ thấy tên và ảnh đại diện của bạn.</string>
+    <string name="listen_together_scan_qr">Quét mã QR</string>
+    <string name="listen_together_scan_qr_subtitle">Để bạn bè quét mã này và tham gia.</string>
+    <string name="listen_together_share_link">Chia sẻ liên kết</string>
+    <string name="listen_together_host_only">Chỉ tôi điều khiển nhạc</string>
+    <string name="listen_together_host_only_subtitle">Những người khác cùng nghe và có thể tạm dừng trên thiết bị của họ</string>
+    <string name="listen_together_host_only_notice">Chỉ chủ phòng mới có thể điều khiển nhạc</string>
 
+    <string name="listen_together_leave">Leave the party</string>
 
+    <string name="listen_together_leave_subtitle">The others carry on listening</string>
 
+    <string name="listen_together_reconnecting">Reconnecting…</string>
 
+    <string name="listen_together_syncing_clock">Measuring the clock…</string>
 
+    <string name="listen_together_in_sync">In sync · %1$d ms round trip</string>
 
 
 
 
     <string name="party_queue_full">Queue is full (maximum %d songs in party)</string>
+    <string name="listen_together_nickname_hint">Nickname for this party</string>
+    <string name="listen_together_party_size">Party size</string>
+    <string name="listen_together_party_size_subtitle">Choose 2–10 listeners</string>
+    <string name="listen_together_host_controls">Only you can change capacity or remove listeners</string>
+    <string name="listen_together_remove">Remove</string>
+    <string name="listen_together_activity">Recent activity</string>
+    <string name="listen_together_activity_footer">This session only · latest first · up to 100 actions</string>
+    <string name="listen_together_custom_server_dialog_title">Join party on custom server?</string>
+    <string name="listen_together_custom_server_dialog_message">This party is hosted on an external server:\n\n%1$s\n\nDo you want to switch your party server and join party %2$s?</string>
+    <string name="listen_together_custom_server_switch_and_join">Switch &amp; Join</string>
+    <string name="listen_together_official_server_dialog_title">Switch to official server?</string>
+    <string name="listen_together_official_server_dialog_message">This party is hosted on the official BitChord server.\n\nDo you want to switch back to the official server and join party %1$s?</string>
     <string name="cast_dialog_title">Cast</string>
     <string name="cast_dialog_subtitle">Play on a Chromecast or Google Cast speaker</string>
     <string name="cast_searching">Looking for devices…</string>
@@ -1016,6 +1079,22 @@
     <plurals name="added_to_playlists_notice">
         <item quantity="other">Đã thêm vào %1$d danh sách phát</item>
     </plurals>
+    <string name="listen_together_server_online_fallback">Trực tuyến (dự phòng mặc định) · %1$d ms</string>
+    <string name="listen_together_ping">%1$d ms</string>
+    <string name="listen_together_server_offline_dash">—</string>
+    <string name="listen_together_invalid_server_url">URL máy chủ không hợp lệ. Vui lòng nhập địa chỉ hợp lệ (ví dụ: https://your-server.com)</string>
+    <string name="listen_together_err_whitespace">URL máy chủ không được chứa khoảng trắng</string>
+    <string name="listen_together_err_invalid_path">Đường dẫn URL máy chủ không hợp lệ</string>
+    <string name="listen_together_err_no_path">URL máy chủ không được bao gồm đường dẫn</string>
+    <string name="listen_together_err_no_query">URL máy chủ không được bao gồm tham số truy vấn</string>
+    <string name="listen_together_err_no_fragment">URL máy chủ không được bao gồm phân đoạn (fragment)</string>
+    <string name="listen_together_err_invalid_port">Cổng máy chủ phải nằm trong khoảng từ 1 đến 65535</string>
+    <string name="listen_together_custom_server_connected">Đã kết nối với máy chủ tùy chỉnh</string>
+    <string name="listen_together_custom_server_unreachable_fallback">Không thể kết nối máy chủ tùy chỉnh. Đang sử dụng máy chủ mặc định dự phòng.</string>
+    <string name="listen_together_status_custom_online">Đã kết nối với máy chủ tùy chỉnh · %1$d ms</string>
+    <string name="listen_together_status_custom_fallback">Máy chủ tùy chỉnh không thể kết nối · Đang dùng mặc định dự phòng (%1$d ms)</string>
+    <string name="listen_together_status_all_offline">Cả máy chủ tùy chỉnh và máy chủ mặc định đều ngoại tuyến</string>
+    <string name="listen_together_top_bar_fallback">Dự phòng · %1$s</string>
     <string name="spotify_canvas_auto_hide">Tự động ẩn điều khiển trình phát</string>
     <string name="spotify_canvas_auto_hide_subtitle">Thu gọn nửa trình phát sau 5 giây khi Spotify Canvas đang phát</string>
     <string name="prioritize_spotify_canvas">Ưu tiên Spotify Canvas</string>
@@ -1202,6 +1281,12 @@
     <string name="auto_download_playlists">Tự động tải bài hát mới trong danh sách phát</string>
     <string name="cover_save_failed">Không thể lưu ảnh bìa</string>
     <string name="cover_saved">Đã lưu %1$s</string>
+    <string name="listen_together_share_apk">Gửi ứng dụng cho bạn bè</string>
+    <string name="listen_together_share_apk_error">Không thể chuẩn bị ứng dụng để chia sẻ</string>
+    <string name="listen_together_share_apk_subtitle">Gửi tệp để cài đặt BitChord</string>
+    <string name="listen_together_share_app_footer">Gửi ứng dụng trực tiếp cho bạn bè qua WhatsApp, Quick Share hoặc bất kỳ cuộc trò chuyện nào để họ cài đặt và tham gia bữa tiệc của bạn ngay.</string>
+    <string name="listen_together_share_app_header">Mời bạn bè</string>
+    <string name="listen_together_sharing_apk">Đang chuẩn bị gửi…</string>
     <string name="offline_mode">Chế độ ngoại tuyến</string>
     <string name="offline_mode_detected">Không có kết nối</string>
     <string name="offline_mode_subtitle">Chỉ phát các tệp đã tải xuống. Luôn bật cho đến khi bạn tắt.</string>
@@ -1418,6 +1503,23 @@
     <string name="glass_performance">Better Performance for Glass</string>
     <string name="full_screen_detail_cover">Full-screen album/playlist cover</string>
     <string name="full_screen_detail_cover_subtitle">Runs album and playlist covers to the edges of the page instead of a framed sleeve</string>
+    <string name="listen_together_scan_qr_action">Scan QR code</string>
+    <string name="listen_together_camera_permission_title">Camera permission needed</string>
+    <string name="listen_together_camera_permission_desc">To scan party or Spotify Jam QR codes directly, allow camera access.</string>
+    <string name="listen_together_grant_permission">Grant permission</string>
+    <string name="listen_together_scan_qr_prompt">Point the camera at a BitChord or Spotify Jam QR code</string>
+    <string name="listen_together_gallery_qr">Scan from gallery</string>
+    <string name="listen_together_paste_link">Paste link from clipboard</string>
+    <string name="listen_together_invalid_qr">No valid party code or Spotify Jam link found</string>
+    <string name="listen_together_spotify_jam_title">Spotify Jam bridge</string>
+    <string name="listen_together_spotify_jam_premium_subtitle">Spotify Premium connected. Friends on Spotify can join your Jam directly.</string>
+    <string name="listen_together_spotify_jam_free_subtitle">Spotify Free account. You can join existing Jams; host Jam creation requires Premium.</string>
+    <string name="listen_together_spotify_jam_disconnected_subtitle">Connect Spotify in Settings to sync and host Spotify Jams.</string>
+    <string name="listen_together_share_spotify_jam">Share Spotify Jam link</string>
+    <string name="listen_together_share_spotify_jam_text">Join my Spotify Jam via BitChord</string>
+    <string name="listen_together_scan_spotify_jam_qr">Scan Spotify Jam QR</string>
+    <string name="listen_together_scan_spotify_jam_subtitle">Spotify users can scan this code using the Spotify app camera</string>
+    <string name="listen_together_spotify_members">Spotify Jam members</string>
     <string name="created_by_bitchord">Created by BitChord</string>
     <string name="trending_title">Trending</string>
     <string name="region_global">Global</string>

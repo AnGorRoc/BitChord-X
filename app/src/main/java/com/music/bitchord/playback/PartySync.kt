@@ -3,6 +3,7 @@ package com.music.bitchord.playback
 import android.os.SystemClock
 import androidx.media3.common.Player
 import com.music.bitchord.data.DebugLog as Log
+import com.music.bitchord.data.listentogether.spotify.SpotifyJamBridge
 import com.music.bitchord.data.listentogether.ListenTogether
 import com.music.bitchord.data.listentogether.PartyTrack
 import com.music.bitchord.data.listentogether.partyQueueIndexOf
@@ -828,10 +829,16 @@ class PartySync(
                 // played the wrong song.
                 ListenTogether.setTrack(track, position, wantsPlaying)
                 playbackControls++
+                if (SpotifyJamBridge.isBridgeActive) {
+                    SpotifyJamBridge.onLocalTrackChanged(song, position, wantsPlaying)
+                }
             }
             party.playback.isPlaying != wantsPlaying -> {
                 if (wantsPlaying) ListenTogether.play(position) else ListenTogether.pause(position)
                 playbackControls++
+                if (SpotifyJamBridge.isBridgeActive) {
+                    if (wantsPlaying) SpotifyJamBridge.onLocalPlay(position) else SpotifyJamBridge.onLocalPause(position)
+                }
             }
             // Same track, same playing state — so what the user did was move
             // the playhead. Unless it did not move far, in which case this is
@@ -847,6 +854,9 @@ class PartySync(
                 if (partyPosition == null || abs(position - partyPosition) > SEEK_REPORT_FLOOR_MS) {
                     ListenTogether.seek(position)
                     playbackControls++
+                    if (SpotifyJamBridge.isBridgeActive) {
+                        SpotifyJamBridge.onLocalSeek(position)
+                    }
                 }
             }
         }

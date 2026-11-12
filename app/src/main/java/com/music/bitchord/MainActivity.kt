@@ -945,6 +945,7 @@ private fun BitChordApp(
     val incomingJamInvite by JamInviteLink.pending.collectAsStateWithLifecycle()
     var activeJamInviteCode by rememberSaveable { mutableStateOf<String?>(null) }
     var activeJamInviteServer by rememberSaveable { mutableStateOf<String?>(null) }
+    var activeJamInviteSpotifyToken by rememberSaveable { mutableStateOf<String?>(null) }
 
     // An invite is navigation and an action: reveal the Jam settings page now,
     // then let that page join once an account is available. Keeping the code
@@ -953,6 +954,7 @@ private fun BitChordApp(
         val invite = incomingJamInvite ?: return@LaunchedEffect
         activeJamInviteCode = invite.code
         activeJamInviteServer = invite.serverUrl
+        activeJamInviteSpotifyToken = invite.spotifyJamToken
         dismissPlayer()
         replayStory = null
         showReplayShare = false
@@ -3332,9 +3334,11 @@ private fun BitChordApp(
                                 signedIn = signedIn,
                                 inviteCode = activeJamInviteCode,
                                 inviteServer = activeJamInviteServer,
+                                inviteSpotifyToken = activeJamInviteSpotifyToken,
                                 onInviteHandled = {
                                     activeJamInviteCode = null
                                     activeJamInviteServer = null
+                                    activeJamInviteSpotifyToken = null
                                 },
                                 onSignIn = {
                                     navigator.clear()

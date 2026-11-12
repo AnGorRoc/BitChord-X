@@ -575,5 +575,30 @@ class JamInviteLinkTest {
         assertEquals("Job A's late publication must be dropped", "https://server-b.example.com", currentEffective)
         assertEquals(ServerConnectionState.CustomOnline(25L), currentState)
     }
+
+    // -------------------------------------------------------------------------
+    // Spotify Jam Scheme & Link Parsing
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `parses spotify jam web link`() {
+        val invite = JamInviteLink.parseInvite("https://open.spotify.com/socialsession/abcdef1234567890?si=sample")
+        assertTrue(invite?.isSpotifyJam == true)
+        assertEquals("abcdef1234567890", invite?.spotifyJamToken)
+    }
+
+    @Test
+    fun `parses spotify jam short path link`() {
+        val invite = JamInviteLink.parseInvite("https://open.spotify.com/jam/tok12345")
+        assertTrue(invite?.isSpotifyJam == true)
+        assertEquals("tok12345", invite?.spotifyJamToken)
+    }
+
+    @Test
+    fun `parses spotify uri scheme`() {
+        val invite = JamInviteLink.parseInvite("spotify:socialsession:abc_token_xyz")
+        assertTrue(invite?.isSpotifyJam == true)
+        assertEquals("abc_token_xyz", invite?.spotifyJamToken)
+    }
 }
 
