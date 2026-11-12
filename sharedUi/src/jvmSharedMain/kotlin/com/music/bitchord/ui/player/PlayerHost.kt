@@ -135,6 +135,12 @@ interface PlayerHost {
     fun comeBackToThisDevice() {}
 
     /**
+     * "Start a party" or "Join" in the Connect sheet: remembered for the Listen Together screen,
+     * which the caller then opens, so it lands on the right sheet.
+     */
+    fun requestPartyAction(action: PartyAction) {}
+
+    /**
      * The BitChord watch app as an output: the watch plays the queue the way a
      * Cast receiver does. Absent, and so never drawn, where there is no watch.
      */
@@ -373,6 +379,9 @@ data class PartyUi(
      */
     val addedBy: Map<String, AddedByUi> = emptyMap(),
 )
+
+/** What the Connect sheet can ask of the party screen. */
+enum class PartyAction { START, JOIN }
 
 /** The person who queued a song. */
 data class AddedByUi(val name: String, val avatarUrl: String?)

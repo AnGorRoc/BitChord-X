@@ -1584,4 +1584,14 @@
     <string name="trending_title">Trending</string>
     <string name="region_global">Global</string>
     <string name="region_auto">Automatic (IP)</string>
+    <string name="listen_together_you_header">你</string>
+    <string name="listen_together_you_footer">你的名稱是其他人在派對中看到的名稱。裝置名稱是這部裝置在「連線」中與你其他裝置並列顯示的名稱。</string>
+    <string name="listen_together_your_name">你在派對中的名稱</string>
+    <string name="listen_together_name_default">你的帳號名稱</string>
+    <string name="listen_together_device_name">此裝置的名稱</string>
+    <string name="listen_together_name_hint">名稱</string>
+    <string name="listen_together_play_here">在此裝置上播放</string>
+    <string name="listen_together_play_here_on">你在這裡聽到，其他人在各自的裝置上聽到。</string>
+    <string name="listen_together_play_here_off">聲音只來自主持人。你仍可查看並控制派對。</string>
+    <string name="listen_together_silent_member">透過主持人收聽</string>
 </resources>

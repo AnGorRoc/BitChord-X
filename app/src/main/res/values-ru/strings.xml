@@ -1631,4 +1631,14 @@
     <string name="trending_title">Trending</string>
     <string name="region_global">Global</string>
     <string name="region_auto">Automatic (IP)</string>
+    <string name="listen_together_you_header">Вы</string>
+    <string name="listen_together_you_footer">Ваше имя — то, что другие видят в пати. Имя устройства — то, как это устройство отображается в «Подключении» рядом с вашими другими устройствами.</string>
+    <string name="listen_together_your_name">Ваше имя в пати</string>
+    <string name="listen_together_name_default">Имя вашей учётной записи</string>
+    <string name="listen_together_device_name">Имя этого устройства</string>
+    <string name="listen_together_name_hint">Имя</string>
+    <string name="listen_together_play_here">Играть на этом устройстве</string>
+    <string name="listen_together_play_here_on">Вы слышите это здесь, а остальные — на своих устройствах.</string>
+    <string name="listen_together_play_here_off">Звук идёт только от хоста. Вы по-прежнему видите пати и управляете ею.</string>
+    <string name="listen_together_silent_member">Слушает через хоста</string>
 </resources>

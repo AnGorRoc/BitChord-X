@@ -1590,4 +1590,14 @@
     <string name="trending_title">Trending</string>
     <string name="region_global">Global</string>
     <string name="region_auto">Automatic (IP)</string>
+    <string name="listen_together_you_header">คุณ</string>
+    <string name="listen_together_you_footer">ชื่อของคุณคือสิ่งที่ผู้อื่นเห็นในปาร์ตี้ ชื่ออุปกรณ์คือชื่อที่อุปกรณ์นี้แสดงใน «เชื่อมต่อ» ข้างอุปกรณ์อื่นของคุณ</string>
+    <string name="listen_together_your_name">ชื่อของคุณในปาร์ตี้</string>
+    <string name="listen_together_name_default">ชื่อบัญชีของคุณ</string>
+    <string name="listen_together_device_name">ชื่ออุปกรณ์นี้</string>
+    <string name="listen_together_name_hint">ชื่อ</string>
+    <string name="listen_together_play_here">เล่นบนอุปกรณ์นี้</string>
+    <string name="listen_together_play_here_on">คุณได้ยินที่นี่ และคนอื่นได้ยินบนอุปกรณ์ของตน</string>
+    <string name="listen_together_play_here_off">เสียงมาจากโฮสต์เท่านั้น คุณยังเห็นและควบคุมปาร์ตี้ได้</string>
+    <string name="listen_together_silent_member">ฟังผ่านโฮสต์</string>
 </resources>

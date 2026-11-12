@@ -151,6 +151,36 @@ internal fun ServerUrlError.toMessageRes(): Int = when (this) {
  * [ListenTogether.partyPositionMs][com.music.bitchord.data.listentogether.ListenTogether.partyPositionMs]
  * exists.
  */
+/** Which of the two names the settings dialog is editing. */
+private enum class NameEdit { Person, Device }
+
+/** A one-line text prompt, for a name. Saves only a non-blank value; blank is "keep the default". */
+@Composable
+private fun NameDialog(
+    title: String,
+    initial: String,
+    hint: String,
+    maxLength: Int,
+    onSave: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var value by remember { mutableStateOf(initial) }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(title) },
+        text = {
+            androidx.compose.material3.OutlinedTextField(
+                value = value,
+                onValueChange = { value = it.take(maxLength) },
+                singleLine = true,
+                placeholder = { Text(hint) },
+            )
+        },
+        confirmButton = { TextButton(onClick = { onSave(value.trim()) }) { Text(stringResource(R.string.save)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+    )
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ListenTogetherScreen(
@@ -191,6 +221,8 @@ fun ListenTogetherScreen(
     var joinPlayHere by remember { mutableStateOf(true) }
     var pendingServerSwitchInvite by remember { mutableStateOf<Pair<String, String>?>(null) }
     var sharingApk by remember { mutableStateOf(false) }
+    var editingName by remember { mutableStateOf<NameEdit?>(null) }
+    var deviceName by remember { mutableStateOf(ListenTogether.deviceName()) }
     var sheet by remember { mutableStateOf<PartySheet?>(null) }
     var showQrScanner by remember { mutableStateOf(false) }
     var spotifyTier by remember { mutableStateOf(SpotifyAccountTier.UNKNOWN) }
@@ -207,6 +239,38 @@ fun ListenTogetherScreen(
     // composition, which is the only way one sheet can hand over to another:
     // see the invite that follows a create.
     val sheetState = rememberModalBottomSheetState()
+
+    // Picked up from the Connect sheet: land on the sheet the person asked for.
+    val launch by PartyLaunch.pending.collectAsStateWithLifecycle()
+    LaunchedEffect(launch, state.inParty) {
+        val action = launch ?: return@LaunchedEffect
+        PartyLaunch.pending.value = null
+        if (!state.inParty) {
+            failure = null
+            sheet = if (action == PartyLaunch.Action.START) PartySheet.Create else PartySheet.JoinCode
+        }
+    }
+
+    editingName?.let { which ->
+        val isPerson = which == NameEdit.Person
+        NameDialog(
+            title = stringResource(if (isPerson) R.string.listen_together_your_name else R.string.listen_together_device_name),
+            initial = if (isPerson) nickname else deviceName,
+            hint = stringResource(R.string.listen_together_name_hint),
+            maxLength = if (isPerson) 80 else 60,
+            onSave = { value ->
+                if (isPerson) {
+                    nickname = value
+                    ListenTogether.setNickname(value)
+                } else {
+                    ListenTogether.setDeviceName(value)
+                    deviceName = ListenTogether.deviceName()
+                }
+                editingName = null
+            },
+            onDismiss = { editingName = null },
+        )
+    }
 
     /**
      * Hands the create sheet over to the invite sheet, with the party page
@@ -629,24 +693,6 @@ fun ListenTogetherScreen(
                     sheet = PartySheet.JoinCode
                 },
             )
-            // Your own devices as one: needs no code, since the account itself is the key.
-            SettingsGroup(footer = stringResource(R.string.listen_together_my_devices_footer)) {
-                SettingsRow(
-                    icon = SfIcons.VolumeUp,
-                    title = stringResource(R.string.listen_together_my_devices),
-                    subtitle = stringResource(R.string.listen_together_my_devices_subtitle),
-                    onClick = {
-                        if (signedIn && !busy) {
-                            failure = null
-                            busy = true
-                            scope.launch {
-                                failure = ListenTogether.joinMyDevices(nickname).exceptionOrNull()?.message
-                                busy = false
-                            }
-                        }
-                    },
-                )
-            }
             failure?.let { message ->
                 Text(
                     text = message,
@@ -655,8 +701,6 @@ fun ListenTogetherScreen(
                     modifier = Modifier.padding(horizontal = ROW_INSET, vertical = 8.dp),
                 )
             }
-        } else if (state.personal) {
-            MyDevicesRoom(state = state, onLeave = { scope.launch { ListenTogether.leaveParty() } })
         } else {
             InAParty(
                 state = state,
@@ -733,6 +777,28 @@ fun ListenTogetherScreen(
         // applies to, why it greys out, what becomes of a half-typed address
         // when the page is scrolled away from. Behind a row there is nothing
         // half-typed to explain — the same shape as the ListenBrainz token.
+        // How this person appears: their name in parties, and what this device is called in the Connect
+        // sheet. Both live here and nowhere else now; creating a party never asks.
+        SettingsGroup(
+            header = stringResource(R.string.listen_together_you_header),
+            footer = stringResource(R.string.listen_together_you_footer),
+        ) {
+            SettingsRow(
+                icon = SfIcons.Person,
+                title = stringResource(R.string.listen_together_your_name),
+                subtitle = nickname.ifBlank { stringResource(R.string.listen_together_name_default) },
+                enabled = !state.inParty,
+                onClick = { editingName = NameEdit.Person },
+            )
+            RowDivider()
+            SettingsRow(
+                icon = SfIcons.VolumeUp,
+                title = stringResource(R.string.listen_together_device_name),
+                subtitle = deviceName,
+                onClick = { editingName = NameEdit.Device },
+            )
+        }
+
         SettingsGroup(
             header = stringResource(R.string.listen_together_custom_server),
             footer = stringResource(R.string.listen_together_custom_server_footer),
@@ -1292,105 +1358,6 @@ private fun InAParty(
     }
 }
 
-/**
- * A person's own devices as one: what is playing, where it plays, and a remote for it.
- *
- * Deliberately not [InAParty]: there is no code to read out, nobody to invite and nobody to remove,
- * since every member is this person's. What matters is which device is making the sound.
- */
-@Composable
-private fun MyDevicesRoom(state: ListenTogether.State, onLeave: () -> Unit) {
-    val playHere by ListenTogether.listenHere.collectAsStateWithLifecycle()
-    val independent = state.detached
-    // Following the room but nobody is making its sound: the playing device went away.
-    val nobodyPlays = !independent &&
-        state.members.none { it.playsAudio && !it.independent && it.connected }
-    if (!independent) NowPlayingInTheParty(state)
-
-    if (nobodyPlays) {
-        SettingsGroup {
-            SettingsRow(
-                icon = SfIcons.VolumeUp,
-                title = stringResource(R.string.listen_together_no_player),
-                subtitle = stringResource(R.string.listen_together_no_player_subtitle),
-                onClick = { ListenTogether.setListenHere(true) },
-            )
-        }
-    }
-
-    SettingsGroup(
-        header = stringResource(R.string.listen_together_my_devices),
-        footer = stringResource(R.string.listen_together_my_devices_footer),
-    ) {
-        state.members.forEachIndexed { index, member ->
-            if (index > 0) RowDivider()
-            MemberRow(member = member, isYou = member.memberId == state.you?.memberId)
-        }
-        if (!independent) {
-            RowDivider()
-            SettingsRow(
-                icon = if (playHere) SfIcons.VolumeUp else Icons.AutoMirrored.Rounded.VolumeOff,
-                title = stringResource(R.string.listen_together_play_here),
-                trailing = { IosSwitch(checked = playHere, onCheckedChange = { ListenTogether.setListenHere(it) }) },
-                onClick = { ListenTogether.setListenHere(!playHere) },
-            )
-        }
-    }
-
-    // Each device can also go its own way: this one plays something else and the room carries on.
-    SettingsGroup(
-        footer = stringResource(
-            if (independent) R.string.listen_together_independent_on else R.string.listen_together_independent_off,
-        ),
-    ) {
-        SettingsRow(
-            icon = SfIcons.MusicNote,
-            title = stringResource(R.string.listen_together_independent),
-            trailing = { IosSwitch(checked = independent, onCheckedChange = { ListenTogether.setIndependent(it) }) },
-            onClick = { ListenTogether.setIndependent(!independent) },
-        )
-    }
-
-    // A remote: this device is not the one playing, so its own player buttons would act on nothing.
-    if (!playHere && !independent) {
-        val playing = state.playback.isPlaying
-        SettingsGroup {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(vertical = 8.dp),
-                horizontalArrangement = Arrangement.SpaceEvenly,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                IconButton(onClick = { ListenTogether.previous() }) {
-                    Icon(Icons.Rounded.SkipPrevious, contentDescription = null)
-                }
-                IconButton(onClick = { if (playing) ListenTogether.pause() else ListenTogether.play() }) {
-                    Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, contentDescription = null)
-                }
-                IconButton(onClick = { ListenTogether.next() }) {
-                    Icon(Icons.Rounded.SkipNext, contentDescription = null)
-                }
-            }
-        }
-    }
-
-    SettingsGroup {
-        SettingsRow(
-            icon = SfIcons.Logout,
-            title = stringResource(R.string.listen_together_my_devices_disconnect),
-            onClick = onLeave,
-        )
-    }
-}
-
-/**
- * What the party is playing, and where its playhead is right now.
- *
- * The position is recomputed on a tick rather than read out of the last frame,
- * because that *is* the feature: between server updates each device advances the
- * same anchored position on its own clock, and two phones side by side should
- * show the same number. A value that only moved when a frame arrived would
- * prove nothing.
- */
 @Composable
 private fun NowPlayingInTheParty(state: ListenTogether.State) {
     val track = state.playback.track

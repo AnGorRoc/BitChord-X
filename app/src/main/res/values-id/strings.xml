@@ -1584,4 +1584,14 @@
     <string name="trending_title">Trending</string>
     <string name="region_global">Global</string>
     <string name="region_auto">Automatic (IP)</string>
+    <string name="listen_together_you_header">Anda</string>
+    <string name="listen_together_you_footer">Nama Anda adalah yang dilihat orang lain di party. Nama perangkat adalah cara perangkat ini muncul di Hubungkan, di samping perangkat Anda yang lain.</string>
+    <string name="listen_together_your_name">Nama Anda di party</string>
+    <string name="listen_together_name_default">Nama akun Anda</string>
+    <string name="listen_together_device_name">Nama perangkat ini</string>
+    <string name="listen_together_name_hint">Nama</string>
+    <string name="listen_together_play_here">Putar di perangkat ini</string>
+    <string name="listen_together_play_here_on">Anda mendengarnya di sini dan yang lain di perangkat masing-masing.</string>
+    <string name="listen_together_play_here_off">Suara hanya berasal dari host. Anda tetap melihat dan mengendalikan party.</string>
+    <string name="listen_together_silent_member">Mendengarkan lewat host</string>
 </resources>

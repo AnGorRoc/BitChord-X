@@ -624,7 +624,7 @@ internal fun PlayerActionRow(
     onToggleAutoplay: () -> Unit,
     onOpenOutput: () -> Unit,
     onListenTogether: () -> Unit,
-    /** Opens [ListenTogetherMembersSheet] rather than settings directly. */
+    /** Opens [ConnectSheet] rather than settings directly. */
     onOpenListenTogetherMembers: () -> Unit,
 ) {
     val showPartyButton by PlayerSettings.showListenTogetherButton.collectAsStateWithLifecycle()
@@ -1049,7 +1049,7 @@ private fun PillDivider() {
 private fun OutputPartyPill(
     onOutput: () -> Unit,
     onParty: () -> Unit,
-    /** Who's in it, before the settings page — see [ListenTogetherMembersSheet]. */
+    /** Who's in it, before the settings page — see [ConnectSheet]. */
     onOpenMembers: () -> Unit,
 ) {
     val badge = rememberPartyBadge()
@@ -1253,7 +1253,7 @@ private fun PillSegment(
 internal fun OutputCaption(
     accountName: String?,
     onOpenOutput: () -> Unit,
-    /** Who's in it, before the settings page — see [ListenTogetherMembersSheet]. */
+    /** Who's in it, before the settings page — see [ConnectSheet]. */
     onOpenMembers: () -> Unit,
 ) {
     val badge = rememberPartyBadge()

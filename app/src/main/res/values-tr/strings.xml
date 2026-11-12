@@ -1561,4 +1561,14 @@
     <string name="trending_title">Trending</string>
     <string name="region_global">Global</string>
     <string name="region_auto">Automatic (IP)</string>
+    <string name="listen_together_you_header">Sen</string>
+    <string name="listen_together_you_footer">Adın, bir partide başkalarının gördüğü addır. Cihaz adı, bu cihazın Bağlan bölümünde diğer cihazlarınla birlikte nasıl göründüğüdür.</string>
+    <string name="listen_together_your_name">Partilerdeki adın</string>
+    <string name="listen_together_name_default">Hesabının adı</string>
+    <string name="listen_together_device_name">Bu cihazın adı</string>
+    <string name="listen_together_name_hint">Ad</string>
+    <string name="listen_together_play_here">Bu cihazda çal</string>
+    <string name="listen_together_play_here_on">Burada sen duyarsın, diğer herkes kendi cihazında duyar.</string>
+    <string name="listen_together_play_here_off">Ses yalnızca ev sahibinden gelir. Partiyi yine de görür ve yönetirsin.</string>
+    <string name="listen_together_silent_member">Ev sahibi üzerinden dinliyor</string>
 </resources>

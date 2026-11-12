@@ -876,7 +876,7 @@ fun NowPlayingScreen(
     val controlsLocked = rememberControlsLocked()
     var showListenTogetherMembers by remember { mutableStateOf(false) }
     // Who's actually in the party is worth a look before the settings page —
-    // see [ListenTogetherMembersSheet]. Only meaningful once there is a party
+    // see [ConnectSheet]. Only meaningful once there is a party
     // to show, so the pill and the caption fall back to [onListenTogether]
     // itself (create/join) when there isn't one.
     val openListenTogetherMembers: () -> Unit = { showListenTogetherMembers = true }
@@ -1705,6 +1705,16 @@ fun NowPlayingScreen(
                 },
                 onOpenSettings = {
                     showListenTogetherMembers = false
+                    onListenTogether()
+                },
+                onStartParty = {
+                    showListenTogetherMembers = false
+                    PlayerPlatform.host.requestPartyAction(PartyAction.START)
+                    onListenTogether()
+                },
+                onJoinParty = {
+                    showListenTogetherMembers = false
+                    PlayerPlatform.host.requestPartyAction(PartyAction.JOIN)
                     onListenTogether()
                 },
             )

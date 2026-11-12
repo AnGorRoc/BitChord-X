@@ -28,7 +28,7 @@ const val MAX_QUEUED_AUTOPLAY = 10
  * it, and watch the label stay exactly as it was.
  */
 fun autoplayEnabledFor(party: ListenTogether.State, localPreference: Boolean): Boolean =
-    if (party.followsParty) party.playback.autoplayEnabled else localPreference
+    if (party.inParty) party.playback.autoplayEnabled else localPreference
 
 /**
  * The one device in a party that tops the queue up, or null if there is none.
@@ -46,15 +46,7 @@ fun autoplayEnabledFor(party: ListenTogether.State, localPreference: Boolean): B
  * party's own policy already says should happen.
  */
 fun autoplaySupplierId(party: ListenTogether.State): String? {
-    if (!party.followsParty) return null
-    // In the person's own room only the device that plays aloud has a player to seed from; a
-    // silent controller (even the host) would suggest from nothing.
-    if (party.personal) {
-        return party.members.asSequence()
-            .filter { it.connected && it.playsAudio && !it.independent }
-            .minByOrNull { it.memberId }
-            ?.memberId
-    }
+    if (!party.inParty) return null
     val host = party.members.firstOrNull { it.isHost && it.connected }?.memberId
     if (party.hostOnlyControl) return host
     return host ?: party.members.asSequence()

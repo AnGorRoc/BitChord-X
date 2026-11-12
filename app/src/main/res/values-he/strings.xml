@@ -1609,4 +1609,14 @@
     <string name="trending_title">Trending</string>
     <string name="region_global">Global</string>
     <string name="region_auto">Automatic (IP)</string>
+    <string name="listen_together_you_header">את/ה</string>
+    <string name="listen_together_you_footer">השם שלך הוא מה שאחרים רואים בפארטי. שם המכשיר הוא האופן שבו המכשיר הזה מופיע ב«התחברות» לצד המכשירים האחרים שלך.</string>
+    <string name="listen_together_your_name">השם שלך בפארטי</string>
+    <string name="listen_together_name_default">שם החשבון שלך</string>
+    <string name="listen_together_device_name">שם המכשיר הזה</string>
+    <string name="listen_together_name_hint">שם</string>
+    <string name="listen_together_play_here">נגן במכשיר הזה</string>
+    <string name="listen_together_play_here_on">אתה שומע את זה כאן וכולם שומעים בשלהם.</string>
+    <string name="listen_together_play_here_off">הצליל מגיע רק מהמארח. אתה עדיין רואה ושולט בפארטי.</string>
+    <string name="listen_together_silent_member">מאזין דרך המארח</string>
 </resources>

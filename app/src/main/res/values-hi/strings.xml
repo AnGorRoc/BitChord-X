@@ -1604,4 +1604,14 @@
     <string name="trending_title">Trending</string>
     <string name="region_global">Global</string>
     <string name="region_auto">Automatic (IP)</string>
+    <string name="listen_together_you_header">आप</string>
+    <string name="listen_together_you_footer">आपका नाम वही है जो दूसरे पार्टी में देखते हैं। डिवाइस का नाम बताता है कि यह डिवाइस कनेक्ट में आपके अन्य डिवाइसों के साथ कैसे दिखता है।</string>
+    <string name="listen_together_your_name">पार्टी में आपका नाम</string>
+    <string name="listen_together_name_default">आपके खाते का नाम</string>
+    <string name="listen_together_device_name">इस डिवाइस का नाम</string>
+    <string name="listen_together_name_hint">नाम</string>
+    <string name="listen_together_play_here">इस डिवाइस पर चलाएँ</string>
+    <string name="listen_together_play_here_on">आप इसे यहाँ सुनते हैं और बाकी सब अपने डिवाइस पर।</string>
+    <string name="listen_together_play_here_off">आवाज़ केवल होस्ट से आती है। आप फिर भी पार्टी देख और नियंत्रित कर सकते हैं।</string>
+    <string name="listen_together_silent_member">होस्ट के ज़रिए सुन रहे हैं</string>
 </resources>

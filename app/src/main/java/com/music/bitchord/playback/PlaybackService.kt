@@ -3396,7 +3396,7 @@ class PlaybackService : MediaLibraryService() {
 
     private fun toggleAutoplayFromNotification() {
         val party = ListenTogether.state.value
-        val enabled = if (party.followsParty) !party.playback.autoplayEnabled else !AppSettings.autoplay.value
+        val enabled = if (party.inParty) !party.playback.autoplayEnabled else !AppSettings.autoplay.value
         AppSettings.setAutoplay(enabled)
         if (party.inParty) {
             // The party owns this setting while connected. The state frame
@@ -3437,7 +3437,7 @@ class PlaybackService : MediaLibraryService() {
         val party = ListenTogether.state.value
         if (!autoplayEnabled(party) ||
             exoPlayer.repeatMode == Player.REPEAT_MODE_ALL ||
-            (party.followsParty && autoplaySupplierId(party) != party.you?.memberId)
+            (party.inParty && autoplaySupplierId(party) != party.you?.memberId)
         ) {
             return
         }
@@ -3470,13 +3470,13 @@ class PlaybackService : MediaLibraryService() {
                 if (!autoplayEnabled(activeParty) ||
                     activePlayer.repeatMode == Player.REPEAT_MODE_ALL ||
                     activePlayer.currentMediaItem?.mediaId != current.videoId ||
-                    (activeParty.followsParty && autoplaySupplierId(activeParty) != activeParty.you?.memberId)
+                    (activeParty.inParty && autoplaySupplierId(activeParty) != activeParty.you?.memberId)
                 ) {
                     return@launch
                 }
                 val queueSongs = (0 until activePlayer.mediaItemCount)
                     .map { activePlayer.getMediaItemAt(it).toSong() } +
-                    activeParty.queue.items.takeIf { activeParty.followsParty }.orEmpty().map { it.toSong() }
+                    activeParty.queue.items.takeIf { activeParty.inParty }.orEmpty().map { it.toSong() }
                 val existing = if (AppSettings.dontRepeatSuggestions.value) {
                     queueSongs + sessionSongHistory
                 } else {
@@ -3502,12 +3502,12 @@ class PlaybackService : MediaLibraryService() {
                 if (!autoplayEnabled(latestParty) ||
                     latestPlayer.repeatMode == Player.REPEAT_MODE_ALL ||
                     latestPlayer.currentMediaItem?.mediaId != current.videoId ||
-                    (latestParty.followsParty && autoplaySupplierId(latestParty) != latestParty.you?.memberId)
+                    (latestParty.inParty && autoplaySupplierId(latestParty) != latestParty.you?.memberId)
                 ) {
                     return@launch
                 }
                 if (resolved.isNotEmpty()) {
-                    if (latestParty.followsParty) {
+                    if (latestParty.inParty) {
                         // Do not mutate ExoPlayer directly here. The server's
                         // state broadcast reconciles every device atomically,
                         // including this one, and keeps the AutoPlay section

@@ -186,6 +186,13 @@ class AndroidPlayerHost(context: Context) : PlayerHost {
 
     override fun comeBackToThisDevice() = com.music.bitchord.playback.DeviceLink.comeBack()
 
+    override fun requestPartyAction(action: PartyAction) {
+        com.music.bitchord.ui.screens.PartyLaunch.pending.value = when (action) {
+            PartyAction.START -> com.music.bitchord.ui.screens.PartyLaunch.Action.START
+            PartyAction.JOIN -> com.music.bitchord.ui.screens.PartyLaunch.Action.JOIN
+        }
+    }
+
     override val party: StateFlow<PartyUi> by lazy {
         ListenTogether.state
             .map { it.toPartyUi() }

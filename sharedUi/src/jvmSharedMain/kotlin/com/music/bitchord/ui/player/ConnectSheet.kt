@@ -72,6 +72,8 @@ internal fun ConnectSheet(
     onDismiss: () -> Unit,
     onOpenParty: () -> Unit,
     onOpenSettings: () -> Unit,
+    onStartParty: () -> Unit = onOpenParty,
+    onJoinParty: () -> Unit = onOpenParty,
     modifier: Modifier = Modifier,
 ) {
     val host = PlayerPlatform.host
@@ -125,8 +127,8 @@ internal fun ConnectSheet(
                 )
             } else {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    PillButton(stringResource(Res.string.connect_start_party), Modifier.weight(1f)) { onDismiss(); onOpenParty() }
-                    PillButton(stringResource(Res.string.connect_join_party), Modifier.weight(1f)) { onDismiss(); onOpenParty() }
+                    PillButton(stringResource(Res.string.connect_start_party), Modifier.weight(1f)) { onDismiss(); onStartParty() }
+                    PillButton(stringResource(Res.string.connect_join_party), Modifier.weight(1f)) { onDismiss(); onJoinParty() }
                 }
             }
 

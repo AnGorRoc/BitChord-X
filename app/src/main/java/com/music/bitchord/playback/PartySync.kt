@@ -260,7 +260,7 @@ class PartySync(
         // business. [publish] works by diffing this player against the party's
         // state, so without this an unrelated intent arriving later would read
         // a locally paused player as a pause to send to everybody.
-        if (party.controlsLocked || party.detached) return
+        if (party.controlsLocked) return
         // This device is not playing the party, so what its player does is not the party's
         // business, and a silenced player would read as a pause to send to everybody.
         if (!ListenTogether.listenHere.value) return
@@ -491,12 +491,6 @@ class PartySync(
             lastPositionMs = 0L
             lastTrackId = null
             lastIsPlaying = false
-            return
-        }
-        // A device in the person's own room that plays its own music: the room is not its business.
-        if (party.detached) {
-            deferredPlayPending = false
-            silencedForParty = false
             return
         }
         // Following the party without playing it here: the music comes out of another device.

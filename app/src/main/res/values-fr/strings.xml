@@ -1605,4 +1605,14 @@
     <string name="trending_title">Trending</string>
     <string name="region_global">Global</string>
     <string name="region_auto">Automatic (IP)</string>
+    <string name="listen_together_you_header">Vous</string>
+    <string name="listen_together_you_footer">Votre nom est celui que les autres voient dans une party. Le nom de l’appareil est celui qui s’affiche dans Connexion, à côté de vos autres appareils.</string>
+    <string name="listen_together_your_name">Votre nom dans les parties</string>
+    <string name="listen_together_name_default">Nom de votre compte</string>
+    <string name="listen_together_device_name">Nom de cet appareil</string>
+    <string name="listen_together_name_hint">Nom</string>
+    <string name="listen_together_play_here">Lire sur cet appareil</string>
+    <string name="listen_together_play_here_on">Vous l’entendez ici et les autres l’entendent sur le leur.</string>
+    <string name="listen_together_play_here_off">Le son vient uniquement de l’hôte. Vous voyez et contrôlez toujours la party.</string>
+    <string name="listen_together_silent_member">Écoute via l’hôte</string>
 </resources>

@@ -1585,4 +1585,14 @@
     <string name="trending_title">Trending</string>
     <string name="region_global">Global</string>
     <string name="region_auto">Automatic (IP)</string>
+    <string name="listen_together_you_header">あなた</string>
+    <string name="listen_together_you_footer">あなたの名前は、パーティーで他の人に表示される名前です。デバイス名は、「接続」で他のデバイスと並んで表示されるこのデバイスの名前です。</string>
+    <string name="listen_together_your_name">パーティーでの名前</string>
+    <string name="listen_together_name_default">アカウント名</string>
+    <string name="listen_together_device_name">このデバイスの名前</string>
+    <string name="listen_together_name_hint">名前</string>
+    <string name="listen_together_play_here">このデバイスで再生</string>
+    <string name="listen_together_play_here_on">ここで聞こえ、他の人は各自のデバイスで聞こえます。</string>
+    <string name="listen_together_play_here_off">音はホストからのみ出ます。パーティーの表示と操作はできます。</string>
+    <string name="listen_together_silent_member">ホスト経由で再生中</string>
 </resources>

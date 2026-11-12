@@ -1604,4 +1604,14 @@
     <string name="trending_title">Trending</string>
     <string name="region_global">Global</string>
     <string name="region_auto">Automatic (IP)</string>
+    <string name="listen_together_you_header">Du</string>
+    <string name="listen_together_you_footer">Dein Name ist das, was andere in einer Party sehen. Der Gerätename zeigt, wie dieses Gerät in „Verbinden“ neben deinen anderen Geräten erscheint.</string>
+    <string name="listen_together_your_name">Dein Name in Partys</string>
+    <string name="listen_together_name_default">Name deines Kontos</string>
+    <string name="listen_together_device_name">Name dieses Geräts</string>
+    <string name="listen_together_name_hint">Name</string>
+    <string name="listen_together_play_here">Auf diesem Gerät abspielen</string>
+    <string name="listen_together_play_here_on">Du hörst es hier und alle anderen auf ihrem Gerät.</string>
+    <string name="listen_together_play_here_off">Der Ton kommt nur vom Host. Du siehst die Party weiterhin und steuerst sie.</string>
+    <string name="listen_together_silent_member">Hört über den Host</string>
 </resources>
