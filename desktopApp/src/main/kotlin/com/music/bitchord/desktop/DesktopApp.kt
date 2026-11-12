@@ -567,6 +567,8 @@ fun BitChordDesktopApp() {
     // Filled once the audio engine exists. Local playback helpers use this single hook so every
     // transport and queue gesture reaches Listen Together without duplicating protocol logic.
     val partySyncHolder = remember { arrayOfNulls<DesktopPartySync>(1) }
+    // Another of the person's devices as the speaker; set once the window has its engine.
+    val deviceLinkHolder = remember { arrayOfNulls<DesktopDeviceLink>(1) }
     val partyState by DesktopListenTogether.state.collectAsState()
     var personalQueueStash by remember { mutableStateOf<DesktopQueue?>(null) }
     var personalPositionStash by remember { mutableStateOf(0L) }
@@ -927,12 +929,28 @@ fun BitChordDesktopApp() {
      * that was asked to stay quiet. True means it was handled.
      */
     fun routedToRemote(songs: List<Song>, startIndex: Int): Boolean {
+        // Another of the person's devices is the speaker: the song plays there.
+        deviceLinkHolder[0]?.takeIf { it.active }?.let { link ->
+            link.playOnRemote(
+                songs.drop(startIndex.coerceAtLeast(0))
+                    .filter { it.localPath == null && it.localUri == null }
+                    .take(DesktopPartySync.MAX_PARTY_UPCOMING_QUEUE + 1),
+            )
+            return true
+        }
         if (!DesktopListenTogether.isRemote) return false
         val tracks = songs.drop(startIndex.coerceAtLeast(0))
             .filter { it.localPath == null && it.localUri == null }
             .take(1 + DesktopPartySync.MAX_PARTY_UPCOMING_QUEUE)
             .map { it.toPartyTrack(0L) }
         return DesktopListenTogether.routeToParty(tracks, 0)
+    }
+
+    /** Transport while another of the person's devices is the speaker drives that device. True if handled. */
+    fun deviceTransport(send: (DesktopDeviceLink) -> Unit): Boolean {
+        val link = deviceLinkHolder[0]?.takeIf { it.active } ?: return false
+        send(link)
+        return true
     }
 
     /** Transport keys on a remote computer drive the party instead of the (silent) local engine. */
@@ -1121,6 +1139,11 @@ fun BitChordDesktopApp() {
     fun enqueue(song: Song, next: Boolean) {
         val party = DesktopListenTogether.state.value
         if (party.controlsLocked) return
+        // Another of the person's devices is the speaker: the song joins the queue of that one.
+        if (deviceTransport { it.enqueueOnRemote(song, next) }) {
+            DesktopPlayerHost.showMessage(if (next) "Will play next" else "Added to the queue")
+            return
+        }
         // A remote for another device: the song joins the queue of the one that is playing.
         if (DesktopListenTogether.routeEnqueue(listOf(song.toPartyTrack(0L)), next)) {
             DesktopPlayerHost.showMessage(if (next) "Will play next" else "Added to the queue")
@@ -1558,6 +1581,7 @@ fun BitChordDesktopApp() {
 
     fun playNext() {
         if (DesktopListenTogether.state.value.controlsLocked) return
+        if (deviceTransport { it.skipNext() }) return
         if (remoteTransport { DesktopListenTogether.next() }) return
         // Automix on skip: when enabled and the next deck is already prepared, blend into it over a
         // short crossfade instead of cutting. The blend's own hand-off advances the queue, so a
@@ -1588,6 +1612,7 @@ fun BitChordDesktopApp() {
 
     fun playPrevious() {
         if (DesktopListenTogether.state.value.controlsLocked) return
+        if (deviceTransport { it.skipPrevious() }) return
         if (remoteTransport { DesktopListenTogether.previous() }) return
         val positionMs = playbackEngine.state.value.positionMs
 
@@ -1900,6 +1925,36 @@ fun BitChordDesktopApp() {
             },
         )
     }
+    val deviceLink = remember(playbackEngine) {
+        DesktopDeviceLink(
+            scope = scope,
+            account = DesktopListenTogether.account,
+            engine = playbackEngine,
+            queue = { liveQueue },
+            setQueue = { replaced ->
+                liveQueue = replaced
+                selectedSong = replaced.current
+                saveQueue()
+            },
+            next = { playNext() },
+            previous = { playPrevious() },
+            enqueue = { song, next -> enqueue(song, next) },
+            say = { DesktopPlayerHost.showMessage(it) },
+        )
+    }
+    // Set before the window first draws, since the player reads its overlay straight away.
+    deviceLinkHolder[0] = deviceLink
+    DisposableEffect(deviceLink) {
+        DesktopListenTogether.account.start()
+        deviceLink.start()
+        DesktopPlayerHost.onPickDevice = { id, force -> deviceLink.pick(id, force) }
+        DesktopPlayerHost.onComeBack = { deviceLink.comeBack() }
+        onDispose {
+            if (deviceLinkHolder[0] === deviceLink) deviceLinkHolder[0] = null
+            DesktopPlayerHost.onPickDevice = { _, _ -> }
+            DesktopPlayerHost.onComeBack = {}
+        }
+    }
     DisposableEffect(partySync) {
         partySyncHolder[0] = partySync
         partySync.start()
@@ -1909,6 +1964,7 @@ fun BitChordDesktopApp() {
         }
     }
     fun togglePlayPauseFromUser() {
+        if (deviceTransport { if (it.overlay.value?.isPlaying == true) it.pause() else it.play() }) return
         if (remoteTransport {
                 val at = DesktopListenTogether.partyPositionMs()
                 if (DesktopListenTogether.state.value.playback.isPlaying) DesktopListenTogether.pause(at)
@@ -1920,6 +1976,7 @@ fun BitChordDesktopApp() {
         partySync.onLocalIntent()
     }
     fun playFromUser() {
+        if (deviceTransport { it.play() }) return
         if (remoteTransport { DesktopListenTogether.play(DesktopListenTogether.partyPositionMs()) }) return
         if (DesktopListenTogether.state.value.controlsLocked) {
             if (!playbackEngine.state.value.isPlaying) partySync.handleLockedPlayPause()
@@ -1929,6 +1986,7 @@ fun BitChordDesktopApp() {
         partySync.onLocalIntent()
     }
     fun pauseFromUser() {
+        if (deviceTransport { it.pause() }) return
         if (remoteTransport { DesktopListenTogether.pause(DesktopListenTogether.partyPositionMs()) }) return
         if (DesktopListenTogether.state.value.controlsLocked) {
             if (playbackEngine.state.value.isPlaying) partySync.handleLockedPlayPause()
@@ -1965,7 +2023,7 @@ fun BitChordDesktopApp() {
                 persistence.saveString("volume", volume.toString())
             },
             onSeek = { positionMs ->
-                if (!DesktopListenTogether.state.value.controlsLocked) {
+                if (!deviceTransport { it.seekTo(positionMs) } && !DesktopListenTogether.state.value.controlsLocked) {
                     playbackEngine.seekTo(positionMs)
                     partySync.onLocalIntent()
                 }
@@ -2115,7 +2173,10 @@ fun BitChordDesktopApp() {
             }
         }
     }
-    val playback by playbackEngine.state.collectAsState()
+    val enginePlayback by playbackEngine.state.collectAsState()
+    // While another of the person's devices is the speaker, the player draws that device's clock.
+    val remotePlayback by deviceLink.overlay.collectAsState()
+    val playback = remotePlayback ?: enginePlayback
 
     // The shared player reads the playhead off this one object, and only where it
     // draws it — see PlaybackPosition — so a tick never recomposes the player.
@@ -3620,6 +3681,7 @@ fun BitChordDesktopApp() {
 
     fun seekPlayer(target: Long) {
         if (DesktopListenTogether.state.value.controlsLocked) return
+        if (deviceTransport { it.seekTo(target.coerceAtLeast(0L)) }) return
         val duration = playback.durationMs
         playbackEngine.seekTo(
             if (duration > 0) target.coerceIn(0L, duration) else target.coerceAtLeast(0L),
