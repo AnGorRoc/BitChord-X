@@ -25,7 +25,7 @@ private const val MUSIC_ORIGIN = "https://music.youtube.com"
 
 private const val LOGIN_URL =
     "https://accounts.google.com/ServiceLogin" +
-        "?ltmpl=music&service=youtube&prompt=select_account" +
+        "?ltmpl=music&service=youtube" +
     "&continue=https%3A%2F%2Fmusic.youtube.com%2F"
 
 private const val TAG = "BitChord"
