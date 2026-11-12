@@ -288,6 +288,7 @@ var serverFeatures = []string{
 	"inviteLanding",   // GET /invite/{code}
 	"listeningMode",   // setListening, and playsAudio on members
 	"myDevices",       // POST /api/devices/join: one person's devices as one room
+	"independentDevices", // setIndependent: a device in that room plays its own music
 }
 
 // handleInfo describes this server so a client can tell an extended build from
@@ -1083,6 +1084,7 @@ func handleSocketFrame(p *party.Party, member *party.Member, sc *hub.SafeConn, f
 			hubInst.Broadcast(p.Code, stateFrame(p), "")
 			if action == protocol.ActionKick ||
 				action == protocol.ActionSetListening ||
+				action == protocol.ActionSetIndependent ||
 				action == protocol.ActionSetMaxMembers ||
 				action == protocol.ActionSetHostOnlyControl {
 				hubInst.Broadcast(p.Code, membersFrame(p), "")
@@ -1253,6 +1255,17 @@ func applyControl(p *party.Party, member *party.Member, action string, frame map
 		}
 		return true, "", ""
 
+	case protocol.ActionSetIndependent:
+		enabled, ok := frame["enabled"].(bool)
+		if !ok {
+			return false, "bad_request", "enabled must be true or false."
+		}
+		if !party.IsPersonal(p.Code) {
+			return false, "not_personal", "Only your own devices can play independently."
+		}
+		p.SetIndependent(member, enabled)
+		return true, "", ""
+
 	case protocol.ActionSetListening:
 		enabled, ok := frame["enabled"].(bool)
 		if !ok {
@@ -1343,6 +1356,12 @@ func activityFrame(member *party.Member, action string, frame map[string]interfa
 	case protocol.ActionKick: detail = "Removed a listener from the party"
 	case protocol.ActionSetMaxMembers: detail = "Changed the party size"
 	case protocol.ActionSetAutoplay: detail = "Changed AutoPlay"
+	case protocol.ActionSetIndependent:
+		if enabled, ok := frame["enabled"].(bool); ok && enabled {
+			detail = "Switched to playing their own music"
+		} else {
+			detail = "Switched back to following the room"
+		}
 	case protocol.ActionSetListening:
 		if enabled, ok := frame["enabled"].(bool); ok && !enabled {
 			detail = "Switched to listening through the host"

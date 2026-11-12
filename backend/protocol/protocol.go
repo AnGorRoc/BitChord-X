@@ -47,6 +47,9 @@ const (
 	// own device. It is about the sender only, so it is neither host-only nor
 	// held back by hostOnlyControl.
 	ActionSetListening = "setListening"
+	// ActionSetIndependent is a device in a personal room choosing to play its own
+	// thing instead of following the room, and to rejoin it later.
+	ActionSetIndependent = "setIndependent"
 )
 
 // ControlActions are the actions a party's HostOnlyControl setting restricts to

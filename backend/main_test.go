@@ -15,6 +15,7 @@ import (
 
 	"github.com/KabirSinghBhatia/BitChord/backend/clock"
 	"github.com/KabirSinghBhatia/BitChord/backend/config"
+	"github.com/KabirSinghBhatia/BitChord/backend/party"
 	"github.com/KabirSinghBhatia/BitChord/backend/presence"
 	"github.com/KabirSinghBhatia/BitChord/backend/protocol"
 )
@@ -681,6 +682,31 @@ func TestSetListeningIsPerMember(t *testing.T) {
 	}
 	if !silent {
 		t.Fatalf("expected a members frame with playsAudio=false after setListening")
+	}
+}
+
+func TestIndependentDeviceIsNotSilencedByAnother(t *testing.T) {
+	p := party.NewParty("TESTAB")
+	p.Personal = true
+	a, _ := p.JoinPersonal("me", "phone", "Phone", nil)
+	b, _ := p.JoinPersonal("me", "pc", "PC", nil)
+	c, _ := p.JoinPersonal("me", "tablet", "Tablet", nil)
+	if a.Silent || !b.Silent || !c.Silent {
+		t.Fatalf("first plays, the rest follow: %v %v %v", a.Silent, b.Silent, c.Silent)
+	}
+	// The PC goes its own way, then the tablet takes the room over.
+	p.SetIndependent(b, true)
+	p.PlayHere(c)
+	if b.Silent || !b.Detached {
+		t.Fatalf("an independent device must keep playing its own music")
+	}
+	if !a.Silent || c.Silent {
+		t.Fatalf("the room should now play only on the tablet")
+	}
+	// Rejoining while another device plays makes it a controller again.
+	p.SetIndependent(b, false)
+	if !b.Silent || b.Detached {
+		t.Fatalf("a device rejoining the room should follow it")
 	}
 }
 

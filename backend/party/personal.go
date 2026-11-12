@@ -48,6 +48,7 @@ func (s *PartyStore) PersonalRoom(groupID string, maxParties, maxMembers int) (p
 	if err != nil {
 		return nil, false, err
 	}
+	p.Personal = true
 	personal.byGroup[groupID] = p.Code
 	personal.codes[p.Code] = true
 	return p, true, nil
@@ -64,9 +65,12 @@ func (p *Party) JoinPersonal(userID, deviceID, displayName string, avatarURL *st
 			break
 		}
 	}
-	others := len(p.Members)
-	if known {
-		others--
+	// Only a device that follows the room can already be playing it.
+	others := 0
+	for _, other := range p.Members {
+		if other.DeviceId != deviceID && !other.Detached && !other.Silent {
+			others++
+		}
 	}
 	m, err := p.Join(userID, deviceID, displayName, avatarURL)
 	if err != nil {
@@ -82,7 +86,31 @@ func (p *Party) JoinPersonal(userID, deviceID, displayName string, avatarURL *st
 // The caller holds the party lock.
 func (p *Party) PlayHere(member *Member) {
 	for _, m := range p.Members {
+		if m.Detached {
+			continue
+		}
 		m.Silent = m.MemberId != member.MemberId
+	}
+	member.Detached = false
+	p.Touch()
+}
+
+// SetIndependent lets a device play its own music instead of following the room
+// (enabled), or follow it again. Rejoining makes it a controller unless nothing
+// else is playing the room, in which case it takes over so the room is not silent.
+// The caller holds the party lock.
+func (p *Party) SetIndependent(member *Member, enabled bool) {
+	member.Detached = enabled
+	if enabled {
+		member.Silent = false
+	} else {
+		othersPlay := false
+		for _, m := range p.Members {
+			if m.MemberId != member.MemberId && !m.Detached && !m.Silent {
+				othersPlay = true
+			}
+		}
+		member.Silent = othersPlay
 	}
 	p.Touch()
 }

@@ -107,6 +107,8 @@ var (
 	AndroidAppLinks      = parseAppLinks(getCSV("JAM_ANDROID_APP_LINKS", ""))
 	// Build identifier reported by /api/info, e.g. a commit hash.
 	Version              = strings.TrimSpace(os.Getenv("JAM_VERSION"))
+	// How long a personal room (one person's own devices) survives with nobody in it.
+	PersonalRoomTTLMs    = int64(getInt("JAM_PERSONAL_ROOM_TTL_MS", 6*60*60*1000))
 	Port                 = getInt("PORT", 8000)
 )
 
