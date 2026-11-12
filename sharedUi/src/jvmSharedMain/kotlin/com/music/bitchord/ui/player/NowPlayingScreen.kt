@@ -235,6 +235,7 @@ internal const val SEEK_SETTLE_TIMEOUT_MS = 4_000L
 private val THUMB_SIZE = 54.dp
 private val HEADER_HEIGHT = 60.dp
 private val ART_TITLE_GAP = 20.dp
+private val TITLE_EXTRA_DROP = 6.dp
 /**
  * How long the sleeve takes to travel the whole way between the full player and
  * the queue's header.
@@ -1879,15 +1880,8 @@ fun NowPlayingScreen(
     // until the clip has painted the same frame again.
     fun stillTakesOver(): Boolean = still() != null && CanvasStills.fresh &&
         (collapseStarted || dockMoving || lyricsOpen || queueOpen || queueDragging || !canvasRendered)
-    // A portrait still is the clip's whole picture, not the banner's square:
-    // top-aligned across the player's width, as the clip is contained, and as
-    // tall. Read off the still, which is there before a reopened clip knows
-    // its own shape.
-    fun stillBottomPx(): Float {
-        val image = still()?.image ?: return 0f
-        if (!heroMode || image.width >= image.height || playerBounds.width <= 0) return 0f
-        return minOf(playerBounds.width * image.height / image.width.toFloat(), playerBounds.height.toFloat())
-    }
+    // Non-fullscreen animated artworks now match the hero banner height.
+    fun stillBottomPx(): Float = 0f
     // The clip's dissolve, held at the banner's height in pixels — see [clipFadeFraction].
     fun stillFadeFraction(): Float {
         val bottom = stillBottomPx()
@@ -2413,10 +2407,8 @@ fun NowPlayingScreen(
                         imageUrl = remoteArt,
                         canvasFrame = { canvasFrame },
                         seamTarget = {
-                            val stillBottom = stillBottomPx()
                             when {
-                                clipPortrait -> clipBottom
-                                stillBottom > 0f -> with(density) { stillBottom.toDp() }
+                                clipFullscreen -> 0.dp
                                 heroMode -> heroHeight
                                 else -> 0.dp
                             }
@@ -2458,12 +2450,8 @@ fun NowPlayingScreen(
                             // Spotify's 9:16 Canvas is the phone background, so it
                             // covers every edge. Other providers retain the contained
                             // portrait treatment introduced for motion cover art.
-                            contentMode = if (clipFullscreen) {
-                                CanvasContentMode.CROP
-                            } else {
-                                CanvasContentMode.FIT_PORTRAIT
-                            },
-                            alignPortraitTop = clipPortrait,
+                            contentMode = CanvasContentMode.CROP,
+                            alignPortraitTop = false,
                             onAspectRatioChanged = { canvasAspect = it },
                             portraitRevealBounds = playerBounds,
                             // Gone by the half, where [heroClip] lets it go — and the
@@ -2512,17 +2500,12 @@ fun NowPlayingScreen(
                                 meshRefreshMs
                             },
                             onCoverChanged = { canvasCover.floatValue = it },
-                            bottomFade = when {
-                                clipFullscreen -> 0f
-                                clipPortrait -> clipFadeFraction
-                                else -> HERO_FADE_FRACTION
-                            },
-                            bottomFadeEndPx = if (clipPortrait) with(density) { clipBottom.toPx() }
-                                else null,
+                            bottomFade = if (clipFullscreen) 0f else HERO_FADE_FRACTION,
+                            bottomFadeEndPx = null,
                             modifier = Modifier
                                 .align(Alignment.TopStart)
                                 .then(
-                                    if (clipFullscreen || clipPortrait) Modifier.fillMaxSize()
+                                    if (clipFullscreen) Modifier.fillMaxSize()
                                     else Modifier.fillMaxWidth().height(heroHeight),
                                 )
                                 .hazeSource(playerHaze),
@@ -2557,7 +2540,7 @@ fun NowPlayingScreen(
                 }
                 // Painted by the handle strip rather than laid out here — see there.
 
-                if (artworkMeshBackdrop && clipPortrait && canvasAspect < PORTRAIT_SCRIM_MAX_ASPECT) {
+                if (false && artworkMeshBackdrop && clipPortrait && canvasAspect < PORTRAIT_SCRIM_MAX_ASPECT) {
                     // A clip tall enough to run on under the controls stays visible
                     // through them; a plain scrim protects text and touch targets
                     // without erasing the video. A 3:4 cover has stopped by then.
@@ -2987,7 +2970,7 @@ fun NowPlayingScreen(
                         // player and has to be centred in it; collapsed, it belongs
                         // hard against the left edge with the credits beside it.
                         fun artStart(): Dp = lerp((maxWidth - fullArt) / 2, 0.dp, p())
-                        fun regularTitleTop(): Dp = lerp(groupTop + fullArt + ART_TITLE_GAP, 0.dp, p())
+                        fun regularTitleTop(): Dp = lerp(groupTop + fullArt + ART_TITLE_GAP + TITLE_EXTRA_DROP, 0.dp, p())
                         // Once Spotify's control deck has left, keep the only remaining
                         // player chrome against the bottom edge instead of stranding it
                         // where the artwork's title normally sits near mid-screen.
@@ -3020,7 +3003,7 @@ fun NowPlayingScreen(
                         // screen's top and this box's own top is fixed padding, so it
                         // can simply be added back up rather than measured.
                         val bannerBottom = statusBarTop + topStrip + ART_BOX_TOP_PAD +
-                            groupTop + fullArt + ART_TITLE_GAP + HEADER_HEIGHT * 0.5f
+                            groupTop + fullArt + ART_TITLE_GAP + TITLE_EXTRA_DROP + HEADER_HEIGHT * 0.5f
                         // Frozen while lyrics are up. The controls now retain their full
                         // footprint across the transition, so this answer is identical
                         // on both sides; avoiding writes during the panel keeps the
@@ -3111,11 +3094,9 @@ fun NowPlayingScreen(
                             val banner = with(density) {
                                 Rect(
                                     offset = Offset(-(playerBounds.width - boxWidthPx) / 2f, bannerTopPx.toFloat()),
-                                    // A portrait clip's still is as tall as the clip
-                                    // is, from the same top edge.
                                     size = Size(
                                         playerBounds.width.toFloat(),
-                                        stillBottomPx().takeIf { it > 0f } ?: heroHeight.roundToPx().toFloat(),
+                                        heroHeight.roundToPx().toFloat(),
                                     ),
                                 )
                             }
@@ -3641,7 +3622,7 @@ fun NowPlayingScreen(
                                 modifier = Modifier
                                     .align(Alignment.TopCenter)
                                     .offset {
-                                        IntOffset(0, (artTop() + artSize() + (ART_TITLE_GAP - 16.dp) / 2).roundToPx())
+                                        IntOffset(0, (artTop() + artSize() + (ART_TITLE_GAP + TITLE_EXTRA_DROP - 16.dp) / 2).roundToPx())
                                     }
                                     .size(16.dp)
                                     .graphicsLayer {
