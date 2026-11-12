@@ -294,6 +294,19 @@
                     android:pathPattern="/invite/......" />
             </intent-filter>
 
+            <!-- Invites on this build's own party server: its landing page at
+                 https://<server>/invite/CODE. The server publishes the matching
+                 assetlinks.json (JAM_ANDROID_APP_LINKS) so a tap opens the app. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="${partyInviteHost}"
+                    android:pathPattern="/invite/......" />
+            </intent-filter>
+
             <!-- Custom scheme for Listen Together invites on custom server deployments. -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
