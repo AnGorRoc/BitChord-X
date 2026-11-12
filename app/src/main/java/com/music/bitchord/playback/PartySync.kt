@@ -1107,12 +1107,13 @@ class PartySync(
          */
         const val INTENT_QUIET_MS = 4_500L
 
-        /** Maximum upcoming tracks in a party queue excluding the currently playing one. */
-        const val MAX_PARTY_UPCOMING_QUEUE = 25
-
-        /** The server's own ceiling; publishing more would only be truncated. */
-        const val MAX_PUBLISHED_QUEUE = 1 + MAX_PARTY_UPCOMING_QUEUE
     }
+
+    /**
+     * Maximum upcoming tracks in a party queue excluding the currently playing one: what the party's
+     * server announced (500 on this fork's, 25 on the original), so a long queue is not cut to 25.
+     */
+    private val MAX_PARTY_UPCOMING_QUEUE: Int get() = ListenTogether.maxUpcomingQueue()
 }
 
 /**

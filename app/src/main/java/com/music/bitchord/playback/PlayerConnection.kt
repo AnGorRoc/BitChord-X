@@ -126,7 +126,7 @@ private fun routedToRemote(songs: List<Song>, startIndex: Int): Boolean {
     if (!party.inParty || ListenTogether.listenHere.value) return false
     val tracks = songs.drop(startIndex.coerceAtLeast(0))
         .filterNot { it.videoId.startsWith("content://") || it.videoId.startsWith("file://") }
-        .take(26)
+        .take(1 + ListenTogether.maxUpcomingQueue())
         .map { it.toPartyTrack(0L) }
     return ListenTogether.routeToParty(tracks, 0)
 }

@@ -859,6 +859,8 @@ object ListenTogether {
             JoinRequest(
                 who.userId, who.deviceId, who.name, who.avatar, maxMembers,
                 autoplayEnabled = AppSettings.autoplay.value,
+                accountProof = proofForJoin(),
+                deviceName = deviceName(),
             ),
         )
 
@@ -917,7 +919,10 @@ object ListenTogether {
         refuseIfRecentlyKicked(cleaned)
         val membership = post(
             "$serverBase/api/parties/$cleaned/join",
-            JoinRequest(who.userId, who.deviceId, who.name, who.avatar),
+            JoinRequest(
+                who.userId, who.deviceId, who.name, who.avatar,
+                accountProof = proofForJoin(), deviceName = deviceName(),
+            ),
         )
 
         withContext(NonCancellable) {
@@ -1024,7 +1029,10 @@ object ListenTogether {
             val targetJoinResult = runCatching {
                 post(
                     "$targetBase/api/parties/$cleanedTargetCode/join",
-                    JoinRequest(who.userId, who.deviceId, who.name, who.avatar),
+                    JoinRequest(
+                        who.userId, who.deviceId, who.name, who.avatar,
+                        accountProof = proofForJoin(), deviceName = deviceName(),
+                    ),
                 )
             }
 
@@ -1188,8 +1196,32 @@ object ListenTogether {
      */
     private suspend fun fetchFeatures(server: String): Set<String>? = runCatching {
         val response = http.get("$server/api/info") { timeout { requestTimeoutMillis = 8_000 } }
-        if (response.status.isSuccess()) PartyServers.parseFeatures(response.bodyAsText()) else emptySet()
+        if (response.status.isSuccess()) {
+            val body = response.bodyAsText()
+            limitCache[server] = PartyServers.parseMaxUpcoming(body)
+            PartyServers.parseFeatures(body)
+        } else {
+            limitCache[server] = PartyServers.ORIGINAL_MAX_UPCOMING
+            emptySet()
+        }
     }.getOrNull()
+
+    private val limitCache = java.util.concurrent.ConcurrentHashMap<String, Int>()
+
+    /**
+     * How many upcoming songs the current party's server keeps. The original's 25 until the server
+     * has said otherwise, so an unread answer never makes this device publish more than it will take.
+     */
+    fun maxUpcomingQueue(): Int {
+        val server = activePartyServerBase ?: return PartyServers.ORIGINAL_MAX_UPCOMING
+        limitCache[server]?.let { return it }
+        // Not read yet: carry on with the safe figure and learn it for next time.
+        scope.launch { serverFeatures(server) }
+        return PartyServers.ORIGINAL_MAX_UPCOMING
+    }
+
+    /** What to tell the server so this device's devices are one person; null when it cannot be had. */
+    private suspend fun proofForJoin(): String? = runCatching { accountProof() }.getOrNull()
 
     /**
      * Chooses whether sound plays on this device. The choice always applies here; it is only
