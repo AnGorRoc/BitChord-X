@@ -50,6 +50,7 @@ var (
 func main() {
 	go startHeartbeatTicker()
 	go startPresenceSweeper()
+	go startAccountSweeper()
 
 	mux := http.NewServeMux()
 
@@ -59,6 +60,8 @@ func main() {
 	mux.HandleFunc("GET /api/time", handleTime)
 	mux.HandleFunc("GET /api/info", handleInfo)
 	mux.HandleFunc("POST /api/devices/join", handleDevicesJoin)
+	mux.HandleFunc("POST /api/account/connect", handleAccountConnect)
+	mux.HandleFunc("GET /ws/account", handleAccountSocket)
 	mux.HandleFunc("GET /.well-known/assetlinks.json", handleAssetLinks)
 	mux.HandleFunc("POST /api/parties", handleCreateParty)
 	mux.HandleFunc("POST /api/parties/{code}/join", handleJoinParty)
@@ -291,6 +294,7 @@ var serverFeatures = []string{
 	"independentDevices", // setIndependent: a device in that room plays its own music
 	"people",             // accountProof on join: one person's devices are one seat; personId on members
 	"addedBy",            // tracks carry who queued them
+	"accountDevices",     // /api/account/connect + /ws/account: a person's devices see each other
 }
 
 // handleInfo describes this server so a client can tell an extended build from
