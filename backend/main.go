@@ -58,6 +58,7 @@ func main() {
 	mux.HandleFunc("GET /healthz", handleHealthz)
 	mux.HandleFunc("GET /api/time", handleTime)
 	mux.HandleFunc("GET /api/info", handleInfo)
+	mux.HandleFunc("POST /api/devices/join", handleDevicesJoin)
 	mux.HandleFunc("GET /.well-known/assetlinks.json", handleAssetLinks)
 	mux.HandleFunc("POST /api/parties", handleCreateParty)
 	mux.HandleFunc("POST /api/parties/{code}/join", handleJoinParty)
@@ -286,6 +287,7 @@ var serverFeatures = []string{
 	"activity",        // activity frames
 	"inviteLanding",   // GET /invite/{code}
 	"listeningMode",   // setListening, and playsAudio on members
+	"myDevices",       // POST /api/devices/join: one person's devices as one room
 }
 
 // handleInfo describes this server so a client can tell an extended build from
@@ -499,6 +501,11 @@ func handleJoinParty(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, http.StatusNotFound, "no_such_party", "No party with that code.")
 		return
 	}
+	// A personal room is opened by its owner's devices, never by code.
+	if party.IsPersonal(p.Code) {
+		jsonError(w, http.StatusNotFound, "no_such_party", "No party with that code.")
+		return
+	}
 
 	p.Lock()
 	m, err := p.Join(req.UserId, req.DeviceId, req.DisplayName, req.AvatarUrl)
@@ -545,6 +552,10 @@ func handlePreviewParty(w http.ResponseWriter, r *http.Request) {
 			jsonError(w, pe.Status, pe.Code, pe.Message)
 			return
 		}
+		jsonError(w, http.StatusNotFound, "no_such_party", "No party with that code.")
+		return
+	}
+	if party.IsPersonal(p.Code) {
 		jsonError(w, http.StatusNotFound, "no_such_party", "No party with that code.")
 		return
 	}
@@ -898,7 +909,7 @@ func handleInviteLanding(w http.ResponseWriter, r *http.Request) {
 	}
 
 	p := store.Find(code)
-	if p == nil {
+	if p == nil || party.IsPersonal(code) {
 		w.WriteHeader(http.StatusNotFound)
 		_ = inviteTemplate.Execute(w, invitePageData{
 			Code:     code,
@@ -1247,7 +1258,12 @@ func applyControl(p *party.Party, member *party.Member, action string, frame map
 		if !ok {
 			return false, "bad_request", "enabled must be true or false."
 		}
-		member.Silent = !enabled
+		if enabled && party.IsPersonal(p.Code) {
+			// One person's own devices: the one that asks to play is the only one that does.
+			p.PlayHere(member)
+		} else {
+			member.Silent = !enabled
+		}
 		return true, "", ""
 
 	case protocol.ActionSetAutoplay:
