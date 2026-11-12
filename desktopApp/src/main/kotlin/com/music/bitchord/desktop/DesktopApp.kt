@@ -4134,6 +4134,9 @@ fun BitChordDesktopApp() {
                             },
                             onAddAccount = { overlays.accounts = false; overlays.signIn = true },
                             onRemoveAccount = { account ->
+                                // Signing out clears the window's Google login, so the removed account is
+                                // not detected again on the next sign-in.
+                                DesktopWebCookies.reset()
                                 scope.launch {
                                     accounts = withContext(Dispatchers.IO) {
                                         DesktopAccounts.remove(account.accountId)

@@ -99,7 +99,7 @@ internal object DesktopWebSignIn {
 
         init {
             stage.title = service.title
-            val startOver = Button("Start over").apply { setOnAction { load() } }
+            val startOver = Button("Start over").apply { setOnAction { load(fresh = true) } }
             val bar = HBox(8.0, startOver, Region().also { HBox.setHgrow(it, Priority.ALWAYS) }, where)
             bar.padding = Insets(8.0)
             if (service == Service.YOUTUBE_MUSIC) {
@@ -111,7 +111,7 @@ internal object DesktopWebSignIn {
             stage.scene = Scene(root, 480.0, 760.0)
             // Closing the window is the listener cancelling.
             stage.setOnHidden { cancel() }
-            load()
+            load(fresh = false)
         }
 
         fun show() = stage.show()
@@ -119,14 +119,15 @@ internal object DesktopWebSignIn {
         fun cancel() = complete(Result.failure(CancellationException("sign-in window closed")))
 
         /**
-         * A clean start: an empty cookie jar and a new WebView with storage of its own. Clearing only
-         * the cookies is not enough to change account — Spotify also remembers the login in web
-         * storage — and starting over is how the listener picks another Google, Facebook or Apple
-         * account.
+         * Opens the sign-in page. Opening keeps the Google login already in the cookie jar, so an
+         * account signed in on this PC is detected without a picker. [fresh] is "Start over": an empty
+         * cookie jar and a new WebView with storage of its own. Clearing only the cookies is not enough
+         * to change account — Spotify also remembers the login in web storage — and starting over is
+         * how the listener picks another Google, Facebook or Apple account.
          */
-        private fun load() {
+        private fun load(fresh: Boolean) {
             discard()
-            DesktopWebCookies.reset()
+            if (fresh) DesktopWebCookies.reset()
             val folder = Files.createTempDirectory("bitchord-sign-in-").also { storage = it }
             val next = WebView().also { view = it }
             val engine = next.engine
@@ -158,8 +159,8 @@ internal object DesktopWebSignIn {
             if (result.isSuccess) DesktopTrackLog.log("sign-in: ${service.name} session captured in the sign-in window")
             stage.close()
             discard()
-            // BitChord keeps its own copy of the session; the window's goes with it.
-            DesktopWebCookies.reset()
+            // The window's login is kept, so the next sign-in detects it. Removing the account
+            // clears it (see DesktopApp's onRemoveAccount).
             finish(result)
         }
 
