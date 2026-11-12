@@ -395,6 +395,7 @@ internal object DesktopListenTogether {
         clock.reset()
         token = null
         activePartyServerBase = null
+        _listenHere.value = true
         persistence.saveString(KEY_CODE, "")
         persistence.saveString(KEY_TOKEN, "")
         persistence.saveString(KEY_ACTIVE_SERVER, "")
@@ -455,6 +456,47 @@ internal object DesktopListenTogether {
 
     fun setHostOnlyControl(enabled: Boolean) =
         control("setHostOnlyControl") { put("enabled", enabled) }
+
+    // ------------------------------------------------------ where it plays --
+
+    private val _listenHere = MutableStateFlow(true)
+
+    /**
+     * Whether sound comes out of this computer. False follows the party and can control it while
+     * the music plays from somewhere else, such as the host's speakers: nothing is loaded or
+     * played here and nothing this player does is published.
+     *
+     * Kept in memory only, on purpose: it describes this party, and every new one starts aloud.
+     */
+    val listenHere: StateFlow<Boolean> = _listenHere.asStateFlow()
+
+    private val featureCache = java.util.concurrent.ConcurrentHashMap<String, Set<String>>()
+
+    /** What the server holding the current party supports; empty for the original server. */
+    private suspend fun serverFeatures(server: String): Set<String> =
+        featureCache[server] ?: runCatching {
+            val response = http.get("$server/api/info") { timeout { requestTimeoutMillis = 8_000 } }
+            if (response.status.isSuccess()) PartyServers.parseFeatures(response.bodyAsText()) else emptySet()
+        }.getOrDefault(emptySet()).also { featureCache[server] = it }
+
+    /**
+     * Chooses whether sound plays on this computer. The choice always applies here; it is only
+     * *announced* to the party (the speaker icon beside the name) on a server that understands it.
+     */
+    fun setListenHere(enabled: Boolean) {
+        _listenHere.value = enabled
+        announceListening()
+    }
+
+    private fun announceListening() {
+        val server = activePartyServerBase ?: return
+        if (!_state.value.inParty) return
+        scope.launch {
+            if (PartyServers.FEATURE_LISTENING_MODE in serverFeatures(server)) {
+                control("setListening") { put("enabled", _listenHere.value) }
+            }
+        }
+    }
 
     private fun control(action: String, body: JsonObjectBuilder.() -> Unit) {
         if (_state.value.controlsLocked) return
@@ -600,6 +642,8 @@ internal object DesktopListenTogether {
                         error = null,
                     )
                 }
+                // A first arrival has not yet said how it listens.
+                if (!_listenHere.value) announceListening()
             }
 
             "pong" -> {

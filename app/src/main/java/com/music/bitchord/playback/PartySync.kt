@@ -191,6 +191,9 @@ class PartySync(
 
     private var lastPartyCode: String? = null
 
+    /** Whether the player was already silenced for a "play from the host only" party. */
+    private var silencedForParty = false
+
     fun start() {
         jobs += scope.launch {
             ListenTogether.state
@@ -258,6 +261,9 @@ class PartySync(
         // state, so without this an unrelated intent arriving later would read
         // a locally paused player as a pause to send to everybody.
         if (party.controlsLocked) return
+        // This device is not playing the party, so what its player does is not the party's
+        // business, and a silenced player would read as a pause to send to everybody.
+        if (!ListenTogether.listenHere.value) return
         // Whatever the user just pressed, they want this device in the party
         // again — so it follows from here, and this one publish is a catch-up
         // rather than a control. See [focusLost].
@@ -487,6 +493,19 @@ class PartySync(
             lastIsPlaying = false
             return
         }
+        // Following the party without playing it here: the music comes out of another device.
+        // Nothing is loaded and nothing is started, which is also what spares this device the
+        // stream. The player is silenced once on the way in; onLocalIntent is already closed to it
+        // by then, so that pause is never mistaken for the listener pausing the party.
+        if (!ListenTogether.listenHere.value) {
+            deferredPlayPending = false
+            if (!silencedForParty) {
+                silencedForParty = true
+                player()?.let { if (it.playWhenReady) it.pause() }
+            }
+            return
+        }
+        silencedForParty = false
         // Before any of the early returns below, so a local pause cannot
         // outlive the thing it was held against.
         clearLocalPauseIfFreed(party)

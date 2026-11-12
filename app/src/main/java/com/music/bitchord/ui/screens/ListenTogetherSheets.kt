@@ -316,8 +316,6 @@ internal fun CreatePartySheet(
     avatarUrl: String?,
     nickname: String,
     onNicknameChange: (String) -> Unit,
-    maxMembers: Int,
-    onMaxMembersChange: (Int) -> Unit,
     busy: Boolean,
     enabled: Boolean,
     error: String?,
@@ -346,37 +344,6 @@ internal fun CreatePartySheet(
                 enabled = enabled,
                 keyboardOptions = KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Done),
             )
-        }
-        Spacer(Modifier.height(18.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Column(Modifier.weight(1f)) {
-                Text(
-                    stringResource(R.string.listen_together_party_size),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Text(
-                    stringResource(R.string.listen_together_party_size_subtitle),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
-            StepperButton("−", enabled = enabled && maxMembers > 2) {
-                onMaxMembersChange(maxMembers - 1)
-            }
-            Text(
-                "$maxMembers",
-                style = MaterialTheme.typography.titleMedium,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.width(32.dp),
-                textAlign = TextAlign.Center,
-            )
-            StepperButton("+", enabled = enabled && maxMembers < 10) {
-                onMaxMembersChange(maxMembers + 1)
-            }
         }
         Spacer(Modifier.height(16.dp))
         // Spotify Jam compatibility switch
@@ -444,6 +411,40 @@ internal fun CreatePartySheet(
         }
         SheetError(error)
         Spacer(Modifier.height(12.dp))
+    }
+}
+
+/**
+ * Where the sound comes out. On, this device plays the party like everybody else's does. Off, it
+ * follows and controls the party while the music plays from the host, which is what a room full of
+ * people who are already hearing it from one speaker wants.
+ */
+@Composable
+internal fun PlayHereRow(playHere: Boolean, onChange: (Boolean) -> Unit, enabled: Boolean = true) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(
+                stringResource(R.string.listen_together_play_here),
+                style = MaterialTheme.typography.bodyLarge,
+                fontWeight = FontWeight.SemiBold,
+                color = MaterialTheme.colorScheme.onSurface,
+            )
+            Text(
+                stringResource(
+                    if (playHere) R.string.listen_together_play_here_on else R.string.listen_together_play_here_off,
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        Spacer(Modifier.width(8.dp))
+        IosSwitch(checked = playHere, onCheckedChange = onChange, enabled = enabled)
     }
 }
 
@@ -629,6 +630,8 @@ internal fun JoinConfirmSheet(
     avatarUrl: String?,
     nickname: String,
     onNicknameChange: (String) -> Unit,
+    playHere: Boolean,
+    onPlayHereChange: (Boolean) -> Unit,
     busy: Boolean,
     error: String?,
     onJoin: () -> Unit,
@@ -691,6 +694,8 @@ internal fun JoinConfirmSheet(
                 keyboardOptions = KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Done),
             )
         }
+        Spacer(Modifier.height(14.dp))
+        PlayHereRow(playHere = playHere, onChange = onPlayHereChange, enabled = !busy)
         Spacer(Modifier.height(20.dp))
         Button(
             onClick = onJoin,

@@ -76,6 +76,9 @@ internal class DesktopPartySync(
     private var awaitPlaybackSeq = Long.MAX_VALUE
     private var awaitQueueSeq = Long.MAX_VALUE
     private var locallyPaused = false
+
+    /** Whether the engine was already silenced for a "play from the host only" party. */
+    private var silencedForParty = false
     private var lastPartyCode: String? = null
     private var appliedAutoplay: Boolean? = null
     /** A track selection whose decoder is still resolving. */
@@ -147,6 +150,8 @@ internal class DesktopPartySync(
     fun onLocalIntent(expectedVideoId: String? = null) {
         val party = DesktopListenTogether.state.value
         if (!party.inParty || party.controlsLocked) return
+        // Not playing the party here, so this engine's state is not the party's business.
+        if (!DesktopListenTogether.listenHere.value) return
         // Queue/transport gestures can arrive while a preceding song selection is still loading.
         // Keep waiting for that selection rather than letting the later gesture cancel its guard.
         val waitForVideoId = expectedVideoId
@@ -208,6 +213,18 @@ internal class DesktopPartySync(
             appliedAutoplay = null
             return
         }
+        // Following the party without playing it here: the music comes out of another device.
+        // Nothing is loaded or started, and the engine is silenced once on the way in;
+        // onLocalIntent is already closed to it by then, so that pause is never published.
+        if (!DesktopListenTogether.listenHere.value) {
+            startJob?.cancel()
+            if (!silencedForParty) {
+                silencedForParty = true
+                if (engine.state.value.isPlaying) engine.pause()
+            }
+            return
+        }
+        silencedForParty = false
         if (!party.controlsLocked) locallyPaused = false
         if (nowMs() < quietUntilMs) return
         val target = party.playback

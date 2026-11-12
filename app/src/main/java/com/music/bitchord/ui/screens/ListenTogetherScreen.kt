@@ -33,6 +33,8 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.VolumeOff
 import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.CloudDone
 import androidx.compose.material.icons.rounded.CloudOff
@@ -177,7 +179,10 @@ fun ListenTogetherScreen(
     var busy by remember { mutableStateOf(false) }
     var failure by remember { mutableStateOf<String?>(null) }
     var nickname by remember { mutableStateOf(ListenTogether.nickname()) }
-    var maxMembers by remember { mutableIntStateOf(5) }
+    // Offered to the host as a setting once the party exists, not asked up front: people almost
+    // never want fewer than everyone they invite.
+    val maxMembers = DEFAULT_PARTY_SIZE
+    var joinPlayHere by remember { mutableStateOf(true) }
     var pendingServerSwitchInvite by remember { mutableStateOf<Pair<String, String>?>(null) }
     var sharingApk by remember { mutableStateOf(false) }
     var sheet by remember { mutableStateOf<PartySheet?>(null) }
@@ -408,8 +413,6 @@ fun ListenTogetherScreen(
                         nickname = it.take(80)
                         ListenTogether.setNickname(nickname)
                     },
-                    maxMembers = maxMembers,
-                    onMaxMembersChange = { maxMembers = it.coerceIn(2, 10) },
                     busy = busy,
                     enabled = signedIn && ListenTogether.hasServer,
                     error = failure,
@@ -462,6 +465,8 @@ fun ListenTogetherScreen(
                         nickname = it.take(80)
                         ListenTogether.setNickname(nickname)
                     },
+                    playHere = joinPlayHere,
+                    onPlayHereChange = { joinPlayHere = it },
                     busy = busy,
                     error = failure,
                     onDismiss = {
@@ -472,6 +477,9 @@ fun ListenTogetherScreen(
                         busy = true
                         failure = null
                         scope.launch {
+                            // Set before joining so the welcome that follows already knows how
+                            // this device listens; put back if the party turns it away.
+                            ListenTogether.setListenHere(joinPlayHere)
                             // A server named on the invite itself always wins,
                             // whether this device is idle or already live: it
                             // is the one place the target the preview came
@@ -499,6 +507,7 @@ fun ListenTogetherScreen(
                                     .exceptionOrNull()?.message
                             }
                             failure = problem
+                            if (problem != null) ListenTogether.setListenHere(true)
                             busy = false
                             if (problem == null) {
                                 codeInput = ""
@@ -879,6 +888,9 @@ private fun ServerConnectionLine(connection: ServerConnectionState) {
  */
 private const val INVITE_SHEET_DELAY_MS = 1_000L
 
+/** What a new party holds. Small parties are a setting for the host, not a decision at the door. */
+private const val DEFAULT_PARTY_SIZE = 10
+
 /** The six cells of [PartyCodeField], and the Join button under them. */
 internal val CODE_CELL_SHAPE = RoundedCornerShape(12.dp)
 
@@ -1167,6 +1179,20 @@ private fun InAParty(
 
     NowPlayingInTheParty(state)
 
+    val playHere by ListenTogether.listenHere.collectAsStateWithLifecycle()
+    SettingsGroup(
+        footer = stringResource(
+            if (playHere) R.string.listen_together_play_here_on else R.string.listen_together_play_here_off,
+        ),
+    ) {
+        SettingsRow(
+            icon = if (playHere) SfIcons.VolumeUp else Icons.AutoMirrored.Rounded.VolumeOff,
+            title = stringResource(R.string.listen_together_play_here),
+            trailing = { IosSwitch(checked = playHere, onCheckedChange = { ListenTogether.setListenHere(it) }) },
+            onClick = { ListenTogether.setListenHere(!playHere) },
+        )
+    }
+
     SettingsGroup(
         header = stringResource(
             R.string.listen_together_listening,
@@ -1176,23 +1202,6 @@ private fun InAParty(
         footer = stringResource(R.string.listen_together_members_footer, state.maxMembers),
     ) {
         if (state.you?.isHost == true) {
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = ROW_INSET, vertical = 8.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        stringResource(R.string.listen_together_party_size),
-                        style = MaterialTheme.typography.bodyLarge,
-                        color = MaterialTheme.colorScheme.onSurface,
-                    )
-                    Text(stringResource(R.string.listen_together_host_controls), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                TextButton(onClick = { onSetCapacity(state.maxMembers - 1) }, enabled = state.maxMembers > maxOf(2, state.members.size)) { Text("−", color = MaterialTheme.colorScheme.onSurface) }
-                Text("${state.maxMembers}", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.width(28.dp), textAlign = TextAlign.Center)
-                TextButton(onClick = { onSetCapacity(state.maxMembers + 1) }, enabled = state.maxMembers < 10) { Text("+", color = MaterialTheme.colorScheme.onSurface) }
-            }
-            RowDivider()
             SettingsRow(
                 icon = SfIcons.Lock,
                 title = stringResource(R.string.listen_together_host_only),
@@ -1205,6 +1214,22 @@ private fun InAParty(
                 },
                 onClick = { onSetHostOnlyControl(!state.hostOnlyControl) },
             )
+            RowDivider()
+            // Last and small: a limit almost nobody needs to touch.
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = ROW_INSET, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    stringResource(R.string.listen_together_party_size),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.weight(1f),
+                )
+                TextButton(onClick = { onSetCapacity(state.maxMembers - 1) }, enabled = state.maxMembers > maxOf(2, state.members.size)) { Text("−", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                Text("${state.maxMembers}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(24.dp), textAlign = TextAlign.Center)
+                TextButton(onClick = { onSetCapacity(state.maxMembers + 1) }, enabled = state.maxMembers < 10) { Text("+", color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            }
             RowDivider()
         }
         state.members.forEachIndexed { index, member ->
@@ -1364,6 +1389,15 @@ private fun MemberRow(member: PartyMember, isYou: Boolean, canKick: Boolean = fa
                 if (isYou) {
                     Spacer(Modifier.width(8.dp))
                     Badge(stringResource(R.string.listen_together_you))
+                }
+                if (!member.playsAudio) {
+                    Spacer(Modifier.width(6.dp))
+                    Icon(
+                        Icons.AutoMirrored.Rounded.VolumeOff,
+                        contentDescription = stringResource(R.string.listen_together_silent_member),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(16.dp),
+                    )
                 }
             }
             // "Away" rather than "offline": the slot is still theirs, and the

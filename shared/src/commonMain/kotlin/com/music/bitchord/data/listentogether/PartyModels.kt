@@ -44,6 +44,12 @@ data class PartyMember(
     val isHost: Boolean = false,
     /** Whether they are currently holding a socket — not whether they are still in. */
     val connected: Boolean = false,
+    /**
+     * Whether sound comes out of this member's own device. False means they follow the party
+     * (and can control it) while the music plays from somewhere else, such as the host's speakers.
+     * Absent on a server that predates the setting, which means everybody plays aloud.
+     */
+    val playsAudio: Boolean = true,
     val joinedAtMs: Long = 0,
     val lastSeenMs: Long = 0,
 )

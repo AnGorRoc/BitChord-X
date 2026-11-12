@@ -101,4 +101,13 @@ class PartyInvitesTest {
             }
         }
     }
+
+    @Test
+    fun `server features are read from info and default to none`() {
+        val info = """{"flavor":"bitchord-x","features":["preview","listeningMode"]}"""
+        assertTrue(PartyServers.FEATURE_LISTENING_MODE in PartyServers.parseFeatures(info))
+        // The original server answers 404 with plain text or an error body: baseline only.
+        assertEquals(emptySet(), PartyServers.parseFeatures("not found"))
+        assertEquals(emptySet(), PartyServers.parseFeatures("""{"error":"no_such_party"}"""))
+    }
 }

@@ -1,5 +1,9 @@
 package com.music.bitchord.data.listentogether
 
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import java.net.URI
 import java.net.URLDecoder
 import java.net.URLEncoder
@@ -25,6 +29,18 @@ object PartyServers {
 
     /** The original BitChord's public web origin, which its invite links use. */
     const val ORIGINAL_WEB = "https://bitchord.kushagrasingh.in"
+
+    /** Feature names an extended server lists at `/api/info`. */
+    const val FEATURE_LISTENING_MODE = "listeningMode"
+
+    /**
+     * The features a server's `/api/info` body lists. Empty for anything unreadable, which is what
+     * the original server's 404 page is: baseline protocol only.
+     */
+    fun parseFeatures(body: String): Set<String> = runCatching {
+        Json.parseToJsonElement(body).jsonObject["features"]?.jsonArray
+            ?.map { it.jsonPrimitive.content }?.toSet()
+    }.getOrNull().orEmpty()
 
     fun isOriginalOfficial(server: String?): Boolean =
         server != null && normalize(server).equals(ORIGINAL_OFFICIAL, ignoreCase = true)
