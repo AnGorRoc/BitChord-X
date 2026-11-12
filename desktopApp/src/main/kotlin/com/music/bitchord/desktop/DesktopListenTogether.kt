@@ -2,13 +2,14 @@ package com.music.bitchord.desktop
 
 import com.music.bitchord.data.listentogether.ApiError
 import com.music.bitchord.data.listentogether.JoinRequest
-import com.music.bitchord.data.listentogether.JamInvite
 import com.music.bitchord.data.listentogether.PartyActivity
 import com.music.bitchord.data.listentogether.PartyMember
+import com.music.bitchord.data.listentogether.PartyInvites
 import com.music.bitchord.data.listentogether.PartyMembership
 import com.music.bitchord.data.listentogether.PartyPlayback
 import com.music.bitchord.data.listentogether.PartyPreview
 import com.music.bitchord.data.listentogether.PartyQueue
+import com.music.bitchord.data.listentogether.PartyServers
 import com.music.bitchord.data.listentogether.PartySnapshot
 import com.music.bitchord.data.listentogether.PartyTrack
 import com.music.bitchord.data.listentogether.ServerClock
@@ -127,6 +128,14 @@ internal object DesktopListenTogether {
             .orEmpty()
     }
 
+    /**
+     * Where idle operations go when [DEFAULT_SERVER] is down: the original BitChord's official
+     * server, which every build can reach. Blank when it already is the default.
+     */
+    private val FALLBACK_SERVER: String by lazy {
+        PartyServers.ORIGINAL_OFFICIAL.takeUnless { it.equals(DEFAULT_SERVER, ignoreCase = true) }.orEmpty()
+    }
+
     private val http = HttpClient(CIO) {
         install(ContentNegotiation) { json(json) }
         install(WebSockets)
@@ -242,15 +251,30 @@ internal object DesktopListenTogether {
 
     fun myAvatarUrl(): String? = identity()?.avatar
 
-    /** Public invite for the server that actually owns the current membership. */
-    fun inviteUrl(code: String): String {
-        val server = activePartyServerBase
-        return if (server.isNullOrBlank() || server == DEFAULT_SERVER) {
-            JamInvite.url(code)
-        } else {
-            "$server/invite/${code.uppercase()}"
-        }
+    /**
+     * Public invite for the server that actually owns the current membership. It always names that
+     * server, so whoever opens it (a phone, a PC, or the original BitChord) lands on the same
+     * party. See [PartyInvites.url].
+     */
+    fun inviteUrl(code: String): String =
+        PartyInvites.url(code, activePartyServerBase ?: effectiveIdleServerBase)
+
+    /**
+     * Whether [server] is one this build already talks to on its own: its default, the original
+     * official server, or the one the listener set. Anything else came from a link, and the
+     * listener should see where it points before joining.
+     */
+    fun isKnownServer(server: String?): Boolean {
+        val normalized = server?.let(PartyServers::normalize).orEmpty()
+        if (normalized.isBlank()) return true
+        return normalized.equals(DEFAULT_SERVER, ignoreCase = true) ||
+            PartyServers.isOriginalOfficial(normalized) ||
+            normalized.equals(_customServer.value, ignoreCase = true) ||
+            normalized.equals(effectiveIdleServerBase, ignoreCase = true)
     }
+
+    /** The host of a server address, for showing where a link points. */
+    fun serverHost(server: String): String = runCatching { URI(server).host }.getOrNull() ?: server
 
     /** Whether this device can join at all — a party is joined as an account, not anonymously. */
     fun canJoin(): Boolean = identity() != null
@@ -273,14 +297,23 @@ internal object DesktopListenTogether {
         )
     }
 
-    suspend fun joinParty(code: String, nickname: String = nickname()): Result<String> {
+    /**
+     * Joins [code]. A [server] named by an invite is used as it is: the party lives there and
+     * nowhere else, so there is no fallback to try. Without one, the usual idle server is.
+     */
+    suspend fun joinParty(
+        code: String,
+        nickname: String = nickname(),
+        server: String? = null,
+    ): Result<String> {
         val trimmed = cleanCode(code)
         if (trimmed.length != CODE_LENGTH) {
             return Result.failure(PartyException("bad_code", "A party code is six letters or digits."))
         }
+        val target = server?.let(PartyServers::normalize)?.ifBlank { null }
         return runCatching { refuseIfRecentlyKicked(trimmed) }.fold(
             onSuccess = {
-                enter(nickname) { who, server ->
+                enter(nickname, target) { who, server ->
                     post(
                         "$server/api/parties/$trimmed/join",
                         JoinRequest(who.userId, who.deviceId, who.name, who.avatar),
@@ -293,6 +326,7 @@ internal object DesktopListenTogether {
 
     private suspend fun enter(
         nickname: String,
+        explicitServer: String? = null,
         request: suspend (Identity, String) -> PartyMembership,
     ): Result<String> = withContext(Dispatchers.IO) {
         val who = identity(nickname)
@@ -304,25 +338,31 @@ internal object DesktopListenTogether {
                 PartyException("no_server", "Set the party server address first."),
             )
         }
-        val primary = resolveIdleServer()
-        val first = runCatching { request(who, primary) }
-        val attempt = if (
-            first.isFailure &&
-            primary != DEFAULT_SERVER &&
-            DEFAULT_SERVER.isNotBlank() &&
-            first.exceptionOrNull()?.let(::isEligibleForFallback) == true
-        ) {
-            runCatching { request(who, DEFAULT_SERVER) }
-                .onSuccess {
-                    effectiveIdleServerBase = DEFAULT_SERVER
+        // An invite's server is the only place its party exists. Otherwise try the idle server,
+        // then the built-in ones in order, but only past a failure that says the server itself is
+        // unreachable: a refusal (full, kicked, no such party) is an answer, not an outage.
+        val candidates = if (explicitServer != null) {
+            listOf(explicitServer)
+        } else {
+            listOf(resolveIdleServer(), DEFAULT_SERVER, FALLBACK_SERVER).filter(String::isNotBlank).distinct()
+        }
+        var usedServer = candidates.firstOrNull().orEmpty()
+        var attempt: Result<PartyMembership> = Result.failure(PartyException("no_server", UNREACHABLE))
+        for ((index, candidate) in candidates.withIndex()) {
+            usedServer = candidate
+            attempt = runCatching { request(who, candidate) }
+            if (attempt.isSuccess) {
+                if (index > 0 && explicitServer == null) {
+                    effectiveIdleServerBase = candidate
                     _serverStatus.value = ServerStatus(Health.ONLINE, isFallback = true)
                 }
-        } else {
-            first
+                break
+            }
+            if (attempt.exceptionOrNull()?.let(::isEligibleForFallback) != true) break
         }
 
         attempt.onSuccess { membership ->
-            activePartyServerBase = if (first.isSuccess) primary else DEFAULT_SERVER
+            activePartyServerBase = usedServer
             token = membership.token
             persistence.saveString(KEY_CODE, membership.code)
             persistence.saveString(KEY_TOKEN, membership.token)
@@ -685,7 +725,7 @@ internal object DesktopListenTogether {
         return response.body()
     }
 
-    suspend fun previewParty(code: String): Result<PartyPreview> = withContext(Dispatchers.IO) {
+    suspend fun previewParty(code: String, server: String? = null): Result<PartyPreview> = withContext(Dispatchers.IO) {
         val cleaned = cleanCode(code)
         if (cleaned.length != CODE_LENGTH) {
             return@withContext Result.failure(
@@ -694,7 +734,7 @@ internal object DesktopListenTogether {
         }
         runCatching {
             refuseIfRecentlyKicked(cleaned)
-            val base = resolveIdleServer()
+            val base = server?.let(PartyServers::normalize)?.ifBlank { null } ?: resolveIdleServer()
             if (base.isBlank()) throw PartyException("no_server", "Set the party server address first.")
             val response = http.get("$base/api/parties/$cleaned/preview")
             if (!response.status.isSuccess()) {
@@ -738,14 +778,14 @@ internal object DesktopListenTogether {
                 return custom
             }
             if (DEFAULT_SERVER.isNotBlank()) {
-                val fallback = probeHealth(DEFAULT_SERVER, DEFAULT_SERVER_TIMEOUT_MS)
-                effectiveIdleServerBase = DEFAULT_SERVER
+                val (server, fallback) = probeBuiltIn()
+                effectiveIdleServerBase = server
                 _serverStatus.value = if (fallback.first) {
                     ServerStatus(Health.ONLINE, fallback.second, isFallback = true)
                 } else {
                     ServerStatus(Health.OFFLINE)
                 }
-                return DEFAULT_SERVER
+                return server
             }
             effectiveIdleServerBase = custom
             _serverStatus.value = ServerStatus(Health.OFFLINE)
@@ -757,13 +797,25 @@ internal object DesktopListenTogether {
             _serverStatus.value = ServerStatus(Health.OFFLINE)
             return ""
         }
-        val probe = probeHealth(DEFAULT_SERVER, DEFAULT_SERVER_TIMEOUT_MS)
+        val (server, probe) = probeBuiltIn()
+        effectiveIdleServerBase = server
         _serverStatus.value = if (probe.first) {
             ServerStatus(Health.ONLINE, probe.second)
         } else {
             ServerStatus(Health.OFFLINE)
         }
-        return DEFAULT_SERVER
+        return server
+    }
+
+    /**
+     * This build's own server, or the original official one when that is down. To the listener
+     * both are simply "the built-in server", and neither address is shown.
+     */
+    private suspend fun probeBuiltIn(): Pair<String, Pair<Boolean, Long>> {
+        val primary = probeHealth(DEFAULT_SERVER, DEFAULT_SERVER_TIMEOUT_MS)
+        if (primary.first || FALLBACK_SERVER.isBlank()) return DEFAULT_SERVER to primary
+        val secondary = probeHealth(FALLBACK_SERVER, DEFAULT_SERVER_TIMEOUT_MS)
+        return if (secondary.first) FALLBACK_SERVER to secondary else DEFAULT_SERVER to primary
     }
 
     private suspend fun probeHealth(server: String, timeoutMs: Long): Pair<Boolean, Long> {
@@ -841,7 +893,7 @@ internal object DesktopListenTogether {
     private fun redact(text: String?): String {
         var out = text.orEmpty()
         if (out.isEmpty()) return out
-        listOf(DEFAULT_SERVER, _customServer.value)
+        listOf(DEFAULT_SERVER, FALLBACK_SERVER, _customServer.value, activePartyServerBase.orEmpty())
             .filter { it.isNotBlank() }
             .forEach { out = out.replace(it, SERVER_PLACEHOLDER) }
         return out.replace(ABSOLUTE_URL, SERVER_PLACEHOLDER)

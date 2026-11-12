@@ -101,6 +101,8 @@ import com.music.bitchord.BuildConfig
 import com.music.bitchord.R
 import com.music.bitchord.ui.copyText
 import com.music.bitchord.data.listentogether.JamInviteLink
+import com.music.bitchord.data.listentogether.PartyInvites
+import com.music.bitchord.data.listentogether.PartyServers
 import com.music.bitchord.data.listentogether.ListenTogether
 import com.music.bitchord.data.listentogether.PartyActivity
 import com.music.bitchord.data.listentogether.PartyMember
@@ -170,6 +172,8 @@ fun ListenTogetherScreen(
     val spotifySession by SpotifyJamBridge.session.collectAsStateWithLifecycle()
 
     var codeInput by remember(inviteCode) { mutableStateOf(inviteCode.orEmpty()) }
+    // The server a pasted link named, kept beside the code it came with.
+    var codeInputServer by remember(inviteCode) { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     var failure by remember { mutableStateOf<String?>(null) }
     var nickname by remember { mutableStateOf(ListenTogether.nickname()) }
@@ -218,12 +222,10 @@ fun ListenTogetherScreen(
 
     /** The invite URL for a code, pointing at whichever server holds the party. */
     val inviteLinkFor: (String) -> String = { partyCode ->
-        val host = ListenTogether.activePartyServerBase()
-        if (host == null || host == ListenTogether.defaultServer) {
-            JamInviteLink.url(partyCode, null)
-        } else {
-            JamInviteLink.url(partyCode, host)
-        }
+        JamInviteLink.url(
+            partyCode,
+            ListenTogether.activePartyServerBase() ?: ListenTogether.effectiveIdleServerBase(),
+        )
     }
 
     /** The system chooser, with the link and the spoken-aloud code together. */
@@ -294,13 +296,15 @@ fun ListenTogetherScreen(
         val activeServer = (ListenTogether.activePartyServerBase() ?: ListenTogether.effectiveIdleServerBase()).trim().trimEnd('/')
         val targetServer = inviteServer?.trim()?.trimEnd('/')
 
-        if (!targetServer.isNullOrBlank()) {
-            if (!targetServer.equals(activeServer, ignoreCase = true)) {
-                pendingServerSwitchInvite = code to targetServer
-                return@LaunchedEffect
-            }
-        } else if (customServer.isNotBlank()) {
-            pendingServerSwitchInvite = code to ""
+        // Only a server this build does not already know needs consent to be talked to at all;
+        // the built-in ones (this build's own and the original official one) go straight to the
+        // confirm sheet like any other invite.
+        val knownServer = targetServer.isNullOrBlank() ||
+            targetServer.equals(activeServer, ignoreCase = true) ||
+            targetServer.equals(ListenTogether.defaultServer, ignoreCase = true) ||
+            PartyServers.isOriginalOfficial(targetServer)
+        if (!knownServer) {
+            pendingServerSwitchInvite = code to targetServer.orEmpty()
             return@LaunchedEffect
         }
 
@@ -318,7 +322,7 @@ fun ListenTogetherScreen(
     }
 
     pendingServerSwitchInvite?.let { (codeToJoin, serverToSet) ->
-        val isSwitchToOfficial = serverToSet.isBlank()
+        val isSwitchToOfficial = serverToSet.isBlank() || PartyServers.isOriginalOfficial(serverToSet)
         AlertDialog(
             onDismissRequest = {
                 pendingServerSwitchInvite = null
@@ -432,9 +436,12 @@ fun ListenTogetherScreen(
                 PartySheet.JoinCode -> JoinPartySheet(
                     code = codeInput,
                     onCodeChange = { typed ->
-                        codeInput = typed.filter(Char::isLetterOrDigit)
+                        // A pasted link carries its server; a typed code does not.
+                        val pasted = PartyInvites.parse(typed)?.takeUnless { it.isSpotifyJam }
+                        codeInput = pasted?.code ?: typed.filter(Char::isLetterOrDigit)
                             .uppercase()
                             .take(ListenTogether.CODE_LENGTH)
+                        codeInputServer = pasted?.serverUrl
                         // Typing is the retry. Keeping "no party with that
                         // code" on screen while the code is being corrected
                         // makes it read as a verdict on what is there now.
@@ -444,7 +451,7 @@ fun ListenTogetherScreen(
                     enabled = signedIn && ListenTogether.hasServer,
                     error = failure,
                     onScanQr = { showQrScanner = true },
-                    onSubmit = { openPartyPreview(codeInput, null) },
+                    onSubmit = { openPartyPreview(codeInput, codeInputServer) },
                 )
 
                 is PartySheet.Confirm -> JoinConfirmSheet(
@@ -554,10 +561,11 @@ fun ListenTogetherScreen(
                     } else {
                         val parsed = JamInviteLink.parseInvite(scannedText)
                         if (parsed != null) {
-                            if (parsed.isSpotifyJam && parsed.spotifyJamToken != null) {
+                            val jamToken = parsed.spotifyJamToken
+                            if (parsed.isSpotifyJam && jamToken != null) {
                                 busy = true
                                 failure = null
-                                SpotifyJamBridge.joinJam(parsed.spotifyJamToken)
+                                SpotifyJamBridge.joinJam(jamToken)
                                     .onFailure { failure = it.message }
                                 busy = false
                             } else {
