@@ -102,13 +102,17 @@ import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import dev.chrisbanes.haze.materials.HazeMaterials
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import androidx.compose.ui.graphics.luminance
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 
 val DIALOG_DARK_GREY = Color(0xFF141416)
+val DIALOG_LIGHT_GREY = Color(0xFFF6F6F7)
 const val DIALOG_FROST_ALPHA = 0.86f
+const val DIALOG_LIGHT_FROST_ALPHA = 0.88f
 val DIALOG_EDGE_WIDTH = 0.5.dp
 val DIALOG_EDGE_COLOR = Color.White.copy(alpha = 0.12f)
+val DIALOG_LIGHT_EDGE_COLOR = Color.Black.copy(alpha = 0.08f)
 
 fun dialogFrostStyle(fill: Color = DIALOG_DARK_GREY, alpha: Float = DIALOG_FROST_ALPHA): HazeStyle = HazeStyle(
     backgroundColor = fill,
@@ -122,21 +126,24 @@ fun Modifier.dialogFrostBackground(
     hazeState: HazeState?,
     reduceDynamicBlur: Boolean,
     shape: CornerBasedShape = RoundedCornerShape(26.dp),
+    fill: Color = DIALOG_DARK_GREY,
+    borderColor: Color = DIALOG_EDGE_COLOR,
+    alpha: Float = DIALOG_FROST_ALPHA,
 ): Modifier = shadow(elevation = 20.dp, shape = shape)
     .clip(shape)
     .then(
         if (reduceDynamicBlur || hazeState == null) {
-            Modifier.background(DIALOG_DARK_GREY)
+            Modifier.background(fill)
         } else {
             Modifier.optimizedHazeEffect(
                 state = hazeState,
-                style = dialogFrostStyle(),
+                style = dialogFrostStyle(fill, alpha),
             )
         }
     )
     .border(
         width = DIALOG_EDGE_WIDTH,
-        color = DIALOG_EDGE_COLOR,
+        color = borderColor,
         shape = shape,
     )
 
@@ -278,11 +285,16 @@ fun SpotifyImportAlert(
     }
 
     val dialogShape = RoundedCornerShape(26.dp)
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val dialogFill = if (isDark) DIALOG_DARK_GREY else DIALOG_LIGHT_GREY
+    val dialogBorder = if (isDark) DIALOG_EDGE_COLOR else DIALOG_LIGHT_EDGE_COLOR
+    val dialogAlpha = if (isDark) DIALOG_FROST_ALPHA else DIALOG_LIGHT_FROST_ALPHA
+    val scrimAlpha = if (isDark) 0.55f else 0.28f
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.55f))
+            .background(Color.Black.copy(alpha = scrimAlpha))
             .clickable(
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() },
@@ -295,7 +307,14 @@ fun SpotifyImportAlert(
                 .padding(horizontal = 24.dp)
                 .widthIn(min = 300.dp, max = 360.dp)
                 .fillMaxWidth()
-                .dialogFrostBackground(hazeState, reduceDynamicBlur, dialogShape)
+                .dialogFrostBackground(
+                    hazeState = hazeState,
+                    reduceDynamicBlur = reduceDynamicBlur,
+                    shape = dialogShape,
+                    fill = dialogFill,
+                    borderColor = dialogBorder,
+                    alpha = dialogAlpha,
+                )
                 .clickable(
                     indication = null,
                     interactionSource = remember { MutableInteractionSource() },

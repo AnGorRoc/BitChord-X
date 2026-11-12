@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -101,8 +102,8 @@ data class IosMenuColors(
 
 private val DarkMenu = IosMenuColors(
     dark = true,
-    fill = Color(0xFF1C1C1E),
-    rim = Color.White.copy(alpha = 0.10f),
+    fill = DIALOG_DARK_GREY,
+    rim = DIALOG_EDGE_COLOR,
     label = Color.White,
     secondaryLabel = Color.White.copy(alpha = 0.70f),
     separator = Color.White.copy(alpha = 0.10f),
@@ -111,11 +112,11 @@ private val DarkMenu = IosMenuColors(
 
 private val LightMenu = IosMenuColors(
     dark = false,
-    fill = Color(0xFFF6F6F7),
-    rim = Color.Black.copy(alpha = 0.06f),
+    fill = DIALOG_LIGHT_GREY,
+    rim = DIALOG_LIGHT_EDGE_COLOR,
     label = Color(0xFF1A1A1A),
     secondaryLabel = Color(0xFF1A1A1A).copy(alpha = 0.55f),
-    separator = Color.Black.copy(alpha = 0.09f),
+    separator = Color.Black.copy(alpha = 0.08f),
     pressed = Color.Black.copy(alpha = 0.07f),
 )
 
@@ -124,27 +125,20 @@ private val LightMenu = IosMenuColors(
 fun iosMenuColors(): IosMenuColors =
     if (MaterialTheme.colorScheme.background.luminance() < 0.5f) DarkMenu else LightMenu
 
-/** The panel's silhouette: a large, continuously curved corner. */
-val IosMenuShape: Shape = RoundedCornerShape(30.dp).continuous()
+/** The panel's silhouette: a modern 26dp rounded corner matching Spotify import dialogs. */
+val IosMenuShape: CornerBasedShape = RoundedCornerShape(26.dp)
 
 /** [IosMenuShape]'s plain rounded-rect twin, for a shadow drawn while it scales. */
-private val IosMenuShadowShape: Shape = RoundedCornerShape(30.dp)
+private val IosMenuShadowShape: Shape = RoundedCornerShape(26.dp)
 
 /** Wide enough for "Remove from listening history" on one line or two. */
 val IosMenuWidth = 256.dp
 
 /**
- * Shadow, slab and rim — the menu's material, without its contents.
+ * Shadow, slab and rim — the menu's material, adhering to Spotify modal styling.
  *
- * [translucent] lets what is behind show through the slab, as iOS menus do.
- * Something behind has to be blurred for that to read as frost rather than as
- * a page seen through tinted glass, so it is only translucent when it can blur
- * what is under it, under the slab only and for as long as the panel is up:
- * [backdrop] — the player recorded live, blurred with the page's hue drawn up —
- * or else [hazeState], the page's own haze, which every page is a source of.
- *
- * "Reduce dynamic blur" turns the frost off and the slab opaque: an unblurred
- * page seen through it is exactly what the frost was there to prevent.
+ * Supports responsive theme adaptation (Dark / Light / System) and honors
+ * [AppSettings.reduceDynamicBlur] by replacing dynamic frost blur with solid fill.
  */
 @Composable
 fun Modifier.iosMenuPanel(
@@ -157,36 +151,38 @@ fun Modifier.iosMenuPanel(
     rimOverride: Color? = null,
     /** False where the caller casts [iosMenuShadow] itself, apart from the panel. */
     castsShadow: Boolean = true,
+    shape: CornerBasedShape = IosMenuShape,
 ): Modifier {
     val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
     val blurs = translucent && !reduceDynamicBlur
     val backdropFrost = blurs && backdrop != null && isGlassSupported()
     val hazeFrost = blurs && !backdropFrost && hazeState != null
     val fill = fillOverride ?: if (backdropFrost || hazeFrost) {
-        colors.fill.copy(alpha = if (colors.dark) 0.80f else 0.72f)
+        colors.fill.copy(alpha = if (colors.dark) DIALOG_FROST_ALPHA else DIALOG_LIGHT_FROST_ALPHA)
     } else {
         colors.fill
     }
-    val shadowed = if (castsShadow) iosMenuShadow() else this
+    val rim = rimOverride ?: colors.rim
+    val shadowed = if (castsShadow) iosMenuShadow(shape) else this
     val surface = if (hazeFrost) {
-        val style = remember(colors, fill) { menuFrost(colors.fill, alpha = fill.alpha) }
-        shadowed.clip(IosMenuShape).optimizedHazeEffect(state = hazeState, style = style)
+        val style = remember(colors, fill) { dialogFrostStyle(colors.fill, alpha = fill.alpha) }
+        shadowed.clip(shape).optimizedHazeEffect(state = hazeState, style = style)
     } else if (backdropFrost) {
-        shadowed.menuBackdropFrost(backdrop, IosMenuShape, fill)
+        shadowed.menuBackdropFrost(backdrop, shape, fill)
     } else {
-        shadowed.clip(IosMenuShape).background(fill)
+        shadowed.clip(shape).background(fill)
     }
     return surface
-        .clip(IosMenuShape)
-        .border(0.5.dp, rimOverride ?: colors.rim, IosMenuShape)
+        .clip(shape)
+        .border(DIALOG_EDGE_WIDTH, rim, shape)
 }
 
-/** The shadow the menu panel casts. */
+/** The shadow the menu panel casts: 20dp elevation matching Spotify modal elevation. */
 fun Modifier.iosMenuShadow(shape: Shape = IosMenuShape): Modifier = shadow(
-    elevation = 24.dp,
+    elevation = 20.dp,
     shape = shape,
-    ambientColor = Color.Black.copy(alpha = 0.30f),
-    spotColor = Color.Black.copy(alpha = 0.30f),
+    ambientColor = Color.Black.copy(alpha = 0.35f),
+    spotColor = Color.Black.copy(alpha = 0.35f),
 )
 
 /**
@@ -475,7 +471,7 @@ fun <T : Any> IosMenuPopover(
     PlayerBackHandler(enabled = open, onBack = onDismiss)
 
     val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
-    val scrim = Color.Black.copy(alpha = if (dark) 0.30f else 0.14f)
+    val scrim = Color.Black.copy(alpha = if (dark) 0.55f else 0.28f)
     val insets = WindowInsets.safeDrawing
     var overlayOffset by remember { mutableStateOf(Offset.Zero) }
 
