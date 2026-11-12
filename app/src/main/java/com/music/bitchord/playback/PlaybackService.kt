@@ -83,6 +83,8 @@ import com.music.bitchord.playback.cast.CastController
 import com.music.bitchord.playback.cast.castableTrack
 import com.music.bitchord.playback.cast.receiverCanOpen
 import com.music.bitchord.playback.cast.CastPlayback
+import com.music.bitchord.playback.cast.DeviceSpeaker
+import com.music.bitchord.playback.cast.DeviceTarget
 import com.music.bitchord.playback.cast.CastSink
 import com.music.bitchord.playback.cast.RemoteSpeaker
 import com.music.bitchord.playback.cast.Speakers
@@ -811,8 +813,22 @@ class PlaybackService : MediaLibraryService() {
         WearBridge.createSpeaker(this, scope, localPlayer = { player }, onChanged = { publishWidgetState() })
     }
 
+    /**
+     * Another of the person's own devices as the speaker — the same model again, with the link
+     * going through the account channel instead of Cast or Wear. See [DeviceSpeaker].
+     */
+    private val deviceSpeaker by lazy {
+        DeviceSpeaker(
+            scope = scope,
+            localPlayer = { player },
+            account = ListenTogether.account,
+            onChanged = { publishWidgetState() },
+            say = { message -> Toast.makeText(applicationContext, message, Toast.LENGTH_SHORT).show() },
+        )
+    }
+
     /** Every remote speaker, as the one the session player reports. */
-    private val speakers by lazy { Speakers(listOf(castPlayback, watchSpeaker)) }
+    private val speakers by lazy { Speakers(listOf(castPlayback, watchSpeaker, deviceSpeaker)) }
 
     /**
      * Binds playback to a Listen Together party, when there is one.
@@ -1905,6 +1921,23 @@ class PlaybackService : MediaLibraryService() {
         // After the player exists and before the session is built: the
         // session's wrapper reports the user's actions to it.
         partySync = PartySync(scope) { player }.also { it.start() }
+        // This phone among its owner's other devices: it reports what it plays, applies what they
+        // ask of it, and can be their speaker. See [DeviceTarget] and [DeviceLink].
+        DeviceTarget(scope, { player }, ListenTogether.account, deviceSpeaker).start()
+        scope.launch {
+            DeviceLink.requests.collect { request ->
+                when (request) {
+                    is DeviceLink.Request.Pick -> {
+                        if (castPlayback.active || watchSpeaker.active) {
+                            Toast.makeText(applicationContext, "Stop casting first.", Toast.LENGTH_SHORT).show()
+                        } else {
+                            deviceSpeaker.pick(request.deviceId, request.force)
+                        }
+                    }
+                    DeviceLink.Request.ComeBack -> deviceSpeaker.comeBack()
+                }
+            }
+        }
         // AutoPlay has one shared supplier in a party. The host supplies it
         // while connected; if they disappear, the lowest stable connected member
         // ID takes over. That election is deterministic on every phone, so two

@@ -59,6 +59,9 @@ object DeviceActions {
     const val PLAY_QUEUE = "playQueue"
     const val ENQUEUE = "enqueue"
     const val RELEASE = "release"
+
+    /** Asks the target to send its queue back, for display; see the server's `snapshot`. */
+    const val SNAPSHOT = "snapshot"
 }
 
 enum class AccountConnection {
