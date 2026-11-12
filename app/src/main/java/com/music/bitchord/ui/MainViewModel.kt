@@ -45,10 +45,12 @@ import com.music.bitchord.data.lyrics.LyricsSource
 import com.music.bitchord.data.settings.AppSettings
 import com.music.bitchord.ui.navigation.AppNavigator
 import com.music.bitchord.data.innertube.Innertube
+import com.music.bitchord.data.innertube.InnertubeParser
 import com.music.bitchord.data.innertube.PlaybackTracker
 import com.music.bitchord.data.innertube.StreamResolver
 import com.music.bitchord.auth.CapturedSession
 import com.music.bitchord.auth.WebSessionMode
+import com.music.bitchord.data.DailyArtworkCache
 import com.music.bitchord.data.model.Account
 import com.music.bitchord.data.model.AccountChannel
 import com.music.bitchord.data.model.BrowseType
@@ -65,6 +67,12 @@ import com.music.bitchord.data.model.PlaylistPrivacy
 import com.music.bitchord.data.model.SearchFilter
 import com.music.bitchord.data.model.SearchResult
 import com.music.bitchord.data.model.ShelfItem
+import com.music.bitchord.data.model.ShelfLayout
+import com.music.bitchord.data.model.CARD_ART_PX
+import com.music.bitchord.data.model.HEADER_ART_PX
+import com.music.bitchord.data.model.ROW_ART_PX
+import com.music.bitchord.data.model.artworkAt
+import com.music.bitchord.ui.components.prefetchArtwork
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.model.SongMenu
 import com.music.bitchord.data.model.SubscriptionState
@@ -176,6 +184,37 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private val _explore = MutableStateFlow<UiState<List<MoodGenreSection>>>(UiState.Loading)
     val explore: StateFlow<UiState<List<MoodGenreSection>>> = _explore.asStateFlow()
+
+    private val _charts = MutableStateFlow<UiState<List<HomeShelf>>>(UiState.Loading)
+    val charts: StateFlow<UiState<List<HomeShelf>>> = _charts.asStateFlow()
+
+    private val chartsPrefs: android.content.SharedPreferences by lazy {
+        getApplication<Application>().getSharedPreferences("charts_preferences", android.content.Context.MODE_PRIVATE)
+    }
+
+    private fun detectInitialChartsRegion(): String? {
+        chartsPrefs.getString("charts_region", null)?.let { return it }
+        chartsPrefs.getString("detected_ip_region", null)?.let { cached ->
+            YtMusicRepository.setCachedRegion(cached)
+        }
+        return null // null indicates Automatic (YouTube / IP) detection mode
+    }
+
+    private suspend fun resolveEffectiveGeoRegion(): String {
+        chartsPrefs.getString("detected_ip_region", null)?.let { return it }
+        val fresh = YtMusicRepository.resolveGeoRegion()
+        if (!fresh.isNullOrBlank()) {
+            chartsPrefs.edit().putString("detected_ip_region", fresh).apply()
+            return fresh
+        }
+        return "AR"
+    }
+
+    private val _chartsRegion = MutableStateFlow<String?>(detectInitialChartsRegion())
+    val chartsRegion: StateFlow<String?> = _chartsRegion.asStateFlow()
+
+    private val _newReleases = MutableStateFlow<UiState<List<HomeShelf>>>(UiState.Loading)
+    val newReleases: StateFlow<UiState<List<HomeShelf>>> = _newReleases.asStateFlow()
 
     private val _selectedMoodGenre = MutableStateFlow<MoodGenre?>(null)
     val selectedMoodGenre: StateFlow<MoodGenre?> = _selectedMoodGenre.asStateFlow()
@@ -815,6 +854,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         return previous
     }
 
+    private val trendingSavedPrefs: android.content.SharedPreferences by lazy {
+        getApplication<Application>().getSharedPreferences("trending_saved_playlists", android.content.Context.MODE_PRIVATE)
+    }
+
+    fun isTrendingSaved(browseId: String): Boolean =
+        trendingSavedPrefs.getBoolean(browseId, false)
+
+    private fun setTrendingSaved(browseId: String, saved: Boolean) {
+        trendingSavedPrefs.edit().putBoolean(browseId, saved).apply()
+    }
+
     /**
      * Saves the album or playlist [browseId] to the library, or takes it out.
      *
@@ -828,6 +878,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * control on it to have been tapped, so this is a no-op rather than a guess.
      */
     fun toggleLibrary(browseId: String) {
+        if (browseId.startsWith("charts:trending") || browseId.startsWith("topic:")) {
+            val current = _detailStack.value.firstOrNull { it.browseId == browseId }?.library ?: return
+            val target = !current.saved
+            setTrendingSaved(browseId, target)
+            setSavedOnPage(browseId, target)
+            return
+        }
         if (!requireSignIn()) return
         val current = _detailStack.value.firstOrNull { it.browseId == browseId }?.library ?: return
         val target = !current.saved
@@ -1545,9 +1602,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         startSuggestPipeline()
         startTypeaheadMediaPipeline()
         loadHome()
-        // Explore waits for its tab (see [onExploreShown]): its category list
-        // and the dozen-odd artwork browses after it went out at launch with
-        // Home's own requests, to the same host, for a page not yet opened.
+        prewarmExplore()
+        // Explore is pre-warmed from cache and revalidated predictively
+        // without delaying launch or saturating network.
         if (_signedIn.value) {
             loadLibrary()
             loadAccount()
@@ -1694,29 +1751,180 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             when (feed) {
                 Feed.HOME -> refreshHome(identity)
-                Feed.EXPLORE -> fetchExplore()
+                Feed.EXPLORE -> {
+                    coroutineScope {
+                        launch { fetchExplore() }
+                        launch { fetchCharts(force = true) }
+                        launch { fetchNewReleases(force = true) }
+                    }
+                }
                 Feed.LIBRARY -> fetchLibrary(identity)
             }
             _refreshing.value = _refreshing.value - feed
         }
     }
 
+    private var exploreRequested = false
+    private var exploreFetchJob: Job? = null
+    private var chartsFetchJob: Job? = null
+    private var newReleasesFetchJob: Job? = null
+
     fun loadExplore() {
         exploreRequested = true
+        loadCharts()
+        loadNewReleases()
         val cached = FeedCache.getExplore()
         if (!cached.isNullOrEmpty()) {
             _explore.value = UiState.Success(cached)
+            val urls = cached.flatMap { it.items }.mapNotNull { it.thumbnailUrl }.take(24)
+            if (urls.isNotEmpty()) {
+                prefetchArtwork(getApplication(), urls)
+            }
         } else {
             _explore.value = UiState.Loading
         }
-        viewModelScope.launch { fetchExplore() }
+        if (exploreFetchJob?.isActive != true) {
+            exploreFetchJob = viewModelScope.launch { fetchExplore() }
+        }
     }
 
-    private var exploreRequested = false
+    fun loadCharts(force: Boolean = false) {
+        val region = _chartsRegion.value
+        if (chartsFetchJob?.isActive == true && !force) return
+        chartsFetchJob = viewModelScope.launch {
+            fetchCharts(region, force)
+        }
+    }
+
+    private suspend fun fetchCharts(region: String? = _chartsRegion.value, force: Boolean = false) {
+        if (_charts.value !is UiState.Success || force) {
+            if (!force) _charts.value = UiState.Loading
+        }
+        val targetRegion = if (region == null || region.equals("AUTO", ignoreCase = true)) {
+            resolveEffectiveGeoRegion()
+        } else {
+            region
+        }
+        val result = YtMusicRepository.charts(region = targetRegion, force = force)
+        result.fold(
+            onSuccess = { shelves ->
+                if (shelves.isNotEmpty()) {
+                    _charts.value = UiState.Success(shelves)
+                    val urls = shelves.flatMap { it.items }.mapNotNull { it.thumbnailUrl }.take(10)
+                    if (urls.isNotEmpty()) {
+                        prefetchArtwork(getApplication(), urls)
+                    }
+                } else if (_charts.value !is UiState.Success) {
+                    _charts.value = UiState.Error(text(R.string.nothing_to_explore))
+                }
+            },
+            onFailure = { failure ->
+                if (_charts.value !is UiState.Success) {
+                    _charts.value = UiState.Error(failure.friendly())
+                }
+            }
+        )
+    }
+
+    fun loadNewReleases(force: Boolean = false) {
+        val region = _chartsRegion.value
+        if (newReleasesFetchJob?.isActive == true && !force) return
+        newReleasesFetchJob = viewModelScope.launch {
+            fetchNewReleases(region, force)
+        }
+    }
+
+    private suspend fun fetchNewReleases(region: String? = _chartsRegion.value, force: Boolean = false) {
+        if (_newReleases.value !is UiState.Success || force) {
+            if (!force) _newReleases.value = UiState.Loading
+        }
+        val targetRegion = if (region == null || region.equals("AUTO", ignoreCase = true)) {
+            resolveEffectiveGeoRegion()
+        } else {
+            region
+        }
+        val result = YtMusicRepository.newReleases(region = targetRegion, force = force)
+        result.fold(
+            onSuccess = { shelves ->
+                if (shelves.isNotEmpty()) {
+                    _newReleases.value = UiState.Success(shelves)
+                    val urls = shelves.flatMap { it.items }.mapNotNull { it.thumbnailUrl }.take(10)
+                    if (urls.isNotEmpty()) {
+                        prefetchArtwork(getApplication(), urls)
+                    }
+                } else if (_newReleases.value !is UiState.Success) {
+                    _newReleases.value = UiState.Error(text(R.string.nothing_to_explore))
+                }
+            },
+            onFailure = { failure ->
+                if (_newReleases.value !is UiState.Success) {
+                    _newReleases.value = UiState.Error(failure.friendly())
+                }
+            }
+        )
+    }
+
+    fun setChartsRegion(region: String?) {
+        val normalized = if (region.equals("AUTO", ignoreCase = true)) null else region
+        if (_chartsRegion.value == normalized) return
+        _chartsRegion.value = normalized
+        if (normalized != null) {
+            chartsPrefs.edit().putString("charts_region", normalized).apply()
+        } else {
+            chartsPrefs.edit().remove("charts_region").apply()
+        }
+        loadCharts(force = true)
+        loadNewReleases(force = true)
+    }
+
+    fun refreshCharts() {
+        loadCharts(force = true)
+        loadNewReleases(force = true)
+    }
 
     /** Call when the Explore tab becomes visible; loads it the first time. */
     fun onExploreShown() {
         if (!exploreRequested) loadExplore()
+    }
+
+    /**
+     * Pre-warms Explore from cache on startup and warms Coil with its sleeve covers,
+     * then predictively fetches fresh Explore data after Home network traffic settles.
+     */
+    private fun prewarmExplore() {
+        viewModelScope.launch(Dispatchers.IO) {
+            val userExplicit = chartsPrefs.getString("charts_region", null)
+            val cachedGeo = chartsPrefs.getString("detected_ip_region", null)
+            cachedGeo?.let { YtMusicRepository.setCachedRegion(it) }
+
+            // Ensure background resolution of YouTube / IP country
+            val freshGeo = YtMusicRepository.resolveGeoRegion()
+            if (!freshGeo.isNullOrBlank()) {
+                val previous = chartsPrefs.getString("detected_ip_region", null)
+                chartsPrefs.edit().putString("detected_ip_region", freshGeo).apply()
+                if (userExplicit == null && previous != freshGeo) {
+                    loadCharts(force = true)
+                    loadNewReleases(force = true)
+                }
+            }
+
+            loadCharts()
+            loadNewReleases()
+            val cached = FeedCache.getExplore()
+            if (!cached.isNullOrEmpty()) {
+                if (_explore.value !is UiState.Success) {
+                    _explore.value = UiState.Success(cached)
+                }
+                val urls = cached.flatMap { it.items }.mapNotNull { it.thumbnailUrl }.take(24)
+                if (urls.isNotEmpty()) {
+                    prefetchArtwork(getApplication(), urls)
+                }
+            }
+            delay(4_000)
+            if (!exploreRequested && exploreFetchJob?.isActive != true) {
+                exploreFetchJob = viewModelScope.launch { fetchExplore() }
+            }
+        }
     }
 
     private suspend fun fetchExplore() {
@@ -1753,6 +1961,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     _explore.value = UiState.Success(mergedSections)
                 }
                 FeedCache.saveExplore(mergedSections)
+
+                val prewarmUrls = mergedSections.flatMap { it.items }.mapNotNull { it.thumbnailUrl }.take(24)
+                if (prewarmUrls.isNotEmpty()) {
+                    prefetchArtwork(getApplication(), prewarmUrls)
+                }
+
                 loadMoodGenreArtwork(mergedSections)
             },
             onFailure = { failure ->
@@ -1771,29 +1985,48 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private fun loadMoodGenreArtwork(sections: List<MoodGenreSection>) {
         viewModelScope.launch {
             val limiter = Semaphore(4)
+            val newlyResolved = ConcurrentHashMap<Pair<String, String?>, String>()
+            val missingItems = sections.flatMap(MoodGenreSection::items).filter { it.thumbnailUrl.isNullOrEmpty() }
+            if (missingItems.isEmpty()) return@launch
+
+            var count = 0
+            val lock = Any()
+
             coroutineScope {
-                sections.flatMap(MoodGenreSection::items).forEach { item ->
-                    if (!item.thumbnailUrl.isNullOrEmpty()) return@forEach
+                missingItems.forEach { item ->
                     launch {
                         val artwork = limiter.withPermit {
                             YtMusicRepository.moodGenreArtwork(item.browseId, item.params).getOrNull()
                         } ?: return@launch
-                        val current = (_explore.value as? UiState.Success)?.data ?: return@launch
-                        val updated = current.map { section ->
-                            section.copy(items = section.items.map { currentItem ->
-                                if (currentItem.browseId == item.browseId && currentItem.params == item.params) {
-                                    currentItem.copy(thumbnailUrl = artwork)
-                                } else {
-                                    currentItem
-                                }
-                            })
+                        newlyResolved[item.browseId to item.params] = artwork
+                        prefetchArtwork(getApplication(), listOf(artwork))
+
+                        val shouldFlush = synchronized(lock) {
+                            count++
+                            count % 6 == 0
                         }
-                        _explore.value = UiState.Success(updated)
-                        FeedCache.saveExplore(updated)
+                        if (shouldFlush) {
+                            applyResolvedArtwork(newlyResolved)
+                        }
                     }
                 }
             }
+
+            applyResolvedArtwork(newlyResolved)
         }
+    }
+
+    private fun applyResolvedArtwork(resolved: Map<Pair<String, String?>, String>) {
+        if (resolved.isEmpty()) return
+        val current = (_explore.value as? UiState.Success)?.data ?: return
+        val updated = current.map { section ->
+            section.copy(items = section.items.map { currentItem ->
+                val art = resolved[currentItem.browseId to currentItem.params]
+                if (art != null && currentItem.thumbnailUrl.isNullOrEmpty()) currentItem.copy(thumbnailUrl = art) else currentItem
+            })
+        }
+        _explore.value = UiState.Success(updated)
+        FeedCache.saveExplore(updated)
     }
 
     fun openMoodGenre(item: MoodGenre) {
@@ -1851,6 +2084,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
         if (hasCache) {
             _home.value = UiState.Success(cached.shelves)
+            prefetchHomeArtwork(cached.shelves)
             homeContinuation = cached.continuation
             homeSeenTitles.clear()
             homeSeenTitles.addAll(cached.shelves.map { it.title.lowercase(Locale.ROOT) })
@@ -1890,6 +2124,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                         homeSeenTitles.addAll(assembled.map { it.title.lowercase(Locale.ROOT) })
                         _home.value = UiState.Success(assembled)
                         if (!partial) FeedCache.saveHome(identity, assembled, feed.continuation)
+                        prefetchHomeArtwork(assembled)
                     } else {
                         FeedCache.touchHome(identity)
                         if (homeContinuation == null) homeContinuation = feed.continuation
@@ -2105,6 +2340,32 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         }
         _home.value = UiState.Success(updated)
         FeedCache.saveHome(listenerKey(), updated, homeContinuation)
+        prefetchHomeArtwork(updated)
+    }
+
+    private fun prefetchHomeArtwork(shelves: List<HomeShelf>) {
+        viewModelScope.launch(Dispatchers.IO) {
+            val urls = buildList {
+                shelves.take(5).forEachIndexed { index, shelf ->
+                    val count = minOf(shelf.items.size, 6)
+                    shelf.items.take(count).forEach { item ->
+                        val url = if (shelf.layout == ShelfLayout.VIDEO) {
+                            item.thumbnailUrl
+                        } else if (shelf.layout == ShelfLayout.CARDS && index == 0) {
+                            item.thumbnailUrl.artworkAt(HEADER_ART_PX)
+                        } else if (shelf.layout == ShelfLayout.LIST) {
+                            item.thumbnailUrl.artworkAt(ROW_ART_PX)
+                        } else {
+                            item.thumbnailUrl.artworkAt(CARD_ART_PX)
+                        }
+                        if (!url.isNullOrBlank()) add(url)
+                    }
+                }
+            }
+            if (urls.isNotEmpty()) {
+                prefetchArtwork(getApplication(), urls)
+            }
+        }
     }
 
     /**
@@ -3363,6 +3624,107 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     } else it
                 }
             }
+        }
+    }
+
+    fun openTrendingDetail(
+        regionCode: String?,
+        regionName: String,
+        items: List<ShelfItem>,
+        videoShelf: HomeShelf? = null,
+        artistShelf: HomeShelf? = null,
+    ) {
+        val effectiveRegion = if (regionCode == null || regionCode.equals("AUTO", ignoreCase = true)) {
+            chartsPrefs.getString("detected_ip_region", null) ?: YtMusicRepository.detectedRegion ?: "AR"
+        } else {
+            regionCode
+        }
+        val browseId = "charts:trending:$effectiveRegion"
+        if (_detailStack.value.lastOrNull()?.browseId == browseId) return
+
+        val title = "${text(R.string.trending_title)} $regionName"
+        val subtitle = text(R.string.created_by_bitchord)
+
+        val songs = items.mapNotNull { item ->
+            val id = item.videoId ?: item.browseId ?: return@mapNotNull null
+            Song(
+                videoId = id,
+                title = item.title,
+                artist = item.subtitle,
+                thumbnailUrl = item.thumbnailUrl,
+                isVideo = item.isVideo,
+            )
+        }
+        val cover = songs.firstOrNull()?.thumbnailUrl
+        val isSaved = isTrendingSaved(browseId)
+        val libraryState = LibraryState(playlistId = browseId, saved = isSaved)
+        val sections = listOfNotNull(videoShelf, artistShelf)
+
+        val newPage = DetailPage(
+            browseId = browseId,
+            title = title,
+            subtitle = subtitle,
+            thumbnailUrl = cover,
+            songs = UiState.Success(songs),
+            type = BrowseType.PLAYLIST,
+            sections = sections,
+            library = libraryState,
+        )
+        _detailStack.value = _detailStack.value.filterNot { it.browseId == browseId } + newPage
+    }
+
+    fun openTopicPlaylist(
+        topicTitle: String,
+        searchQuery: String,
+        coverUrl: String? = null,
+    ) {
+        val topicId = topicTitle.lowercase().replace(" ", "_").filter { it.isLetterOrDigit() || it == '_' }
+        val browseId = "topic:$topicId"
+        if (_detailStack.value.lastOrNull()?.browseId == browseId) return
+
+        val isSaved = isTrendingSaved(browseId)
+        val libraryState = LibraryState(playlistId = browseId, saved = isSaved)
+        val initialCover = coverUrl ?: DailyArtworkCache.get(searchQuery)
+        val initialPage = DetailPage(
+            browseId = browseId,
+            title = topicTitle,
+            subtitle = text(R.string.created_by_bitchord),
+            thumbnailUrl = initialCover,
+            songs = UiState.Loading,
+            type = BrowseType.PLAYLIST,
+            library = libraryState,
+        )
+        _detailStack.value = _detailStack.value.filterNot { it.browseId == browseId } + initialPage
+
+        viewModelScope.launch {
+            val result = YtMusicRepository.searchPage(searchQuery, SearchFilter.SONGS)
+            result.fold(
+                onSuccess = { page ->
+                    val songs = page.rows.mapNotNull {
+                        when (it) {
+                            is SearchResult.Track -> it.song
+                            is SearchResult.TopTrack -> it.song
+                            else -> null
+                        }
+                    }
+                    val effectiveCover = songs.firstOrNull()?.thumbnailUrl ?: initialCover
+                    _detailStack.value = _detailStack.value.map {
+                        if (it.browseId == browseId) {
+                            it.copy(
+                                songs = UiState.Success(songs),
+                                thumbnailUrl = effectiveCover
+                            )
+                        } else it
+                    }
+                },
+                onFailure = { err ->
+                    _detailStack.value = _detailStack.value.map {
+                        if (it.browseId == browseId) {
+                            it.copy(songs = UiState.Error(err.friendly()))
+                        } else it
+                    }
+                }
+            )
         }
     }
 

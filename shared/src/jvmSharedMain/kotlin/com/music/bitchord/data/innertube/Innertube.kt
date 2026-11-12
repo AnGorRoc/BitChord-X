@@ -75,8 +75,19 @@ object Innertube {
     val currentLanguage: String
         get() = com.music.bitchord.data.LocaleTags.ytHl(currentLocaleTag)
 
+    @Volatile
+    var detectedCountry: String? = null
+        private set
+
+    fun setCachedCountry(code: String) {
+        val normalized = code.trim().uppercase()
+        if (normalized.length == 2 && normalized != "GL" && normalized != "ZZ") {
+            detectedCountry = normalized
+        }
+    }
+
     val currentRegion: String
-        get() = com.music.bitchord.data.LocaleTags.ytGl(currentLocaleTag)
+        get() = detectedCountry ?: com.music.bitchord.data.LocaleTags.ytGl(currentLocaleTag)
 
     /** [currentRegion] for search, where null lets YouTube place us — see [LocaleTags.ytSearchGl]. */
     private val searchRegion: String?
@@ -175,10 +186,57 @@ object Innertube {
      * It answers with an anti-hijacking prefix and then plain nested arrays,
      * so the id is found by shape rather than by a path that would rot.
      */
+    private val SW_COUNTRY = Regex("""\["yt\.sw\.adr",\s*null,\s*\[\[\["[^"]*",\s*"([A-Z]{2})"""")
+    private val CONFIG_GL = Regex(""""GL"\s*:\s*"([A-Z]{2})"""")
+    private val IP_GEO_COUNTRY = Regex(""""country"\s*:\s*"([A-Z]{2})"""")
+
+    /**
+     * Resolves the listener's region directly via YouTube's IP detection
+     * (sw.js_data or YouTube Music shell), falling back to direct IP geolocation.
+     */
+    suspend fun resolveGeoCountry(): String? {
+        detectedCountry?.let { return it }
+        // 1. YouTube Service Worker bootstrap (fastest, includes visitor data & IP geo)
+        runCatching {
+            val body = client.get("https://www.youtube.com/sw.js_data") {
+                header("User-Agent", WEB_USER_AGENT)
+            }.bodyAsText()
+            SW_COUNTRY.find(body)?.groupValues?.get(1)?.takeIf { it.isNotBlank() }?.let { country ->
+                detectedCountry = country
+                return country
+            }
+        }
+        // 2. YouTube Music web shell ytcfg GL
+        runCatching {
+            val html = client.get("$MUSIC_ORIGIN/") {
+                header("User-Agent", WEB_USER_AGENT)
+                header("Accept-Language", acceptLanguageHeader)
+            }.bodyAsText()
+            CONFIG_GL.find(html)?.groupValues?.get(1)?.takeIf { it.isNotBlank() }?.let { country ->
+                detectedCountry = country
+                return country
+            }
+        }
+        // 3. Direct IP geolocation fallback
+        runCatching {
+            val resp = client.get("https://api.country.is/") {
+                header("User-Agent", WEB_USER_AGENT)
+            }.bodyAsText()
+            IP_GEO_COUNTRY.find(resp)?.groupValues?.get(1)?.takeIf { it.isNotBlank() }?.let { country ->
+                detectedCountry = country
+                return country
+            }
+        }
+        return detectedCountry
+    }
+
     private suspend fun fetchVisitorData(): String? {
         val body = client.get("https://www.youtube.com/sw.js_data") {
             header("User-Agent", WEB_USER_AGENT)
         }.bodyAsText()
+        SW_COUNTRY.find(body)?.groupValues?.get(1)?.takeIf { it.isNotBlank() }?.let { country ->
+            detectedCountry = country
+        }
         val payload = Json.parseToJsonElement(body.substringAfter("\n", body.drop(5)))
         return findVisitorData(payload)
     }
@@ -425,6 +483,9 @@ object Innertube {
         // sending it would 401 every request in the app.
         val signedIn = CONFIG_LOGGED_IN.find(html)?.groupValues?.get(1) == "true"
         val clientVersion = CONFIG_CLIENT_VERSION.find(html)?.groupValues?.get(1)
+        CONFIG_GL.find(html)?.groupValues?.get(1)?.takeIf { it.isNotBlank() }?.let { country ->
+            detectedCountry = country
+        }
         if (!signedIn) {
             Log.w(TAG, "music.youtube.com served a signed-out shell; not scoping requests")
             // Still worth the client version — that part is true either way.
@@ -526,10 +587,16 @@ object Innertube {
 
     // ---- Public API ---------------------------------------------------------
 
-    suspend fun browse(browseId: String, params: String? = null): JsonObject =
-        postMusic("browse") {
+    suspend fun browse(
+        browseId: String,
+        params: String? = null,
+        region: String? = currentRegion,
+        formData: JsonObject? = null,
+    ): JsonObject =
+        postMusic("browse", region = region) {
             put("browseId", browseId)
             params?.let { put("params", it) }
+            formData?.let { put("formData", it) }
         }
 
     /**

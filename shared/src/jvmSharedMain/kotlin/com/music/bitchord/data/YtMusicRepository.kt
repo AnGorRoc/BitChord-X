@@ -20,6 +20,7 @@ import com.music.bitchord.data.model.PlaylistPrivacy
 import com.music.bitchord.data.model.SearchFilter
 import com.music.bitchord.data.model.SearchResult
 import com.music.bitchord.data.model.ShelfItem
+import com.music.bitchord.data.model.ShelfLayout
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.model.SongMenu
 import com.music.bitchord.data.model.UserPlaylist
@@ -35,6 +36,9 @@ import kotlinx.coroutines.withContext
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.add
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.putJsonArray
 import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
@@ -298,6 +302,111 @@ object YtMusicRepository {
 
     private suspend fun shelvesOf(browseId: String): List<HomeShelf> =
         InnertubeParser.parseHome(Innertube.browse(browseId))
+
+    val detectedRegion: String?
+        get() = Innertube.detectedCountry
+
+    fun setCachedRegion(code: String) {
+        Innertube.setCachedCountry(code)
+    }
+
+    /** Resolves the listener's country via YouTube's own IP detection, falling back to direct IP geo. */
+    suspend fun resolveGeoRegion(): String? = Innertube.resolveGeoCountry()
+
+    private val chartsShelfCache = ConcurrentHashMap<String, List<HomeShelf>>()
+
+    /** The server-defined music charts (Top songs, trending, videos) for Explore. */
+    suspend fun charts(region: String? = null, force: Boolean = false): Result<List<HomeShelf>> {
+        val isGlobal = region.equals("GLOBAL", ignoreCase = true)
+        val effectiveRegion = if (isGlobal) null else region
+        val cacheKey = "charts:${if (isGlobal) "GLOBAL" else (effectiveRegion ?: "DEFAULT")}"
+        if (!force) {
+            chartsShelfCache[cacheKey]?.let { return Result.success(it) }
+        }
+        return call(cacheKey) {
+            val chartCode = when {
+                isGlobal -> "ZZ"
+                effectiveRegion != null -> effectiveRegion.uppercase()
+                else -> null
+            }
+            val formJson = chartCode?.let { code ->
+                buildJsonObject {
+                    putJsonArray("selectedValues") {
+                        add(code)
+                    }
+                }
+            }
+            val chartShelves = InnertubeParser.parseHome(
+                Innertube.browse("FEmusic_charts", region = effectiveRegion, formData = formJson)
+            )
+
+            // YouTube Music's FEmusic_charts page hosts chart playlists (e.g. "Trending 20", "Top 100")
+            // rather than inline song items. Prefer the country's Trending 20 playlist if available.
+            val allPlaylists = chartShelves.flatMap { it.items }.filter {
+                it.browseId?.startsWith("VL") == true || it.browseId?.startsWith("PL") == true
+            }
+            val trendingPlaylist = allPlaylists.firstOrNull {
+                it.title.contains("Trending", ignoreCase = true) ||
+                    it.title.contains("Tendencias", ignoreCase = true) ||
+                    it.browseId?.startsWith("VLOL") == true
+            } ?: allPlaylists.firstOrNull() ?: chartShelves.flatMap { it.items }.firstOrNull { it.browseId != null }
+
+            val trendingSongs = if (trendingPlaylist?.browseId != null) {
+                runCatching { songsPaged(trendingPlaylist.browseId) }.getOrNull()
+            } else null
+
+            if (!trendingSongs.isNullOrEmpty()) {
+                val songItems = trendingSongs.map { song ->
+                    ShelfItem(
+                        title = song.title,
+                        subtitle = song.artist,
+                        thumbnailUrl = song.thumbnailUrl,
+                        videoId = song.videoId,
+                        browseId = null,
+                        isVideo = song.isVideo,
+                    )
+                }
+                val topShelf = HomeShelf(
+                    title = trendingPlaylist?.title ?: "Trending",
+                    items = songItems,
+                    layout = ShelfLayout.LIST,
+                )
+                listOf(topShelf) + chartShelves
+            } else {
+                // Fallback: If playlist resolution fails, try extracting the trending shelf from FEmusic_explore
+                val exploreShelves = runCatching {
+                    InnertubeParser.parseHome(Innertube.browse("FEmusic_explore", region = effectiveRegion))
+                }.getOrNull().orEmpty()
+                val exploreTrending = exploreShelves.firstOrNull { shelf ->
+                    shelf.items.any { it.videoId != null }
+                }
+                if (exploreTrending != null) {
+                    listOf(exploreTrending) + chartShelves
+                } else {
+                    chartShelves
+                }
+            }
+        }.also { result ->
+            result.getOrNull()?.let { chartsShelfCache[cacheKey] = it }
+        }
+    }
+
+    private val newReleasesCache = ConcurrentHashMap<String, List<HomeShelf>>()
+
+    /** New albums and singles for Explore. */
+    suspend fun newReleases(region: String? = null, force: Boolean = false): Result<List<HomeShelf>> {
+        val isGlobal = region.equals("GLOBAL", ignoreCase = true)
+        val effectiveRegion = if (isGlobal) "US" else region
+        val cacheKey = "new-releases:${if (isGlobal) "GLOBAL" else (effectiveRegion ?: "DEFAULT")}"
+        if (!force) {
+            newReleasesCache[cacheKey]?.let { return Result.success(it) }
+        }
+        return call(cacheKey) {
+            InnertubeParser.parseHome(Innertube.browse("FEmusic_new_releases", region = effectiveRegion))
+        }.also { result ->
+            result.getOrNull()?.let { newReleasesCache[cacheKey] = it }
+        }
+    }
 
     /** The server-defined mood and genre categories used by Explore. */
     suspend fun moodAndGenres(): Result<List<MoodGenreSection>> = call("moods-and-genres") {

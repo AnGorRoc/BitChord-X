@@ -202,10 +202,12 @@ object InnertubeParser {
             .o("tabRenderer").o("content").o("sectionListRenderer").a("contents")
             .orEmpty()
 
-        return sections.mapNotNull { section ->
+        val parsed = sections.mapNotNull { section ->
             section.o("musicCarouselShelfRenderer")?.let(::carouselShelf)
                 ?: section.o("musicShelfRenderer")?.let(::plainShelf)
         }
+        if (parsed.isNotEmpty()) return parsed
+        return parseHomeContinuation(response)
     }
 
     /**
@@ -213,11 +215,10 @@ object InnertubeParser {
      * a normal carousel. Keep the browse params on every button: they select
      * the playlist shelves that belong to that exact mood or genre.
      *
-     * A signed-in page leads with a personalised "For you" grid, which is only
-     * shortcuts to buttons the Moods and Genres grids already hold. It's
-     * dropped: Explore shows the full set once, not a second copy of a few.
-     * The heading is localised, so it's recognised by repeating a later
-     * section's button, with the English title as a backstop.
+     * A signed-in page leads with a personalised "For you" grid, reflecting
+     * the user's affinity and top listening tastes. Rather than dropping them,
+     * we preserve them at the top while deduplicating so that each category
+     * appears exactly once with the user's affinity categories first.
      */
     fun parseMoodAndGenres(response: JsonObject): List<MoodGenreSection> {
         val sections = response.o("contents")
@@ -244,12 +245,15 @@ object InnertubeParser {
             }
             if (title.isBlank() || items.isEmpty()) null else MoodGenreSection(title, items)
         }
-        return parsed.filterIndexed { index, section ->
-            val later = parsed.drop(index + 1)
-                .flatMapTo(HashSet()) { it.items.map { item -> item.browseId to item.params } }
-            val shortcuts = section.items.any { (it.browseId to it.params) in later }
-            !shortcuts && !section.title.equals("For you", ignoreCase = true)
+        val seen = HashSet<Pair<String, String?>>()
+        val result = mutableListOf<MoodGenreSection>()
+        for (section in parsed) {
+            val uniqueItems = section.items.filter { seen.add(it.browseId to it.params) }
+            if (uniqueItems.isNotEmpty()) {
+                result.add(section.copy(items = uniqueItems))
+            }
         }
+        return result
     }
 
     /**
@@ -296,10 +300,18 @@ object InnertubeParser {
                 // (it demands a videoId) and used to drop the whole shelf.
                 ?: parseArtistRow(item.o("musicResponsiveListItemRenderer"))
         }
-        // A shelf billed as videos ("Video charts", "Recommended music videos")
-        // keeps the videos it can play and loses the video compilations, which
-        // open onto pages with nothing on them.
-        val items = if (VIDEO_WORD.containsMatchIn(title)) parsed.filter { it.videoId != null } else parsed
+        // A shelf billed as videos ("Recommended music videos") keeps the videos it
+        // can play and loses video compilations. If the shelf is composed of playlist
+        // compilations (like "Video charts" containing chart playlists), retain them.
+        val items = if (VIDEO_WORD.containsMatchIn(title)) {
+            if (parsed.any { it.videoId != null }) {
+                parsed.filter { it.videoId != null }
+            } else {
+                parsed.map { it.copy(isVideo = true) }
+            }
+        } else {
+            parsed
+        }
         if (items.isEmpty()) return null
         val shelfTitle = title.ifBlank { "For you" }
         val fromList = contents.firstOrNull().o("musicResponsiveListItemRenderer") != null
@@ -685,6 +697,14 @@ object InnertubeParser {
                 .o("musicItemThumbnailOverlayRenderer").o("content")
                 .o("musicPlayButtonRenderer").o("playNavigationEndpoint")
                 .o("watchEndpoint").s("videoId")
+            ?: renderer.o("navigationEndpoint").o("watchEndpoint").s("videoId")
+            ?: renderer.o("doubleTapCommand").o("watchEndpoint").s("videoId")
+            ?: renderer.a("flexColumns").orEmpty().firstNotNullOfOrNull { col ->
+                col.o("musicResponsiveListItemFlexColumnRenderer")
+                    .o("text").a("runs").orEmpty().firstNotNullOfOrNull { run ->
+                        run.o("navigationEndpoint").o("watchEndpoint").s("videoId")
+                    }
+            }
             ?: return null
 
         if (renderer.isPrivateUpload()) UploadedTracks.mark(videoId)

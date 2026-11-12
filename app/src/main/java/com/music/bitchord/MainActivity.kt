@@ -47,6 +47,7 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -922,6 +923,9 @@ private fun BitChordApp(
     val query by viewModel.query.collectAsStateWithLifecycle()
     val results by viewModel.results.collectAsStateWithLifecycle()
     val exploreState by viewModel.explore.collectAsStateWithLifecycle()
+    val chartsState by viewModel.charts.collectAsStateWithLifecycle()
+    val chartsRegion by viewModel.chartsRegion.collectAsStateWithLifecycle()
+    val newReleasesState by viewModel.newReleases.collectAsStateWithLifecycle()
     val selectedMoodGenre by viewModel.selectedMoodGenre.collectAsStateWithLifecycle()
     val moodGenreShelves by viewModel.moodGenreShelves.collectAsStateWithLifecycle()
     val libraryState by viewModel.library.collectAsStateWithLifecycle()
@@ -3768,6 +3772,89 @@ private fun BitChordApp(
                                 onRefresh = { viewModel.refresh(MainViewModel.Feed.EXPLORE) },
                                 pullState = explorePull,
                                 contentPadding = listPadding,
+                                chartsState = chartsState,
+                                newReleasesState = newReleasesState,
+                                chartsRegion = chartsRegion,
+                                onRegionChange = viewModel::setChartsRegion,
+                                onRefreshCharts = viewModel::refreshCharts,
+                                onSongClick = { item ->
+                                    item.videoId?.let { videoId ->
+                                        playRadio(
+                                            Song(
+                                                videoId = videoId,
+                                                title = item.title,
+                                                artist = InnertubeParser.artistFromSubtitle(item.subtitle),
+                                                thumbnailUrl = item.thumbnailUrl,
+                                                isVideo = item.isVideo,
+                                            ),
+                                            QueueSource("Charts", PlaybackSourceType.BROWSE, "FEmusic_charts"),
+                                        )
+                                    }
+                                },
+                                onSongOptionsClick = onShelfLongPress,
+                                onItemClick = { item ->
+                                    val song = shelfSong(item)
+                                    val browseId = item.browseId
+                                    when {
+                                        song != null -> playRadio(
+                                            song,
+                                            QueueSource("Explore", PlaybackSourceType.EXPLORE),
+                                        )
+                                        browseId != null -> viewModel.openDetail(
+                                            browseId = browseId,
+                                            title = item.title,
+                                            subtitle = item.subtitle,
+                                            thumbnailUrl = item.thumbnailUrl,
+                                        )
+                                    }
+                                },
+                                onPlayAll = { items ->
+                                    val songs = items.mapNotNull { item ->
+                                        item.videoId?.let { vid ->
+                                            Song(
+                                                videoId = vid,
+                                                title = item.title,
+                                                artist = InnertubeParser.artistFromSubtitle(item.subtitle),
+                                                thumbnailUrl = item.thumbnailUrl,
+                                            )
+                                        }
+                                    }
+                                    if (songs.isNotEmpty()) {
+                                        playFrom(songs, 0, QueueSource("Top Charts", PlaybackSourceType.BROWSE, "FEmusic_charts"))
+                                    }
+                                },
+                                onShufflePlay = { items ->
+                                    val songs = items.mapNotNull { item ->
+                                        item.videoId?.let { vid ->
+                                            Song(
+                                                videoId = vid,
+                                                title = item.title,
+                                                artist = InnertubeParser.artistFromSubtitle(item.subtitle),
+                                                thumbnailUrl = item.thumbnailUrl,
+                                            )
+                                        }
+                                    }.shuffled()
+                                    if (songs.isNotEmpty()) {
+                                        playFrom(songs, 0, QueueSource("Top Charts", PlaybackSourceType.BROWSE, "FEmusic_charts"))
+                                    }
+                                },
+                                onAddToQueue = { items ->
+                                    val songs = items.mapNotNull { item ->
+                                        item.videoId?.let { vid ->
+                                            Song(
+                                                videoId = vid,
+                                                title = item.title,
+                                                artist = InnertubeParser.artistFromSubtitle(item.subtitle),
+                                                thumbnailUrl = item.thumbnailUrl,
+                                            )
+                                        }
+                                    }
+                                    songs.forEach { addToQueue(it) }
+                                },
+                                onOpenTrendingPlaylist = { regionCode, regionName, allSongs, videoShelf, artistShelf ->
+                                    viewModel.openTrendingDetail(regionCode, regionName, allSongs, videoShelf, artistShelf)
+                                },
+                                onOpenTopicPlaylist = viewModel::openTopicPlaylist,
                             )
                             TAB_SEARCH -> SearchScreen(
                                 query = query,
@@ -4136,8 +4223,9 @@ private fun BitChordApp(
                                 contentDescription = "BitChord",
                                 tint = MaterialTheme.colorScheme.onBackground,
                                 modifier = Modifier
-                                    .padding(start = 4.dp)
-                                    .size(width = 30.dp, height = 30.dp),
+                                    .padding(start = 2.dp)
+                                    .height(25.dp)
+                                    .aspectRatio(730f / 484f),
                             )
                         }
                     } else null,
