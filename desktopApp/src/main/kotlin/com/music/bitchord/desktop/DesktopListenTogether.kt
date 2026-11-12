@@ -487,10 +487,17 @@ internal object DesktopListenTogether {
 
     /** What the server holding the current party supports; empty for the original server. */
     private suspend fun serverFeatures(server: String): Set<String> =
-        featureCache[server] ?: runCatching {
-            val response = http.get("$server/api/info") { timeout { requestTimeoutMillis = 8_000 } }
-            if (response.status.isSuccess()) PartyServers.parseFeatures(response.bodyAsText()) else emptySet()
-        }.getOrDefault(emptySet()).also { featureCache[server] = it }
+        featureCache[server] ?: fetchFeatures(server)?.also { featureCache[server] = it } ?: emptySet()
+
+    /**
+     * What a server's `/api/info` lists, or null when it could not be read. Only a real answer is
+     * remembered: an unreachable or restarting server must not stay "without features" until the
+     * app is closed.
+     */
+    private suspend fun fetchFeatures(server: String): Set<String>? = runCatching {
+        val response = http.get("$server/api/info") { timeout { requestTimeoutMillis = 8_000 } }
+        if (response.status.isSuccess()) PartyServers.parseFeatures(response.bodyAsText()) else emptySet()
+    }.getOrNull()
 
     /**
      * Chooses whether sound plays on this computer. The choice always applies here; it is only
