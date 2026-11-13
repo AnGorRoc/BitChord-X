@@ -38,6 +38,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.withContext
@@ -156,14 +157,15 @@ internal object DesktopPlayerHost : PlayerHost {
         .map { it.toOutputFormat() }
         .stateIn(scope, SharingStarted.Eagerly, OutputFormatUi())
 
-    override val party: StateFlow<PartyUi> = DesktopListenTogether.state
-        .map {
+    override val party: StateFlow<PartyUi> = combine(DesktopListenTogether.state, DesktopListenTogether.listenHere) { it, listenHere -> it to listenHere }
+        .map { (it, listenHere) ->
             PartyUi(
                 inParty = it.inParty,
                 controlsLocked = it.controlsLocked,
                 members = it.members,
                 you = it.you,
                 code = it.code,
+                ownsPlayer = it.inParty && listenHere,
                 hostName = it.members.firstOrNull { m -> m.isHost }?.displayName?.takeIf { n -> n.isNotBlank() },
                 addedBy = if (!it.inParty) emptyMap() else buildMap {
                     it.queue.items.forEach { track ->

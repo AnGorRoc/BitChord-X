@@ -230,24 +230,9 @@ internal class DesktopDeviceLink(
     /** What happens when the person taps [deviceId]. */
     fun pick(deviceId: String, force: HandoffForce?) {
         val target = account.state.value.devices.firstOrNull { it.deviceId == deviceId }
-        if (target == null || !target.connected) {
-            say(DeviceNotice.Unavailable)
-            return
-        }
-        // A party and a hand-over would fight over the same player. One or the other.
-        if (DesktopListenTogether.partyOwnsPlayer()) {
-            say(DeviceNotice.PartyOnThisDevice)
-            return
-        }
-        if (target.partyCode != null) {
-            say(DeviceNotice.TargetInParty(target.name))
-            return
-        }
-        // A remote is not a speaker: what it plays comes from the device it controls.
-        if (target.controlling != null) {
-            say(DeviceNotice.TargetIsRemote(target.name))
-            return
-        }
+        // One rule for both the sheet (which stays open on a refusal) and this (which says why).
+        HandoffRules.blockedBy(target, DesktopListenTogether.partyOwnsPlayer())?.let { say(it); return }
+        if (target == null) return
         when (HandoffRules.onPick(target, queue().songs.isNotEmpty(), force)) {
             Handoff.CONTROL_ONLY -> controlOnly(target)
             Handoff.SEND_MY_MUSIC -> sendMine(target)

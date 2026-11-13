@@ -362,6 +362,11 @@ data class PartyUi(
     val members: List<PartyMember> = emptyList(),
     val you: PartyMember? = null,
     val code: String? = null,
+    /**
+     * This device is playing the party, so its player belongs to it. Handing the sound to or from
+     * another of the person's devices would be undone within a second, and is refused.
+     */
+    val ownsPlayer: Boolean = false,
     /** Whose party this is, as the host is named in it. */
     val hostName: String? = null,
     /** Who queued each song, by video id, for the picture on its cover in the queue. */

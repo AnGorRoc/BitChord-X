@@ -53,6 +53,7 @@ import com.music.bitchord.data.listentogether.account.AccountConnection
 import com.music.bitchord.data.listentogether.account.AccountDevice
 import com.music.bitchord.data.listentogether.account.AccountState
 import com.music.bitchord.data.listentogether.account.HandoffForce
+import com.music.bitchord.data.listentogether.account.HandoffRules
 import com.music.bitchord.sharedui.resources.*
 import com.music.bitchord.ui.haptics.Haptic
 import com.music.bitchord.ui.haptics.rememberHaptics
@@ -115,14 +116,17 @@ internal fun ConnectSheet(
                 it.deviceId != account.controlled?.deviceId && (it.connected || nowMs - it.lastSeenMs < FORGET_AWAY_MS)
             }
             val nameOf = { id: String -> account.devices.firstOrNull { it.deviceId == id }?.name.orEmpty() }
+            val blocked = { d: AccountDevice -> HandoffRules.blockedBy(d, party.ownsPlayer) != null }
             others.forEach { device ->
                 DeviceRow(
                     device = device,
                     isSelf = false,
                     nowMs = nowMs,
                     nameOf = nameOf,
-                    onClick = { host.pickDevice(device.deviceId, null); onDismiss() },
-                    onForce = { force -> host.pickDevice(device.deviceId, force); onDismiss() },
+                    // Stays open when the pick is refused: the reason is shown, and the person is still
+                    // looking at the devices they were choosing from.
+                    onClick = { host.pickDevice(device.deviceId, null); if (!blocked(device)) onDismiss() },
+                    onForce = { force -> host.pickDevice(device.deviceId, force); if (!blocked(device)) onDismiss() },
                 )
             }
             when {

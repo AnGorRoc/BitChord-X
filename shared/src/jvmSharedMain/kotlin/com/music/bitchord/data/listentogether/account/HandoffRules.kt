@@ -63,4 +63,22 @@ object HandoffRules {
      * is there. If that device went away, the person gets their own sound back.
      */
     fun controlStillValid(state: AccountState): Boolean = state.controlled?.connected == true
+
+    /**
+     * Why picking [target] cannot be done right now, or null when it can. The one place this is
+     * decided: the Connect sheet asks it so it can stay open on a refusal instead of closing on the
+     * person's tap with nothing but a passing message, and both players ask it before they start
+     * anything.
+     *
+     * @param partyOwnsPlayer this device is playing a party, which keeps its player where the
+     *   party says (see PartySync); a hand-over would be undone within a second.
+     */
+    fun blockedBy(target: AccountDevice?, partyOwnsPlayer: Boolean): DeviceNotice? = when {
+        target == null || !target.connected -> DeviceNotice.Unavailable
+        partyOwnsPlayer -> DeviceNotice.PartyOnThisDevice
+        target.partyCode != null -> DeviceNotice.TargetInParty(target.name)
+        // A remote is not a speaker: what it plays comes from the device it controls.
+        target.controlling != null -> DeviceNotice.TargetIsRemote(target.name)
+        else -> null
+    }
 }

@@ -165,4 +165,31 @@ class HandoffRulesTest {
         assertEquals("x", command.id)
         assertNull(AccountFrames.command(AccountFrames.parse("""{"type":"command","action":"seek"}""")!!))
     }
+
+    // ---- when picking a device cannot be done ---------------------------------------------
+
+    @Test
+    fun `an ordinary connected device can be picked`() {
+        assertNull(HandoffRules.blockedBy(device(playing = true), partyOwnsPlayer = false))
+        assertNull(HandoffRules.blockedBy(device(playing = null), partyOwnsPlayer = false))
+    }
+
+    @Test
+    fun `a device that is gone or unknown cannot`() {
+        assertEquals(DeviceNotice.Unavailable, HandoffRules.blockedBy(null, partyOwnsPlayer = false))
+        assertEquals(DeviceNotice.Unavailable, HandoffRules.blockedBy(device(connected = false), partyOwnsPlayer = false))
+    }
+
+    @Test
+    fun `a party on this device wins over everything about the target`() {
+        assertEquals(DeviceNotice.PartyOnThisDevice, HandoffRules.blockedBy(device(playing = true), partyOwnsPlayer = true))
+    }
+
+    @Test
+    fun `a target in a party or controlling another device is refused, naming it`() {
+        val inParty = device(id = "tv").copy(partyCode = "ABC123")
+        assertEquals(DeviceNotice.TargetInParty("tv"), HandoffRules.blockedBy(inParty, partyOwnsPlayer = false))
+        val remote = device(id = "tab").copy(controlling = "pc")
+        assertEquals(DeviceNotice.TargetIsRemote("tab"), HandoffRules.blockedBy(remote, partyOwnsPlayer = false))
+    }
 }
