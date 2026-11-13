@@ -983,7 +983,6 @@
     <string name="listen_together_remove_server">Xóa máy chủ</string>
     <string name="listen_together_switched_to_default">Đã chuyển sang máy chủ mặc định</string>
 
-    <string name="listen_together_create">Create a party</string>
 
 
 
@@ -1016,10 +1015,8 @@
     <string name="listen_together_away">Away — their slot is held</string>
 
     <string name="listen_together_create_action">Tạo bữa tiệc</string>
-    <string name="listen_together_create_sheet_subtitle">Chọn cách bạn xuất hiện và số người có thể tham gia.</string>
     <string name="listen_together_creating">Đang tạo…</string>
     <string name="listen_together_full">Bữa tiệc đã đầy</string>
-    <string name="listen_together_invite_title">Mời bạn bè vào bữa tiệc</string>
     <string name="listen_together_join_existing">Tham gia bữa tiệc có sẵn</string>
     <string name="listen_together_join_question">Tham gia bữa tiệc của %1$s?</string>
     <string name="listen_together_join_question_unnamed">Tham gia bữa tiệc này?</string>
@@ -1027,10 +1024,8 @@
     <string name="listen_together_landing_subtitle">Vì âm nhạc hay hơn khi nghe cùng nhau. Mời bạn bè cùng nghe và thêm bài hát theo thời gian thực, dù họ ở đâu.</string>
     <string name="listen_together_landing_title">Bắt đầu một bữa tiệc</string>
     <string name="listen_together_not_now">Để sau</string>
-    <string name="listen_together_preview_footer">Mọi người trong bữa tiệc sẽ thấy tên và ảnh đại diện của bạn.</string>
     <string name="listen_together_scan_qr">Quét mã QR</string>
     <string name="listen_together_scan_qr_subtitle">Để bạn bè quét mã này và tham gia.</string>
-    <string name="listen_together_share_link">Chia sẻ liên kết</string>
     <string name="listen_together_host_only">Chỉ tôi điều khiển nhạc</string>
     <string name="listen_together_host_only_subtitle">Những người khác cùng nghe và có thể tạm dừng trên thiết bị của họ</string>
     <string name="listen_together_host_only_notice">Chỉ chủ phòng mới có thể điều khiển nhạc</string>
@@ -1554,4 +1549,13 @@
     <string name="device_notice_not_linked">Thiết bị đó không còn kết nối với thiết bị này.</string>
     <string name="device_notice_refused">Thiết bị kia đã từ chối.</string>
     <string name="device_notice_stop_casting">Hãy dừng truyền trước.</string>
+    <string name="disable_blend_effects">Tắt hiệu ứng hòa trộn</string>
+    <string name="disable_blend_effects_subtitle">Hiển thị biểu tượng, chữ và menu tối của trình phát bằng màu trắng thuần thay vì nhuộm theo ảnh bìa</string>
+    <string name="player_theme">Giao diện trình phát</string>
+    <string name="player_theme_default">Mặc định</string>
+    <string name="player_theme_legacy">Cổ điển</string>
+    <string name="player_theme_simple">Đơn giản</string>
+    <string name="player_theme_default_subtitle">Màu của ảnh bìa tiếp nối bên dưới</string>
+    <string name="player_theme_simple_subtitle">Ảnh bìa làm mờ nhẹ phía sau toàn bộ trình phát</string>
+    <string name="player_theme_legacy_subtitle">Mang lại các đốm màu trôi phía sau trình phát từ v1.5</string>
 </resources>

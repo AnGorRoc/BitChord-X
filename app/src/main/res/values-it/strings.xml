@@ -717,7 +717,6 @@
     <string name="listen_together_using_default">Si usa il server integrato</string>
     <string name="listen_together_remove_server">Rimuovi server</string>
     <string name="listen_together_switched_to_default">Passato al server predefinito</string>
-    <string name="listen_together_create">Crea un party</string>
     <string name="listen_together_nickname_hint">Soprannome per questo party</string>
     <string name="listen_together_party_size">Dimensione del party</string>
     <string name="listen_together_party_size_subtitle">Scegli da 2 a 10 ascoltatori</string>
@@ -743,16 +742,12 @@
     <string name="listen_together_landing_subtitle">Perché la musica suona meglio in compagnia. Invita gli amici ad ascoltare e aggiungere brani in tempo reale, ovunque si trovino.</string>
     <string name="listen_together_create_action">Crea un party</string>
     <string name="listen_together_join_existing">Entra in uno esistente</string>
-    <string name="listen_together_create_sheet_subtitle">Scegli come apparire e quante persone possono entrare.</string>
     <string name="listen_together_creating">Creazione…</string>
     <string name="listen_together_joining">Accesso…</string>
     <string name="listen_together_full">Questo party è al completo</string>
     <string name="listen_together_join_question">Entrare nel party di %1$s?</string>
     <string name="listen_together_join_question_unnamed">Entrare in questo party?</string>
     <string name="listen_together_not_now">Non ora</string>
-    <string name="listen_together_preview_footer">Le persone nel party vedranno il tuo nome e la tua foto profilo.</string>
-    <string name="listen_together_invite_title">Invita amici al tuo party</string>
-    <string name="listen_together_share_link">Condividi link</string>
     <string name="listen_together_scan_qr">Scansiona codice QR</string>
     <string name="listen_together_scan_qr_subtitle">Fallo scansionare agli amici per entrare.</string>
     <string name="listen_together_host_only">Solo io controllo la musica</string>
@@ -1573,4 +1568,13 @@
     <string name="device_notice_not_linked">Quel dispositivo non è più collegato a questo.</string>
     <string name="device_notice_refused">L’altro dispositivo ha rifiutato.</string>
     <string name="device_notice_stop_casting">Interrompi prima la trasmissione.</string>
+    <string name="disable_blend_effects">Disattiva gli effetti di fusione</string>
+    <string name="disable_blend_effects_subtitle">Mostra icone, testi e menu scuri del player in bianco semplice invece di colorarli con la copertina</string>
+    <string name="player_theme">Tema del player</string>
+    <string name="player_theme_default">Predefinito</string>
+    <string name="player_theme_legacy">Classico</string>
+    <string name="player_theme_simple">Semplice</string>
+    <string name="player_theme_default_subtitle">I colori della copertina continuano sotto di essa</string>
+    <string name="player_theme_simple_subtitle">Una morbida sfocatura della copertina dietro tutto il player</string>
+    <string name="player_theme_legacy_subtitle">Ripristina le macchie di colore fluttuanti dietro il player della v1.5</string>
 </resources>

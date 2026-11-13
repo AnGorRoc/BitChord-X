@@ -659,7 +659,6 @@
     <string name="listen_together_using_default">बिल्ट-इन सर्वर इस्तेमाल हो रहा है</string>
     <string name="listen_together_remove_server">सर्वर हटाएँ</string>
     <string name="listen_together_switched_to_default">डिफ़ॉल्ट सर्वर पर स्विच किया गया</string>
-    <string name="listen_together_create">पार्टी बनाएँ</string>
     <string name="listen_together_nickname_hint">इस पार्टी के लिए उपनाम</string>
     <string name="listen_together_party_size">पार्टी का आकार</string>
     <string name="listen_together_party_size_subtitle">2–10 श्रोता चुनें</string>
@@ -685,16 +684,12 @@
     <string name="listen_together_landing_subtitle">क्योंकि संगीत साथ में बेहतर लगता है। दोस्तों को साथ सुनने और रियल टाइम में गाने जोड़ने के लिए बुलाएँ, चाहे वे कहीं भी हों।</string>
     <string name="listen_together_create_action">पार्टी बनाएँ</string>
     <string name="listen_together_join_existing">मौजूदा पार्टी में शामिल हों</string>
-    <string name="listen_together_create_sheet_subtitle">चुनें कि आप कैसे दिखेंगे, और कितने लोग शामिल हो सकते हैं।</string>
     <string name="listen_together_creating">बनाई जा रही है…</string>
     <string name="listen_together_joining">शामिल हो रहे हैं…</string>
     <string name="listen_together_full">यह पार्टी भर गई है</string>
     <string name="listen_together_join_question">%1$s की पार्टी में शामिल हों?</string>
     <string name="listen_together_join_question_unnamed">इस पार्टी में शामिल हों?</string>
     <string name="listen_together_not_now">अभी नहीं</string>
-    <string name="listen_together_preview_footer">पार्टी के लोग आपका नाम और प्रोफ़ाइल फ़ोटो देखेंगे।</string>
-    <string name="listen_together_invite_title">दोस्तों को अपनी पार्टी में बुलाएँ</string>
-    <string name="listen_together_share_link">लिंक शेयर करें</string>
     <string name="listen_together_scan_qr">QR कोड स्कैन करें</string>
     <string name="listen_together_scan_qr_subtitle">शामिल होने के लिए दोस्त इसे स्कैन करें।</string>
     <string name="listen_together_host_only">संगीत सिर्फ़ मैं कंट्रोल करूँ</string>
@@ -1634,4 +1629,13 @@
     <string name="device_notice_not_linked">वह डिवाइस अब इससे जुड़ा नहीं है।</string>
     <string name="device_notice_refused">दूसरे डिवाइस ने इसे अस्वीकार कर दिया।</string>
     <string name="device_notice_stop_casting">पहले कास्टिंग रोकें।</string>
+    <string name="disable_blend_effects">ब्लेंड इफ़ेक्ट बंद करें</string>
+    <string name="disable_blend_effects_subtitle">प्लेयर के आइकन, टेक्स्ट और गहरे मेन्यू को कलाकृति के रंग में रंगने के बजाय सादे सफ़ेद में दिखाता है</string>
+    <string name="player_theme">प्लेयर थीम</string>
+    <string name="player_theme_default">डिफ़ॉल्ट</string>
+    <string name="player_theme_legacy">लीगेसी</string>
+    <string name="player_theme_simple">सरल</string>
+    <string name="player_theme_default_subtitle">कवर के अपने रंग उसके नीचे जारी रहते हैं</string>
+    <string name="player_theme_simple_subtitle">पूरे प्लेयर के पीछे कवर का हल्का धुंधलापन</string>
+    <string name="player_theme_legacy_subtitle">v1.5 के प्लेयर के पीछे तैरते रंगों के धब्बे वापस लाता है</string>
 </resources>

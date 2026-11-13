@@ -641,7 +641,6 @@
     <string name="listen_together_using_default">正在使用內建伺服器</string>
     <string name="listen_together_remove_server">移除伺服器</string>
     <string name="listen_together_switched_to_default">已切換到預設伺服器</string>
-    <string name="listen_together_create">建立派對</string>
     <string name="listen_together_nickname_hint">此派對中的暱稱</string>
     <string name="listen_together_party_size">派對人數</string>
     <string name="listen_together_party_size_subtitle">選擇 2–10 位聽眾</string>
@@ -667,16 +666,12 @@
     <string name="listen_together_landing_subtitle">因為一起聽的音樂更動聽。邀請朋友一起收聽，並實時新增歌曲，無論他們身在何處。</string>
     <string name="listen_together_create_action">建立派對</string>
     <string name="listen_together_join_existing">加入現有派對</string>
-    <string name="listen_together_create_sheet_subtitle">選擇你的顯示方式，以及可加入的人數。</string>
     <string name="listen_together_creating">正在建立…</string>
     <string name="listen_together_joining">正在加入…</string>
     <string name="listen_together_full">此派對已滿</string>
     <string name="listen_together_join_question">加入 %1$s 的派對？</string>
     <string name="listen_together_join_question_unnamed">加入此派對？</string>
     <string name="listen_together_not_now">以後再說</string>
-    <string name="listen_together_preview_footer">派對中的人會看到你的名字和頭像。</string>
-    <string name="listen_together_invite_title">邀請朋友加入你的派對</string>
-    <string name="listen_together_share_link">分享連結</string>
     <string name="listen_together_scan_qr">掃描二維碼</string>
     <string name="listen_together_scan_qr_subtitle">讓朋友掃描此碼即可加入。</string>
     <string name="listen_together_host_only">只有我能控制音樂</string>
@@ -1614,4 +1609,13 @@
     <string name="device_notice_not_linked">該裝置已不再與此裝置連線。</string>
     <string name="device_notice_refused">另一台裝置拒絕了。</string>
     <string name="device_notice_stop_casting">請先停止投放。</string>
+    <string name="disable_blend_effects">關閉混合效果</string>
+    <string name="disable_blend_effects_subtitle">以純白色顯示播放器圖示、文字和深色選單，而不是用封面顏色著色</string>
+    <string name="player_theme">播放器主題</string>
+    <string name="player_theme_default">預設</string>
+    <string name="player_theme_legacy">經典</string>
+    <string name="player_theme_simple">簡約</string>
+    <string name="player_theme_default_subtitle">封面本身的顏色在其下方延續</string>
+    <string name="player_theme_simple_subtitle">在整個播放器後方顯示封面的柔和模糊</string>
+    <string name="player_theme_legacy_subtitle">恢復 v1.5 中播放器後方漂浮的色塊</string>
 </resources>

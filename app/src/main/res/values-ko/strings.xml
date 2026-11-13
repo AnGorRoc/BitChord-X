@@ -874,7 +874,6 @@
     <string name="listen_together_using_default">기본 서버 사용 중</string>
     <string name="listen_together_remove_server">서버 제거</string>
     <string name="listen_together_switched_to_default">기본 서버로 전환함</string>
-    <string name="listen_together_create">파티 생성</string>
     <string name="listen_together_nickname_hint">이 파티를 위한 별명</string>
     <string name="listen_together_party_size">파티 크기</string>
     <string name="listen_together_party_size_subtitle">감상자 2–10명 선택</string>
@@ -900,16 +899,12 @@
     <string name="listen_together_landing_subtitle">음악은 함께 들으면 더 즐겁습니다. 친구들이 어디 있든, 초대해 실시간으로 곡을 같이 듣고 추가하세요.</string>
     <string name="listen_together_create_action">파티 생성</string>
     <string name="listen_together_join_existing">기존 파티 참여</string>
-    <string name="listen_together_create_sheet_subtitle">자신을 어떻게 표시할지, 얼마나 많은 인원을 받을지 선택하세요.</string>
     <string name="listen_together_creating">생성 중…</string>
     <string name="listen_together_joining">참여 중…</string>
     <string name="listen_together_full">파티가 꽉 찼습니다</string>
     <string name="listen_together_join_question">%1$s의 파티에 참여하시겠습니까?</string>
     <string name="listen_together_join_question_unnamed">이 파티에 참여하시겠습니까?</string>
     <string name="listen_together_not_now">나중에</string>
-    <string name="listen_together_preview_footer">파티 인원들이 내 이름과 프로필 사진을 보게 됩니다.</string>
-    <string name="listen_together_invite_title">친구들을 파티에 초대하기</string>
-    <string name="listen_together_share_link">링크 공유</string>
     <string name="listen_together_scan_qr">QR 코드 스캔</string>
     <string name="listen_together_scan_qr_subtitle">친구가 이걸 스캔해 참여하도록 하세요.</string>
     <string name="listen_together_host_only">나만 음악 제어</string>
@@ -1470,4 +1465,13 @@
     <string name="device_notice_not_linked">해당 기기는 더 이상 이 기기와 연결되어 있지 않습니다.</string>
     <string name="device_notice_refused">다른 기기가 거부했습니다.</string>
     <string name="device_notice_stop_casting">먼저 캐스트를 중지하세요.</string>
+    <string name="disable_blend_effects">블렌드 효과 끄기</string>
+    <string name="disable_blend_effects_subtitle">플레이어 아이콘, 텍스트, 어두운 메뉴를 앨범 아트 색으로 물들이지 않고 단순한 흰색으로 표시합니다</string>
+    <string name="player_theme">플레이어 테마</string>
+    <string name="player_theme_default">기본</string>
+    <string name="player_theme_legacy">레거시</string>
+    <string name="player_theme_simple">심플</string>
+    <string name="player_theme_default_subtitle">앨범 아트의 색이 그 아래로 이어집니다</string>
+    <string name="player_theme_simple_subtitle">플레이어 전체 뒤에 앨범 아트의 부드러운 블러를 표시합니다</string>
+    <string name="player_theme_legacy_subtitle">v1.5의 플레이어 뒤에 떠다니는 색 덩어리를 되살립니다</string>
 </resources>

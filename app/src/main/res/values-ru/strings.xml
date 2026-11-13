@@ -680,7 +680,6 @@
     <string name="listen_together_using_default">Используется встроенный сервер</string>
     <string name="listen_together_remove_server">Удалить сервер</string>
     <string name="listen_together_switched_to_default">Переключено на сервер по умолчанию</string>
-    <string name="listen_together_create">Создать вечеринку</string>
     <string name="listen_together_nickname_hint">Никнейм для этой вечеринки</string>
     <string name="listen_together_party_size">Размер вечеринки</string>
     <string name="listen_together_party_size_subtitle">Выберите от 2 до 10 слушателей</string>
@@ -706,16 +705,12 @@
     <string name="listen_together_landing_subtitle">Потому что вместе музыка звучит лучше. Приглашайте друзей слушать и добавлять песни в реальном времени, где бы они ни были.</string>
     <string name="listen_together_create_action">Создать вечеринку</string>
     <string name="listen_together_join_existing">Присоединиться к существующей</string>
-    <string name="listen_together_create_sheet_subtitle">Выберите, как вы будете выглядеть и сколько людей смогут присоединиться.</string>
     <string name="listen_together_creating">Создание…</string>
     <string name="listen_together_joining">Подключение…</string>
     <string name="listen_together_full">Эта вечеринка заполнена</string>
     <string name="listen_together_join_question">Присоединиться к вечеринке %1$s?</string>
     <string name="listen_together_join_question_unnamed">Присоединиться к этой вечеринке?</string>
     <string name="listen_together_not_now">Не сейчас</string>
-    <string name="listen_together_preview_footer">Участники вечеринки увидят ваше имя и фото профиля.</string>
-    <string name="listen_together_invite_title">Пригласите друзей на вечеринку</string>
-    <string name="listen_together_share_link">Поделиться ссылкой</string>
     <string name="listen_together_scan_qr">Сканировать QR-код</string>
     <string name="listen_together_scan_qr_subtitle">Друзья могут отсканировать его, чтобы присоединиться.</string>
     <string name="listen_together_host_only">Только я управляю музыкой</string>
@@ -1661,4 +1656,13 @@
     <string name="device_notice_not_linked">Это устройство больше не подключено к этому.</string>
     <string name="device_notice_refused">Другое устройство отказалось.</string>
     <string name="device_notice_stop_casting">Сначала остановите трансляцию.</string>
+    <string name="disable_blend_effects">Отключить эффекты смешивания</string>
+    <string name="disable_blend_effects_subtitle">Показывает значки, текст и тёмные меню плеера обычным белым цветом вместо оттенков обложки</string>
+    <string name="player_theme">Тема плеера</string>
+    <string name="player_theme_default">По умолчанию</string>
+    <string name="player_theme_legacy">Классическая</string>
+    <string name="player_theme_simple">Простая</string>
+    <string name="player_theme_default_subtitle">Цвета обложки продолжаются под ней</string>
+    <string name="player_theme_simple_subtitle">Мягкое размытие обложки за всем плеером</string>
+    <string name="player_theme_legacy_subtitle">Возвращает плавающие цветовые пятна за плеером из версии 1.5</string>
 </resources>

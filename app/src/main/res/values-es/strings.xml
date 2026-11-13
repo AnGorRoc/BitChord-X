@@ -715,7 +715,6 @@
     <string name="listen_together_using_default">Usando el servidor integrado</string>
     <string name="listen_together_remove_server">Quitar servidor</string>
     <string name="listen_together_switched_to_default">Se cambió al servidor predeterminado</string>
-    <string name="listen_together_create">Crear una fiesta</string>
     <string name="listen_together_nickname_hint">Apodo para esta fiesta</string>
     <string name="listen_together_play_here">Reproducir en este dispositivo</string>
     <string name="listen_together_play_here_on">Lo escuchas aquí y cada quien lo escucha en el suyo.</string>
@@ -747,16 +746,12 @@
     <string name="listen_together_landing_subtitle">Porque la música suena mejor en compañía. Invita a tus amigos a escuchar y agregar canciones en tiempo real, estén donde estén.</string>
     <string name="listen_together_create_action">Crear una fiesta</string>
     <string name="listen_together_join_existing">Unirse a una existente</string>
-    <string name="listen_together_create_sheet_subtitle">Elige cómo aparecerás y cuántos pueden unirse.</string>
     <string name="listen_together_creating">Creando…</string>
     <string name="listen_together_joining">Uniéndose…</string>
     <string name="listen_together_full">Esta fiesta está llena</string>
     <string name="listen_together_join_question">¿Unirte a la fiesta de %1$s?</string>
     <string name="listen_together_join_question_unnamed">¿Unirte a esta fiesta?</string>
     <string name="listen_together_not_now">Ahora no</string>
-    <string name="listen_together_preview_footer">Las personas de la fiesta verán tu nombre y tu foto de perfil.</string>
-    <string name="listen_together_invite_title">Invita amigos a tu fiesta</string>
-    <string name="listen_together_share_link">Compartir enlace</string>
     <string name="listen_together_scan_qr">Escanear código QR</string>
     <string name="listen_together_scan_qr_subtitle">Deja que tus amigos lo escaneen para unirse.</string>
     <string name="listen_together_host_only">Solo yo controlo la música</string>

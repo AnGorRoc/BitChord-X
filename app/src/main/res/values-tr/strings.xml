@@ -699,7 +699,6 @@
     <string name="listen_together_using_default">Yerleşik sunucu kullanılıyor</string>
     <string name="listen_together_remove_server">Sunucuyu kaldır</string>
     <string name="listen_together_switched_to_default">Varsayılan sunucuya geçildi</string>
-    <string name="listen_together_create">Parti oluştur</string>
     <string name="listen_together_nickname_hint">Bu parti için takma ad</string>
     <string name="listen_together_party_size">Parti boyutu</string>
     <string name="listen_together_party_size_subtitle">2–10 dinleyici seç</string>
@@ -725,16 +724,12 @@
     <string name="listen_together_landing_subtitle">Çünkü müzik birlikte daha güzel. Arkadaşlarını nerede olurlarsa olsunlar birlikte dinlemeye ve gerçek zamanlı şarkı eklemeye davet et.</string>
     <string name="listen_together_create_action">Parti oluştur</string>
     <string name="listen_together_join_existing">Mevcut partiye katıl</string>
-    <string name="listen_together_create_sheet_subtitle">Nasıl görüneceğini ve kaç kişinin katılabileceğini seç.</string>
     <string name="listen_together_creating">Oluşturuluyor…</string>
     <string name="listen_together_joining">Katılınıyor…</string>
     <string name="listen_together_full">Bu parti dolu</string>
     <string name="listen_together_join_question">%1$s adlı kişinin partisine katılınsın mı?</string>
     <string name="listen_together_join_question_unnamed">Bu partiye katılınsın mı?</string>
     <string name="listen_together_not_now">Şimdi değil</string>
-    <string name="listen_together_preview_footer">Partidekiler adını ve profil fotoğrafını görecek.</string>
-    <string name="listen_together_invite_title">Arkadaşlarını partine davet et</string>
-    <string name="listen_together_share_link">Bağlantıyı paylaş</string>
     <string name="listen_together_scan_qr">QR kodu tara</string>
     <string name="listen_together_scan_qr_subtitle">Arkadaşların katılmak için bunu tarasın.</string>
     <string name="listen_together_host_only">Müziği yalnızca ben kontrol ederim</string>
@@ -1591,4 +1586,13 @@
     <string name="device_notice_not_linked">O cihaz artık bununla bağlı değil.</string>
     <string name="device_notice_refused">Diğer cihaz bunu reddetti.</string>
     <string name="device_notice_stop_casting">Önce yayını durdur.</string>
+    <string name="disable_blend_effects">Karışım efektlerini kapat</string>
+    <string name="disable_blend_effects_subtitle">Oynatıcı simgelerini, metinleri ve koyu menüleri kapak renginde tonlamak yerine düz beyaz gösterir</string>
+    <string name="player_theme">Oynatıcı teması</string>
+    <string name="player_theme_default">Varsayılan</string>
+    <string name="player_theme_legacy">Klasik</string>
+    <string name="player_theme_simple">Basit</string>
+    <string name="player_theme_default_subtitle">Kapağın renkleri altında devam eder</string>
+    <string name="player_theme_simple_subtitle">Tüm oynatıcının arkasında kapağın yumuşak bir bulanıklığı</string>
+    <string name="player_theme_legacy_subtitle">v1.5\'teki oynatıcı arkasında süzülen renk lekelerini geri getirir</string>
 </resources>

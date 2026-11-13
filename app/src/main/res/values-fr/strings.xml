@@ -660,7 +660,6 @@
     <string name="listen_together_using_default">Serveur intégré utilisé</string>
     <string name="listen_together_remove_server">Supprimer le serveur</string>
     <string name="listen_together_switched_to_default">Passé au serveur par défaut</string>
-    <string name="listen_together_create">Créer une session</string>
     <string name="listen_together_nickname_hint">Pseudo pour cette session</string>
     <string name="listen_together_party_size">Taille de la session</string>
     <string name="listen_together_party_size_subtitle">Choisissez de 2 à 10 auditeurs</string>
@@ -686,16 +685,12 @@
     <string name="listen_together_landing_subtitle">Parce que la musique sonne mieux à plusieurs. Invitez vos amis à écouter et à ajouter des titres en temps réel, où qu\'ils soient.</string>
     <string name="listen_together_create_action">Créer une session</string>
     <string name="listen_together_join_existing">Rejoindre une session existante</string>
-    <string name="listen_together_create_sheet_subtitle">Choisissez comment vous apparaissez et combien de personnes peuvent rejoindre.</string>
     <string name="listen_together_creating">Création…</string>
     <string name="listen_together_joining">Connexion…</string>
     <string name="listen_together_full">Cette session est complète</string>
     <string name="listen_together_join_question">Rejoindre la session de %1$s ?</string>
     <string name="listen_together_join_question_unnamed">Rejoindre cette session ?</string>
     <string name="listen_together_not_now">Pas maintenant</string>
-    <string name="listen_together_preview_footer">Les membres de la session verront votre nom et votre photo de profil.</string>
-    <string name="listen_together_invite_title">Invitez des amis à votre session</string>
-    <string name="listen_together_share_link">Partager le lien</string>
     <string name="listen_together_scan_qr">Scanner le code QR</string>
     <string name="listen_together_scan_qr_subtitle">Vos amis peuvent le scanner pour rejoindre.</string>
     <string name="listen_together_host_only">Vous seul contrôlez la musique</string>
@@ -1635,4 +1630,13 @@
     <string name="device_notice_not_linked">Cet appareil n’est plus connecté à celui-ci.</string>
     <string name="device_notice_refused">L’autre appareil a refusé.</string>
     <string name="device_notice_stop_casting">Arrêtez d’abord la diffusion.</string>
+    <string name="disable_blend_effects">Désactiver les effets de fusion</string>
+    <string name="disable_blend_effects_subtitle">Affiche les icônes, textes et menus sombres du lecteur en blanc uni au lieu de les teinter avec la pochette</string>
+    <string name="player_theme">Thème du lecteur</string>
+    <string name="player_theme_default">Par défaut</string>
+    <string name="player_theme_legacy">Classique</string>
+    <string name="player_theme_simple">Simple</string>
+    <string name="player_theme_default_subtitle">Les couleurs de la pochette se prolongent en dessous</string>
+    <string name="player_theme_simple_subtitle">Un doux flou de la pochette derrière tout le lecteur</string>
+    <string name="player_theme_legacy_subtitle">Rétablit les taches de couleur flottantes derrière le lecteur de la v1.5</string>
 </resources>

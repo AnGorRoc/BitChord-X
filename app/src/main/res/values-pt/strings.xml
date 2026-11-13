@@ -664,7 +664,6 @@
     <string name="listen_together_using_default">Usando o servidor integrado</string>
     <string name="listen_together_remove_server">Remover servidor</string>
     <string name="listen_together_switched_to_default">Alterado para o servidor padrão</string>
-    <string name="listen_together_create">Criar uma festa</string>
     <string name="listen_together_nickname_hint">Apelido para esta festa</string>
     <string name="listen_together_party_size">Tamanho da festa</string>
     <string name="listen_together_party_size_subtitle">Escolha de 2 a 10 ouvintes</string>
@@ -690,16 +689,12 @@
     <string name="listen_together_landing_subtitle">Porque música soa melhor junto. Convide amigos para ouvir e adicionar músicas em tempo real, onde quer que estejam.</string>
     <string name="listen_together_create_action">Criar uma festa</string>
     <string name="listen_together_join_existing">Entrar em uma existente</string>
-    <string name="listen_together_create_sheet_subtitle">Escolha como você vai aparecer e quantos podem entrar.</string>
     <string name="listen_together_creating">Criando…</string>
     <string name="listen_together_joining">Entrando…</string>
     <string name="listen_together_full">Esta festa está cheia</string>
     <string name="listen_together_join_question">Entrar na festa de %1$s?</string>
     <string name="listen_together_join_question_unnamed">Entrar nesta festa?</string>
     <string name="listen_together_not_now">Agora não</string>
-    <string name="listen_together_preview_footer">As pessoas na festa verão seu nome e sua foto de perfil.</string>
-    <string name="listen_together_invite_title">Convide amigos para sua festa</string>
-    <string name="listen_together_share_link">Compartilhar link</string>
     <string name="listen_together_scan_qr">Escanear código QR</string>
     <string name="listen_together_scan_qr_subtitle">Deixe os amigos escanearem para entrar.</string>
     <string name="listen_together_host_only">Só eu controlo a música</string>
@@ -1639,4 +1634,13 @@
     <string name="device_notice_not_linked">Esse dispositivo não está mais conectado a este.</string>
     <string name="device_notice_refused">O outro dispositivo recusou.</string>
     <string name="device_notice_stop_casting">Pare de transmitir primeiro.</string>
+    <string name="disable_blend_effects">Desativar efeitos de mistura</string>
+    <string name="disable_blend_effects_subtitle">Mostra os ícones, textos e menus escuros do player em branco simples em vez de os tingir com a capa</string>
+    <string name="player_theme">Tema do player</string>
+    <string name="player_theme_default">Padrão</string>
+    <string name="player_theme_legacy">Clássico</string>
+    <string name="player_theme_simple">Simples</string>
+    <string name="player_theme_default_subtitle">As cores da capa continuam abaixo dela</string>
+    <string name="player_theme_simple_subtitle">Um desfoque suave da capa atrás de todo o player</string>
+    <string name="player_theme_legacy_subtitle">Traz de volta as manchas de cor flutuantes atrás do player da v1.5</string>
 </resources>

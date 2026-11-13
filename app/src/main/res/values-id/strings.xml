@@ -642,7 +642,6 @@
     <string name="listen_together_using_default">Memakai server bawaan</string>
     <string name="listen_together_remove_server">Hapus server</string>
     <string name="listen_together_switched_to_default">Beralih ke server bawaan</string>
-    <string name="listen_together_create">Buat pesta</string>
     <string name="listen_together_nickname_hint">Nama panggilan untuk pesta ini</string>
     <string name="listen_together_party_size">Ukuran pesta</string>
     <string name="listen_together_party_size_subtitle">Pilih 2–10 pendengar</string>
@@ -668,16 +667,12 @@
     <string name="listen_together_landing_subtitle">Karena musik lebih seru didengar bersama. Ajak teman mendengarkan dan menambahkan lagu secara langsung, di mana pun mereka berada.</string>
     <string name="listen_together_create_action">Buat pesta</string>
     <string name="listen_together_join_existing">Ikut yang sudah ada</string>
-    <string name="listen_together_create_sheet_subtitle">Pilih bagaimana kamu tampil, dan berapa orang yang bisa ikut.</string>
     <string name="listen_together_creating">Membuat…</string>
     <string name="listen_together_joining">Bergabung…</string>
     <string name="listen_together_full">Pesta ini sudah penuh</string>
     <string name="listen_together_join_question">Ikut pesta %1$s?</string>
     <string name="listen_together_join_question_unnamed">Ikut pesta ini?</string>
     <string name="listen_together_not_now">Nanti saja</string>
-    <string name="listen_together_preview_footer">Orang di pesta akan melihat nama dan foto profilmu.</string>
-    <string name="listen_together_invite_title">Ajak teman ke pestamu</string>
-    <string name="listen_together_share_link">Bagikan link</string>
     <string name="listen_together_scan_qr">Pindai kode QR</string>
     <string name="listen_together_scan_qr_subtitle">Biarkan teman memindai ini untuk ikut.</string>
     <string name="listen_together_host_only">Hanya aku yang mengatur musik</string>
@@ -1614,4 +1609,13 @@
     <string name="device_notice_not_linked">Perangkat itu tidak lagi terhubung ke perangkat ini.</string>
     <string name="device_notice_refused">Perangkat lain menolaknya.</string>
     <string name="device_notice_stop_casting">Hentikan cast dulu.</string>
+    <string name="disable_blend_effects">Nonaktifkan efek campuran</string>
+    <string name="disable_blend_effects_subtitle">Menampilkan ikon, teks, dan menu gelap pemutar dengan putih polos, bukan diwarnai sampul</string>
+    <string name="player_theme">Tema pemutar</string>
+    <string name="player_theme_default">Bawaan</string>
+    <string name="player_theme_legacy">Klasik</string>
+    <string name="player_theme_simple">Sederhana</string>
+    <string name="player_theme_default_subtitle">Warna sampul berlanjut di bawahnya</string>
+    <string name="player_theme_simple_subtitle">Keburaman lembut sampul di belakang seluruh pemutar</string>
+    <string name="player_theme_legacy_subtitle">Mengembalikan gumpalan warna melayang di belakang pemutar dari v1.5</string>
 </resources>

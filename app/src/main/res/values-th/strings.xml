@@ -681,7 +681,6 @@
     <string name="listen_together_using_default">กำลังใช้เซิร์ฟเวอร์ที่มีมาให้</string>
     <string name="listen_together_remove_server">ลบเซิร์ฟเวอร์</string>
     <string name="listen_together_switched_to_default">เปลี่ยนเป็นเซิร์ฟเวอร์เริ่มต้นแล้ว</string>
-    <string name="listen_together_create">สร้างปาร์ตี้</string>
     <string name="listen_together_nickname_hint">ชื่อเล่นสำหรับปาร์ตี้นี้</string>
     <string name="listen_together_party_size">ขนาดปาร์ตี้</string>
     <string name="listen_together_party_size_subtitle">เลือกผู้ฟัง 2–10 คน</string>
@@ -707,16 +706,12 @@
     <string name="listen_together_landing_subtitle">เพราะเพลงฟังด้วยกันยิ่งเพราะ ชวนเพื่อนมาฟังและเพิ่มเพลงแบบเรียลไทม์ได้ ไม่ว่าจะอยู่ที่ไหน</string>
     <string name="listen_together_create_action">สร้างปาร์ตี้</string>
     <string name="listen_together_join_existing">เข้าร่วมปาร์ตี้ที่มีอยู่</string>
-    <string name="listen_together_create_sheet_subtitle">เลือกว่าคุณจะแสดงตัวอย่างไร และให้เข้าร่วมได้กี่คน</string>
     <string name="listen_together_creating">กำลังสร้าง…</string>
     <string name="listen_together_joining">กำลังเข้าร่วม…</string>
     <string name="listen_together_full">ปาร์ตี้นี้เต็มแล้ว</string>
     <string name="listen_together_join_question">เข้าร่วมปาร์ตี้ของ %1$s ไหม</string>
     <string name="listen_together_join_question_unnamed">เข้าร่วมปาร์ตี้นี้ไหม</string>
     <string name="listen_together_not_now">ไว้ทีหลัง</string>
-    <string name="listen_together_preview_footer">คนในปาร์ตี้จะเห็นชื่อและรูปโปรไฟล์ของคุณ</string>
-    <string name="listen_together_invite_title">ชวนเพื่อนมาปาร์ตี้ของคุณ</string>
-    <string name="listen_together_share_link">แชร์ลิงก์</string>
     <string name="listen_together_scan_qr">สแกนคิวอาร์โค้ด</string>
     <string name="listen_together_scan_qr_subtitle">ให้เพื่อนสแกนเพื่อเข้าร่วม</string>
     <string name="listen_together_host_only">ฉันควบคุมเพลงเพียงผู้เดียว</string>
@@ -1620,4 +1615,13 @@
     <string name="device_notice_not_linked">อุปกรณ์นั้นไม่ได้เชื่อมต่อกับอุปกรณ์นี้แล้ว</string>
     <string name="device_notice_refused">อุปกรณ์อีกเครื่องปฏิเสธ</string>
     <string name="device_notice_stop_casting">หยุดแคสต์ก่อน</string>
+    <string name="disable_blend_effects">ปิดเอฟเฟกต์การผสมสี</string>
+    <string name="disable_blend_effects_subtitle">แสดงไอคอน ข้อความ และเมนูสีเข้มของเครื่องเล่นเป็นสีขาวล้วน แทนการใส่สีตามปกอัลบั้ม</string>
+    <string name="player_theme">ธีมเครื่องเล่น</string>
+    <string name="player_theme_default">ค่าเริ่มต้น</string>
+    <string name="player_theme_legacy">คลาสสิก</string>
+    <string name="player_theme_simple">เรียบง่าย</string>
+    <string name="player_theme_default_subtitle">สีของปกต่อเนื่องลงไปด้านล่าง</string>
+    <string name="player_theme_simple_subtitle">ภาพปกเบลอนุ่มนวลอยู่หลังเครื่องเล่นทั้งหมด</string>
+    <string name="player_theme_legacy_subtitle">นำจุดสีที่ลอยอยู่หลังเครื่องเล่นจาก v1.5 กลับมา</string>
 </resources>

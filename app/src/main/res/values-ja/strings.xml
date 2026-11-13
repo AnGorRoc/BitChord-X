@@ -642,7 +642,6 @@
     <string name="listen_together_using_default">内蔵サーバーを使用中</string>
     <string name="listen_together_remove_server">サーバーを削除</string>
     <string name="listen_together_switched_to_default">既定のサーバーに切り替えました</string>
-    <string name="listen_together_create">パーティーを作る</string>
     <string name="listen_together_nickname_hint">このパーティーでのニックネーム</string>
     <string name="listen_together_party_size">パーティーの人数</string>
     <string name="listen_together_party_size_subtitle">2〜10人から選択</string>
@@ -668,16 +667,12 @@
     <string name="listen_together_landing_subtitle">音楽はみんなで聴くともっと楽しい。友だちを招待して、どこにいてもリアルタイムで一緒に聴いたり曲を追加したりできます。</string>
     <string name="listen_together_create_action">パーティーを作成</string>
     <string name="listen_together_join_existing">既存のパーティーに参加</string>
-    <string name="listen_together_create_sheet_subtitle">表示のされ方と参加できる人数を選んでください。</string>
     <string name="listen_together_creating">作成中…</string>
     <string name="listen_together_joining">参加中…</string>
     <string name="listen_together_full">このパーティーは満員です</string>
     <string name="listen_together_join_question">%1$sさんのパーティーに参加しますか？</string>
     <string name="listen_together_join_question_unnamed">このパーティーに参加しますか？</string>
     <string name="listen_together_not_now">今はしない</string>
-    <string name="listen_together_preview_footer">パーティーの参加者にあなたの名前とプロフィール写真が表示されます。</string>
-    <string name="listen_together_invite_title">友だちをパーティーに招待</string>
-    <string name="listen_together_share_link">リンクを共有</string>
     <string name="listen_together_scan_qr">QRコードをスキャン</string>
     <string name="listen_together_scan_qr_subtitle">友だちにスキャンしてもらうと参加できます。</string>
     <string name="listen_together_host_only">音楽の操作は自分だけ</string>
@@ -1615,4 +1610,13 @@
     <string name="device_notice_not_linked">そのデバイスはもうこのデバイスに接続されていません。</string>
     <string name="device_notice_refused">もう一方のデバイスが拒否しました。</string>
     <string name="device_notice_stop_casting">先にキャストを停止してください。</string>
+    <string name="disable_blend_effects">ブレンド効果を無効にする</string>
+    <string name="disable_blend_effects_subtitle">プレーヤーのアイコン、テキスト、ダークメニューをアートワークの色で染めず、無地の白で表示します</string>
+    <string name="player_theme">プレーヤーテーマ</string>
+    <string name="player_theme_default">デフォルト</string>
+    <string name="player_theme_legacy">レガシー</string>
+    <string name="player_theme_simple">シンプル</string>
+    <string name="player_theme_default_subtitle">ジャケットの色がその下に続きます</string>
+    <string name="player_theme_simple_subtitle">プレーヤー全体の背景にジャケットのやわらかいぼかしを表示します</string>
+    <string name="player_theme_legacy_subtitle">v1.5 のプレーヤー背後に漂う色の塊を復活させます</string>
 </resources>

@@ -659,7 +659,6 @@
     <string name="listen_together_using_default">Eingebauter Server wird genutzt</string>
     <string name="listen_together_remove_server">Server entfernen</string>
     <string name="listen_together_switched_to_default">Zum Standardserver gewechselt</string>
-    <string name="listen_together_create">Party erstellen</string>
     <string name="listen_together_nickname_hint">Spitzname für diese Party</string>
     <string name="listen_together_party_size">Partygröße</string>
     <string name="listen_together_party_size_subtitle">2–10 Zuhörer auswählen</string>
@@ -685,16 +684,12 @@
     <string name="listen_together_landing_subtitle">Weil Musik zusammen besser klingt. Lade Freunde ein, gemeinsam zu hören und in Echtzeit Songs hinzuzufügen – egal, wo sie sind.</string>
     <string name="listen_together_create_action">Party erstellen</string>
     <string name="listen_together_join_existing">Bestehender beitreten</string>
-    <string name="listen_together_create_sheet_subtitle">Wähle, wie du auftrittst und wie viele beitreten können.</string>
     <string name="listen_together_creating">Wird erstellt…</string>
     <string name="listen_together_joining">Wird beigetreten…</string>
     <string name="listen_together_full">Diese Party ist voll</string>
     <string name="listen_together_join_question">Der Party von %1$s beitreten?</string>
     <string name="listen_together_join_question_unnamed">Dieser Party beitreten?</string>
     <string name="listen_together_not_now">Nicht jetzt</string>
-    <string name="listen_together_preview_footer">Die Leute in der Party sehen deinen Namen und dein Profilbild.</string>
-    <string name="listen_together_invite_title">Freunde zu deiner Party einladen</string>
-    <string name="listen_together_share_link">Link teilen</string>
     <string name="listen_together_scan_qr">QR-Code scannen</string>
     <string name="listen_together_scan_qr_subtitle">Freunde können diesen Code scannen, um beizutreten.</string>
     <string name="listen_together_host_only">Nur ich steuere die Musik</string>
@@ -1634,4 +1629,13 @@
     <string name="device_notice_not_linked">Dieses Gerät ist nicht mehr mit diesem verbunden.</string>
     <string name="device_notice_refused">Das andere Gerät hat das abgelehnt.</string>
     <string name="device_notice_stop_casting">Beende zuerst das Streamen.</string>
+    <string name="disable_blend_effects">Mischeffekte deaktivieren</string>
+    <string name="disable_blend_effects_subtitle">Zeigt Player-Symbole, Texte und dunkle Menüs in einfachem Weiß statt mit der Farbe des Covers</string>
+    <string name="player_theme">Player-Design</string>
+    <string name="player_theme_default">Standard</string>
+    <string name="player_theme_legacy">Klassisch</string>
+    <string name="player_theme_simple">Einfach</string>
+    <string name="player_theme_default_subtitle">Die Farben des Covers setzen sich darunter fort</string>
+    <string name="player_theme_simple_subtitle">Ein weicher Unschärfeeffekt des Covers hinter dem ganzen Player</string>
+    <string name="player_theme_legacy_subtitle">Bringt die schwebenden Farbflecken hinter dem Player aus v1.5 zurück</string>
 </resources>

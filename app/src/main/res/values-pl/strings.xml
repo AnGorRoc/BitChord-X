@@ -693,7 +693,6 @@
     <string name="listen_together_using_default">Używany jest wbudowany serwer</string>
     <string name="listen_together_remove_server">Usuń serwer</string>
     <string name="listen_together_switched_to_default">Przełączono na serwer domyślny</string>
-    <string name="listen_together_create">Utwórz imprezę</string>
     <string name="listen_together_nickname_hint">Pseudonim na tę imprezę</string>
     <string name="listen_together_party_size">Rozmiar imprezy</string>
     <string name="listen_together_party_size_subtitle">Wybierz od 2 do 10 słuchaczy</string>
@@ -719,16 +718,12 @@
     <string name="listen_together_landing_subtitle">Bo muzyka razem brzmi lepiej. Zaproś znajomych, by słuchali i dodawali utwory na żywo, gdziekolwiek są.</string>
     <string name="listen_together_create_action">Utwórz imprezę</string>
     <string name="listen_together_join_existing">Dołącz do istniejącej</string>
-    <string name="listen_together_create_sheet_subtitle">Wybierz, jak się pokażesz i ile osób może dołączyć.</string>
     <string name="listen_together_creating">Tworzenie…</string>
     <string name="listen_together_joining">Dołączanie…</string>
     <string name="listen_together_full">Ta impreza jest pełna</string>
     <string name="listen_together_join_question">Dołączyć do imprezy %1$s?</string>
     <string name="listen_together_join_question_unnamed">Dołączyć do tej imprezy?</string>
     <string name="listen_together_not_now">Nie teraz</string>
-    <string name="listen_together_preview_footer">Uczestnicy imprezy zobaczą twoje imię i zdjęcie profilowe.</string>
-    <string name="listen_together_invite_title">Zaproś znajomych na imprezę</string>
-    <string name="listen_together_share_link">Udostępnij link</string>
     <string name="listen_together_scan_qr">Zeskanuj kod QR</string>
     <string name="listen_together_scan_qr_subtitle">Znajomi mogą go zeskanować, by dołączyć.</string>
     <string name="listen_together_host_only">Tylko ja steruję muzyką</string>
@@ -1672,4 +1667,13 @@
     <string name="device_notice_not_linked">To urządzenie nie jest już połączone z tym.</string>
     <string name="device_notice_refused">Drugie urządzenie odmówiło.</string>
     <string name="device_notice_stop_casting">Najpierw zatrzymaj przesyłanie.</string>
+    <string name="disable_blend_effects">Wyłącz efekty mieszania</string>
+    <string name="disable_blend_effects_subtitle">Pokazuje ikony, teksty i ciemne menu odtwarzacza na zwykłym białym tle zamiast barwić je okładką</string>
+    <string name="player_theme">Motyw odtwarzacza</string>
+    <string name="player_theme_default">Domyślny</string>
+    <string name="player_theme_legacy">Klasyczny</string>
+    <string name="player_theme_simple">Prosty</string>
+    <string name="player_theme_default_subtitle">Kolory okładki przechodzą poniżej niej</string>
+    <string name="player_theme_simple_subtitle">Delikatne rozmycie okładki za całym odtwarzaczem</string>
+    <string name="player_theme_legacy_subtitle">Przywraca dryfujące plamy kolorów za odtwarzaczem z wersji 1.5</string>
 </resources>
