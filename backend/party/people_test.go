@@ -197,3 +197,36 @@ func TestAddedByStaysAfterThePersonLeaves(t *testing.T) {
 		t.Fatalf("the name must outlive the person")
 	}
 }
+
+func TestRemovedPersonCannotReturnOnAnotherDevice(t *testing.T) {
+	p := NewPartyWithMaxMembers("BANS", 5)
+	joinAs(t, p, "host", "h1", "Host", proofAna, "")
+	beto := joinAs(t, p, "beto", "b-phone", "Beto", proofBeto, "Pixel")
+
+	p.Ban(p.RemovePerson(beto.MemberId))
+
+	// The same person on a device the party never saw is still the same person.
+	if _, err := p.JoinAs("other-user", "b-pc", "Beto", nil, proofBeto, "IOP"); err == nil {
+		t.Fatalf("a second device of a removed person must be refused")
+	} else if pe, ok := err.(*PartyError); !ok || pe.Code != "removed" || pe.Status != 403 {
+		t.Fatalf("expected a 403 removed error, got %v", err)
+	}
+	// So is the device that was removed, and the account it signed in with, with no proof at all.
+	if _, err := p.JoinAs("x", "b-phone", "Beto", nil, "", ""); err == nil {
+		t.Fatalf("the removed device itself must be refused")
+	}
+	if _, err := p.JoinAs("beto", "new-device", "Beto", nil, "", ""); err == nil {
+		t.Fatalf("the removed user id must be refused")
+	}
+	// Somebody else is not caught by it.
+	if _, err := p.JoinAs("ceci", "c1", "Ceci", nil, strings.Repeat("c", 64), ""); err != nil {
+		t.Fatalf("an unrelated person must still be able to join: %v", err)
+	}
+}
+
+func TestNobodyIsBannedUntilRemoved(t *testing.T) {
+	p := NewPartyWithMaxMembers("NOBAN", 5)
+	if p.IsBanned("beto", "b1", proofBeto) {
+		t.Fatalf("a party that removed nobody bans nobody")
+	}
+}

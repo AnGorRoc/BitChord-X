@@ -31,6 +31,9 @@ var (
 	store    = party.NewPartyStore()
 	hubInst  = hub.NewHub()
 	createLimiter = newIPRateLimiter(time.Minute, config.CreateRatePerMinute, config.RateLimitMaxEntries)
+	joinLimiter = newIPRateLimiter(time.Minute, config.JoinRatePerMinute, config.RateLimitMaxEntries)
+	previewLimiter = newIPRateLimiter(time.Minute, config.PreviewRatePerMinute, config.RateLimitMaxEntries)
+	accountConnectLimiter = newIPRateLimiter(time.Minute, config.AccountConnectRatePerMinute, config.RateLimitMaxEntries)
 	presenceTracker = presence.NewTracker(
 		time.Duration(config.PresenceIntervalSec+config.PresenceGraceSec)*time.Second,
 		config.PresenceMaxEntries,
@@ -487,6 +490,12 @@ func handleCreateParty(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleJoinParty(w http.ResponseWriter, r *http.Request) {
+	// A join is how a code is guessed: six characters out of thirty-three are far, but not
+	// unreachable for something that tries all day from one address.
+	if !joinLimiter.Allow(clientIP(r)) {
+		jsonError(w, http.StatusTooManyRequests, "join_rate_limited", "Too many attempts. Please try again shortly.")
+		return
+	}
 	code := r.PathValue("code")
 	var req protocol.JoinRequest
 	if !decodeJSONBody(w, r, &req) {
@@ -541,9 +550,13 @@ func handleJoinParty(w http.ResponseWriter, r *http.Request) {
 // can join. What it does not disclose is what the party is playing, its queue,
 // member or user ids, or anything that would let a caller act on the party.
 //
-// Not rate-limited beyond the service-wide limits: it takes no locks it does
-// not release, allocates a short slice, and creates nothing.
+// It creates nothing and allocates a short slice, but it answers whether a code exists, which is
+// all a guesser needs, so it is limited per address like joining is.
 func handlePreviewParty(w http.ResponseWriter, r *http.Request) {
+	if !previewLimiter.Allow(clientIP(r)) {
+		jsonError(w, http.StatusTooManyRequests, "preview_rate_limited", "Too many attempts. Please try again shortly.")
+		return
+	}
 	code := r.PathValue("code")
 	p, err := store.Get(code)
 	if err != nil {
@@ -1287,6 +1300,8 @@ func applyControl(p *party.Party, member *party.Member, action string, frame map
 		// A person leaves with all of their devices.
 		removed := p.RemovePerson(targetID)
 		if len(removed) == 0 { return false, "not_found", "That listener is no longer in this party." }
+		// Removed for good, devices and all: see party.Ban.
+		p.Ban(removed)
 		for _, gone := range removed {
 			hubInst.Send(p.Code, gone.MemberId, map[string]interface{}{
 				"type":    protocol.FrameBye,

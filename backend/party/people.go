@@ -94,6 +94,10 @@ func (p *Party) JoinAs(
 ) (*Member, error) {
 	now := clock.NowMs()
 
+	if p.IsBanned(userId, deviceId, accountProof) {
+		return nil, NewPartyError(403, "removed", "The host removed you from this party.")
+	}
+
 	// A device coming back keeps its place.
 	for _, m := range p.Members {
 		if m.DeviceId == deviceId {
@@ -227,4 +231,45 @@ func (p *Party) StampQueue(tracks []*Track, m *Member) {
 		}
 		stamp(t, m)
 	}
+}
+
+// Removed people stay removed.
+//
+// A kick used to be remembered only by the device that was kicked, which is no wall at all for a
+// person with a second device: it joins as the same person, with the host's door open. The party
+// remembers who it removed for as long as it lives. A person is known by the proof their devices
+// share (the strong key); the user id and device id catch a client that sends no proof. Nothing
+// outlives the party, so there is no list to keep or to leak.
+
+// Ban records every device in removed so none of them, and no other device of the same person,
+// can come back. The caller holds the party lock.
+func (p *Party) Ban(removed []*Member) {
+	if p.banned == nil {
+		p.banned = make(map[string]struct{})
+	}
+	for _, m := range removed {
+		if m.AccountKey != "" {
+			p.banned["p:"+m.PersonId] = struct{}{}
+		}
+		p.banned["u:"+m.UserId] = struct{}{}
+		p.banned["d:"+m.DeviceId] = struct{}{}
+	}
+}
+
+// IsBanned reports whether a device asking to join was removed from this party. The caller holds
+// the party lock.
+func (p *Party) IsBanned(userID, deviceID, accountProof string) bool {
+	if len(p.banned) == 0 {
+		return false
+	}
+	if accountProof != "" {
+		if _, ok := p.banned["p:"+personIDFor(accountProof, "")]; ok {
+			return true
+		}
+	}
+	if _, ok := p.banned["u:"+userID]; ok {
+		return true
+	}
+	_, ok := p.banned["d:"+deviceID]
+	return ok
 }

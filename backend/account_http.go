@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	"time"
@@ -15,7 +16,11 @@ import (
 
 // One person's devices, see package account. Each account is a room in the same hub that
 // carries parties, under a prefix no party code can have (codes are letters and digits).
-var accounts = account.NewStore()
+var accounts = func() *account.Store {
+	s := account.NewStore()
+	s.MaxAccounts = config.MaxAccounts
+	return s
+}()
 
 const accountRoomPrefix = "acct:"
 
@@ -31,12 +36,20 @@ type accountConnectRequest struct {
 // handleAccountConnect registers a device with its owner's other devices and hands back the
 // token its socket will use. The proof is the whole credential and is never echoed.
 func handleAccountConnect(w http.ResponseWriter, r *http.Request) {
+	if !accountConnectLimiter.Allow(clientIP(r)) {
+		jsonError(w, http.StatusTooManyRequests, "connect_rate_limited", "Too many connection attempts. Please try again shortly.")
+		return
+	}
 	var req accountConnectRequest
 	if !decodeJSONBody(w, r, &req) {
 		return
 	}
 	now := clock.NowMs()
 	acc, d, token, err := accounts.Connect(req.AccountProof, req.DeviceId, req.DeviceName, req.DeviceType, now)
+	if errors.Is(err, account.ErrServerBusy) {
+		jsonError(w, http.StatusServiceUnavailable, "server_busy", err.Error())
+		return
+	}
 	if err != nil {
 		jsonError(w, http.StatusUnprocessableEntity, "validation_error", err.Error())
 		return

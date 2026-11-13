@@ -32,7 +32,10 @@ const (
 	MaxPayloadItems = 500
 )
 
-var proofPattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
+// ErrServerBusy is a new account turned away because the server already holds as many as it will.
+var ErrServerBusy = errors.New("this server cannot take more accounts right now")
+
+var proofPattern =regexp.MustCompile(`^[0-9a-f]{64}$`)
 
 // Types a device may call itself; anything else is stored as "other".
 var deviceTypes = map[string]bool{"phone": true, "tablet": true, "computer": true, "tv": true, "watch": true, "speaker": true}
@@ -92,6 +95,9 @@ type Account struct {
 type Store struct {
 	mu       sync.Mutex
 	accounts map[string]*Account
+	// MaxAccounts bounds how many accounts are held (0 means no bound). Only a new account is
+	// refused: the devices of one already known always get in.
+	MaxAccounts int
 }
 
 func NewStore() *Store { return &Store{accounts: map[string]*Account{}} }
@@ -133,6 +139,10 @@ func (s *Store) Connect(proof, deviceID, name, kind string, nowMs int64) (*Accou
 	s.mu.Lock()
 	acc := s.accounts[id]
 	if acc == nil {
+		if s.MaxAccounts > 0 && len(s.accounts) >= s.MaxAccounts {
+			s.mu.Unlock()
+			return nil, nil, "", ErrServerBusy
+		}
 		acc = &Account{ID: id, devices: map[string]*Device{}}
 		s.accounts[id] = acc
 	}

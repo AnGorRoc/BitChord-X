@@ -261,3 +261,17 @@ func TestConnectedDevicesAreNeverForgotten(t *testing.T) {
 		t.Fatalf("a connected device stays")
 	}
 }
+
+func TestNewAccountsAreRefusedAtTheLimitButKnownOnesAreNot(t *testing.T) {
+	s := NewStore()
+	s.MaxAccounts = 1
+	connect(t, s, proofAna, "phone", "Pixel", "phone")
+
+	if _, _, _, err := s.Connect(proofBeto, "b1", "Beto", "phone", now); err != ErrServerBusy {
+		t.Fatalf("a second account must be refused at the limit, got %v", err)
+	}
+	// A device of an account already held is never turned away by it.
+	if _, _, _, err := s.Connect(proofAna, "pc", "IOP", "computer", now); err != nil {
+		t.Fatalf("a known account must still get new devices in: %v", err)
+	}
+}

@@ -88,6 +88,14 @@ var (
 	// starting ceiling; raise it only after measuring CPU and memory usage.
 	MaxParties           = getInt("JAM_MAX_PARTIES", 50)
 	CreateRatePerMinute  = getInt("JAM_CREATE_RATE_PER_MINUTE", 2)
+	// Per address. Joining is what a code guesser calls, previewing is what a link opener calls,
+	// and connecting an account device is what makes a new account out of thin air.
+	JoinRatePerMinute    = getInt("JAM_JOIN_RATE_PER_MINUTE", 30)
+	PreviewRatePerMinute = getInt("JAM_PREVIEW_RATE_PER_MINUTE", 60)
+	AccountConnectRatePerMinute = getInt("JAM_ACCOUNT_CONNECT_RATE_PER_MINUTE", 30)
+	// Accounts live in memory for a day after their last device; this bounds what an address-hopper
+	// can make the server hold. Devices of accounts already known are never refused by it.
+	MaxAccounts          = getInt("JAM_MAX_ACCOUNTS", 20000)
 	RateLimitMaxEntries  = getInt("JAM_RATE_LIMIT_MAX_ENTRIES", 10000)
 	RequestMaxBytes      = int64(getInt("JAM_REQUEST_MAX_BYTES", 16*1024))
 	// A whole 500-song queue arrives in one frame, around 200 KB.

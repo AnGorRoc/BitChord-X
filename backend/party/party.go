@@ -555,6 +555,8 @@ type Party struct {
 	CreatedAtMs     int64
 	TouchedAtMs     int64
 	EmptySinceMs    *int64
+	// banned holds the people the host removed (see Ban). Never sent to anyone.
+	banned map[string]struct{}
 }
 
 func NewParty(code string) *Party {
