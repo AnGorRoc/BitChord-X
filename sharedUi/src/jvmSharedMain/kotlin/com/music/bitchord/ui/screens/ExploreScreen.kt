@@ -44,14 +44,13 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -59,10 +58,12 @@ import androidx.compose.ui.text.style.Hyphens
 import androidx.compose.ui.text.style.LineBreak
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import com.music.bitchord.data.DailyArtworkCache
 import com.music.bitchord.data.YtMusicRepository
@@ -433,6 +434,83 @@ private val REAL_CHART_COUNTRIES by lazy {
     list
 }
 
+private val BENTO_WHITESPACE_REGEX = Regex("[\\s\u00A0]+")
+private val BENTO_MULTISPACE_REGEX = Regex("""\s+""")
+private val BENTO_AND_SURROUNDED_REGEX = Regex("""(\S+)\s*&\s*(\S+)""")
+private val BENTO_AND_SPLIT_REGEX = Regex("""\s*&\s*""")
+
+private val EXPLORE_CARD_SHAPE = RoundedCornerShape(16.dp)
+private val DAILY_COVER_SHAPE = RoundedCornerShape(8.dp)
+private val DAILY_CARD_BORDER = BorderStroke(0.75.dp, Color.White.copy(alpha = 0.16f))
+private val DAILY_COVER_BORDER = BorderStroke(0.75.dp, Color.Black.copy(alpha = 0.35f))
+private val BENTO_CARD_BORDER = BorderStroke(0.75.dp, Color.White.copy(alpha = 0.14f))
+private val BENTO_TEXT_SHADOW = Shadow(
+    color = Color.Black.copy(alpha = 0.85f),
+    offset = Offset(0f, 1f),
+    blurRadius = 3f,
+)
+
+private object ExploreAffinityCache {
+    private const val TTL_MS = 5 * 60 * 1000L
+
+    @Volatile
+    private var cachedKeywords: Set<String>? = null
+
+    @Volatile
+    private var expiresAtMs: Long = 0L
+
+    fun getFresh(): Set<String>? {
+        val current = cachedKeywords ?: return null
+        return if (System.currentTimeMillis() < expiresAtMs) current else null
+    }
+
+    suspend fun getOrLoad(): Set<String> {
+        getFresh()?.let { return it }
+        val resolved = computeUserAffinityKeywords()
+        cachedKeywords = resolved
+        expiresAtMs = System.currentTimeMillis() + TTL_MS
+        return resolved
+    }
+}
+
+private suspend fun computeUserAffinityKeywords(): Set<String> {
+    val rawKeywords = mutableSetOf<String>()
+    val processedArtists = HashSet<String>(64)
+
+    fun collectArtist(rawName: String) {
+        val cleanName = rawName.lowercase().trim()
+        if (cleanName.isEmpty() || !processedArtists.add(cleanName)) return
+        rawKeywords.add(cleanName)
+        ArtistFacts.genresFor(rawName).forEach { g ->
+            val cleanGenre = g.lowercase().trim()
+            if (cleanGenre.isNotEmpty()) rawKeywords.add(cleanGenre)
+        }
+        rawKeywords.addAll(fastArtistGenres(rawName))
+    }
+
+    // 1. Estadísticas de reproducción locales en BitChord
+    runCatching {
+        val statsSummary = ListeningStats.summary(ReplayPeriod.ALL_TIME)
+        statsSummary.genres.take(20).forEach { genre ->
+            val name = genre.title.lowercase().trim()
+            if (name.isNotEmpty()) rawKeywords.add(name)
+        }
+        statsSummary.artists.take(40).forEach { artist -> collectArtist(artist.title) }
+        statsSummary.songs.take(40).forEach { song -> collectArtist(song.song.artist) }
+    }
+
+    // 2. Historial reciente
+    runCatching {
+        val history = YtMusicRepository.recentHistory().getOrNull().orEmpty()
+        history.take(40).forEach { song ->
+            collectArtist(song.artist)
+            song.artists.forEach { a -> collectArtist(a.name) }
+        }
+    }
+
+    return expandGenreKeywords(rawKeywords)
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ExploreScreen(
@@ -532,167 +610,125 @@ fun ExploreScreen(
         state = pullState,
         modifier = modifier,
     ) {
-        BoxWithConstraints(Modifier.fillMaxSize()) {
-            val columns = moodColumns(maxWidth)
-            val successSections = (state as? UiState.Success)?.data
-            val userAffinityKeywords by produceState<Set<String>>(initialValue = emptySet()) {
-                withContext(Dispatchers.IO) {
-                    val rawKeywords = mutableSetOf<String>()
-                    // 1. Estadísticas de reproducción locales en BitChord
-                    runCatching {
-                        val statsSummary = ListeningStats.summary(ReplayPeriod.ALL_TIME)
-                        statsSummary.genres.take(20).forEach { genre ->
-                            val name = genre.title.lowercase().trim()
-                            if (name.isNotEmpty()) rawKeywords.add(name)
-                        }
-                        statsSummary.artists.take(40).forEach { artist ->
-                            val artistName = artist.title.lowercase().trim()
-                            if (artistName.isNotEmpty()) {
-                                rawKeywords.add(artistName)
-                                ArtistFacts.genresFor(artist.title).forEach { g ->
-                                    val clean = g.lowercase().trim()
-                                    if (clean.isNotEmpty()) rawKeywords.add(clean)
-                                }
-                                rawKeywords.addAll(fastArtistGenres(artist.title))
-                            }
-                        }
-                        statsSummary.songs.take(40).forEach { song ->
-                            val artistName = song.song.artist.lowercase().trim()
-                            if (artistName.isNotEmpty()) {
-                                rawKeywords.add(artistName)
-                                ArtistFacts.genresFor(song.song.artist).forEach { g ->
-                                    val clean = g.lowercase().trim()
-                                    if (clean.isNotEmpty()) rawKeywords.add(clean)
-                                }
-                                rawKeywords.addAll(fastArtistGenres(song.song.artist))
-                            }
-                        }
-                    }
+        val columns = 2
+        val successSections = (state as? UiState.Success)?.data
+        val userAffinityKeywords by produceState<Set<String>>(
+            initialValue = remember { ExploreAffinityCache.getFresh() ?: emptySet() },
+        ) {
+            if (ExploreAffinityCache.getFresh() != null) return@produceState
+            val resolved = withContext(Dispatchers.IO) {
+                ExploreAffinityCache.getOrLoad()
+            }
+            if (resolved != value) {
+                value = resolved
+            }
+        }
 
-                    // 2. Historial reciente
-                    runCatching {
-                        val history = YtMusicRepository.recentHistory().getOrNull().orEmpty()
-                        history.take(40).forEach { song ->
-                            val artist = song.artist.lowercase().trim()
-                            if (artist.isNotEmpty()) {
-                                rawKeywords.add(artist)
-                                rawKeywords.addAll(fastArtistGenres(song.artist))
-                            }
-                            song.artists.forEach { a ->
-                                val aName = a.name.lowercase().trim()
-                                if (aName.isNotEmpty()) {
-                                    rawKeywords.add(aName)
-                                    ArtistFacts.genresFor(a.name).forEach { g ->
-                                        val clean = g.lowercase().trim()
-                                        if (clean.isNotEmpty()) rawKeywords.add(clean)
-                                    }
-                                    rawKeywords.addAll(fastArtistGenres(a.name))
-                                }
-                            }
-                            ArtistFacts.genresFor(song.artist).forEach { g ->
-                                val clean = g.lowercase().trim()
-                                if (clean.isNotEmpty()) rawKeywords.add(clean)
-                            }
+        val allMoods = remember(successSections, userAffinityKeywords) {
+            val rawList = successSections?.flatMap(MoodGenreSection::items)
+                ?.distinctBy { it.browseId to it.params }
+                .orEmpty()
+            if (rawList.isEmpty()) {
+                emptyList()
+            } else {
+                val firstSection = successSections?.firstOrNull()
+                val firstSectionItems = firstSection?.items
+                    ?.mapTo(HashSet()) { it.browseId to it.params }.orEmpty()
+                val isFirstSectionPersonalized = firstSection?.let { section ->
+                    if (section.title.equals("For you", ignoreCase = true) ||
+                        section.title.equals("Para ti", ignoreCase = true)
+                    ) {
+                        true
+                    } else {
+                        val laterItems = HashSet<Pair<String?, String?>>()
+                        for (idx in 1 until successSections.size) {
+                            successSections[idx].items.forEach { laterItems.add(it.browseId to it.params) }
                         }
+                        section.items.any { (it.browseId to it.params) in laterItems }
                     }
+                } ?: false
 
-                    value = expandGenreKeywords(rawKeywords)
+                fun affinityScore(item: MoodGenre, index: Int): Double {
+                    val titleLower = item.title.lowercase().trim()
+                    val matchesUserTaste = matchesAffinity(titleLower, userAffinityKeywords)
+                    val isFromPersonalized = isFirstSectionPersonalized && (item.browseId to item.params) in firstSectionItems
+                    val isNicheForeign = isObscureForeignGenre(titleLower)
+                    val isMainstream = isMainstreamCategory(titleLower)
+
+                    return when {
+                        // 1. Gusto explícito del usuario y respaldado por YouTube
+                        matchesUserTaste && isFromPersonalized -> 5000.0 - index
+                        // 2. Coincide directamente con los gustos y artistas del usuario
+                        matchesUserTaste -> 4000.0 - index
+                        // 3. Recomendación de YouTube que NO coincide con el usuario y es un género foráneo de nicho: penalizar
+                        isFromPersonalized && isNicheForeign -> -1000.0 - index
+                        // 4. Recomendación de YouTube que no es foránea
+                        isFromPersonalized -> 100.0 - index
+                        // 5. Categoría mainstream o mood universal (cuando no hay afinidad previa)
+                        isMainstream -> 500.0 - index
+                        // 6. Géneros foráneos de nicho sin afinidad de usuario: al final de la lista
+                        isNicheForeign -> -2000.0 - index
+                        // 7. Base neutra preservando orden original
+                        else -> 0.0 - index
+                    }
+                }
+
+                rawList.withIndex()
+                    .sortedByDescending { (index, item) -> affinityScore(item, index) }
+                    .map { it.value }
+            }
+        }
+        val bentoRows = remember(allMoods) { buildBentoRows(allMoods) }
+
+        val dailyTheme = remember { getDailyTheme() }
+        val initialDailyArtworks = remember(dailyTheme) {
+            dailyTheme.topics.mapNotNull { t -> DailyArtworkCache.get(t.searchQuery)?.let { t.searchQuery to it } }.toMap()
+        }
+        val dailyTopicArtworks by produceState<Map<String, String>>(
+            initialValue = initialDailyArtworks,
+            key1 = dailyTheme,
+        ) {
+            if (initialDailyArtworks.size == dailyTheme.topics.size) return@produceState
+            val resolved = withContext(Dispatchers.IO) {
+                coroutineScope {
+                    val merged = initialDailyArtworks.toMutableMap()
+                    val missing = dailyTheme.topics.filter { it.searchQuery !in merged }
+                    missing.map { topic ->
+                        async {
+                            topic.searchQuery to DailyArtworkCache.getOrFetch(topic.searchQuery)
+                        }
+                    }.awaitAll().forEach { (query, thumb) ->
+                        if (thumb != null) merged[query] = thumb
+                    }
+                    merged.toMap()
                 }
             }
-
-            val allMoods = remember(successSections, userAffinityKeywords) {
-                val rawList = successSections?.flatMap(MoodGenreSection::items)
-                    ?.distinctBy { it.browseId to it.params }
-                    .orEmpty()
-                if (rawList.isEmpty()) {
-                    emptyList()
-                } else {
-                    val firstSectionItems = successSections?.firstOrNull()?.items
-                        ?.map { it.browseId to it.params }?.toSet().orEmpty()
-                    val isFirstSectionPersonalized = successSections?.firstOrNull()?.let { section ->
-                        val laterItems = successSections.drop(1).flatMap { it.items }.map { it.browseId to it.params }.toSet()
-                        section.title.equals("For you", ignoreCase = true) ||
-                            section.title.equals("Para ti", ignoreCase = true) ||
-                            section.items.any { (it.browseId to it.params) in laterItems }
-                    } ?: false
-
-                    fun affinityScore(item: MoodGenre, index: Int): Double {
-                        val titleLower = item.title.lowercase().trim()
-                        val matchesUserTaste = matchesAffinity(titleLower, userAffinityKeywords)
-                        val isFromPersonalized = isFirstSectionPersonalized && (item.browseId to item.params) in firstSectionItems
-                        val isNicheForeign = isObscureForeignGenre(titleLower)
-                        val isMainstream = isMainstreamCategory(titleLower)
-
-                        return when {
-                            // 1. Gusto explícito del usuario y respaldado por YouTube
-                            matchesUserTaste && isFromPersonalized -> 5000.0 - index
-                            // 2. Coincide directamente con los gustos y artistas del usuario
-                            matchesUserTaste -> 4000.0 - index
-                            // 3. Recomendación de YouTube que NO coincide con el usuario y es un género foráneo de nicho: penalizar
-                            isFromPersonalized && isNicheForeign -> -1000.0 - index
-                            // 4. Recomendación de YouTube que no es foránea
-                            isFromPersonalized -> 100.0 - index
-                            // 5. Categoría mainstream o mood universal (cuando no hay afinidad previa)
-                            isMainstream -> 500.0 - index
-                            // 6. Géneros foráneos de nicho sin afinidad de usuario: al final de la lista
-                            isNicheForeign -> -2000.0 - index
-                            // 7. Base neutra preservando orden original
-                            else -> 0.0 - index
-                        }
-                    }
-
-                    rawList.sortedByDescending { item ->
-                        affinityScore(item, rawList.indexOf(item))
-                    }
-                }
+            if (resolved != value) {
+                value = resolved
             }
-            val bentoRows = remember(allMoods) { buildBentoRows(allMoods) }
+        }
 
-            val moodPairs = remember(allMoods) { allMoods.chunked(2) }
-            val dailyTheme = remember { getDailyTheme() }
-            val dailyTopicArtworks by produceState<Map<String, String>>(
-                initialValue = remember(dailyTheme) {
-                    dailyTheme.topics.mapNotNull { t -> DailyArtworkCache.get(t.searchQuery)?.let { t.searchQuery to it } }.toMap()
-                },
-                key1 = dailyTheme,
-            ) {
-                withContext(Dispatchers.IO) {
-                    val resolved = mutableMapOf<String, String>()
-                    dailyTheme.topics.forEach { topic ->
-                        val cached = DailyArtworkCache.get(topic.searchQuery)
-                        if (cached != null) {
-                            resolved[topic.searchQuery] = cached
-                        } else {
-                            DailyArtworkCache.getOrFetch(topic.searchQuery)?.let { thumb ->
-                                resolved[topic.searchQuery] = thumb
-                            }
-                        }
-                    }
-                    value = resolved
-                }
+        if (successSections != null) {
+            val rowArtwork = remember(allMoods, columns) {
+                allMoods.chunked(columns).map { row -> row.mapNotNull { it.thumbnailUrl } }
             }
-
-            if (successSections != null) {
-                val rowArtwork = remember(allMoods, columns) {
-                    allMoods.chunked(columns).map { row -> row.mapNotNull { it.thumbnailUrl } }
-                }
-                PrefetchVerticalArtworkAhead(
-                    state = listState,
-                    artworkByItem = rowArtwork,
-                    ahead = 4,
-                )
-                val context = LocalPlatformContext.current
-                LaunchedEffect(rowArtwork) {
-                    if (rowArtwork.isNotEmpty()) {
-                        prefetchArtwork(context, rowArtwork.take(4).flatten())
-                    }
-                }
-            }
-            LazyColumn(
+            PrefetchVerticalArtworkAhead(
                 state = listState,
-                contentPadding = contentPadding,
-                modifier = Modifier.fillMaxSize(),
-            ) {
+                artworkByItem = rowArtwork,
+                ahead = 4,
+            )
+            val context = LocalPlatformContext.current
+            LaunchedEffect(rowArtwork) {
+                if (rowArtwork.isNotEmpty()) {
+                    prefetchArtwork(context, rowArtwork.take(4).flatten())
+                }
+            }
+        }
+        LazyColumn(
+            state = listState,
+            contentPadding = contentPadding,
+            modifier = Modifier.fillMaxSize(),
+        ) {
                 if (showTitle) {
                     item {
                         Text(
@@ -1034,10 +1070,10 @@ fun ExploreScreen(
                         )
                     }
                     is UiState.Success -> {
-                        itemsIndexed(
+                        items(
                             bentoRows,
-                            key = { index, _ -> "bento_row_$index" },
-                        ) { rowIndex, row ->
+                            key = { row -> row.stableKey() },
+                        ) { row ->
                             BentoRow(
                                 row = row,
                                 onCategoryClick = onCategoryClick,
@@ -1046,7 +1082,6 @@ fun ExploreScreen(
                     }
                 }
             }
-        }
     }
 }
 
@@ -1192,26 +1227,24 @@ fun DailyTopicGlassCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val backgroundBrush = remember(topic.color) {
+        Brush.linearGradient(
+            colors = listOf(
+                topic.color.copy(alpha = 0.88f),
+                topic.color.copy(alpha = 0.52f),
+                Color(0xFF0F1218),
+            ),
+            start = Offset(0f, 0f),
+            end = Offset(420f, 210f),
+        )
+    }
     Box(
         modifier = modifier
             .width(210.dp)
             .height(96.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(
-                Brush.linearGradient(
-                    colors = listOf(
-                        topic.color.copy(alpha = 0.88f),
-                        topic.color.copy(alpha = 0.52f),
-                        Color(0xFF0F1218),
-                    ),
-                    start = Offset(0f, 0f),
-                    end = Offset(420f, 210f),
-                ),
-            )
-            .border(
-                BorderStroke(0.75.dp, Color.White.copy(alpha = 0.16f)),
-                RoundedCornerShape(16.dp),
-            )
+            .clip(EXPLORE_CARD_SHAPE)
+            .background(backgroundBrush)
+            .border(DAILY_CARD_BORDER, EXPLORE_CARD_SHAPE)
             .clickable(onClick = onClick),
     ) {
         Column(
@@ -1242,11 +1275,14 @@ fun DailyTopicGlassCard(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .offset(x = 12.dp, y = 10.dp)
-                    .rotate(22f)
                     .size(68.dp)
-                    .shadow(elevation = 8.dp, shape = RoundedCornerShape(8.dp))
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color.Black.copy(alpha = 0.35f)),
+                    .graphicsLayer {
+                        rotationZ = 22f
+                        shape = DAILY_COVER_SHAPE
+                        clip = true
+                    }
+                    .background(Color.Black.copy(alpha = 0.35f))
+                    .border(DAILY_COVER_BORDER, DAILY_COVER_SHAPE),
             ) {
                 AsyncImage(
                     model = url,
@@ -1568,6 +1604,15 @@ private sealed class BentoRowItem {
     ) : BentoRowItem()
 }
 
+private fun MoodGenre.stableId(): String = "${browseId.orEmpty()}_${params.orEmpty()}_$title"
+
+private fun BentoRowItem.stableKey(): String = when (this) {
+    is BentoRowItem.AsymmetricLeft -> "L:${wide.stableId()}|${narrow.stableId()}"
+    is BentoRowItem.AsymmetricRight -> "R:${narrow.stableId()}|${wide.stableId()}"
+    is BentoRowItem.Balanced -> "B:${first.stableId()}|${second.stableId()}"
+    is BentoRowItem.Single -> "S:${item.stableId()}"
+}
+
 private fun buildBentoRows(items: List<MoodGenre>): List<BentoRowItem> {
     val result = mutableListOf<BentoRowItem>()
     var i = 0
@@ -1700,14 +1745,13 @@ private fun formatBentoTitle(rawTitle: String): String {
         if (title.contains(" & ")) {
             return title.replaceFirst(" & ", "\n& ")
         }
-        val andRegex = Regex("""(\S+)\s*&\s*(\S+)""")
-        if (andRegex.containsMatchIn(title)) {
-            return title.replaceFirst(Regex("""\s*&\s*"""), "\n& ")
+        if (BENTO_AND_SURROUNDED_REGEX.containsMatchIn(title)) {
+            return title.replaceFirst(BENTO_AND_SPLIT_REGEX, "\n& ")
         }
     }
 
     // En todos los que tengan dos palabras siempre hacer bajada de línea
-    val words = title.split(Regex("""\s+"""))
+    val words = title.split(BENTO_MULTISPACE_REGEX)
     if (words.size == 2) {
         return "${words[0]}\n${words[1]}"
     }
@@ -1723,25 +1767,31 @@ fun BentoGlassCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val backgroundBrush = remember(cardColor) {
+        Brush.linearGradient(
+            colors = listOf(
+                cardColor.copy(alpha = 0.88f),
+                cardColor.copy(alpha = 0.52f),
+                Color(0xFF0F1218),
+            ),
+            start = Offset(0f, 0f),
+            end = Offset(360f, 180f),
+        )
+    }
+    val scrimBrush = remember(cardColor) {
+        Brush.horizontalGradient(
+            colors = listOf(
+                cardColor.copy(alpha = 0.92f),
+                Color.Transparent,
+            ),
+        )
+    }
     Box(
         modifier = modifier
             .height(92.dp)
-            .clip(RoundedCornerShape(16.dp))
-            .background(
-                Brush.linearGradient(
-                    colors = listOf(
-                        cardColor.copy(alpha = 0.88f),
-                        cardColor.copy(alpha = 0.52f),
-                        Color(0xFF0F1218),
-                    ),
-                    start = Offset(0f, 0f),
-                    end = Offset(360f, 180f),
-                ),
-            )
-            .border(
-                BorderStroke(0.75.dp, Color.White.copy(alpha = 0.14f)),
-                RoundedCornerShape(16.dp),
-            )
+            .clip(EXPLORE_CARD_SHAPE)
+            .background(backgroundBrush)
+            .border(BENTO_CARD_BORDER, EXPLORE_CARD_SHAPE)
             .clickable(onClick = onClick),
     ) {
         // Portada nítida en el sector derecho sin velos opacos que tapen la imagen
@@ -1764,24 +1814,17 @@ fun BentoGlassCard(
                         .fillMaxHeight()
                         .fillMaxWidth(0.50f)
                         .align(Alignment.CenterStart)
-                        .background(
-                            Brush.horizontalGradient(
-                                colors = listOf(
-                                    cardColor.copy(alpha = 0.92f),
-                                    Color.Transparent,
-                                ),
-                            ),
-                        ),
+                        .background(scrimBrush),
                 )
             }
         }
 
         // Título limpio alineado abajo a la izquierda sin romper palabras ni recortar texto
         val formattedTitle = remember(item.title) { formatBentoTitle(item.title) }
-        val words = remember(formattedTitle) { formattedTitle.trim().split(Regex("[\\s\u00A0]+")) }
-        val longestWordLength = remember(words) { words.maxOfOrNull { it.length } ?: 0 }
-
-        val baseFontSize = remember(formattedTitle, longestWordLength) {
+        val baseFontSize = remember(formattedTitle) {
+            val longestWordLength = formattedTitle.trim()
+                .split(BENTO_WHITESPACE_REGEX)
+                .maxOfOrNull { it.length } ?: 0
             when {
                 longestWordLength >= 14 || formattedTitle.length >= 24 -> 11.5.sp
                 longestWordLength >= 11 || formattedTitle.length >= 18 -> 12.5.sp
@@ -1807,11 +1850,7 @@ fun BentoGlassCard(
                 style = MaterialTheme.typography.titleMedium.copy(
                     fontSize = currentFontSize,
                     lineHeight = currentLineHeight,
-                    shadow = Shadow(
-                        color = Color.Black.copy(alpha = 0.85f),
-                        offset = Offset(0f, 1f),
-                        blurRadius = 3f,
-                    ),
+                    shadow = BENTO_TEXT_SHADOW,
                     hyphens = Hyphens.None,
                     lineBreak = LineBreak.Heading,
                 ),
@@ -1821,9 +1860,11 @@ fun BentoGlassCard(
                 softWrap = true,
                 overflow = TextOverflow.Ellipsis,
                 onTextLayout = { textLayoutResult ->
-                    if (textLayoutResult.hasVisualOverflow && currentFontSize.value > 10f) {
-                        currentFontSize = (currentFontSize.value - 1f).sp
-                        currentLineHeight = (currentFontSize.value * 1.22f).sp
+                    // Single downward step if needed to prevent multi-frame font shrink cascades.
+                    if (textLayoutResult.hasVisualOverflow && currentFontSize == baseFontSize && currentFontSize.value > 10f) {
+                        val nextSize = (currentFontSize.value - 2f).coerceAtLeast(10f)
+                        currentFontSize = nextSize.sp
+                        currentLineHeight = (nextSize * 1.22f).sp
                     }
                 },
             )
@@ -1899,15 +1940,6 @@ private val MOOD_SPACING = 12.dp
 private val MOOD_CARD_SHAPE = RoundedCornerShape(18.dp)
 
 const val MOOD_CARD_ASPECT = 1.72f
-
-private val MOOD_MIN_CARD_WIDTH = 220.dp
-
-private const val MOOD_MAX_COLUMNS = 6
-
-private fun moodColumns(available: Dp): Int {
-    val row = available - PAGE_GUTTER * 2
-    return ((row + MOOD_SPACING) / (MOOD_MIN_CARD_WIDTH + MOOD_SPACING)).toInt().coerceIn(2, MOOD_MAX_COLUMNS)
-}
 
 @Composable
 private fun ExploreSkeletonRows(columns: Int) {
