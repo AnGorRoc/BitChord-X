@@ -34,6 +34,12 @@ import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material.icons.rounded.VolumeOff
 import androidx.compose.material.icons.rounded.VolumeUp
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material.icons.rounded.Logout
+import kotlinx.coroutines.delay
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -131,6 +137,7 @@ internal fun DesktopListenTogetherDialog(autoplayEnabled: Boolean, onDismiss: ()
                         busy = true
                         scope.launch {
                             DesktopListenTogether.leaveParty()
+                            DesktopPlayerHost.showMessage("You left the party")
                             busy = false
                         }
                     },
@@ -153,6 +160,10 @@ internal fun DesktopListenTogetherDialog(autoplayEnabled: Boolean, onDismiss: ()
                             // computer listens; put back if the party turns it away.
                             DesktopListenTogether.setListenHere(joinPlayHere)
                             DesktopListenTogether.joinParty(preview!!.code, nickname, previewServer)
+                                .onSuccess {
+                                    val host = preview?.hostName?.trim().orEmpty()
+                                    DesktopPlayerHost.showMessage(if (host.isEmpty()) "You joined the party" else "You joined $host's party")
+                                }
                                 .onFailure {
                                     localError = it.message
                                     DesktopListenTogether.setListenHere(true)
@@ -200,6 +211,7 @@ internal fun DesktopListenTogetherDialog(autoplayEnabled: Boolean, onDismiss: ()
                         localError = null
                         scope.launch {
                             DesktopListenTogether.createParty(nickname, maxMembers, autoplayEnabled)
+                                .onSuccess { DesktopPlayerHost.showMessage("Party started · code ${DesktopListenTogether.state.value.code.orEmpty()}") }
                                 .onFailure { localError = it.message }
                             busy = false
                         }
@@ -336,7 +348,7 @@ private fun PartyLanding(
 
 @Composable
 private fun PartyChoiceCard(title: String, subtitle: String, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    Column(modifier.desktopCardInset(RoundedCornerShape(16.dp)).padding(20.dp)) {
+    Column(modifier.desktopCardInset(RoundedCornerShape(24.dp)).padding(20.dp)) {
         Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(4.dp))
         Text(subtitle, color = DesktopSecondary, style = MaterialTheme.typography.bodyMedium)
@@ -408,9 +420,24 @@ private fun PartyRoom(state: DesktopListenTogether.State, activity: List<PartyAc
             if (activity.isNotEmpty()) item { ActivityCard(activity) }
             state.error?.let { item { Notice(it, true) } }
             item {
-                TextButton(onClick = onLeave, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
-                    Text("Leave party", color = DesktopDestructive)
+                OutlinedButton(
+                    onClick = onLeave,
+                    enabled = !busy,
+                    shape = RoundedCornerShape(50),
+                    border = BorderStroke(1.dp, DesktopDestructive.copy(alpha = 0.6f)),
+                    modifier = Modifier.fillMaxWidth().height(46.dp),
+                ) {
+                    Icon(Icons.Rounded.Logout, null, tint = DesktopDestructive, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text("Leave party", color = DesktopDestructive, fontWeight = FontWeight.SemiBold)
                 }
+                Text(
+                    "The others carry on listening",
+                    color = DesktopSecondary,
+                    style = MaterialTheme.typography.bodySmall,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
+                )
             }
         }
     }
@@ -419,72 +446,77 @@ private fun PartyRoom(state: DesktopListenTogether.State, activity: List<PartyAc
 @Composable
 private fun RoomHero(state: DesktopListenTogether.State) {
     val invite = DesktopListenTogether.inviteUrl(state.code.orEmpty())
+    var showQr by remember { mutableStateOf(false) }
     Column(
         Modifier
             .fillMaxWidth()
-            .desktopCardInset(RoundedCornerShape(16.dp))
+            .desktopCardInset(RoundedCornerShape(24.dp))
             .padding(vertical = 24.dp, horizontal = 20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(horizontalArrangement = Arrangement.spacedBy((-10).dp)) {
+                state.members.take(4).forEach { PartyAvatar(it.avatarUrl, 30, it.displayName) }
+            }
+            Spacer(Modifier.width(12.dp))
+            Text(
+                if (state.members.size == 1) "1 person listening" else "${state.members.size} people listening",
+                color = DesktopSecondary,
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+        Spacer(Modifier.height(18.dp))
         Text(
             "PARTY CODE",
             color = DesktopSecondary,
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.SemiBold,
-            letterSpacing = 1.sp,
+            letterSpacing = 1.5.sp,
         )
-        Spacer(Modifier.height(16.dp))
-
-        // QR code always visible above the code, click to enlarge
-        DesktopQrCode(invite, size = 160.dp, clickableToEnlarge = true, codeText = state.code)
-
-        Spacer(Modifier.height(16.dp))
-
+        Spacer(Modifier.height(4.dp))
         Text(
             state.code.orEmpty(),
-            fontSize = 32.sp,
+            fontSize = 38.sp,
             fontWeight = FontWeight.Bold,
             letterSpacing = 8.sp,
             textAlign = TextAlign.Center,
         )
-
-        Spacer(Modifier.height(4.dp))
         Text(
-            connectionLine(state),
+            "Tell people this code, or share the link",
             color = DesktopSecondary,
             style = MaterialTheme.typography.bodySmall,
             textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 4.dp),
         )
-        Spacer(Modifier.height(2.dp))
-        Text(
-            "Scan from a phone or copy the invite link",
-            color = DesktopSecondary,
-            style = MaterialTheme.typography.bodySmall,
-            textAlign = TextAlign.Center,
-        )
-
-        Spacer(Modifier.height(14.dp))
-
-        Row(
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            TextButton(
-                onClick = { DesktopExternalLinks.copy(state.code.orEmpty()) },
-                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
+        AnimatedVisibility(showQr) {
+            Column(Modifier.padding(top = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                DesktopQrCode(invite, size = 160.dp, clickableToEnlarge = true, codeText = state.code)
+            }
+        }
+        Spacer(Modifier.height(18.dp))
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Button(
+                onClick = { DesktopExternalLinks.copy(invite); DesktopPlayerHost.showMessage("Invite link copied") },
+                shape = RoundedCornerShape(50),
+                colors = ButtonDefaults.buttonColors(containerColor = DesktopAccent, contentColor = Color.Black),
+                modifier = Modifier.weight(1f).height(44.dp),
             ) {
                 Icon(Icons.Rounded.ContentCopy, null, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(6.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Copy link", fontWeight = FontWeight.SemiBold)
+            }
+            OutlinedButton(
+                onClick = { DesktopExternalLinks.copy(state.code.orEmpty()); DesktopPlayerHost.showMessage("Code copied") },
+                shape = RoundedCornerShape(50),
+                modifier = Modifier.weight(1f).height(44.dp),
+            ) {
+                Icon(Icons.Rounded.ContentCopy, null, modifier = Modifier.size(16.dp))
+                Spacer(Modifier.width(8.dp))
                 Text("Copy code")
             }
-            TextButton(
-                onClick = { DesktopExternalLinks.copy(invite) },
-                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 6.dp),
-            ) {
-                Icon(Icons.Rounded.ContentCopy, null, modifier = Modifier.size(16.dp))
-                Spacer(Modifier.width(6.dp))
-                Text("Copy invite link")
-            }
+        }
+        TextButton(onClick = { showQr = !showQr }, modifier = Modifier.padding(top = 4.dp)) {
+            Text(if (showQr) "Hide QR code" else "Show QR code", color = DesktopSecondary)
         }
     }
 }
@@ -492,15 +524,28 @@ private fun RoomHero(state: DesktopListenTogether.State) {
 @Composable
 private fun NowPlayingCard(state: DesktopListenTogether.State) {
     val track = state.playback.track
-    Column(Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(16.dp)).padding(18.dp)) {
-        Text("NOW PLAYING", color = DesktopSecondary, style = MaterialTheme.typography.labelSmall)
+    var positionMs by remember { mutableStateOf(0L) }
+    LaunchedEffect(state.playback.seq, state.playback.isPlaying) {
+        positionMs = DesktopListenTogether.partyPositionMs() ?: 0L
+        if (state.playback.isPlaying) {
+            while (true) {
+                delay(250)
+                positionMs = DesktopListenTogether.partyPositionMs() ?: 0L
+            }
+        }
+    }
+    val duration = track?.durationMs?.takeIf { it > 0 }
+    val healthy = state.connection == DesktopListenTogether.Connection.LIVE && state.clockSynced
+    fun clock(ms: Long) = (ms / 1000).coerceAtLeast(0).let { "%d:%02d".format(it / 60, it % 60) }
+    Column(Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(24.dp)).padding(18.dp)) {
+        Text("NOW PLAYING", color = DesktopSecondary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(10.dp))
         if (track == null) {
             Text("Nothing playing yet", color = DesktopSecondary)
             if (state.you?.isHost == true) Text("Play a song and it will appear for everyone.", color = DesktopSecondary, style = MaterialTheme.typography.bodySmall)
         } else {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                DesktopArtwork(track.thumbnailUrl, Modifier.size(62.dp).clip(RoundedCornerShape(8.dp)), px = 160)
+                DesktopArtwork(track.thumbnailUrl, Modifier.size(62.dp).clip(RoundedCornerShape(12.dp)), px = 160)
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
                     Text(track.title, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -508,13 +553,33 @@ private fun NowPlayingCard(state: DesktopListenTogether.State) {
                     state.playback.startedByName?.let { Text("Started by $it", color = DesktopSecondary, style = MaterialTheme.typography.bodySmall) }
                 }
             }
+            if (duration != null) {
+                Spacer(Modifier.height(14.dp))
+                LinearProgressIndicator(
+                    progress = { (positionMs.toFloat() / duration).coerceIn(0f, 1f) },
+                    modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
+                    color = DesktopAccent,
+                    trackColor = Color.White.copy(alpha = 0.12f),
+                )
+                Row(Modifier.fillMaxWidth().padding(top = 6.dp)) {
+                    Text(clock(positionMs), color = DesktopSecondary, style = MaterialTheme.typography.labelSmall)
+                    Spacer(Modifier.weight(1f))
+                    Text(clock(duration), color = DesktopSecondary, style = MaterialTheme.typography.labelSmall)
+                }
+            }
+        }
+        Spacer(Modifier.height(12.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(8.dp).clip(CircleShape).background(if (healthy) Color(0xFF34C759) else Color(0xFFFF9F0A)))
+            Spacer(Modifier.width(8.dp))
+            Text(connectionLine(state), color = DesktopSecondary, style = MaterialTheme.typography.bodySmall)
         }
     }
 }
 
 @Composable
 private fun QueueCard(state: DesktopListenTogether.State) {
-    Column(Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(16.dp)).padding(18.dp)) {
+    Column(Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(24.dp)).padding(18.dp)) {
         Text("UP NEXT", color = DesktopSecondary, style = MaterialTheme.typography.labelSmall)
         Spacer(Modifier.height(8.dp))
         val upcoming = state.queue.items.drop((state.queue.index + 1).coerceAtLeast(0)).take(5)
@@ -534,9 +599,9 @@ private fun QueueCard(state: DesktopListenTogether.State) {
 
 @Composable
 private fun MembersCard(state: DesktopListenTogether.State) {
-    Column(Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(16.dp)).padding(18.dp)) {
+    Column(Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(24.dp)).padding(18.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("LISTENING", color = DesktopSecondary, style = MaterialTheme.typography.labelSmall, modifier = Modifier.weight(1f))
+            Text("PEOPLE", color = DesktopSecondary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
             Text("${state.members.size}/${state.maxMembers}", color = DesktopSecondary, style = MaterialTheme.typography.labelSmall)
         }
         Spacer(Modifier.height(8.dp))
@@ -571,7 +636,7 @@ private fun PlayHereRow(playHere: Boolean, onChange: (Boolean) -> Unit, modifier
 @Composable
 private fun PlayHereCard() {
     val playHere by DesktopListenTogether.listenHere.collectAsState()
-    Column(Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(16.dp)).padding(18.dp)) {
+    Column(Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(24.dp)).padding(18.dp)) {
         PlayHereRow(playHere, DesktopListenTogether::setListenHere)
     }
 }
@@ -581,8 +646,8 @@ private const val DEFAULT_PARTY_SIZE = 10
 
 @Composable
 private fun HostControls(state: DesktopListenTogether.State) {
-    Column(Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(16.dp)).padding(18.dp)) {
-        Text("HOST CONTROLS", color = DesktopSecondary, style = MaterialTheme.typography.labelSmall)
+    Column(Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(24.dp)).padding(18.dp)) {
+        Text("ROOM SETTINGS", color = DesktopSecondary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
         Spacer(Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(if (state.hostOnlyControl) Icons.Rounded.Lock else Icons.Rounded.LockOpen, null, modifier = Modifier.size(20.dp))
@@ -612,7 +677,7 @@ private fun HostControls(state: DesktopListenTogether.State) {
 @Composable
 private fun ActivityCard(entries: List<PartyActivity>) {
     val clock = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
-    Column(Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(16.dp)).padding(18.dp)) {
+    Column(Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(24.dp)).padding(18.dp)) {
         Text("ACTIVITY", color = DesktopSecondary, style = MaterialTheme.typography.labelSmall)
         Spacer(Modifier.height(8.dp))
         entries.take(8).forEach { entry ->

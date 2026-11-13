@@ -384,6 +384,7 @@ internal class DesktopDeviceLink(
                     DesktopListenTogether.setListenHere(false)
                     partyHandover = null
                     refreshConnecting()
+                    say(DeviceNotice.PartyOn(now?.name))
                     return@launch
                 }
             }
@@ -397,6 +398,7 @@ internal class DesktopDeviceLink(
     private fun movePartySound(target: AccountDevice) {
         account.command(target.deviceId, DeviceActions.PARTY_LISTEN, buildJsonObject { put("on", true) })
         DesktopListenTogether.setListenHere(false)
+        say(DeviceNotice.PartyOn(target.name))
     }
 
     /** The person tapped "This device" while another is the speaker: bring the sound back. */
@@ -407,12 +409,13 @@ internal class DesktopDeviceLink(
             account.state.value.others
                 .filter { it.connected && it.partyCode.equals(code, ignoreCase = true) }
                 .forEach { account.command(it.deviceId, DeviceActions.PARTY_LISTEN, buildJsonObject { put("on", false) }) }
+            say(DeviceNotice.PartyHere)
             return
         }
         val target = account.state.value.devices.firstOrNull { it.deviceId == targetId } ?: return endLocally(false)
         // Only a remote that gave its music away has anything to come back for. One that was only
         // controlling lets go and leaves the other device playing, exactly as it was.
-        if (gaveMusic) pull(target) else endLocally(false)
+        if (gaveMusic) pull(target) else { endLocally(false); say(DeviceNotice.BackHere) }
     }
 
     /** This computer gave its own music to the target ([sendMine]), so leaving brings it back. */
@@ -491,6 +494,7 @@ internal class DesktopDeviceLink(
                     awaitingConfirm = null
                     engine.pause()
                     refreshOverlay()
+                    say(if (gaveMusic) DeviceNotice.PlayingOn(target?.name) else DeviceNotice.Controlling(target?.name))
                     return@launch
                 }
             }
@@ -545,6 +549,7 @@ internal class DesktopDeviceLink(
     private fun onPulled() {
         if (!pulling) return
         pulling = false
+        val from = account.state.value.devices.firstOrNull { it.deviceId == targetId }?.name
         // The other device's music is what the person asked for here; nothing is given back.
         stash = null
         holdPlayingUntilNanos = NEVER
@@ -556,6 +561,7 @@ internal class DesktopDeviceLink(
         confirmJob?.cancel()
         account.detach()
         _overlay.value = null
+        say(DeviceNotice.BroughtHere(from))
     }
 
     // ---- transport while remote --------------------------------------------------------------
