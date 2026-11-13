@@ -571,7 +571,7 @@ internal object DesktopListenTogether {
         // A test seam: a development run can be put in an account by environment, without a Google
         // sign-in. An ordinary run never has it set.
         System.getenv("BITCHORD_DEBUG_ACCOUNT_PROOF")?.takeIf { it.length == 64 }?.let { return DeviceGroup.proofFor(it, use, serverBase) }
-        val who = identity() ?: return null
+        val who = signedInIdentity() ?: return null
         val key = KEY_ACCOUNT_SECRET + who.userId
         persistence.string(key).takeIf { it.isNotBlank() }?.let { cached ->
             // Remembered, but a secret from the first start can be the loser of a race with another
@@ -878,7 +878,21 @@ internal object DesktopListenTogether {
      * A party is joined as an account: the id is derived from the signed-in account and profile so
      * the server never sees either, and a device with no session has nothing to identify itself by.
      */
-    private fun identity(nickname: String = nickname()): Identity? {
+    private fun identity(nickname: String = nickname()): Identity? =
+        signedInIdentity(nickname) ?: guestIdentity(nickname)
+
+    /** Somebody without an account is still somebody: an id from this install and the name they chose. */
+    private fun guestIdentity(nickname: String): Identity {
+        val device = deviceId()
+        return Identity(
+            userId = "guest-" + sha256("guest:$device").take(32),
+            deviceId = device,
+            name = nickname.trim().takeIf { it.isNotBlank() } ?: "Guest",
+            avatar = null,
+        )
+    }
+
+    private fun signedInIdentity(nickname: String = nickname()): Identity? {
         if (!DesktopYouTubeAuth.isSignedIn) return null
         val accountId = DesktopAccounts.activeAccountId() ?: return null
         val account = DesktopAccounts.accounts().firstOrNull { it.accountId == accountId } ?: return null

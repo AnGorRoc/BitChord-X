@@ -1615,7 +1615,27 @@ object ListenTogether {
      * which Google account it stands for, and a party server that accumulated
      * real account identifiers would be holding something it has no use for.
      */
-    private fun identity(nickname: String = nickname()): Identity? {
+    private fun identity(nickname: String = nickname()): Identity? =
+        signedInIdentity(nickname) ?: guestIdentity(nickname)
+
+    /**
+     * A person without an account is a person all the same: the party only needs somebody to call
+     * them and a stable id to tell a rejoin from a new device. The id comes from this install, so
+     * nobody can tell that two of their devices are one person; the party counts them as two, which
+     * costs nothing but the devices-per-person limit and the same-owner hand-over between them.
+     */
+    private fun guestIdentity(nickname: String): Identity {
+        val device = deviceId()
+        return Identity(
+            userId = "guest-" + sha256("guest:$device").take(32),
+            deviceId = device,
+            name = nickname.trim().takeIf { it.isNotBlank() } ?: "Guest",
+            avatar = null,
+        )
+    }
+
+    /** Who the signed-in account is, or null without a session. The account-bound features need this one. */
+    private fun signedInIdentity(nickname: String = nickname()): Identity? {
         val store = BitChordApplication.authStore
         if (!store.isSignedIn) return null
         val account = store.activeSession ?: return null
@@ -1816,7 +1836,7 @@ object ListenTogether {
         if (BuildConfig.FLAVOR == "dev") {
             prefs.getString(KEY_DEBUG_PROOF, null)?.takeIf { it.length == 64 }?.let { return it }
         }
-        val who = identity() ?: return null
+        val who = signedInIdentity() ?: return null
         val key = KEY_ACCOUNT_SECRET + who.userId
         prefs.getString(key, null)?.takeIf { it.isNotBlank() }?.let { cached ->
             // Remembered, so the library is not asked on every connect. But a secret remembered

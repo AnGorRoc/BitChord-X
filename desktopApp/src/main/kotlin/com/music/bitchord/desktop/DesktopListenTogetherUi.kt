@@ -293,7 +293,6 @@ private fun PartyLanding(
                 }
             }
         }
-        if (!signedIn) item { Notice("Sign in to YouTube Music before creating or joining a party.", true) }
         error?.takeIf(String::isNotBlank)?.let { item { Notice(it, true) } }
         item {
             Column(Modifier.desktopCardInset(RoundedCornerShape(14.dp)).padding(18.dp)) {
