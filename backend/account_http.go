@@ -141,6 +141,10 @@ func handleAccountSocket(w http.ResponseWriter, r *http.Request) {
 	room := accountRoom(acc.ID)
 	acc.Lock()
 	acc.SetConnected(d, true, clock.NowMs())
+	// The first socket of a fresh client process: its old links belonged to a session it no longer has.
+	if r.URL.Query().Get("fresh") == "1" {
+		acc.StartFresh(d)
+	}
 	acc.Unlock()
 	sc := hubInst.Attach(room, d.DeviceID, conn)
 

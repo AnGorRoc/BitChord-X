@@ -265,6 +265,14 @@ func (a *Account) SetConnected(d *Device, connected bool, nowMs int64) {
 	}
 }
 
+// StartFresh ends every remote link of a device whose new socket comes from a process that starts
+// without the session those links belonged to (an app closed and opened again). Without this the
+// links would wait out LinkGrace, and a quick reopen kept them alive for good, with no way to leave.
+// The caller holds the account lock.
+func (a *Account) StartFresh(d *Device) {
+	a.releaseLinks(d)
+}
+
 // Publish stores what a device is playing. The caller holds the account lock.
 func (a *Account) Publish(d *Device, np *NowPlaying, nowMs int64) {
 	if np == nil || np.VideoId == "" {

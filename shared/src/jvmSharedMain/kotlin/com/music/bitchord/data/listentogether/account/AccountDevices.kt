@@ -95,6 +95,9 @@ class AccountDevices(
     val errors: SharedFlow<DeviceNotice> = _errors.asSharedFlow()
 
     private var job: Job? = null
+
+    /** True until this process has had a socket; see the fresh flag in [run]. */
+    @Volatile private var freshProcess = true
     /**
      * What is waiting to go out on the current socket, in the order it was asked. One writer drains
      * it, so "attach" can never overtake the "snapshot" that depends on it: a coroutine per frame
@@ -249,10 +252,14 @@ class AccountDevices(
                 }
                 if (!response.status.isSuccess()) error("connect failed: HTTP ${response.status.value}")
                 val token = json.decodeFromString(ConnectResponse.serializer(), response.bodyAsText()).token
+                // The first socket of this process says so: links left from a session this process
+                // never had (the app was closed, then opened) are over, and the server ends them.
+                val fresh = freshProcess
                 http.webSocket(
-                    urlString = base.replaceFirst("http", "ws") + "/ws/account",
+                    urlString = base.replaceFirst("http", "ws") + "/ws/account" + if (fresh) "?fresh=1" else "",
                     request = { header("Authorization", "Bearer $token") },
                 ) {
+                    freshProcess = false
                     val box = Channel<String>(OUTBOX_CAPACITY)
                     outbox = box
                     val writer = launch {
