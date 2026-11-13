@@ -654,8 +654,16 @@ internal class DesktopDeviceLink(
             endLocally(false)
             return
         }
+        // It was away and is back: if it came back as a new run of its app, the server ended the link
+        // meanwhile, and the sound has to come back here instead of this phone going on driving nothing.
+        val returned = awayJob != null
         awayJob?.cancel()
         awayJob = null
+        if (returned && awaitingConfirm == null && !pulling && LinkWatch.lost(account.state.value.self, targetId)) {
+            say(DeviceNotice.Disconnected(target.name))
+            endLocally(false)
+            return
+        }
         val np = target.nowPlaying
         if (np != null && np.updatedAtMs != status?.stamp) {
             val before = status

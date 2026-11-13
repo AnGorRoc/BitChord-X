@@ -158,6 +158,7 @@ internal class DeviceSpeaker(
                     delay(AWAY_GRACE_MS)
                     offlineJob = null
                     if (active && account.state.value.connection != AccountConnection.LIVE) {
+                        android.util.Log.i("DeviceSpeaker", "own connection offline past grace")
                         say(DeviceNotice.Disconnected(null))
                         endLocally(resumeHere = false)
                     }
@@ -168,6 +169,7 @@ internal class DeviceSpeaker(
         offlineJob?.cancel()
         offlineJob = null
         if (back && awaitingConfirm == null && !pulling && LinkWatch.lost(state.self, targetId)) {
+            android.util.Log.i("DeviceSpeaker", "link lost while offline")
             say(DeviceNotice.Disconnected(null))
             endLocally(resumeHere = false)
         }
@@ -385,6 +387,7 @@ internal class DeviceSpeaker(
         }
         targetId = deviceId
         active = true
+        android.util.Log.i("DeviceSpeaker", "beginAs $deviceId stash=${stash?.positionMs} items=${stash?.items?.size}")
         holdPlayingUntil = NEVER
         intentAt = NEVER
         // What the target is already playing is known; starting from it is what keeps this phone's
@@ -440,6 +443,7 @@ internal class DeviceSpeaker(
      */
     fun endLocally(resumeHere: Boolean) {
         if (!active) return
+        android.util.Log.i("DeviceSpeaker", "endLocally resumeHere=$resumeHere target=$targetId stash=${stash?.positionMs} gave=$gaveMusic pos=${positionMs}")
         val s = status
         val wasPlaying = wantsPlay
         val position = positionMs
@@ -623,6 +627,7 @@ internal class DeviceSpeaker(
                         awayJob = null
                         val now = account.state.value.devices.firstOrNull { it.deviceId == targetId }
                         if (active && (now == null || !now.connected)) {
+                            android.util.Log.i("DeviceSpeaker", "target away past grace")
                             say(DeviceNotice.Disconnected(now?.name))
                             endLocally(resumeHere = false)
                         }
@@ -635,8 +640,17 @@ internal class DeviceSpeaker(
             endLocally(resumeHere = false)
             return
         }
+        // It was away and is back: if it came back as a new run of its app, the server ended the link
+        // meanwhile, and the sound has to come back here instead of this phone going on driving nothing.
+        val returned = awayJob != null
         awayJob?.cancel()
         awayJob = null
+        if (returned && awaitingConfirm == null && !pulling && LinkWatch.lost(account.state.value.self, targetId)) {
+            android.util.Log.i("DeviceSpeaker", "target came back without the link")
+            say(DeviceNotice.Disconnected(target.name))
+            endLocally(false)
+            return
+        }
         val np = target.nowPlaying
         if (np != null && np.updatedAtMs != status?.stamp) {
             // A song the target is passing through while the person skips ahead: the phone already
@@ -846,6 +860,9 @@ internal class DeviceTarget(
             handleInParty(p, command)
             return
         }
+        // A queue restored when the app opened is loaded but not prepared: a play sent to it would do
+        // nothing at all, and the remote would sit on a button that does not answer.
+        if (command.action in WAKING && p.playbackState == Player.STATE_IDLE && p.mediaItemCount > 0) p.prepare()
         when (command.action) {
             DeviceActions.PLAY -> p.play()
             DeviceActions.PAUSE -> p.pause()
@@ -964,6 +981,7 @@ internal class DeviceTarget(
 
     private companion object {
         const val PUBLISH_MS = 1_000L
+        val WAKING = setOf(DeviceActions.PLAY, DeviceActions.SEEK, DeviceActions.NEXT, DeviceActions.PREVIOUS)
     }
 }
 
