@@ -4,7 +4,6 @@ import (
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/hex"
-	"fmt"
 	"sort"
 	"sync"
 
@@ -36,6 +35,13 @@ type Track struct {
 	ThumbnailUrl *string `json:"thumbnailUrl,omitempty"`
 	DurationMs   *int64  `json:"durationMs,omitempty"`
 	FromAutoplay bool    `json:"fromAutoplay"`
+	// Who asked for the track, stamped by the server and never read from a client. AddedBy is
+	// the person's id (see people.go); the name and picture travel with the track so they are
+	// still there after that person leaves. Empty for AutoPlay and for tracks queued before
+	// the server knew.
+	AddedBy       string  `json:"addedBy,omitempty"`
+	AddedByName   string  `json:"addedByName,omitempty"`
+	AddedByAvatar *string `json:"addedByAvatar,omitempty"`
 }
 
 func TrackFromWire(raw map[string]interface{}) *Track {
@@ -496,8 +502,18 @@ type Member struct {
 	DisplayName        string  `json:"displayName"`
 	AvatarUrl          *string `json:"avatarUrl,omitempty"`
 	Token              string  `json:"-"`
+	// AccountKey is the proof that this device belongs to an account (people.go). A secret:
+	// never sent to anyone. PersonId is what other members see instead.
+	AccountKey         string  `json:"-"`
+	PersonId           string  `json:"personId"`
+	DeviceName         string  `json:"deviceName,omitempty"`
 	IsHost             bool    `json:"isHost"`
 	Connected          bool    `json:"connected"`
+	// Silent is true while this member follows the party without playing it
+	// aloud on their own device. Stored negated so the zero value is the
+	// ordinary case, and sent as playsAudio so a client reading a server that
+	// predates it sees the field absent, which means true.
+	Silent             bool    `json:"-"`
 	JoinedAtMs         int64   `json:"joinedAtMs"`
 	LastSeenMs         int64   `json:"lastSeenMs"`
 	ControlBudget      float64 `json:"-"`
@@ -510,10 +526,13 @@ func (m *Member) ToWire() map[string]interface{} {
 	return map[string]interface{}{
 		"memberId":    m.MemberId,
 		"userId":      m.UserId,
+		"personId":    m.PersonId,
+		"deviceName":  m.DeviceName,
 		"displayName": m.DisplayName,
 		"avatarUrl":   m.AvatarUrl,
 		"isHost":      m.IsHost,
 		"connected":   m.Connected,
+		"playsAudio":  !m.Silent,
 		"joinedAtMs":  m.JoinedAtMs,
 		"lastSeenMs":  m.LastSeenMs,
 	}
@@ -575,46 +594,6 @@ func (p *Party) Host() *Member {
 	return nil
 }
 
-func (p *Party) Join(userId, deviceId, displayName string, avatarUrl *string) (*Member, error) {
-	now := clock.NowMs()
-	// Rejoining device check
-	for _, m := range p.Members {
-		if m.DeviceId == deviceId {
-			m.DisplayName = displayName
-			m.AvatarUrl = avatarUrl
-			m.UserId = userId
-			m.LastSeenMs = now
-			m.Token = randomToken(24)
-			p.Touch()
-			return m, nil
-		}
-	}
-
-	if len(p.Members) >= p.MaxMembers {
-		return nil, NewPartyError(409, "party_full", fmt.Sprintf("This party is full (%d devices).", p.MaxMembers))
-	}
-
-	m := &Member{
-		MemberId:          randomHex(8),
-		UserId:            userId,
-		DeviceId:          deviceId,
-		DisplayName:       displayName,
-		AvatarUrl:         avatarUrl,
-		Token:             randomToken(24),
-		IsHost:            len(p.Members) == 0,
-		Connected:         false,
-		JoinedAtMs:        now,
-		LastSeenMs:        now,
-		ControlBudget:     config.ControlRatePerSecond,
-		ControlBudgetAtMs: now,
-		FrameBudget:       config.FrameRatePerSecond,
-		FrameBudgetAtMs:   now,
-	}
-	p.Members[m.MemberId] = m
-	p.Touch()
-	return m, nil
-}
-
 func (p *Party) SetMaxMembers(member *Member, maxMembers int) error {
 	if !member.IsHost {
 		return NewPartyError(403, "host_only", "Only the host can change the party size.")
@@ -622,7 +601,7 @@ func (p *Party) SetMaxMembers(member *Member, maxMembers int) error {
 	if maxMembers < 2 || maxMembers > 10 {
 		return NewPartyError(422, "invalid_capacity", "Party size must be between 2 and 10.")
 	}
-	if maxMembers < len(p.Members) {
+	if maxMembers < p.PersonCount() {
 		return NewPartyError(409, "party_too_small", "Party size cannot be smaller than the current member count.")
 	}
 	p.MaxMembers = maxMembers
@@ -671,10 +650,7 @@ func (p *Party) Remove(memberId string) *Member {
 	}
 	delete(p.Members, memberId)
 	if m.IsHost && len(p.Members) > 0 {
-		for _, next := range p.Members {
-			next.IsHost = true
-			break
-		}
+		p.promoteHost()
 	}
 	p.Touch()
 	p.refreshEmptiness()

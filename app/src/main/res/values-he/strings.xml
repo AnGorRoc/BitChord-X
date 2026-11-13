@@ -1613,4 +1613,23 @@
     <string name="trending_title">Trending</string>
     <string name="region_global">Global</string>
     <string name="region_auto">Automatic (IP)</string>
+    <string name="listen_together_you_header">את/ה</string>
+    <string name="listen_together_you_footer">השם שלך הוא מה שאחרים רואים בפארטי. שם המכשיר הוא האופן שבו המכשיר הזה מופיע ב«התחברות» לצד המכשירים האחרים שלך.</string>
+    <string name="listen_together_your_name">השם שלך בפארטי</string>
+    <string name="listen_together_name_default">שם החשבון שלך</string>
+    <string name="listen_together_device_name">שם המכשיר הזה</string>
+    <string name="listen_together_name_hint">שם</string>
+    <string name="listen_together_play_here">נגן במכשיר הזה</string>
+    <string name="listen_together_play_here_on">אתה שומע את זה כאן וכולם שומעים בשלהם.</string>
+    <string name="listen_together_play_here_off">הצליל מגיע רק מהמארח. אתה עדיין רואה ושולט בפארטי.</string>
+    <string name="listen_together_silent_member">מאזין דרך המארח</string>
+    <string name="disable_blend_effects">השבת אפקטי מיזוג</string>
+    <string name="disable_blend_effects_subtitle">מציג סמלים, טקסט ותפריטים כהים בנגן בלבן רגיל במקום לצבוע אותם לפי העטיפה</string>
+    <string name="player_theme">ערכת נושא של הנגן</string>
+    <string name="player_theme_default">ברירת מחדל</string>
+    <string name="player_theme_legacy">קלאסי</string>
+    <string name="player_theme_simple">פשוט</string>
+    <string name="player_theme_default_subtitle">צבעי העטיפה ממשיכים מתחתיה</string>
+    <string name="player_theme_simple_subtitle">טשטוש עדין של העטיפה מאחורי כל הנגן</string>
+    <string name="player_theme_legacy_subtitle">מחזיר את כתמי הצבע הנעים מאחורי הנגן מגרסה 1.5</string>
 </resources>

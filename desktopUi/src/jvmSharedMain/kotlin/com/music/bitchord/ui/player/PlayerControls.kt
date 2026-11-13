@@ -1251,7 +1251,8 @@ private fun OutputPartyPill(
             // Already in a party, this opens who's in it rather than the
             // settings page directly; there is nothing to create or join once
             // there is a party, so [onParty] only ever fires beforehand.
-            onClick = if (badge.inParty) onOpenMembers else onParty,
+            // Always the Connect sheet now: it holds the devices as well as the party.
+            onClick = onOpenMembers,
             highlighted = badge.inParty,
             trailingLabel = badge.members.takeIf { badge.inParty }?.toString(),
         )

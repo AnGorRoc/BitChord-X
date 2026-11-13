@@ -120,7 +120,8 @@ class PlayerSheetMotion(
      * pressed twice, say — restarted the slide from a standstill where it
      * stood, a visible stall halfway home.
      */
-    private var closing = false
+    var closing = false
+        private set
 
     private fun travel(): Float =
         dock.sheetTravel.takeIf { it > 0f } ?: (windowInfo?.containerSize?.height ?: 0).toFloat()

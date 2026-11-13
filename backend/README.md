@@ -264,6 +264,8 @@ Behind Cloudflare (proxied DNS or a Cloudflare Tunnel) set:
 | `JAM_CLIENT_IP_HEADER` | `CF-Connecting-IP` | Cloudflare's own record of the client; its `X-Forwarded-For` starts with whatever the caller sent. |
 | `JAM_ANDROID_APP_LINKS` | `package:SHA256,...` | Publishes `/.well-known/assetlinks.json` so Android opens `/invite/CODE` links in the app. |
 | `JAM_MAX_PARTIES` | e.g. `200` | The default of 50 is sized for Render's free tier. |
+| `JAM_MAX_UPCOMING_QUEUE` | `500` (default) | Upcoming songs a party keeps. The original app keeps 25 and clients read this value from `/api/info`; set `25` to match it. |
+| `JAM_WEBSOCKET_MAX_BYTES` | `524288` (default) | Largest frame a client may send. A whole 500-song queue is about 200 KB, so lowering it below that breaks long queues. |
 
 `GET /api/info` reports the build (`flavor`, `protocol`, `features`, `limits`).
 Clients read it to switch extensions on; the original BitChord server answers

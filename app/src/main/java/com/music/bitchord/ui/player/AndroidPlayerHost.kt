@@ -179,6 +179,21 @@ class AndroidPlayerHost(context: Context) : PlayerHost {
         )
     }
 
+    override val devices: StateFlow<com.music.bitchord.data.listentogether.account.AccountState>
+        get() = ListenTogether.account.state
+
+    override fun pickDevice(deviceId: String, force: com.music.bitchord.data.listentogether.account.HandoffForce?) =
+        com.music.bitchord.playback.DeviceLink.pick(deviceId, force)
+
+    override fun comeBackToThisDevice() = com.music.bitchord.playback.DeviceLink.comeBack()
+
+    override fun requestPartyAction(action: PartyAction) {
+        com.music.bitchord.ui.screens.PartyLaunch.pending.value = when (action) {
+            PartyAction.START -> com.music.bitchord.ui.screens.PartyLaunch.Action.START
+            PartyAction.JOIN -> com.music.bitchord.ui.screens.PartyLaunch.Action.JOIN
+        }
+    }
+
     override val party: StateFlow<PartyUi> by lazy {
         ListenTogether.state
             .map { it.toPartyUi() }
@@ -280,6 +295,12 @@ private fun ListenTogether.State.toPartyUi() = PartyUi(
     members = members,
     you = you,
     code = code,
+    addedBy = if (!inParty) emptyMap() else buildMap {
+        queue.items.forEach { track ->
+            val name = track.addedByName
+            if (!name.isNullOrBlank()) putIfAbsent(track.videoId, AddedByUi(name, track.addedByAvatar))
+        }
+    },
 )
 
 /**

@@ -11,6 +11,16 @@ import kotlin.test.assertTrue
  */
 class PartyInvitesTest {
 
+    @Test
+    fun `the queue limit is read from the server and falls back to the original's 25`() {
+        assertEquals(500, PartyServers.parseMaxUpcoming("""{"limits":{"maxUpcomingQueue":500}}"""))
+        assertEquals(25, PartyServers.parseMaxUpcoming("""{"limits":{}}"""))
+        assertEquals(25, PartyServers.parseMaxUpcoming("<html>404</html>"))
+        assertEquals(25, PartyServers.parseMaxUpcoming("""{"limits":{"maxUpcomingQueue":0}}"""))
+        assertEquals(1000, PartyServers.parseMaxUpcoming("""{"limits":{"maxUpcomingQueue":999999}}"""))
+    }
+
+
     private val own = "https://bitchord.pymp.net"
 
     @Test
@@ -100,5 +110,14 @@ class PartyInvitesTest {
                 assertEquals(server, invite?.serverUrl, link)
             }
         }
+    }
+
+    @Test
+    fun `server features are read from info and default to none`() {
+        val info = """{"flavor":"bitchord-x","features":["preview","listeningMode"]}"""
+        assertTrue(PartyServers.FEATURE_LISTENING_MODE in PartyServers.parseFeatures(info))
+        // The original server answers 404 with plain text or an error body: baseline only.
+        assertEquals(emptySet(), PartyServers.parseFeatures("not found"))
+        assertEquals(emptySet(), PartyServers.parseFeatures("""{"error":"no_such_party"}"""))
     }
 }

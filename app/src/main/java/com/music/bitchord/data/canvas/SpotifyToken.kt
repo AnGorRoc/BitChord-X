@@ -93,19 +93,35 @@ internal object SpotifyToken {
         if (cToken != null) {
             requestBuilder.header("Client-Token", cToken)
         }
-        val product = runCatching {
-            Http.client.newCall(requestBuilder.build()).execute().use { response ->
+        // The plan comes from the web player's own product-state call first. /v1/me is rate limited
+        // hard for these tokens (HTTP 429 seen in practice), and a refusal there used to be read as
+        // a free account.
+        val productStateBuilder = Request.Builder()
+            .url("https://spclient.wg.spotify.com/melody/v1/product_state?market=from_token")
+            .header("Authorization", "Bearer $token")
+            .header("User-Agent", CANVAS_UA)
+            .header("Accept", "application/json")
+            .header("App-platform", "WebPlayer")
+            .header("Origin", "https://open.spotify.com")
+            .header("Referer", "https://open.spotify.com/")
+        if (cToken != null) productStateBuilder.header("Client-Token", cToken)
+        fun productOf(builder: Request.Builder): String? = runCatching {
+            Http.client.newCall(builder.build()).execute().use { response ->
                 if (!response.isSuccessful) return@use null
                 val body = response.body.string()
                 val root = json.parseToJsonElement(body).jsonObject
                 root["product"]?.jsonPrimitive?.contentOrNull?.lowercase()
             }
         }.getOrNull()
+        val product = productOf(productStateBuilder) ?: productOf(requestBuilder)
 
-        val tier = when (product) {
-            "premium" -> SpotifyAccountTier.PREMIUM
-            "free", "open" -> SpotifyAccountTier.FREE
-            else -> if (token.isNotBlank()) SpotifyAccountTier.FREE else SpotifyAccountTier.UNKNOWN
+        // A failed lookup says nothing about the plan: it used to be read as "free" and kept, which
+        // shut Premium accounts (family plans included) out until the app restarted. Only a plan
+        // Spotify actually named is remembered; "free" and "open" are the only unpaid ones.
+        val tier = when {
+            product == null -> return SpotifyAccountTier.UNKNOWN
+            product == "free" || product == "open" -> SpotifyAccountTier.FREE
+            else -> SpotifyAccountTier.PREMIUM
         }
         cachedTier = tier
         return tier

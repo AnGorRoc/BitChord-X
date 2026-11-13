@@ -1528,4 +1528,23 @@
     <string name="trending_title">Trending</string>
     <string name="region_global">Global</string>
     <string name="region_auto">Automatic (IP)</string>
+    <string name="listen_together_you_header">Bạn</string>
+    <string name="listen_together_you_footer">Tên của bạn là tên người khác thấy trong party. Tên thiết bị là cách thiết bị này hiển thị trong Kết nối, cạnh các thiết bị khác của bạn.</string>
+    <string name="listen_together_your_name">Tên của bạn trong party</string>
+    <string name="listen_together_name_default">Tên tài khoản của bạn</string>
+    <string name="listen_together_device_name">Tên thiết bị này</string>
+    <string name="listen_together_name_hint">Tên</string>
+    <string name="listen_together_play_here">Phát trên thiết bị này</string>
+    <string name="listen_together_play_here_on">Bạn nghe ở đây còn mọi người nghe trên thiết bị của họ.</string>
+    <string name="listen_together_play_here_off">Âm thanh chỉ phát từ chủ phòng. Bạn vẫn xem và điều khiển được party.</string>
+    <string name="listen_together_silent_member">Nghe qua chủ phòng</string>
+    <string name="disable_blend_effects">Tắt hiệu ứng hòa trộn</string>
+    <string name="disable_blend_effects_subtitle">Hiển thị biểu tượng, văn bản và menu tối của trình phát bằng màu trắng trơn thay vì nhuộm màu theo ảnh bìa</string>
+    <string name="player_theme">Giao diện trình phát</string>
+    <string name="player_theme_default">Mặc định</string>
+    <string name="player_theme_legacy">Cổ điển</string>
+    <string name="player_theme_simple">Đơn giản</string>
+    <string name="player_theme_default_subtitle">Màu sắc của ảnh bìa tiếp nối xuống phía dưới</string>
+    <string name="player_theme_simple_subtitle">Lớp làm mờ nhẹ của ảnh bìa phía sau toàn bộ trình phát</string>
+    <string name="player_theme_legacy_subtitle">Mang lại các mảng màu trôi nổi phía sau trình phát từ bản v1.5</string>
 </resources>

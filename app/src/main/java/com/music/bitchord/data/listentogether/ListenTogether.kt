@@ -3,6 +3,8 @@ package com.music.bitchord.data.listentogether
 import android.content.Context
 import android.os.SystemClock
 import android.content.SharedPreferences
+import com.music.bitchord.data.listentogether.account.AccountDevices
+import com.music.bitchord.data.listentogether.account.DeviceSelf
 import android.net.ConnectivityManager
 import android.net.Network
 import com.music.bitchord.BitChordApplication
@@ -673,6 +675,7 @@ object ListenTogether {
     }
 
     private lateinit var prefs: SharedPreferences
+    private lateinit var appContext: Context
     private var token: String? = null
 
     @Volatile
@@ -680,6 +683,7 @@ object ListenTogether {
     private var socketJob: Job? = null
 
     fun init(context: Context) {
+        appContext = context.applicationContext
         prefs = context.applicationContext.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
         val rawSaved = prefs.getString(KEY_SERVER, null)?.trim().orEmpty()
         val normalizedSaved = when (val res = parseAndNormalizeServerUrl(rawSaved)) {
@@ -841,6 +845,8 @@ object ListenTogether {
             JoinRequest(
                 who.userId, who.deviceId, who.name, who.avatar, maxMembers,
                 autoplayEnabled = AppSettings.autoplay.value,
+                accountProof = proofForJoin(),
+                deviceName = deviceName(),
             ),
         )
 
@@ -899,7 +905,10 @@ object ListenTogether {
         refuseIfRecentlyKicked(cleaned)
         val membership = post(
             "$serverBase/api/parties/$cleaned/join",
-            JoinRequest(who.userId, who.deviceId, who.name, who.avatar),
+            JoinRequest(
+                who.userId, who.deviceId, who.name, who.avatar,
+                accountProof = proofForJoin(), deviceName = deviceName(),
+            ),
         )
 
         withContext(NonCancellable) {
@@ -1006,7 +1015,10 @@ object ListenTogether {
             val targetJoinResult = runCatching {
                 post(
                     "$targetBase/api/parties/$cleanedTargetCode/join",
-                    JoinRequest(who.userId, who.deviceId, who.name, who.avatar),
+                    JoinRequest(
+                        who.userId, who.deviceId, who.name, who.avatar,
+                        accountProof = proofForJoin(), deviceName = deviceName(),
+                    ),
                 )
             }
 
@@ -1079,6 +1091,7 @@ object ListenTogether {
             clock.reset()
             token = null
             activePartyServerBase = null
+            _listenHere.value = true
             prefs.edit().remove(KEY_CODE).remove(KEY_TOKEN).remove(KEY_ACTIVE_SERVER).apply()
             _state.value = State()
             if (code != null && held != null) {
@@ -1142,6 +1155,106 @@ object ListenTogether {
     /** Host only, and refused by the server from anybody else. @see State.controlsLocked */
     fun setHostOnlyControl(enabled: Boolean) =
         control("setHostOnlyControl") { put("enabled", enabled) }
+
+    // ------------------------------------------------------ where it plays --
+
+    private val _listenHere = MutableStateFlow(true)
+
+    /**
+     * Whether sound comes out of this device. False follows the party and can control it while the
+     * music plays from somewhere else, such as the host's speakers: nothing is loaded or played
+     * here and nothing this player does is published.
+     *
+     * Kept in memory only, on purpose: it describes this party, and every new one starts aloud.
+     */
+    val listenHere: StateFlow<Boolean> = _listenHere.asStateFlow()
+
+    private val featureCache = java.util.concurrent.ConcurrentHashMap<String, Set<String>>()
+
+    /** What the server holding the current party supports; empty for the original server. */
+    private suspend fun serverFeatures(server: String): Set<String> =
+        featureCache[server] ?: fetchFeatures(server)?.also { featureCache[server] = it } ?: emptySet()
+
+    /**
+     * What a server's `/api/info` lists, or null when it could not be read. Only a real answer is
+     * remembered: an unreachable or restarting server must not stay "without features" until the
+     * app is closed.
+     */
+    private suspend fun fetchFeatures(server: String): Set<String>? = runCatching {
+        val response = http.get("$server/api/info") { timeout { requestTimeoutMillis = 8_000 } }
+        if (response.status.isSuccess()) {
+            val body = response.bodyAsText()
+            limitCache[server] = PartyServers.parseMaxUpcoming(body)
+            PartyServers.parseFeatures(body)
+        } else {
+            limitCache[server] = PartyServers.ORIGINAL_MAX_UPCOMING
+            emptySet()
+        }
+    }.getOrNull()
+
+    private val limitCache = java.util.concurrent.ConcurrentHashMap<String, Int>()
+
+    /**
+     * How many upcoming songs the current party's server keeps. The original's 25 until the server
+     * has said otherwise, so an unread answer never makes this device publish more than it will take.
+     */
+    fun maxUpcomingQueue(): Int {
+        val server = activePartyServerBase ?: return PartyServers.ORIGINAL_MAX_UPCOMING
+        limitCache[server]?.let { return it }
+        // Not read yet: carry on with the safe figure and learn it for next time.
+        scope.launch { serverFeatures(server) }
+        return PartyServers.ORIGINAL_MAX_UPCOMING
+    }
+
+    /** What to tell the server so this device's devices are one person; null when it cannot be had. */
+    private suspend fun proofForJoin(): String? = runCatching { accountProof() }.getOrNull()
+
+    /**
+     * Chooses whether sound plays on this device. The choice always applies here; it is only
+     * *announced* to the party (the speaker icon beside the name) on a server that understands it.
+     */
+    fun setListenHere(enabled: Boolean) {
+        _listenHere.value = enabled
+        announceListening()
+    }
+
+    /**
+     * Adds what the listener queued to the device that is playing, when this one is only a remote
+     * for it. True means it was handled and the caller must not touch the local queue.
+     */
+    fun routeEnqueue(tracks: List<PartyTrack>, playNext: Boolean): Boolean {
+        val party = _state.value
+        if (!party.inParty || _listenHere.value) return false
+        if (!party.controlsLocked && tracks.isNotEmpty()) queueAdd(tracks, playNext)
+        return true
+    }
+
+    /**
+     * Sends what the listener just picked to the device that is playing, when this one is only a
+     * remote for it. True means it was handled and the caller must not start the local player.
+     */
+    fun routeToParty(tracks: List<PartyTrack>, index: Int): Boolean {
+        val party = _state.value
+        if (!party.inParty || _listenHere.value) return false
+        // Locked out by the host: nothing to send, and starting it here would play it aloud.
+        if (party.controlsLocked || tracks.isEmpty()) return true
+        val at = index.coerceIn(tracks.indices)
+        // The queue first, then the track pointing into it, so nobody holds an index into a list
+        // they have not been given.
+        setQueue(tracks, at)
+        setTrack(tracks[at], 0L, true)
+        return true
+    }
+
+    private fun announceListening() {
+        val server = activePartyServerBase ?: return
+        if (!_state.value.inParty) return
+        scope.launch {
+            if (PartyServers.FEATURE_LISTENING_MODE in serverFeatures(server)) {
+                control("setListening") { put("enabled", _listenHere.value) }
+            }
+        }
+    }
 
     private fun control(action: String, body: kotlinx.serialization.json.JsonObjectBuilder.() -> Unit) {
         val frame = buildJsonObject {
@@ -1355,6 +1468,9 @@ object ListenTogether {
                     connection = Connection.LIVE,
                     error = null,
                 ) }
+                // A reconnect forgets nothing on the server, but a first arrival has not yet said
+                // how it listens.
+                if (!_listenHere.value) announceListening()
             }
 
             "pong" -> {
@@ -1584,6 +1700,75 @@ object ListenTogether {
      * from a sixth device — so it has to survive a sign-out, an account switch
      * and a process death, and must not survive an uninstall.
      */
+    // ----------------------------------------------------- my devices (account) --
+
+    /**
+     * This device's link to the person's other devices: who is online, what each is playing, and
+     * handing the sound from one to another. It runs for as long as the app does, with no button to
+     * start it. Servers without the channel make it settle into UNSUPPORTED by itself.
+     *
+     * @see AccountDevices
+     */
+    val account: AccountDevices by lazy {
+        AccountDevices(
+            http = http,
+            scope = scope,
+            serverBase = { effectiveIdleServerBase().takeIf { it.isNotBlank() }?.let(::resolveHttpBase) },
+            proof = { accountProof() },
+            self = { DeviceSelf(deviceId(), deviceName(), deviceType()) },
+        )
+    }
+
+    /** What this device is called in the person's Connect list. Their choice, else the model. */
+    fun deviceName(): String =
+        prefs.getString(KEY_DEVICE_NAME, null)?.trim()?.takeIf { it.isNotBlank() } ?: defaultDeviceName()
+
+    fun setDeviceName(name: String) {
+        prefs.edit().putString(KEY_DEVICE_NAME, name.trim()).apply()
+        if (name.isNotBlank()) account.rename(name.trim())
+    }
+
+    private fun defaultDeviceName(): String {
+        val model = android.os.Build.MODEL.orEmpty().trim()
+        val maker = android.os.Build.MANUFACTURER.orEmpty().trim()
+        return when {
+            model.isBlank() -> "Android"
+            maker.isNotBlank() && !model.startsWith(maker, ignoreCase = true) ->
+                "${maker.replaceFirstChar { it.uppercase() }} $model"
+            else -> model
+        }
+    }
+
+    private fun deviceType(): String {
+        val ui = appContext.resources.configuration
+        val television = (ui.uiMode and android.content.res.Configuration.UI_MODE_TYPE_MASK) ==
+            android.content.res.Configuration.UI_MODE_TYPE_TELEVISION
+        return when {
+            television -> "tv"
+            ui.smallestScreenWidthDp >= 600 -> "tablet"
+            else -> "phone"
+        }
+    }
+
+    /**
+     * The proof this account's devices share, or null when it cannot be had right now (signed out,
+     * offline). Made on first use and remembered, so the library is only asked once per account.
+     */
+    private suspend fun accountProof(): String? {
+        // A test seam for the dev build only: lets a device that is not signed in to Google be put in
+        // an account by writing a proof into its private preferences (adb run-as), so two devices can
+        // be exercised without the real library. Release builds never read it.
+        if (BuildConfig.FLAVOR == "dev") {
+            prefs.getString(KEY_DEBUG_PROOF, null)?.takeIf { it.length == 64 }?.let { return it }
+        }
+        val who = identity() ?: return null
+        val key = KEY_ACCOUNT_SECRET + who.userId
+        val secret = prefs.getString(key, null)?.takeIf { it.isNotBlank() }
+            ?: DeviceGroup.ensureSecret().getOrNull()?.also { prefs.edit().putString(key, it).apply() }
+            ?: return null
+        return DeviceGroup.groupId(secret)
+    }
+
     private fun deviceId(): String {
         prefs.getString(KEY_DEVICE, null)?.let { return it }
         return UUID.randomUUID().toString().also {
@@ -1730,6 +1915,9 @@ object ListenTogether {
     private const val KEY_TOKEN = "party_token"
     private const val KEY_DEVICE = "device_id"
     private const val KEY_NICKNAME = "party_nickname"
+    private const val KEY_DEVICE_NAME = "device_name"
+    private const val KEY_DEBUG_PROOF = "debug_account_proof"
+    private const val KEY_ACCOUNT_SECRET = "account_secret_"
     private const val KEY_KICKED = "party_kicked_until"
     private const val KEY_ACTIVE_SERVER = "party_active_server"
 

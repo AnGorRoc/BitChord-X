@@ -1,5 +1,9 @@
 package com.music.bitchord.data.listentogether
 
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import java.net.URI
 import java.net.URLDecoder
 import java.net.URLEncoder
@@ -25,6 +29,34 @@ object PartyServers {
 
     /** The original BitChord's public web origin, which its invite links use. */
     const val ORIGINAL_WEB = "https://bitchord.kushagrasingh.in"
+
+    /** Feature names an extended server lists at `/api/info`. */
+    const val FEATURE_LISTENING_MODE = "listeningMode"
+    const val FEATURE_PEOPLE = "people"
+    const val FEATURE_ADDED_BY = "addedBy"
+    const val FEATURE_ACCOUNT_DEVICES = "accountDevices"
+
+    /** How many upcoming songs a party may hold on the original server, and the fallback anywhere. */
+    const val ORIGINAL_MAX_UPCOMING = 25
+
+    /**
+     * The upcoming-queue limit a server announces at `/api/info` (`limits.maxUpcomingQueue`), or the
+     * original's 25 when it says nothing sensible. Clamped so a hostile server cannot ask a client to
+     * hold an absurd queue.
+     */
+    fun parseMaxUpcoming(body: String): Int = runCatching {
+        Json.parseToJsonElement(body).jsonObject["limits"]?.jsonObject?.get("maxUpcomingQueue")
+            ?.jsonPrimitive?.content?.toInt()
+    }.getOrNull()?.takeIf { it > 0 }?.coerceAtMost(1000) ?: ORIGINAL_MAX_UPCOMING
+
+    /**
+     * The features a server's `/api/info` body lists. Empty for anything unreadable, which is what
+     * the original server's 404 page is: baseline protocol only.
+     */
+    fun parseFeatures(body: String): Set<String> = runCatching {
+        Json.parseToJsonElement(body).jsonObject["features"]?.jsonArray
+            ?.map { it.jsonPrimitive.content }?.toSet()
+    }.getOrNull().orEmpty()
 
     fun isOriginalOfficial(server: String?): Boolean =
         server != null && normalize(server).equals(ORIGINAL_OFFICIAL, ignoreCase = true)

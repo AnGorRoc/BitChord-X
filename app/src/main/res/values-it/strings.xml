@@ -1547,4 +1547,23 @@
     <string name="trending_title">Trending</string>
     <string name="region_global">Global</string>
     <string name="region_auto">Automatic (IP)</string>
+    <string name="listen_together_you_header">Tu</string>
+    <string name="listen_together_you_footer">Il tuo nome è quello che gli altri vedono in una party. Il nome del dispositivo è come questo dispositivo appare in Connetti, accanto ai tuoi altri dispositivi.</string>
+    <string name="listen_together_your_name">Il tuo nome nelle party</string>
+    <string name="listen_together_name_default">Nome del tuo account</string>
+    <string name="listen_together_device_name">Nome di questo dispositivo</string>
+    <string name="listen_together_name_hint">Nome</string>
+    <string name="listen_together_play_here">Riproduci su questo dispositivo</string>
+    <string name="listen_together_play_here_on">Lo senti qui e tutti gli altri sul proprio.</string>
+    <string name="listen_together_play_here_off">L’audio arriva solo dall’host. Vedi e controlli comunque la party.</string>
+    <string name="listen_together_silent_member">Ascolta tramite l’host</string>
+    <string name="disable_blend_effects">Disattiva effetti di fusione</string>
+    <string name="disable_blend_effects_subtitle">Mostra icone, testo e menu scuri del lettore in bianco semplice invece di tingerli con la copertina</string>
+    <string name="player_theme">Tema del lettore</string>
+    <string name="player_theme_default">Predefinito</string>
+    <string name="player_theme_legacy">Classico</string>
+    <string name="player_theme_simple">Semplice</string>
+    <string name="player_theme_default_subtitle">I colori della copertina continuano al di sotto</string>
+    <string name="player_theme_simple_subtitle">Una leggera sfocatura della copertina dietro l\'intero lettore</string>
+    <string name="player_theme_legacy_subtitle">Riporta le macchie di colore fluttuanti della v1.5 dietro il lettore</string>
 </resources>

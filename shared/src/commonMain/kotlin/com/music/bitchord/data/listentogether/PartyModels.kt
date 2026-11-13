@@ -32,6 +32,14 @@ data class PartyTrack(
     val durationMs: Long? = null,
     /** Preserves the queue's shared manual/AutoPlay section boundary. */
     val fromAutoplay: Boolean = false,
+    /**
+     * Who queued it, stamped by the server (never by the sender). The person's id, name and picture
+     * travel with the track so they are still there after that person leaves. Empty on a server that
+     * predates it, and for AutoPlay's own suggestions.
+     */
+    val addedBy: String? = null,
+    val addedByName: String? = null,
+    val addedByAvatar: String? = null,
 )
 
 /** One signed-in device in the party, as every other device sees it. */
@@ -42,11 +50,28 @@ data class PartyMember(
     val displayName: String = "",
     val avatarUrl: String? = null,
     val isHost: Boolean = false,
+    /**
+     * Who this device belongs to. Devices of one account share it, and the party counts and shows
+     * people, not devices. Absent on a server that predates it, where each device is its own person
+     * (the member id stands in for it, see [person]).
+     */
+    val personId: String? = null,
+    /** What the person calls this device ("IOP"), shown under their name. */
+    val deviceName: String = "",
     /** Whether they are currently holding a socket — not whether they are still in. */
     val connected: Boolean = false,
+    /**
+     * Whether sound comes out of this member's own device. False means they follow the party
+     * (and can control it) while the music plays from somewhere else, such as the host's speakers.
+     * Absent on a server that predates the setting, which means everybody plays aloud.
+     */
+    val playsAudio: Boolean = true,
     val joinedAtMs: Long = 0,
     val lastSeenMs: Long = 0,
-)
+) {
+    /** The id to group devices by: the person's, or the device's own on an older server. */
+    val person: String get() = personId?.takeIf { it.isNotBlank() } ?: memberId
+}
 
 /**
  * Where the party is, as of a server timestamp.
@@ -179,6 +204,12 @@ data class JoinRequest(
     val avatarUrl: String? = null,
     val maxMembers: Int? = null,
     val autoplayEnabled: Boolean? = null,
+    /**
+     * A hash only this person's own devices can make; devices sending the same one are the same
+     * person in the party. Ignored by a server that predates it.
+     */
+    val accountProof: String? = null,
+    val deviceName: String? = null,
 )
 
 @Serializable

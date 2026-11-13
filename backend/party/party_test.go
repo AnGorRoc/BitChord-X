@@ -78,6 +78,11 @@ func TestPartyCapacityLimit(t *testing.T) {
 }
 
 func TestQueueUpcoming25Limit(t *testing.T) {
+	// The limit is configurable and now defaults far higher; this pins the behaviour at 25, which
+	// is what a server that wants the original app's limit runs with.
+	prevUpcoming, prevLength := config.MaxUpcomingQueue, config.MaxQueueLength
+	config.MaxUpcomingQueue, config.MaxQueueLength = 25, 26
+	defer func() { config.MaxUpcomingQueue, config.MaxQueueLength = prevUpcoming, prevLength }()
 	ps := NewPlaybackState()
 	current := &Track{VideoId: "now_playing", Title: "Now Playing"}
 	ps.SetTrack(nil, current, 0, true, nil, nil)

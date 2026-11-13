@@ -19,6 +19,7 @@ import kotlin.math.abs
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -750,6 +751,37 @@ private class QueueDrag(private val listState: LazyListState) {
     }
 }
 
+/** A small round picture of the person who queued a song, or their initial when they have none. */
+@Composable
+internal fun AddedByBadge(who: AddedByUi, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .size(20.dp)
+            .clip(CircleShape)
+            // A ring in the background's colour, so the badge reads as sitting on the cover.
+            .background(Color.Black)
+            .padding(1.5.dp)
+            .clip(CircleShape)
+            .background(Color.White.copy(alpha = 0.25f)),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (who.avatarUrl != null) {
+            AsyncImage(
+                model = who.avatarUrl,
+                contentDescription = who.name,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else {
+            Text(
+                text = who.name.take(1).uppercase(),
+                style = MaterialTheme.typography.labelSmall,
+                color = Color.White,
+            )
+        }
+    }
+}
+
 @Composable
 private fun InlineQueueRow(
     song: Song,
@@ -802,16 +834,23 @@ private fun InlineQueueRow(
             )
             Spacer(Modifier.width(4.dp))
         }
-        AsyncImage(
-            model = rememberRemoteArtworkUrl(song),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
-            modifier = Modifier
-                .trackArtSize(44.dp, song.isVideo)
-                .clip(RoundedCornerShape(6.dp))
-                .thumbnailBorder(RoundedCornerShape(6.dp))
-                .background(Color.White.copy(alpha = 0.08f)),
-        )
+        val party by PlayerPlatform.host.party.collectAsStateWithLifecycle()
+        Box {
+            AsyncImage(
+                model = rememberRemoteArtworkUrl(song),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .trackArtSize(44.dp, song.isVideo)
+                    .clip(RoundedCornerShape(6.dp))
+                    .thumbnailBorder(RoundedCornerShape(6.dp))
+                    .background(Color.White.copy(alpha = 0.08f)),
+            )
+            // In a party, who put this song here: their picture in the cover's bottom-right corner.
+            party.addedBy[song.videoId]?.let { who ->
+                AddedByBadge(who, Modifier.align(Alignment.BottomEnd).offset(x = 5.dp, y = 5.dp))
+            }
+        }
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             ExplicitSongTitle(

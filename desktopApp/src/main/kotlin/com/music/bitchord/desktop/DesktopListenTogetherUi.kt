@@ -27,7 +27,13 @@ import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.LockOpen
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.RemoveCircleOutline
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.SkipNext
+import androidx.compose.material.icons.rounded.SkipPrevious
+import androidx.compose.material.icons.rounded.VolumeOff
+import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -78,7 +84,9 @@ internal fun DesktopListenTogetherDialog(autoplayEnabled: Boolean, onDismiss: ()
     var codeServer by remember { mutableStateOf<String?>(null) }
     var previewServer by remember { mutableStateOf<String?>(null) }
     var nickname by remember { mutableStateOf(DesktopListenTogether.nickname()) }
-    var maxMembers by remember { mutableStateOf(5) }
+    // A setting for the host once the party exists, not a decision at the door.
+    val maxMembers = DEFAULT_PARTY_SIZE
+    var joinPlayHere by remember { mutableStateOf(true) }
     var serverDraft by remember { mutableStateOf(server) }
     var preview by remember { mutableStateOf<PartyPreview?>(null) }
     var busy by remember { mutableStateOf(false) }
@@ -137,6 +145,8 @@ internal fun DesktopListenTogetherDialog(autoplayEnabled: Boolean, onDismiss: ()
                         nickname = it.take(80)
                         DesktopListenTogether.setNickname(nickname)
                     },
+                    playHere = joinPlayHere,
+                    onPlayHereChange = { joinPlayHere = it },
                     busy = busy,
                     error = localError ?: state.error,
                     onBack = { preview = null; localError = null },
@@ -144,8 +154,14 @@ internal fun DesktopListenTogetherDialog(autoplayEnabled: Boolean, onDismiss: ()
                         busy = true
                         localError = null
                         scope.launch {
+                            // Set before joining so the welcome that follows already knows how this
+                            // computer listens; put back if the party turns it away.
+                            DesktopListenTogether.setListenHere(joinPlayHere)
                             DesktopListenTogether.joinParty(preview!!.code, nickname, previewServer)
-                                .onFailure { localError = it.message }
+                                .onFailure {
+                                    localError = it.message
+                                    DesktopListenTogether.setListenHere(true)
+                                }
                             busy = false
                         }
                     },
@@ -159,8 +175,6 @@ internal fun DesktopListenTogetherDialog(autoplayEnabled: Boolean, onDismiss: ()
                         nickname = it.take(80)
                         DesktopListenTogether.setNickname(nickname)
                     },
-                    maxMembers = maxMembers,
-                    onMaxMembersChange = { maxMembers = it.coerceIn(2, 10) },
                     code = code,
                     onCodeChange = {
                         // A pasted link of any shape carries its server; a typed code does not.
@@ -221,8 +235,6 @@ private fun PartyLanding(
     avatarUrl: String?,
     nickname: String,
     onNicknameChange: (String) -> Unit,
-    maxMembers: Int,
-    onMaxMembersChange: (Int) -> Unit,
     code: String,
     onCodeChange: (String) -> Unit,
     server: String,
@@ -244,7 +256,7 @@ private fun PartyLanding(
             Row(horizontalArrangement = Arrangement.spacedBy(18.dp)) {
                 PartyChoiceCard(
                     title = "Start a party",
-                    subtitle = "Choose how friends see you and how many can join.",
+                    subtitle = "Choose how friends see you. Anyone with the link or code can join.",
                     modifier = Modifier.weight(1f),
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -258,29 +270,19 @@ private fun PartyLanding(
                             modifier = Modifier.weight(1f),
                         )
                     }
-                    Spacer(Modifier.height(16.dp))
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text("Party size", fontWeight = FontWeight.Medium)
-                            Text("2–10 people", color = DesktopSecondary, style = MaterialTheme.typography.bodySmall)
-                        }
-                        Stepper("−", enabled && maxMembers > 2) { onMaxMembersChange(maxMembers - 1) }
-                        Text("$maxMembers", modifier = Modifier.width(34.dp), textAlign = TextAlign.Center)
-                        Stepper("+", enabled && maxMembers < 10) { onMaxMembersChange(maxMembers + 1) }
-                    }
-                    Spacer(Modifier.height(16.dp))
+                    Spacer(Modifier.height(20.dp))
                     PrimaryButton("Start party", busy, enabled, onCreate)
                 }
 
                 PartyChoiceCard(
                     title = "Join a party",
-                    subtitle = "Enter the code first. You’ll see who is inside before joining.",
+                    subtitle = "Paste an invite link or type the code. You’ll see who is inside before joining.",
                     modifier = Modifier.weight(1f),
                 ) {
                     OutlinedTextField(
                         value = code,
                         onValueChange = onCodeChange,
-                        label = { Text("Party code") },
+                        label = { Text("Invite link or code") },
                         placeholder = { Text("ABC123") },
                         singleLine = true,
                         textStyle = MaterialTheme.typography.headlineSmall.copy(letterSpacing = 5.sp),
@@ -356,6 +358,8 @@ private fun JoinConfirmation(
     foreignServerHost: String?,
     nickname: String,
     onNicknameChange: (String) -> Unit,
+    playHere: Boolean,
+    onPlayHereChange: (Boolean) -> Unit,
     busy: Boolean,
     error: String?,
     onBack: () -> Unit,
@@ -394,6 +398,8 @@ private fun JoinConfirmation(
             singleLine = true,
             modifier = Modifier.width(360.dp),
         )
+        Spacer(Modifier.height(14.dp))
+        PlayHereRow(playHere, onPlayHereChange, Modifier.width(360.dp), enabled = !busy)
         error?.let { Spacer(Modifier.height(10.dp)); Text(it, color = DesktopDestructive) }
         Spacer(Modifier.height(20.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -409,6 +415,7 @@ private fun PartyRoom(state: DesktopListenTogether.State, activity: List<PartyAc
         LazyColumn(Modifier.weight(1.15f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
             item { RoomHero(state) }
             item { NowPlayingCard(state) }
+            item { PlayHereCard() }
             item { QueueCard(state) }
         }
         LazyColumn(Modifier.weight(.85f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -558,6 +565,36 @@ private fun MembersCard(state: DesktopListenTogether.State) {
     }
 }
 
+/** Where the sound comes out; see [DesktopListenTogether.listenHere]. */
+@Composable
+private fun PlayHereRow(playHere: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+    Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Icon(if (playHere) Icons.Rounded.VolumeUp else Icons.Rounded.VolumeOff, null, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(10.dp))
+        Column(Modifier.weight(1f)) {
+            Text("Play on this computer")
+            Text(
+                if (playHere) "You hear it here, and everyone else on theirs."
+                else "Sound comes only from the host. You still see and control the party.",
+                color = DesktopSecondary,
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+        Switch(playHere, onCheckedChange = onChange, enabled = enabled)
+    }
+}
+
+@Composable
+private fun PlayHereCard() {
+    val playHere by DesktopListenTogether.listenHere.collectAsState()
+    Column(Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(16.dp)).padding(18.dp)) {
+        PlayHereRow(playHere, DesktopListenTogether::setListenHere)
+    }
+}
+
+/** What a new party holds. Small parties are a setting for the host, not a decision at the door. */
+private const val DEFAULT_PARTY_SIZE = 10
+
 @Composable
 private fun HostControls(state: DesktopListenTogether.State) {
     Column(Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(16.dp)).padding(18.dp)) {
@@ -579,8 +616,7 @@ private fun HostControls(state: DesktopListenTogether.State) {
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("Party size")
-                Text("Never removes people already inside.", color = DesktopSecondary, style = MaterialTheme.typography.bodySmall)
+                Text("Party size", color = DesktopSecondary, style = MaterialTheme.typography.bodyMedium)
             }
             Stepper("−", state.maxMembers > maxOf(2, state.members.size)) { DesktopListenTogether.setMaxMembers(state.maxMembers - 1) }
             Text("${state.maxMembers}", modifier = Modifier.width(30.dp), textAlign = TextAlign.Center)
@@ -615,10 +651,15 @@ private fun MemberRow(member: PartyMember, isYou: Boolean, canKick: Boolean, onK
         Column(Modifier.weight(1f)) {
             Text(member.displayName.ifBlank { "Someone" } + if (isYou) " · You" else "", maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(
-                when { member.isHost -> "Host"; !member.connected -> "Away"; else -> "Connected" },
+                when { member.isHost -> "Host"; !member.connected -> "Away"; else -> "Connected" } +
+                    if (member.playsAudio) "" else " · through the host",
                 color = DesktopSecondary,
                 style = MaterialTheme.typography.bodySmall,
             )
+        }
+        if (!member.playsAudio) {
+            Icon(Icons.Rounded.VolumeOff, "Not playing on this device", tint = DesktopSecondary, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(8.dp))
         }
         if (canKick) IconButton(onClick = onKick, modifier = Modifier.size(30.dp)) {
             Icon(Icons.Rounded.RemoveCircleOutline, "Remove", tint = DesktopDestructive, modifier = Modifier.size(18.dp))

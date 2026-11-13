@@ -1613,4 +1613,23 @@
     <string name="trending_title">Trending</string>
     <string name="region_global">Global</string>
     <string name="region_auto">Automatic (IP)</string>
+    <string name="listen_together_you_header">Você</string>
+    <string name="listen_together_you_footer">O seu nome é o que as outras pessoas veem numa party. O nome do dispositivo é como este dispositivo aparece em Conectar, junto dos seus outros dispositivos.</string>
+    <string name="listen_together_your_name">O seu nome nas parties</string>
+    <string name="listen_together_name_default">Nome da sua conta</string>
+    <string name="listen_together_device_name">Nome deste dispositivo</string>
+    <string name="listen_together_name_hint">Nome</string>
+    <string name="listen_together_play_here">Reproduzir neste dispositivo</string>
+    <string name="listen_together_play_here_on">Você ouve aqui e as outras pessoas ouvem nos seus.</string>
+    <string name="listen_together_play_here_off">O som vem apenas do anfitrião. Você continua a ver e a controlar a party.</string>
+    <string name="listen_together_silent_member">Ouvindo pelo anfitrião</string>
+    <string name="disable_blend_effects">Desativar efeitos de mistura</string>
+    <string name="disable_blend_effects_subtitle">Mostra ícones, texto e menus escuros do player em branco simples em vez de tingi-los com a capa</string>
+    <string name="player_theme">Tema do player</string>
+    <string name="player_theme_default">Padrão</string>
+    <string name="player_theme_legacy">Clássico</string>
+    <string name="player_theme_simple">Simples</string>
+    <string name="player_theme_default_subtitle">As cores da capa continuam abaixo dela</string>
+    <string name="player_theme_simple_subtitle">Um desfoque suave da capa atrás de todo o player</string>
+    <string name="player_theme_legacy_subtitle">Traz de volta as manchas de cor flutuantes da v1.5 atrás do player</string>
 </resources>

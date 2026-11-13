@@ -1635,4 +1635,23 @@
     <string name="trending_title">Trending</string>
     <string name="region_global">Global</string>
     <string name="region_auto">Automatic (IP)</string>
+    <string name="listen_together_you_header">Вы</string>
+    <string name="listen_together_you_footer">Ваше имя — то, что другие видят в пати. Имя устройства — то, как это устройство отображается в «Подключении» рядом с вашими другими устройствами.</string>
+    <string name="listen_together_your_name">Ваше имя в пати</string>
+    <string name="listen_together_name_default">Имя вашей учётной записи</string>
+    <string name="listen_together_device_name">Имя этого устройства</string>
+    <string name="listen_together_name_hint">Имя</string>
+    <string name="listen_together_play_here">Играть на этом устройстве</string>
+    <string name="listen_together_play_here_on">Вы слышите это здесь, а остальные — на своих устройствах.</string>
+    <string name="listen_together_play_here_off">Звук идёт только от хоста. Вы по-прежнему видите пати и управляете ею.</string>
+    <string name="listen_together_silent_member">Слушает через хоста</string>
+    <string name="disable_blend_effects">Отключить эффекты смешивания</string>
+    <string name="disable_blend_effects_subtitle">Отображает значки, текст и тёмные меню плеера обычным белым цветом вместо окрашивания в тона обложки</string>
+    <string name="player_theme">Тема плеера</string>
+    <string name="player_theme_default">По умолчанию</string>
+    <string name="player_theme_legacy">Классическая</string>
+    <string name="player_theme_simple">Простая</string>
+    <string name="player_theme_default_subtitle">Цвета обложки плавно продолжаются под ней</string>
+    <string name="player_theme_simple_subtitle">Мягкое размытие обложки позади всего плеера</string>
+    <string name="player_theme_legacy_subtitle">Возвращает плавающие цветные пятна позади плеера из версии 1.5</string>
 </resources>

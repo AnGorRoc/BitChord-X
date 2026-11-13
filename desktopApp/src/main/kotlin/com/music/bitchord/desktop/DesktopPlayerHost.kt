@@ -25,6 +25,7 @@ import com.music.bitchord.ui.player.LyricsTranslationResult
 import com.music.bitchord.ui.player.MAX_LYRICS_OFFSET_MS
 import com.music.bitchord.ui.player.MIN_LYRICS_OFFSET_MS
 import com.music.bitchord.ui.player.OutputFormatUi
+import com.music.bitchord.ui.player.AddedByUi
 import com.music.bitchord.ui.player.PartyUi
 import com.music.bitchord.ui.player.PlayerHost
 import com.music.bitchord.ui.player.PlayerSettingsSource
@@ -163,9 +164,29 @@ internal object DesktopPlayerHost : PlayerHost {
                 members = it.members,
                 you = it.you,
                 code = it.code,
+                addedBy = if (!it.inParty) emptyMap() else buildMap {
+                    it.queue.items.forEach { track ->
+                        val name = track.addedByName
+                        if (!name.isNullOrBlank()) putIfAbsent(track.videoId, AddedByUi(name, track.addedByAvatar))
+                    }
+                },
             )
         }
         .stateIn(scope, SharingStarted.Eagerly, PartyUi())
+
+    // ---- the person's other devices ----------------------------------------------------------
+
+    override val devices: StateFlow<com.music.bitchord.data.listentogether.account.AccountState>
+        get() = DesktopListenTogether.account.state
+
+    /** Where a tap on a device goes — set by the window, which owns the engine. */
+    var onPickDevice: (String, com.music.bitchord.data.listentogether.account.HandoffForce?) -> Unit = { _, _ -> }
+    var onComeBack: () -> Unit = {}
+
+    override fun pickDevice(deviceId: String, force: com.music.bitchord.data.listentogether.account.HandoffForce?) =
+        onPickDevice(deviceId, force)
+
+    override fun comeBackToThisDevice() = onComeBack()
 
     override suspend fun translateLyrics(
         trackId: String,

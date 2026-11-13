@@ -628,3 +628,58 @@ func TestClientIPHeaderWinsBehindTrustedProxy(t *testing.T) {
 		t.Fatalf("expected the peer without a trusted proxy, got %s", got)
 	}
 }
+
+func TestSetListeningIsPerMember(t *testing.T) {
+	ts := setupTestServer()
+	defer ts.Close()
+
+	b, _ := json.Marshal(map[string]string{"userId": "u1", "deviceId": "d1", "displayName": "Host"})
+	res, _ := http.Post(ts.URL+"/api/parties", "application/json", bytes.NewReader(b))
+	var created map[string]interface{}
+	_ = json.NewDecoder(res.Body).Decode(&created)
+	code := created["code"].(string)
+	token := created["token"].(string)
+
+	u, _ := url.Parse(ts.URL)
+	u.Scheme = "ws"
+	u.Path = fmt.Sprintf("/ws/parties/%s", code)
+	headers := http.Header{}
+	headers.Set("Authorization", "Bearer "+token)
+	ws, _, err := websocket.DefaultDialer.Dial(u.String(), headers)
+	if err != nil {
+		t.Fatalf("WebSocket connection failed: %v", err)
+	}
+	defer ws.Close()
+
+	playsAudio := func(frame map[string]interface{}) (bool, bool) {
+		members, _ := frame["members"].([]interface{})
+		if len(members) == 0 {
+			return false, false
+		}
+		m, _ := members[0].(map[string]interface{})
+		v, ok := m["playsAudio"].(bool)
+		return v, ok
+	}
+
+	// Everyone plays aloud until they say otherwise.
+	if err := ws.WriteJSON(map[string]interface{}{"type": protocol.FrameControl, "action": protocol.ActionSetListening, "enabled": false}); err != nil {
+		t.Fatalf("send: %v", err)
+	}
+	var silent bool
+	for i := 0; i < 8 && !silent; i++ {
+		_ = ws.SetReadDeadline(time.Now().Add(2 * time.Second))
+		var f map[string]interface{}
+		if err := ws.ReadJSON(&f); err != nil {
+			break
+		}
+		if f["type"] == protocol.FrameMembers {
+			if v, ok := playsAudio(f); ok && !v {
+				silent = true
+			}
+		}
+	}
+	if !silent {
+		t.Fatalf("expected a members frame with playsAudio=false after setListening")
+	}
+}
+

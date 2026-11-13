@@ -50,6 +50,7 @@ var (
 func main() {
 	go startHeartbeatTicker()
 	go startPresenceSweeper()
+	go startAccountSweeper()
 
 	mux := http.NewServeMux()
 
@@ -58,6 +59,8 @@ func main() {
 	mux.HandleFunc("GET /healthz", handleHealthz)
 	mux.HandleFunc("GET /api/time", handleTime)
 	mux.HandleFunc("GET /api/info", handleInfo)
+	mux.HandleFunc("POST /api/account/connect", handleAccountConnect)
+	mux.HandleFunc("GET /ws/account", handleAccountSocket)
 	mux.HandleFunc("GET /.well-known/assetlinks.json", handleAssetLinks)
 	mux.HandleFunc("POST /api/parties", handleCreateParty)
 	mux.HandleFunc("POST /api/parties/{code}/join", handleJoinParty)
@@ -285,6 +288,10 @@ var serverFeatures = []string{
 	"queueDelta",      // queueAdd / queueRemove / queueClear / queueMove
 	"activity",        // activity frames
 	"inviteLanding",   // GET /invite/{code}
+	"listeningMode",   // setListening, and playsAudio on members
+	"people",             // accountProof on join: one person's devices are one seat; personId on members
+	"addedBy",            // tracks carry who queued them
+	"accountDevices",     // /api/account/connect + /ws/account: a person's devices see each other
 }
 
 // handleInfo describes this server so a client can tell an extended build from
@@ -306,6 +313,7 @@ func handleInfo(w http.ResponseWriter, r *http.Request) {
 			"minMembers":        2,
 			"maxMembers":        10,
 			"maxUpcomingQueue":  config.MaxUpcomingQueue,
+			"maxDevicesPerPerson": party.MaxDevicesPerPerson,
 		},
 		"serverMs": clock.NowMs(),
 	})
@@ -453,7 +461,7 @@ func handleCreateParty(w http.ResponseWriter, r *http.Request) {
 	}
 
 	p.Lock()
-	m, err := p.Join(req.UserId, req.DeviceId, req.DisplayName, req.AvatarUrl)
+	m, err := p.JoinAs(req.UserId, req.DeviceId, req.DisplayName, req.AvatarUrl, req.AccountProof, req.DeviceName)
 	if err != nil {
 		p.Unlock()
 		store.Drop(p.Code)
@@ -498,9 +506,8 @@ func handleJoinParty(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, http.StatusNotFound, "no_such_party", "No party with that code.")
 		return
 	}
-
 	p.Lock()
-	m, err := p.Join(req.UserId, req.DeviceId, req.DisplayName, req.AvatarUrl)
+	m, err := p.JoinAs(req.UserId, req.DeviceId, req.DisplayName, req.AvatarUrl, req.AccountProof, req.DeviceName)
 	if err != nil {
 		p.Unlock()
 		if pe, ok := err.(*party.PartyError); ok {
@@ -547,7 +554,6 @@ func handlePreviewParty(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, http.StatusNotFound, "no_such_party", "No party with that code.")
 		return
 	}
-
 	p.Lock()
 	// Joined order, as the snapshot uses: the caller draws the first few faces
 	// and counts the rest, so which faces those are must not change between two
@@ -1070,6 +1076,7 @@ func handleSocketFrame(p *party.Party, member *party.Member, sc *hub.SafeConn, f
 			}
 			hubInst.Broadcast(p.Code, stateFrame(p), "")
 			if action == protocol.ActionKick ||
+				action == protocol.ActionSetListening ||
 				action == protocol.ActionSetMaxMembers ||
 				action == protocol.ActionSetHostOnlyControl {
 				hubInst.Broadcast(p.Code, membersFrame(p), "")
@@ -1135,6 +1142,7 @@ func applyControl(p *party.Party, member *party.Member, action string, frame map
 			qi := int(qIndex)
 			qIndexPtr = &qi
 		}
+		p.StampQueue([]*party.Track{t}, member)
 		p.Playback.SetTrack(&member.MemberId, t, pos, isPlaying, qIndexPtr, &member.DisplayName)
 		return true, "", ""
 
@@ -1152,6 +1160,7 @@ func applyControl(p *party.Party, member *party.Member, action string, frame map
 		if idxNum, ok := frame["queueIndex"].(float64); ok {
 			qIdx = int(idxNum)
 		}
+		p.StampQueue(tracks, member)
 		p.Playback.SetQueue(&member.MemberId, tracks, qIdx)
 		return true, "", ""
 
@@ -1171,6 +1180,7 @@ func applyControl(p *party.Party, member *party.Member, action string, frame map
 			}
 		}
 		playNext, _ := frame["playNext"].(bool)
+		p.StampAdded(tracksToAdd, member)
 		ok, reason := p.Playback.AddUpcoming(&member.MemberId, tracksToAdd, playNext)
 		if !ok {
 			if reason == "queue_full" {
@@ -1240,6 +1250,14 @@ func applyControl(p *party.Party, member *party.Member, action string, frame map
 		}
 		return true, "", ""
 
+	case protocol.ActionSetListening:
+		enabled, ok := frame["enabled"].(bool)
+		if !ok {
+			return false, "bad_request", "enabled must be true or false."
+		}
+		member.Silent = !enabled
+		return true, "", ""
+
 	case protocol.ActionSetAutoplay:
 		enabled, ok := frame["enabled"].(bool)
 		if !ok {
@@ -1263,13 +1281,20 @@ func applyControl(p *party.Party, member *party.Member, action string, frame map
 		targetID, _ := frame["memberId"].(string)
 		if !member.IsHost { return false, "host_only", "Only the host can remove listeners." }
 		if targetID == "" || targetID == member.MemberId { return false, "invalid_member", "Choose another listener to remove." }
-		if p.Remove(targetID) == nil { return false, "not_found", "That listener is no longer in this party." }
-		hubInst.Send(p.Code, targetID, map[string]interface{}{
-			"type":    protocol.FrameBye,
-			"reason":  "kicked",
-			"message": "The host removed you from this party.",
-		})
-		hubInst.CloseMember(p.Code, targetID)
+		if target, found := p.Members[targetID]; found && target.PersonId == member.PersonId {
+			return false, "invalid_member", "Choose another listener to remove."
+		}
+		// A person leaves with all of their devices.
+		removed := p.RemovePerson(targetID)
+		if len(removed) == 0 { return false, "not_found", "That listener is no longer in this party." }
+		for _, gone := range removed {
+			hubInst.Send(p.Code, gone.MemberId, map[string]interface{}{
+				"type":    protocol.FrameBye,
+				"reason":  "kicked",
+				"message": "The host removed you from this party.",
+			})
+			hubInst.CloseMember(p.Code, gone.MemberId)
+		}
 		return true, "", ""
 
 	default:
@@ -1317,6 +1342,12 @@ func activityFrame(member *party.Member, action string, frame map[string]interfa
 	case protocol.ActionKick: detail = "Removed a listener from the party"
 	case protocol.ActionSetMaxMembers: detail = "Changed the party size"
 	case protocol.ActionSetAutoplay: detail = "Changed AutoPlay"
+	case protocol.ActionSetListening:
+		if enabled, ok := frame["enabled"].(bool); ok && !enabled {
+			detail = "Switched to listening through the host"
+		} else {
+			detail = "Switched to listening on their own device"
+		}
 	}
 	return map[string]interface{}{"type": protocol.FrameActivity, "action": action, "by": member.DisplayName, "detail": detail, "atMs": clock.NowMs()}
 }
@@ -1382,16 +1413,27 @@ func startHeartbeatTicker() {
 			hubInst.Broadcast(p.Code, mf, "")
 		}
 
-		activeCodes := hubInst.ActiveCodes()
-		liveParties := store.All()
-		liveMap := make(map[string]bool)
-		for _, lp := range liveParties {
-			liveMap[lp.Code] = true
+		dropOrphanRooms()
+	}
+}
+
+// dropOrphanRooms closes the sockets of rooms that belong to no live party, which is what is
+// left when a party was swept while somebody still held a socket to it.
+//
+// Account rooms (see account_http.go) share the hub but are not parties, so they never are in the
+// store; they have their own lifetime and are skipped here. Closing them every heartbeat was a
+// real bug: every device's account socket dropped and reconnected every five seconds.
+func dropOrphanRooms() {
+	live := make(map[string]bool)
+	for _, lp := range store.All() {
+		live[lp.Code] = true
+	}
+	for _, code := range hubInst.ActiveCodes() {
+		if strings.HasPrefix(code, accountRoomPrefix) {
+			continue
 		}
-		for _, code := range activeCodes {
-			if !liveMap[code] {
-				hubInst.DropParty(code)
-			}
+		if !live[code] {
+			hubInst.DropParty(code)
 		}
 	}
 }

@@ -6,6 +6,8 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.unit.IntSize
 import com.music.bitchord.data.canvas.CanvasArtwork
 import com.music.bitchord.data.listentogether.PartyMember
+import com.music.bitchord.data.listentogether.account.AccountState
+import com.music.bitchord.data.listentogether.account.HandoffForce
 import com.music.bitchord.data.lyrics.LyricLine
 import com.music.bitchord.data.lyrics.LyricsSource
 import com.music.bitchord.data.model.Song
@@ -120,6 +122,24 @@ interface PlayerHost {
 
     /** Casting to a network receiver. Absent, and so never drawn, where the platform has none. */
     val castState: StateFlow<CastUi> get() = NoCast
+
+    /**
+     * The person's other devices and what each is playing, for the Connect sheet. Absent where the
+     * platform has no account channel; the sheet then shows only the party half.
+     */
+    val devices: StateFlow<AccountState> get() = NoDevices
+
+    /** The person tapped a device: send the sound there, or control it. See HandoffRules. */
+    fun pickDevice(deviceId: String, force: HandoffForce? = null) {}
+
+    /** The person tapped "This device" while another one is the speaker: bring the sound back. */
+    fun comeBackToThisDevice() {}
+
+    /**
+     * "Start a party" or "Join" in the Connect sheet: remembered for the Listen Together screen,
+     * which the caller then opens, so it lands on the right sheet.
+     */
+    fun requestPartyAction(action: PartyAction) {}
 
     /**
      * The BitChord watch app as an output: the watch plays the queue the way a
@@ -353,7 +373,19 @@ data class PartyUi(
     val members: List<PartyMember> = emptyList(),
     val you: PartyMember? = null,
     val code: String? = null,
+    /**
+     * Who queued each song, by video id, for the picture on its cover in the queue. Only songs
+     * somebody queued appear: AutoPlay's suggestions, and anything an older server did not stamp,
+     * have none. A song queued twice shows whoever queued it first.
+     */
+    val addedBy: Map<String, AddedByUi> = emptyMap(),
 )
+
+/** What the Connect sheet can ask of the party screen. */
+enum class PartyAction { START, JOIN }
+
+/** The person who queued a song. */
+data class AddedByUi(val name: String, val avatarUrl: String?)
 
 sealed interface LyricsTranslationResult {
     data class Translated(val lines: List<LyricLine>) : LyricsTranslationResult

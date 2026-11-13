@@ -1631,11 +1631,25 @@ fun NowPlayingScreen(
             )
         }
         if (showListenTogetherMembers) {
-            ListenTogetherMembersSheet(
+            ConnectSheet(
                 hazeState = playerHaze,
                 onDismiss = { showListenTogetherMembers = false },
-                onManage = {
+                onOpenParty = {
                     showListenTogetherMembers = false
+                    onListenTogether()
+                },
+                onOpenSettings = {
+                    showListenTogetherMembers = false
+                    onListenTogether()
+                },
+                onStartParty = {
+                    showListenTogetherMembers = false
+                    PlayerPlatform.host.requestPartyAction(PartyAction.START)
+                    onListenTogether()
+                },
+                onJoinParty = {
+                    showListenTogetherMembers = false
+                    PlayerPlatform.host.requestPartyAction(PartyAction.JOIN)
                     onListenTogether()
                 },
             )

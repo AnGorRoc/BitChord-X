@@ -2,6 +2,7 @@ package protocol
 
 import (
 	"errors"
+	"regexp"
 	"strings"
 )
 
@@ -43,6 +44,10 @@ const (
 	ActionSetMaxMembers = "setMaxMembers"
 	ActionSetAutoplay = "setAutoplay"
 	ActionSetHostOnlyControl = "setHostOnlyControl"
+	// ActionSetListening is a member choosing whether sound comes out of their
+	// own device. It is about the sender only, so it is neither host-only nor
+	// held back by hostOnlyControl.
+	ActionSetListening = "setListening"
 )
 
 // ControlActions are the actions a party's HostOnlyControl setting restricts to
@@ -72,7 +77,15 @@ type JoinRequest struct {
 	AvatarUrl   *string `json:"avatarUrl,omitempty"`
 	MaxMembers  *int    `json:"maxMembers,omitempty"`
 	AutoplayEnabled *bool `json:"autoplayEnabled,omitempty"`
+	// AccountProof is a hash only the person's own devices can produce (64 hex characters). Devices
+	// presenting the same one are the same person in the party. A malformed one is ignored, which
+	// leaves the device a person of its own, exactly as before this field existed.
+	AccountProof string `json:"accountProof,omitempty"`
+	// DeviceName is what the person calls this device ("Pixel", "IOP"); shown under their name.
+	DeviceName string `json:"deviceName,omitempty"`
 }
+
+var accountProofPattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
 // Validate ensures all required identity fields are present and safe.
 func (r *JoinRequest) Validate() error {
@@ -102,6 +115,13 @@ func (r *JoinRequest) Validate() error {
 		} else {
 			r.AvatarUrl = &trimmed
 		}
+	}
+	if !accountProofPattern.MatchString(r.AccountProof) {
+		r.AccountProof = ""
+	}
+	r.DeviceName = strings.TrimSpace(r.DeviceName)
+	if len(r.DeviceName) > 60 {
+		r.DeviceName = r.DeviceName[:60]
 	}
 	if r.MaxMembers != nil && (*r.MaxMembers < 2 || *r.MaxMembers > 10) {
 		return errors.New("maxMembers must be between 2 and 10")

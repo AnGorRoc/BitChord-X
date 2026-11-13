@@ -1588,4 +1588,23 @@
     <string name="trending_title">Trending</string>
     <string name="region_global">Global</string>
     <string name="region_auto">Automatic (IP)</string>
+    <string name="listen_together_you_header">你</string>
+    <string name="listen_together_you_footer">你的名字是其他人在派对中看到的名字。设备名称是这台设备在“连接”中与你其他设备并列显示的名称。</string>
+    <string name="listen_together_your_name">你在派对中的名字</string>
+    <string name="listen_together_name_default">你的账号名称</string>
+    <string name="listen_together_device_name">此设备的名称</string>
+    <string name="listen_together_name_hint">名称</string>
+    <string name="listen_together_play_here">在此设备上播放</string>
+    <string name="listen_together_play_here_on">你在这里听到，其他人在各自的设备上听到。</string>
+    <string name="listen_together_play_here_off">声音只来自主持人。你仍可查看并控制派对。</string>
+    <string name="listen_together_silent_member">通过主持人收听</string>
+    <string name="disable_blend_effects">禁用混合效果</string>
+    <string name="disable_blend_effects_subtitle">以纯白色显示播放器图标、文字和深色菜单，而非随封面着色</string>
+    <string name="player_theme">播放器主题</string>
+    <string name="player_theme_default">默认</string>
+    <string name="player_theme_legacy">经典</string>
+    <string name="player_theme_simple">简洁</string>
+    <string name="player_theme_default_subtitle">封面自身的色彩将向下方自然延伸</string>
+    <string name="player_theme_simple_subtitle">在整个播放器背后呈现柔和的封面模糊效果</string>
+    <string name="player_theme_legacy_subtitle">恢复 v1.5 版本中播放器背后的流动色块效果</string>
 </resources>

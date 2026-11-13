@@ -1588,4 +1588,23 @@
     <string name="trending_title">Trending</string>
     <string name="region_global">Global</string>
     <string name="region_auto">Automatic (IP)</string>
+    <string name="listen_together_you_header">Anda</string>
+    <string name="listen_together_you_footer">Nama Anda adalah yang dilihat orang lain di party. Nama perangkat adalah cara perangkat ini muncul di Hubungkan, di samping perangkat Anda yang lain.</string>
+    <string name="listen_together_your_name">Nama Anda di party</string>
+    <string name="listen_together_name_default">Nama akun Anda</string>
+    <string name="listen_together_device_name">Nama perangkat ini</string>
+    <string name="listen_together_name_hint">Nama</string>
+    <string name="listen_together_play_here">Putar di perangkat ini</string>
+    <string name="listen_together_play_here_on">Anda mendengarnya di sini dan yang lain di perangkat masing-masing.</string>
+    <string name="listen_together_play_here_off">Suara hanya berasal dari host. Anda tetap melihat dan mengendalikan party.</string>
+    <string name="listen_together_silent_member">Mendengarkan lewat host</string>
+    <string name="disable_blend_effects">Nonaktifkan efek perpaduan</string>
+    <string name="disable_blend_effects_subtitle">Menampilkan ikon, teks, dan menu gelap pemutar dalam warna putih polos alih-alih mengikuti warna sampul</string>
+    <string name="player_theme">Tema pemutar</string>
+    <string name="player_theme_default">Default</string>
+    <string name="player_theme_legacy">Klasik</string>
+    <string name="player_theme_simple">Sederhana</string>
+    <string name="player_theme_default_subtitle">Warna sampul berlanjut ke bagian bawahnya</string>
+    <string name="player_theme_simple_subtitle">Blur lembut dari sampul di belakang seluruh pemutar</string>
+    <string name="player_theme_legacy_subtitle">Mengembalikan gumpalan warna bergerak di belakang pemutar dari v1.5</string>
 </resources>

@@ -27,6 +27,7 @@ import com.music.bitchord.data.model.ArtistRef
 import com.music.bitchord.data.model.NOTIFICATION_ART_PX
 import com.music.bitchord.data.model.PlaybackSourceType
 import com.music.bitchord.data.model.QueueTier
+import com.music.bitchord.data.listentogether.ListenTogether
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.model.artworkAt
 import com.music.bitchord.data.sources.SourceKind
@@ -115,6 +116,21 @@ fun MediaController.toggleShuffle() {
     )
 }
 
+/**
+ * While this device is only a remote for the one that is playing (see "Play on this device"), a
+ * song the listener picks goes to the party, not to the local player: starting it here would play
+ * it aloud on a device that was asked to stay quiet. True means it was handled.
+ */
+private fun routedToRemote(songs: List<Song>, startIndex: Int): Boolean {
+    val party = ListenTogether.state.value
+    if (!party.inParty || ListenTogether.listenHere.value) return false
+    val tracks = songs.drop(startIndex.coerceAtLeast(0))
+        .filterNot { it.videoId.startsWith("content://") || it.videoId.startsWith("file://") }
+        .take(1 + ListenTogether.maxUpcomingQueue())
+        .map { it.toPartyTrack(0L) }
+    return ListenTogether.routeToParty(tracks, 0)
+}
+
 /** Starts an album/playlist through the service-owned bounded context window. */
 suspend fun MediaController.playBoundedContext(
     songs: List<Song>,
@@ -123,6 +139,7 @@ suspend fun MediaController.playBoundedContext(
     continuationToken: String?,
     shuffle: Boolean = QueueShuffle.enabled.value,
 ) {
+    if (routedToRemote(songs, startIndex)) return
     val token = BoundedContextRequests.put(
         BoundedContextRequests.Request(
             songs = songs,
@@ -893,6 +910,7 @@ fun mediaIdIn(uri: Uri): String? = if (uri.authority == "source") {
  */
 suspend fun MediaController.playSongs(songs: List<Song>, startIndex: Int) {
     if (songs.isEmpty()) return
+    if (routedToRemote(songs, startIndex)) return
     sendCustomCommand(
         SessionCommand(ACTION_CLEAR_BOUNDED_CONTEXT, Bundle.EMPTY),
         Bundle.EMPTY,

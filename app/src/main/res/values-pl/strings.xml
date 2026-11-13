@@ -1646,4 +1646,23 @@
     <string name="trending_title">Trending</string>
     <string name="region_global">Global</string>
     <string name="region_auto">Automatic (IP)</string>
+    <string name="listen_together_you_header">Ty</string>
+    <string name="listen_together_you_footer">Twoje imię to to, co inni widzą w party. Nazwa urządzenia to sposób, w jaki to urządzenie pojawia się w Połącz obok Twoich innych urządzeń.</string>
+    <string name="listen_together_your_name">Twoje imię w party</string>
+    <string name="listen_together_name_default">Nazwa Twojego konta</string>
+    <string name="listen_together_device_name">Nazwa tego urządzenia</string>
+    <string name="listen_together_name_hint">Nazwa</string>
+    <string name="listen_together_play_here">Odtwarzaj na tym urządzeniu</string>
+    <string name="listen_together_play_here_on">Słyszysz to tutaj, a pozostali na swoich urządzeniach.</string>
+    <string name="listen_together_play_here_off">Dźwięk pochodzi tylko od gospodarza. Nadal widzisz party i możesz nim sterować.</string>
+    <string name="listen_together_silent_member">Słucha przez gospodarza</string>
+    <string name="disable_blend_effects">Wyłącz efekty przenikania</string>
+    <string name="disable_blend_effects_subtitle">Wyświetla ikony, tekst i ciemne menu odtwarzacza w zwykłej bieli zamiast barwić je kolorami okładki</string>
+    <string name="player_theme">Motyw odtwarzacza</string>
+    <string name="player_theme_default">Domyślny</string>
+    <string name="player_theme_legacy">Klasyczny</string>
+    <string name="player_theme_simple">Prosty</string>
+    <string name="player_theme_default_subtitle">Kolory okładki przechodzą płynnie poniżej niej</string>
+    <string name="player_theme_simple_subtitle">Delikatne rozmycie okładki za całym odtwarzaczem</string>
+    <string name="player_theme_legacy_subtitle">Przywraca dryfujące plamy kolorów z wersji 1.5 za odtwarzaczem</string>
 </resources>

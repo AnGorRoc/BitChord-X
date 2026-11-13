@@ -1,6 +1,9 @@
 package com.music.bitchord.desktop
 
 import com.music.bitchord.data.listentogether.ApiError
+import com.music.bitchord.data.listentogether.DeviceGroup
+import com.music.bitchord.data.listentogether.account.AccountDevices
+import com.music.bitchord.data.listentogether.account.DeviceSelf
 import com.music.bitchord.data.listentogether.JoinRequest
 import com.music.bitchord.data.listentogether.PartyActivity
 import com.music.bitchord.data.listentogether.PartyMember
@@ -395,6 +398,7 @@ internal object DesktopListenTogether {
         clock.reset()
         token = null
         activePartyServerBase = null
+        _listenHere.value = true
         persistence.saveString(KEY_CODE, "")
         persistence.saveString(KEY_TOKEN, "")
         persistence.saveString(KEY_ACTIVE_SERVER, "")
@@ -455,6 +459,146 @@ internal object DesktopListenTogether {
 
     fun setHostOnlyControl(enabled: Boolean) =
         control("setHostOnlyControl") { put("enabled", enabled) }
+
+    // ------------------------------------------------------ where it plays --
+
+    private val _listenHere = MutableStateFlow(true)
+
+    /**
+     * Whether sound comes out of this computer. False follows the party and can control it while
+     * the music plays from somewhere else, such as the host's speakers: nothing is loaded or
+     * played here and nothing this player does is published.
+     *
+     * Kept in memory only, on purpose: it describes this party, and every new one starts aloud.
+     */
+    val listenHere: StateFlow<Boolean> = _listenHere.asStateFlow()
+
+    private val featureCache = java.util.concurrent.ConcurrentHashMap<String, Set<String>>()
+
+    /** What the server holding the current party supports; empty for the original server. */
+    private suspend fun serverFeatures(server: String): Set<String> =
+        featureCache[server] ?: fetchFeatures(server)?.also { featureCache[server] = it } ?: emptySet()
+
+    /**
+     * What a server's `/api/info` lists, or null when it could not be read. Only a real answer is
+     * remembered: an unreachable or restarting server must not stay "without features" until the
+     * app is closed.
+     */
+    private suspend fun fetchFeatures(server: String): Set<String>? = runCatching {
+        val response = http.get("$server/api/info") { timeout { requestTimeoutMillis = 8_000 } }
+        if (response.status.isSuccess()) PartyServers.parseFeatures(response.bodyAsText()) else emptySet()
+    }.getOrNull()
+
+    /**
+     * Chooses whether sound plays on this computer. The choice always applies here; it is only
+     * *announced* to the party (the speaker icon beside the name) on a server that understands it.
+     */
+    fun setListenHere(enabled: Boolean) {
+        _listenHere.value = enabled
+        announceListening()
+    }
+
+
+    // ----------------------------------------------------------- my devices --
+
+    /**
+     * Opens this person's own room, shared by every device signed in to the same account.
+     *
+     * The key to it comes from the account itself (see [DeviceGroup]), so there is nothing to type,
+     * scan or approve. The first device in plays; later ones arrive as controllers, and "Play on
+     * this computer" hands the sound over. Only servers that list `myDevices` have it.
+     */
+    // ----------------------------------------------------- my devices (account) --
+
+    /**
+     * This computer's link to the person's other devices: who is online, what each plays, and
+     * handing the sound around. Runs for as long as the app does; a server without the channel
+     * makes it settle into UNSUPPORTED by itself. See [AccountDevices].
+     */
+    val account: AccountDevices by lazy {
+        AccountDevices(
+            http = http,
+            scope = scope,
+            serverBase = { resolveIdleServer().takeIf { it.isNotBlank() }?.let(::httpBaseOf) },
+            proof = { accountProof() },
+            self = { DeviceSelf(deviceId(), deviceName(), "computer") },
+        )
+    }
+
+    /** What this computer is called in the Connect list: the person's choice, else its host name. */
+    fun deviceName(): String =
+        persistence.string(KEY_DEVICE_NAME).trim().takeIf { it.isNotBlank() } ?: defaultDeviceName()
+
+    fun setDeviceName(name: String) {
+        persistence.saveString(KEY_DEVICE_NAME, name.trim().take(60))
+        if (name.isNotBlank()) account.rename(name.trim().take(60))
+    }
+
+    private fun defaultDeviceName(): String =
+        System.getenv("COMPUTERNAME")?.takeIf { it.isNotBlank() }
+            ?: System.getenv("HOSTNAME")?.takeIf { it.isNotBlank() }
+            ?: runCatching { java.net.InetAddress.getLocalHost().hostName }.getOrNull()?.takeIf { it.isNotBlank() }
+            ?: "Computer"
+
+    private fun httpBaseOf(server: String): String =
+        if (server.startsWith("http://") || server.startsWith("https://")) server else "https://$server"
+
+    /**
+     * The proof this account's devices share, or null when it cannot be had now. Made on first use
+     * and remembered, so the library is asked once per account.
+     */
+    private suspend fun accountProof(): String? {
+        // A test seam: a development run can be put in an account by environment, without a Google
+        // sign-in. An ordinary run never has it set.
+        System.getenv("BITCHORD_DEBUG_ACCOUNT_PROOF")?.takeIf { it.length == 64 }?.let { return it }
+        val who = identity() ?: return null
+        val key = KEY_ACCOUNT_SECRET + who.userId
+        val secret = persistence.string(key).takeIf { it.isNotBlank() }
+            ?: DeviceGroup.ensureSecret().getOrNull()?.also { persistence.saveString(key, it) }
+            ?: return null
+        return DeviceGroup.groupId(secret)
+    }
+
+    /**
+     * Adds what the listener queued to the device that is playing, when this computer is only a
+     * remote for it. True means it was handled and the caller must not touch the local queue.
+     */
+    fun routeEnqueue(tracks: List<PartyTrack>, playNext: Boolean): Boolean {
+        val party = _state.value
+        if (!party.inParty || _listenHere.value) return false
+        if (!party.controlsLocked && tracks.isNotEmpty()) queueAdd(tracks, playNext)
+        return true
+    }
+
+    /**
+     * Sends what the listener just picked to the device that is playing, when this computer is
+     * only a remote for it. True means it was handled and the caller must not start the local
+     * engine.
+     */
+    fun routeToParty(tracks: List<PartyTrack>, index: Int): Boolean {
+        val party = _state.value
+        if (!party.inParty || _listenHere.value) return false
+        // Locked out by the host: nothing to send, and starting it here would play it aloud.
+        if (party.controlsLocked || tracks.isEmpty()) return true
+        val at = index.coerceIn(tracks.indices)
+        // The queue first, then the track pointing into it.
+        setQueue(tracks, at)
+        setTrack(tracks[at], 0L, true)
+        return true
+    }
+
+    /** True while this computer follows the party without making its sound: it is a remote. */
+    val isRemote: Boolean get() = _state.value.inParty && !_listenHere.value
+
+    private fun announceListening() {
+        val server = activePartyServerBase ?: return
+        if (!_state.value.inParty) return
+        scope.launch {
+            if (PartyServers.FEATURE_LISTENING_MODE in serverFeatures(server)) {
+                control("setListening") { put("enabled", _listenHere.value) }
+            }
+        }
+    }
 
     private fun control(action: String, body: JsonObjectBuilder.() -> Unit) {
         if (_state.value.controlsLocked) return
@@ -600,6 +744,8 @@ internal object DesktopListenTogether {
                         error = null,
                     )
                 }
+                // A first arrival has not yet said how it listens.
+                if (!_listenHere.value) announceListening()
             }
 
             "pong" -> {
@@ -913,6 +1059,8 @@ internal object DesktopListenTogether {
     private const val KEY_TOKEN = "listen_together_token"
     private const val KEY_DEVICE = "listen_together_device"
     private const val KEY_NICKNAME = "listen_together_nickname"
+    private const val KEY_DEVICE_NAME = "listen_together_device_name"
+    private const val KEY_ACCOUNT_SECRET = "listen_together_account_secret_"
     private const val KEY_ACTIVE_SERVER = "listen_together_active_server"
     private const val KEY_KICKED = "listen_together_kicked_until"
     private const val SERVER_PLACEHOLDER = "<party server>"

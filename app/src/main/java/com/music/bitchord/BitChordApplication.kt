@@ -163,6 +163,8 @@ class BitChordApplication : Application(), SingletonImageLoader.Factory {
         // and the clock offset are not restored — both are re-established on
         // the next connect, which is the only way to be sure they are current.
         ListenTogether.init(this)
+        // This device joins its owner's other devices, so each can see and pick the others.
+        ListenTogether.account.start()
         SearchHistory.init(this)
         LastPlayed.init(this)
         BoundedContextPersistence.init(this)

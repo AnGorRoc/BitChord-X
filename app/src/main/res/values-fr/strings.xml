@@ -1609,4 +1609,23 @@
     <string name="trending_title">Trending</string>
     <string name="region_global">Global</string>
     <string name="region_auto">Automatic (IP)</string>
+    <string name="listen_together_you_header">Vous</string>
+    <string name="listen_together_you_footer">Votre nom est celui que les autres voient dans une party. Le nom de l’appareil est celui qui s’affiche dans Connexion, à côté de vos autres appareils.</string>
+    <string name="listen_together_your_name">Votre nom dans les parties</string>
+    <string name="listen_together_name_default">Nom de votre compte</string>
+    <string name="listen_together_device_name">Nom de cet appareil</string>
+    <string name="listen_together_name_hint">Nom</string>
+    <string name="listen_together_play_here">Lire sur cet appareil</string>
+    <string name="listen_together_play_here_on">Vous l’entendez ici et les autres l’entendent sur le leur.</string>
+    <string name="listen_together_play_here_off">Le son vient uniquement de l’hôte. Vous voyez et contrôlez toujours la party.</string>
+    <string name="listen_together_silent_member">Écoute via l’hôte</string>
+    <string name="disable_blend_effects">Désactiver les effets de fusion</string>
+    <string name="disable_blend_effects_subtitle">Affiche les icônes, le texte et les menus sombres du lecteur en blanc uni au lieu de les teinter avec la pochette</string>
+    <string name="player_theme">Thème du lecteur</string>
+    <string name="player_theme_default">Par défaut</string>
+    <string name="player_theme_legacy">Classique</string>
+    <string name="player_theme_simple">Simple</string>
+    <string name="player_theme_default_subtitle">Les couleurs de la pochette se prolongent en dessous</string>
+    <string name="player_theme_simple_subtitle">Un léger flou de la pochette derrière tout le lecteur</string>
+    <string name="player_theme_legacy_subtitle">Ramène les taches de couleur flottantes de la v1.5 derrière le lecteur</string>
 </resources>
