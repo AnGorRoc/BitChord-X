@@ -1691,6 +1691,22 @@ object ListenTogether {
                 "Couldn’t let you in — you’ve recently been kicked out of this party.",
             )
         }
+        refuseIfOnMyOtherDevice(code)
+    }
+
+    /**
+     * A party that one of the person's own devices is already in is that person's seat: a second
+     * device does not join it, whatever way the invite came. The sound moves between their devices
+     * with the others, not by sitting twice in the same party.
+     */
+    private fun refuseIfOnMyOtherDevice(code: String) {
+        val own = account.state.value.others.firstOrNull {
+            it.connected && it.partyCode.equals(code, ignoreCase = true)
+        } ?: return
+        throw PartyException(
+            "already_on_your_device",
+            "You’re already in this party on “${own.name}”, one of your own devices.",
+        )
     }
 
     /**

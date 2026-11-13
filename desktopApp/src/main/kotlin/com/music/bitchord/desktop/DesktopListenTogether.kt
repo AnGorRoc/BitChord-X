@@ -1062,6 +1062,19 @@ internal object DesktopListenTogether {
                 "Couldn't let you in — you've recently been removed from this party.",
             )
         }
+        refuseIfOnMyOtherDevice(code)
+    }
+
+    /** See the phone's twin: one of the person's own devices already in the party is their seat. */
+    private fun refuseIfOnMyOtherDevice(code: String) {
+        val clean = cleanCode(code)
+        val own = account.state.value.others.firstOrNull {
+            it.connected && it.partyCode.equals(clean, ignoreCase = true)
+        } ?: return
+        throw PartyException(
+            "already_on_your_device",
+            "You're already in this party on “${own.name}”, one of your own devices.",
+        )
     }
 
     /**
