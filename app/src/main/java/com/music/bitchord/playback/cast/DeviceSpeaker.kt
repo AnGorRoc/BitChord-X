@@ -389,7 +389,7 @@ internal class DeviceSpeaker(
         intentAt = NEVER
         // What the target is already playing is known; starting from it is what keeps this phone's
         // own mirror from looking like a change.
-        status = account.state.value.devices.firstOrNull { it.deviceId == deviceId }?.nowPlaying?.let(::statusOf)
+        status = account.state.value.devices.firstOrNull { it.deviceId == deviceId }?.playhead()?.let(::statusOf)
         // And whether it is playing: a phone that connects to a device that is playing shows playing,
         // not the stale "paused" it had before it was anything's remote.
         wantsPlay = status?.isPlaying == true
@@ -645,7 +645,7 @@ internal class DeviceSpeaker(
             if (expected != null && SystemClock.elapsedRealtime() < navUntil && np.videoId != expected) return
             if (expected != null && np.videoId == expected) navExpected = null
             val before = status
-            status = statusOf(np)
+            status = statusOf(target.playhead() ?: np)
             requestedAt = 0L
             // A song change that comes with "not playing" is the target loading it, not pausing.
             val changedSong = before != null && before.mediaId != np.videoId

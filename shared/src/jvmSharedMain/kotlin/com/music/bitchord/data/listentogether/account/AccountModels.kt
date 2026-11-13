@@ -6,6 +6,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
 
 /** What a device says it is playing. The device itself is the only source of it. */
 @Serializable
@@ -23,6 +24,21 @@ data class AccountNowPlaying(
     val updatedAtMs: Long = 0L,
 )
 
+/**
+ * The playhead of a song that is playing moves on with the clock, but the device only reports it when
+ * it jumps, so the last report can be minutes old. Both stamps are the server's own, so the age is exact
+ * whatever the clocks of the devices read: the position is brought up to the moment of the frame.
+ */
+internal fun AccountNowPlaying.brought(serverMs: Long?): AccountNowPlaying {
+    if (serverMs == null || !isPlaying || anchorMs <= 0L || serverMs <= anchorMs) return this
+    return copy(positionMs = (positionMs + (serverMs - anchorMs)).let { if (durationMs > 0) it.coerceAtMost(durationMs) else it }, anchorMs = serverMs)
+}
+
+/** What this song would read now, [ageMs] after the report was brought up to date. */
+internal fun AccountNowPlaying.aged(ageMs: Long): AccountNowPlaying =
+    if (!isPlaying || ageMs <= 0L) this
+    else copy(positionMs = (positionMs + ageMs).let { if (durationMs > 0) it.coerceAtMost(durationMs) else it })
+
 /** One of the person's devices, as the server lists it. */
 @Serializable
 data class AccountDevice(
@@ -32,6 +48,8 @@ data class AccountDevice(
     val connected: Boolean = false,
     val lastSeenMs: Long = 0L,
     val nowPlaying: AccountNowPlaying? = null,
+    /** When this device's entry arrived here (this device's own clock; not on the wire), to age its playhead. */
+    @kotlinx.serialization.Transient val receivedAtMs: Long = 0L,
     /** The device currently acting as this one's remote. */
     val controlledBy: String? = null,
     /** The device this one is acting as the remote of. */
@@ -49,6 +67,10 @@ data class AccountDevice(
 
     /** A song in its player, playing or paused: devices publish nothing when they have none. */
     val hasMusic: Boolean get() = connected && nowPlaying != null
+
+    /** What this device is playing, with the playhead moved on to this moment. */
+    fun playhead(): AccountNowPlaying? =
+        nowPlaying?.aged(if (receivedAtMs > 0L) System.currentTimeMillis() - receivedAtMs else 0L)
 }
 
 /** How this device asks to be treated by the person's others. The default is today's behaviour. */
@@ -143,8 +165,10 @@ object AccountFrames {
         val type = frame["type"]?.jsonPrimitive?.contentOrNull
         if (type != "devices" && type != "welcome") return null
         val array = frame["devices"] as? kotlinx.serialization.json.JsonArray ?: return null
+        val serverMs = frame["serverMs"]?.jsonPrimitive?.longOrNull
+        val receivedAt = System.currentTimeMillis()
         return array.mapNotNull { runCatching { json.decodeFromJsonElement(AccountDevice.serializer(), it) }.getOrNull() }
-            .map { it.copy(controlledBy = it.controlledBy?.ifBlank { null }, controlling = it.controlling?.ifBlank { null }) }
+            .map { it.copy(controlledBy = it.controlledBy?.ifBlank { null }, controlling = it.controlling?.ifBlank { null }, nowPlaying = it.nowPlaying?.brought(serverMs), receivedAtMs = receivedAt) }
     }
 
     fun command(frame: JsonObject): DeviceCommand? {

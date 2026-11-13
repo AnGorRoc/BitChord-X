@@ -149,8 +149,12 @@ class AccountDevices(
         val previous = lastPublished
         if (np == previous) return
         val now = System.nanoTime()
+        // The length of the song is known a moment after it starts, and the title and cover can arrive late
+        // too: a report that only adds those is news for a device that is watching, never a repeat.
         if (np != null && previous != null && np.videoId == previous.videoId &&
             np.isPlaying == previous.isPlaying && np.volume == previous.volume &&
+            np.durationMs == previous.durationMs && np.title == previous.title &&
+            np.artist == previous.artist && np.thumbnailUrl == previous.thumbnailUrl &&
             kotlin.math.abs(np.positionMs - expectedPosition(previous, now)) < POSITION_JITTER_MS
         ) return
         lastPublished = np

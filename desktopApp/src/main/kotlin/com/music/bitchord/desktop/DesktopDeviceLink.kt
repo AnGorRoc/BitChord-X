@@ -472,7 +472,7 @@ internal class DesktopDeviceLink(
         active = true
         holdPlayingUntilNanos = NEVER
         intentAtNanos = NEVER
-        status = account.state.value.devices.firstOrNull { it.deviceId == deviceId }?.nowPlaying?.let(::statusOf)
+        status = account.state.value.devices.firstOrNull { it.deviceId == deviceId }?.playhead()?.let(::statusOf)
         // A computer that connects to a device that is playing shows playing, not a stale "paused".
         wantsPlay = status?.isPlaying == true
         refreshOverlay()
@@ -659,7 +659,7 @@ internal class DesktopDeviceLink(
         val np = target.nowPlaying
         if (np != null && np.updatedAtMs != status?.stamp) {
             val before = status
-            status = statusOf(np)
+            status = statusOf(target.playhead() ?: np)
             requestedAtNanos = 0L
             // A song change that comes with "not playing" is the target loading it, not pausing.
             val changedSong = before != null && before.mediaId != np.videoId
