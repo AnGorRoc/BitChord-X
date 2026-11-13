@@ -5,18 +5,7 @@ import com.music.bitchord.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.FastOutLinearInEasing
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -58,11 +47,9 @@ import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.input.pointer.util.addPointerInputChange
 import androidx.compose.ui.layout.LayoutCoordinates
-import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onPlaced
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.lerp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.music.bitchord.data.model.ROW_ART_PX
@@ -74,6 +61,7 @@ import com.music.bitchord.sharedui.resources.ic_player_next
 import com.music.bitchord.ui.components.thumbnailBorder
 import com.music.bitchord.ui.haptics.Haptic
 import com.music.bitchord.ui.haptics.rememberHaptics
+import com.music.bitchord.playback.MusicOnlyPlayback
 import com.music.bitchord.ui.player.PlayerDock
 import com.music.bitchord.ui.player.AndroidMusicVideo
 import androidx.compose.ui.layout.ContentScale
@@ -86,7 +74,6 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 import org.jetbrains.compose.resources.painterResource
 import kotlin.math.abs
-import kotlin.math.roundToInt
 import kotlin.math.sqrt
 
 /**
@@ -269,7 +256,7 @@ internal fun Modifier.miniPlayerGestures(
                 change.consume()
                 start = change
             }
-            val slopped = start
+            val slopped = start ?: return@awaitEachGesture
 
             if (!vertical) {
                 var dragged = slopped.position.x - down.position.x
@@ -355,13 +342,8 @@ internal fun Modifier.playerDockArt(dock: PlayerDock?, corner: Dp): Modifier {
         .graphicsLayer { alpha = if (dock.coversMiniArt) 0f else 1f }
 }
 
-/** The slim bar's cover, row padding and transport slot height — see [MiniPlayer]'s `compact`. */
-private val COMPACT_ART_HEIGHT = 30.dp
-private val COMPACT_PADDING_VERTICAL = 5.dp
-private val COMPACT_GLYPH_SLOT_HEIGHT = 34.dp
-
-/** Roughly the keyboard's own animation, so the bar settles with it. */
-private const val COMPACT_MILLIS = 220
+/** The mini player's cover for a music video: 16:9 at the cover's 40dp height. */
+private val VIDEO_ART_WIDTH = 71.dp
 
 /** Frosted mini player that rides just above the floating tab bar. */
 @OptIn(ExperimentalHazeMaterialsApi::class)
@@ -382,38 +364,15 @@ fun MiniPlayer(
     dock: PlayerDock? = null,
     /** Dragging the bar up into the player. */
     pull: MiniPlayerPull? = null,
-    /**
-     * A slimmer bar — smaller cover, one line, no skip — for while the keyboard
-     * is up and the page above wants the room more than the controls do.
-     */
-    compact: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
     val haptics = rememberHaptics()
-    // One value drives every part of the slimming — cover, padding, the artist
-    // line, the transport slots — so they all arrive on the same frame. Each on
-    // an animation of its own settled at its own moment, and the bar visibly
-    // twitched as the last of them landed.
-    val compaction by animateFloatAsState(
-        targetValue = if (compact) 1f else 0f,
-        animationSpec = tween(durationMillis = COMPACT_MILLIS, easing = FastOutSlowInEasing),
-        label = "miniCompaction",
-    )
-    val clampedCompaction = compaction.coerceIn(0f, 1f)
-    val artHeight = lerp(40.dp, COMPACT_ART_HEIGHT, clampedCompaction)
-    val rowPadding = lerp(ROW_PADDING_VERTICAL, COMPACT_PADDING_VERTICAL, clampedCompaction)
-    // Only the slots' height gives: their width stays, so play and skip keep
-    // the places they have on the full bar.
-    val glyphSlotHeight = lerp(GLYPH_SLOT, COMPACT_GLYPH_SLOT_HEIGHT, clampedCompaction)
     // percent rather than a dp figure, so the corner stays exactly half the
     // height if the row's contents ever change it — which is what keeps a pill
     // a pill instead of a rounded rectangle. Same idiom as [FloatingBottomBar]
     // directly below it, so the two shapes are the same family.
     val shape = RoundedCornerShape(percent = 50)
-    val useGlass = LocalLiquidGlassEnabled.current && isGlassSupported()
-    val barTint = glassBarTint()
-    val contentColor = if (useGlass) glassContentColor() else MaterialTheme.colorScheme.onBackground
     Box(
         modifier = modifier
             .padding(horizontal = BAR_GUTTER)
@@ -435,8 +394,6 @@ fun MiniPlayer(
             .then(
                 if (reduceDynamicBlur) {
                     Modifier.background(MaterialTheme.colorScheme.surface)
-                } else if (useGlass) {
-                    Modifier.liquidGlass(shape = shape, surfaceTint = barTint)
                 } else {
                     Modifier.optimizedHazeEffect(
                         state = hazeState,
@@ -444,7 +401,7 @@ fun MiniPlayer(
                     )
                 },
             )
-            .border(GLASS_EDGE_WIDTH, GLASS_EDGE_COLOR, shape)
+            .border(0.5.dp, Color.White.copy(alpha = 0.10f), shape)
             // Deliberately silent: the whole bar is the target, so it catches
             // stray taps meant for the page behind it, and the sheet rising is
             // its own confirmation. The glyphs on it still buzz.
@@ -455,20 +412,20 @@ fun MiniPlayer(
                 .fillMaxWidth()
                 .padding(
                     horizontal = ROW_PADDING_HORIZONTAL,
-                    vertical = rowPadding,
+                    vertical = ROW_PADDING_VERTICAL,
                 ),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // A music video plays here at its own 16:9, as the web player's
             // mini player does, rather than cropped into the square cover.
+            val showsPicture = song.isVideo && MusicOnlyPlayback.showsPicture(song.videoId)
             val artWidth by animateDpAsState(
-                targetValue = if (song.isVideo) artHeight * (16f / 9f) else artHeight,
-                animationSpec = tween(durationMillis = COMPACT_MILLIS, easing = FastOutSlowInEasing),
+                targetValue = if (showsPicture && !VideoThumbnails.square) VIDEO_ART_WIDTH else 40.dp,
                 label = "miniArtWidth",
             )
             Box(
                 modifier = Modifier
-                    .size(width = artWidth, height = artHeight)
+                    .size(width = artWidth, height = 40.dp)
                     .playerDockArt(dock, ART_CORNER)
                     .clip(RoundedCornerShape(ART_CORNER))
                     .thumbnailBorder(RoundedCornerShape(ART_CORNER))
@@ -483,7 +440,7 @@ fun MiniPlayer(
                 // A music video keeps playing in the cover's place, cropped to
                 // it, as the web player's mini player does — the full player,
                 // when it is up, takes the picture over.
-                if (song.isVideo) {
+                if (showsPicture) {
                     AndroidMusicVideo(
                         videoId = song.videoId,
                         fit = false,
@@ -500,28 +457,20 @@ fun MiniPlayer(
                 ExplicitSongTitle(
                     song = song,
                     style = MaterialTheme.typography.titleMedium,
-                    color = contentColor,
-                    badgeColor = if (useGlass) contentColor.copy(alpha = 0.7f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    badgeColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     fadeOverflow = true,
                 )
                 FadingLine(
                     text = song.artist,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = if (useGlass) contentColor.copy(alpha = 0.65f) else MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier
-                        .layout { measurable, constraints ->
-                            val placeable = measurable.measure(constraints)
-                            val factor = (1f - compaction).coerceIn(0f, 1f)
-                            val height = (placeable.height * factor).roundToInt().coerceAtLeast(0)
-                            layout(placeable.width, height) { placeable.place(0, 0) }
-                        }
-                        .graphicsLayer { alpha = (1f - compaction).coerceIn(0f, 1f) },
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
             if (isLoading) {
-                Box(Modifier.size(width = GLYPH_SLOT, height = glyphSlotHeight), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(GLYPH_SLOT), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(
-                        color = contentColor,
+                        color = MaterialTheme.colorScheme.onBackground,
                         strokeWidth = 2.dp,
                         modifier = Modifier.size(SPINNER_SIZE),
                     )
@@ -532,33 +481,14 @@ fun MiniPlayer(
                         haptics.play(if (isPlaying) Haptic.Pause else Haptic.Resume)
                         onPlayPause()
                     },
-                    modifier = Modifier.size(width = GLYPH_SLOT, height = glyphSlotHeight),
+                    modifier = Modifier.size(GLYPH_SLOT),
                 ) {
-                    AnimatedContent(
-                        targetState = isPlaying,
-                        transitionSpec = {
-                            (fadeIn(animationSpec = tween(140)) +
-                                scaleIn(
-                                    initialScale = 0.45f,
-                                    animationSpec = spring(dampingRatio = 0.42f, stiffness = 420f),
-                                )
-                            ).togetherWith(
-                                fadeOut(animationSpec = tween(100)) +
-                                scaleOut(
-                                    targetScale = 0.45f,
-                                    animationSpec = tween(100, easing = FastOutLinearInEasing),
-                                )
-                            )
-                        },
-                        label = "miniPlayPauseMorph",
-                    ) { playing ->
-                        Icon(
-                            imageVector = if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
-                            contentDescription = stringResource(if (playing) R.string.pause else R.string.play),
-                            tint = contentColor,
-                            modifier = Modifier.size(GLYPH_SIZE),
-                        )
-                    }
+                    Icon(
+                        imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
+                        contentDescription = stringResource(if (isPlaying) R.string.pause else R.string.play),
+                        tint = MaterialTheme.colorScheme.onBackground,
+                        modifier = Modifier.size(GLYPH_SIZE),
+                    )
                 }
             }
             Spacer(Modifier.width(TRANSPORT_GAP))
@@ -570,10 +500,10 @@ fun MiniPlayer(
                     onNext()
                 },
                 enabled = !controlsLocked,
-                modifier = Modifier.size(width = GLYPH_SLOT, height = glyphSlotHeight),
+                modifier = Modifier.size(GLYPH_SLOT),
             ) {
                 MiniPlayerNextGlyph(
-                    tint = contentColor
+                    tint = MaterialTheme.colorScheme.onBackground
                         .copy(alpha = if (controlsLocked) 0.3f else 1f),
                 )
             }

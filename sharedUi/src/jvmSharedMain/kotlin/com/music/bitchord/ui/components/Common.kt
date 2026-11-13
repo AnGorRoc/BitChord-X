@@ -10,12 +10,30 @@ import org.jetbrains.compose.resources.stringResource
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
+import com.music.bitchord.data.settings.SWIPE_ARM_FRACTION
+import com.music.bitchord.data.settings.SWIPE_HOLD_DURATION_MS
+import com.music.bitchord.data.settings.SongSwipeAction
+import com.music.bitchord.data.settings.SongSwipeDirection
+import com.music.bitchord.data.settings.holdRingProgress
+import com.music.bitchord.data.settings.resolveSwipeAction
+import com.music.bitchord.data.settings.rubberBandSwipeOffset
+import com.music.bitchord.data.settings.updateSwipeArmedState
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import com.music.bitchord.ui.player.MESH_CYCLE_MILLIS
 import com.music.bitchord.ui.player.MeshGradientBackground
 import com.music.bitchord.ui.player.WelcomeMeshPalettes
@@ -60,6 +78,7 @@ import com.music.bitchord.ui.haptics.rememberHaptics
 import kotlin.math.abs
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
@@ -314,6 +333,8 @@ fun SongRow(
      */
     onMore: (() -> Unit)? = null,
     onSwipeToQueue: (() -> Unit)? = null,
+    onSwipeAction: ((SongSwipeAction) -> Unit)? = null,
+    onSwipeHoldPlaylist: (() -> Unit)? = null,
     /**
      * What the row paints over the swipe reveal as it slides back.
      *
@@ -368,8 +389,11 @@ fun SongRow(
      */
     trailing: (@Composable () -> Unit)? = null,
 ) {
+    val swipeActive = onSwipeAction != null || onSwipeToQueue != null || onSwipeHoldPlaylist != null
     SwipeToQueueBox(
         onSwipeToQueue = onSwipeToQueue,
+        onSwipeAction = onSwipeAction,
+        onSwipeHoldPlaylist = onSwipeHoldPlaylist,
         modifier = modifier,
     ) {
         SongRowContent(
@@ -377,7 +401,11 @@ fun SongRow(
             onClick = onClick,
             onLongPress = onLongPress,
             onMore = onMore ?: onLongPress,
-            modifier = if (onSwipeToQueue != null) Modifier.background(rowBackground) else modifier,
+            modifier = when {
+                !swipeActive -> modifier
+                rowBackground != Color.Transparent -> Modifier.background(rowBackground)
+                else -> Modifier
+            },
             trackNumber = trackNumber,
             subtitleColor = subtitleColor,
             downloadedTint = downloadedTint,
@@ -392,121 +420,345 @@ fun SongRow(
     }
 }
 
+private val SwipePlayNextColor = Color(0xFF5856D6)
+private val SwipeAddToQueueColor = Color(0xFFFF9500)
+private val SwipeHoldPlaylistColor = Color(0xFFFF2D55)
+
 /**
- * Wraps content with a swipe gesture revealing [QueueSwipeBackground] that
- * triggers [onSwipeToQueue] when swiped past 45% of width and snaps back.
- * If [onSwipeToQueue] is null, renders [content] directly.
+ * Wraps content with an Apple Music-style directional horizontal swipe gesture:
+ * - Rubber-band damping past [SWIPE_ARM_FRACTION] (`38%` of row width).
+ * - Hysteresis disarm below `30%` so spring-back never double-ticks.
+ * - Stationary hold past threshold (`1.2s` total, ring arc after `220ms`) to
+ *   morph into Add to Playlist and invoke [onSwipeHoldPlaylist].
+ * - Gap-clipped rounded capsule reveal so transparent album/playlist rows never
+ *   bleed background color underneath the shifted row content.
  */
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SwipeToQueueBox(
-    onSwipeToQueue: (() -> Unit)?,
+    onSwipeToQueue: (() -> Unit)? = null,
+    onSwipeAction: ((SongSwipeAction) -> Unit)? = null,
+    onSwipeHoldPlaylist: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     content: @Composable () -> Unit,
 ) {
-    if (onSwipeToQueue == null) {
+    if (onSwipeAction == null && onSwipeToQueue == null && onSwipeHoldPlaylist == null) {
         content()
         return
     }
 
     val haptics = rememberHaptics()
-    val swipeStateHolder = remember { mutableStateOf<SwipeToDismissBoxState?>(null) }
+    val scope = rememberCoroutineScope()
+    val rightAction by AppUi.host.swipeRightAction.collectAsStateWithLifecycle()
+    val leftAction by AppUi.host.swipeLeftAction.collectAsStateWithLifecycle()
+    val legacyPlayNext by AppUi.host.swipeToPlayNext.collectAsStateWithLifecycle()
+
     var boxWidth by remember { mutableFloatStateOf(0f) }
+    var rawDragPx by remember { mutableFloatStateOf(0f) }
+    val animOffsetPx = remember { Animatable(0f) }
+    var isDragging by remember { mutableStateOf(false) }
+    var armed by remember { mutableStateOf(false) }
+    var holdCommitted by remember { mutableStateOf(false) }
+    var holdRingFraction by remember { mutableFloatStateOf(0f) }
+    val iconPopScale = remember { Animatable(1f) }
 
     val currentOnSwipeToQueue by rememberUpdatedState(onSwipeToQueue)
+    val currentOnSwipeAction by rememberUpdatedState(onSwipeAction)
+    val currentOnSwipeHoldPlaylist by rememberUpdatedState(onSwipeHoldPlaylist)
 
-    val swipeState = rememberSwipeToDismissBoxState(
-        confirmValueChange = { value ->
-            if (value != SwipeToDismissBoxValue.Settled) {
-                val offset = try { swipeStateHolder.value?.requireOffset() ?: 0f } catch (e: Exception) { 0f }
-                // Only queue if the physical drag reached half the box width, ignoring short accidental flings.
-                if (abs(offset) >= boxWidth * 0.45f) {
-                    haptics.play(Haptic.Select)
-                    currentOnSwipeToQueue.invoke()
-                }
-            }
-            false // never actually dismiss; snap back
-        },
-        positionalThreshold = { distance -> distance * 0.5f },
-    )
-    swipeStateHolder.value = swipeState
-
-    // The row reveals "Queue" from the first pixel of the drag, but it only
-    // *commits* past 45% of the width — so without this the label is a promise
-    // the finger can't check. One light tick at the crossing is the whole point:
-    // let go now and it queues.
-    LaunchedEffect(swipeState, boxWidth) {
-        if (boxWidth <= 0f) return@LaunchedEffect
-        val armAt = boxWidth * 0.45f
-        var armed = false
-        snapshotFlow { try { swipeState.requireOffset() } catch (e: Exception) { 0f } }
-            .collect { offset ->
-                val travelled = abs(offset)
-                when {
-                    !armed && travelled >= armAt -> {
-                        armed = true
-                        haptics.play(Haptic.Tick)
-                    }
-                    // Silent, and with hysteresis: dragging back under the line
-                    // re-arms, but so does the spring-back after a successful
-                    // queue, and that must not buzz the same gesture twice.
-                    armed && travelled < armAt * 0.8f -> armed = false
-                }
-            }
+    fun resolveForDirection(direction: SongSwipeDirection): SongSwipeAction = when {
+        currentOnSwipeAction != null -> resolveSwipeAction(direction, rightAction, leftAction)
+        currentOnSwipeToQueue != null -> if (legacyPlayNext) SongSwipeAction.PLAY_NEXT else SongSwipeAction.ADD_TO_QUEUE
+        else -> SongSwipeAction.DISABLED
     }
 
-    SwipeToDismissBox(
-        state = swipeState,
-        modifier = modifier.onSizeChanged { boxWidth = it.width.toFloat() },
-        backgroundContent = { QueueSwipeBackground(swipeState) },
+    fun isDirectionEnabled(direction: SongSwipeDirection): Boolean =
+        resolveForDirection(direction) != SongSwipeAction.DISABLED || currentOnSwipeHoldPlaylist != null
+
+    LaunchedEffect(armed, isDragging) {
+        if (armed && isDragging && currentOnSwipeHoldPlaylist != null) {
+            val startNanos = withFrameNanos { it }
+            while (isActive) {
+                val nowNanos = withFrameNanos { it }
+                val elapsedMs = (nowNanos - startNanos) / 1_000_000L
+                holdRingFraction = holdRingProgress(elapsedMs)
+                if (elapsedMs >= SWIPE_HOLD_DURATION_MS) {
+                    holdCommitted = true
+                    holdRingFraction = 1f
+                    haptics.play(Haptic.Expand)
+                    scope.launch {
+                        iconPopScale.snapTo(1.28f)
+                        iconPopScale.animateTo(
+                            targetValue = 1f,
+                            animationSpec = spring(
+                                dampingRatio = Spring.DampingRatioMediumBouncy,
+                                stiffness = Spring.StiffnessMedium,
+                            ),
+                        )
+                    }
+                    currentOnSwipeHoldPlaylist?.invoke()
+                    scope.launch {
+                        animOffsetPx.animateTo(
+                            targetValue = 0f,
+                            animationSpec = spring(dampingRatio = 0.78f, stiffness = 420f),
+                        )
+                    }
+                    break
+                }
+            }
+        } else {
+            holdRingFraction = 0f
+        }
+    }
+
+    val visualOffset = animOffsetPx.value
+    val activeDirection = if (visualOffset >= 0f) SongSwipeDirection.START_TO_END else SongSwipeDirection.END_TO_START
+    val activeAction = resolveForDirection(activeDirection)
+
+    Box(
+        modifier = modifier
+            .clipToBounds()
+            .onSizeChanged { boxWidth = it.width.toFloat() }
+            .pointerInput(rightAction, leftAction, legacyPlayNext, onSwipeAction != null, onSwipeToQueue != null, onSwipeHoldPlaylist != null) {
+                detectHorizontalDragGestures(
+                    onDragStart = {
+                        rawDragPx = animOffsetPx.value
+                        isDragging = true
+                        armed = false
+                        holdCommitted = false
+                        holdRingFraction = 0f
+                    },
+                    onHorizontalDrag = { change, dragAmount ->
+                        if (!holdCommitted) {
+                            change.consume()
+                            rawDragPx += dragAmount
+                            val dir = if (rawDragPx >= 0f) SongSwipeDirection.START_TO_END else SongSwipeDirection.END_TO_START
+                            val enabled = isDirectionEnabled(dir)
+                            val visual = rubberBandSwipeOffset(rawDragPx, boxWidth, enabled = enabled)
+                            scope.launch { animOffsetPx.snapTo(visual) }
+                            val nextArmed = updateSwipeArmedState(armed, visual, boxWidth, enabled = enabled)
+                            if (!armed && nextArmed) {
+                                armed = true
+                                haptics.play(Haptic.Tick)
+                                scope.launch {
+                                    iconPopScale.snapTo(1.24f)
+                                    iconPopScale.animateTo(
+                                        targetValue = 1f,
+                                        animationSpec = spring(
+                                            dampingRatio = Spring.DampingRatioMediumBouncy,
+                                            stiffness = Spring.StiffnessMedium,
+                                        ),
+                                    )
+                                }
+                            } else if (armed && !nextArmed) {
+                                armed = false
+                                holdRingFraction = 0f
+                            }
+                        }
+                    },
+                    onDragEnd = {
+                        val wasArmed = armed
+                        val wasHoldCommitted = holdCommitted
+                        val endDirection = if (rawDragPx >= 0f) SongSwipeDirection.START_TO_END else SongSwipeDirection.END_TO_START
+                        isDragging = false
+                        armed = false
+                        rawDragPx = 0f
+                        holdRingFraction = 0f
+                        if (wasArmed && !wasHoldCommitted) {
+                            val resolved = resolveForDirection(endDirection)
+                            if (resolved != SongSwipeAction.DISABLED) {
+                                haptics.play(Haptic.Select)
+                                if (currentOnSwipeAction != null) {
+                                    currentOnSwipeAction?.invoke(resolved)
+                                } else {
+                                    currentOnSwipeToQueue?.invoke()
+                                }
+                            }
+                        }
+                        scope.launch {
+                            animOffsetPx.animateTo(
+                                targetValue = 0f,
+                                animationSpec = spring(dampingRatio = 0.78f, stiffness = 420f),
+                            )
+                            holdCommitted = false
+                        }
+                    },
+                    onDragCancel = {
+                        isDragging = false
+                        armed = false
+                        rawDragPx = 0f
+                        holdRingFraction = 0f
+                        scope.launch {
+                            animOffsetPx.animateTo(
+                                targetValue = 0f,
+                                animationSpec = spring(dampingRatio = 0.78f, stiffness = 420f),
+                            )
+                            holdCommitted = false
+                        }
+                    },
+                )
+            },
     ) {
-        content()
+        if (abs(visualOffset) > 1f) {
+            QueueSwipeBackground(
+                offset = visualOffset,
+                boxWidth = boxWidth,
+                action = activeAction,
+                armed = armed,
+                holdCommitted = holdCommitted,
+                holdRingFraction = holdRingFraction,
+                iconPopScale = iconPopScale.value,
+            )
+        }
+        Box(
+            modifier = Modifier.graphicsLayer {
+                translationX = visualOffset
+            },
+        ) {
+            content()
+        }
     }
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun QueueSwipeBackground(swipeState: SwipeToDismissBoxState) {
-    val playNext by AppUi.host.swipeToPlayNext.collectAsStateWithLifecycle()
-    Row(
+private fun BoxScope.QueueSwipeBackground(
+    offset: Float,
+    boxWidth: Float,
+    action: SongSwipeAction,
+    armed: Boolean,
+    holdCommitted: Boolean,
+    holdRingFraction: Float,
+    iconPopScale: Float,
+) {
+    val targetColor = when {
+        holdCommitted -> SwipeHoldPlaylistColor
+        action == SongSwipeAction.PLAY_NEXT -> SwipePlayNextColor
+        action == SongSwipeAction.ADD_TO_QUEUE -> SwipeAddToQueueColor
+        else -> MaterialTheme.colorScheme.surfaceVariant
+    }
+    val capsuleColor by animateColorAsState(
+        targetValue = if (armed || holdCommitted) targetColor else targetColor.copy(alpha = 0.76f),
+        label = "swipeCapsuleColor",
+    )
+    val armPx = (boxWidth * SWIPE_ARM_FRACTION).coerceAtLeast(1f)
+    val progress = (abs(offset) / armPx).coerceIn(0f, 1f)
+    val contentScale = (0.65f + 0.35f * progress) * iconPopScale
+    val isStartToEnd = offset > 0f
+
+    Box(
         modifier = Modifier
-            .fillMaxSize()
+            .matchParentSize()
             .drawWithContent {
-                val offset = try { swipeState.requireOffset() } catch (e: Exception) { 0f }
+                val hInset = 8.dp.toPx()
+                val vInset = 4.dp.toPx()
+                val corner = 12.dp.toPx()
                 if (offset > 0f) {
-                    clipRect(left = 0f, top = 0f, right = offset, bottom = size.height) {
+                    val rightEdge = offset.coerceAtMost(size.width)
+                    clipRect(left = 0f, top = 0f, right = rightEdge, bottom = size.height) {
+                        val capsuleLeft = hInset.coerceAtMost(rightEdge)
+                        val capsuleRight = (rightEdge - hInset / 2f).coerceAtLeast(capsuleLeft)
+                        if (capsuleRight > capsuleLeft) {
+                            drawRoundRect(
+                                color = capsuleColor,
+                                topLeft = Offset(capsuleLeft, vInset),
+                                size = Size(capsuleRight - capsuleLeft, (size.height - vInset * 2f).coerceAtLeast(0f)),
+                                cornerRadius = CornerRadius(corner, corner),
+                            )
+                        }
                         this@drawWithContent.drawContent()
                     }
                 } else if (offset < 0f) {
-                    clipRect(left = size.width + offset, top = 0f, right = size.width, bottom = size.height) {
+                    val leftEdge = (size.width + offset).coerceAtLeast(0f)
+                    clipRect(left = leftEdge, top = 0f, right = size.width, bottom = size.height) {
+                        val capsuleRight = (size.width - hInset).coerceAtLeast(leftEdge)
+                        val capsuleLeft = (leftEdge + hInset / 2f).coerceAtMost(capsuleRight)
+                        if (capsuleRight > capsuleLeft) {
+                            drawRoundRect(
+                                color = capsuleColor,
+                                topLeft = Offset(capsuleLeft, vInset),
+                                size = Size(capsuleRight - capsuleLeft, (size.height - vInset * 2f).coerceAtLeast(0f)),
+                                cornerRadius = CornerRadius(corner, corner),
+                            )
+                        }
                         this@drawWithContent.drawContent()
                     }
                 }
             }
-            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.18f))
-            .padding(horizontal = PAGE_GUTTER),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
+            .padding(horizontal = PAGE_GUTTER + 6.dp),
+        contentAlignment = if (isStartToEnd) Alignment.CenterStart else Alignment.CenterEnd,
     ) {
-        QueueSwipeLabel(playNext)
-        QueueSwipeLabel(playNext)
+        QueueSwipeLabel(
+            action = action,
+            holdCommitted = holdCommitted,
+            holdRingFraction = holdRingFraction,
+            scale = contentScale,
+            alpha = progress.coerceIn(0f, 1f),
+        )
     }
 }
 
 @Composable
-private fun QueueSwipeLabel(playNext: Boolean) {
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Icon(
-            if (playNext) Icons.AutoMirrored.Rounded.PlaylistPlay else Icons.AutoMirrored.Rounded.PlaylistAdd,
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(20.dp),
-        )
+private fun QueueSwipeLabel(
+    action: SongSwipeAction,
+    holdCommitted: Boolean,
+    holdRingFraction: Float,
+    scale: Float,
+    alpha: Float,
+) {
+    val isPlayNext = !holdCommitted && action == SongSwipeAction.PLAY_NEXT
+    val labelRes = when {
+        holdCommitted -> Res.string.playlist_action
+        action == SongSwipeAction.PLAY_NEXT -> Res.string.play_next
+        action == SongSwipeAction.ADD_TO_QUEUE -> Res.string.queue
+        else -> Res.string.playlist_action
+    }
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = Modifier.graphicsLayer {
+            scaleX = scale
+            scaleY = scale
+            this.alpha = alpha
+        },
+    ) {
+        Box(
+            modifier = Modifier.size(28.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (holdRingFraction > 0f && !holdCommitted) {
+                Canvas(modifier = Modifier.fillMaxSize()) {
+                    val strokeWidth = 2.dp.toPx()
+                    drawArc(
+                        color = Color.White.copy(alpha = 0.32f),
+                        startAngle = 0f,
+                        sweepAngle = 360f,
+                        useCenter = false,
+                        style = Stroke(width = strokeWidth),
+                    )
+                    drawArc(
+                        color = Color.White,
+                        startAngle = -90f,
+                        sweepAngle = 360f * holdRingFraction,
+                        useCenter = false,
+                        style = Stroke(width = strokeWidth, cap = StrokeCap.Round),
+                    )
+                }
+            }
+            Icon(
+                imageVector = if (isPlayNext) {
+                    Icons.AutoMirrored.Rounded.PlaylistPlay
+                } else {
+                    Icons.AutoMirrored.Rounded.PlaylistAdd
+                },
+                contentDescription = null,
+                tint = Color.White,
+                modifier = Modifier.size(20.dp),
+            )
+        }
         Spacer(Modifier.width(6.dp))
         Text(
-            text = stringResource(if (playNext) Res.string.play_next else Res.string.queue),
+            text = stringResource(labelRes),
             style = MaterialTheme.typography.labelMedium,
-            color = MaterialTheme.colorScheme.primary,
+            fontWeight = FontWeight.SemiBold,
+            color = Color.White,
         )
     }
 }

@@ -119,4 +119,47 @@ class VersionPairTest {
         assertEquals(120_000L, map.map(200_000L))    // outro
         assertEquals(120_000L, map.inverted().map(90_000L))
     }
+
+    @Test
+    fun watchQueue_preferAudio_dropsCounterpartAndFlagsSpanishMusicVideos() {
+        val spanishVideo = panel("omv_es", "Cancion (Video Oficial)", "MUSIC_VIDEO_TYPE_OMV", "Artista • 10 M de vistas")
+        val queue = InnertubeParser.parseWatchQueue(wrapper(audio, spanishVideo), preferAudio = true)
+
+        assertEquals(listOf("atv1"), queue.map { it.videoId })
+        assertFalse(queue.single().isVideo)
+    }
+
+    @Test
+    fun watchQueue_preferAudio_swapsVideoPrimaryToAudioAndDropsCounterpart() {
+        val queue = InnertubeParser.parseWatchQueue(wrapper(video, audio), preferAudio = true)
+
+        assertEquals(listOf("atv1"), queue.map { it.videoId })
+        assertFalse(queue.single().isVideo)
+    }
+
+    @Test
+    fun watchQueue_detectsVideoByMusicVideoTypeWidescreenOrLocalizedViews() {
+        val typedEs = panel("v1", "Tema", "MUSIC_VIDEO_TYPE_UGC", "Artista • 5 M de vistas")
+        val albumNamedViews = panel("a1", "Hotline Bling", "MUSIC_VIDEO_TYPE_ATV", "Drake • Views • 2016")
+        val widescreenUntyped = Json.parseToJsonElement(
+            """
+            { "contents": [ { "playlistPanelVideoRenderer": {
+              "videoId": "v2",
+              "title": { "runs": [ { "text": "Untyped Video" } ] },
+              "longBylineText": { "runs": [ { "text": "Artista • 1 M de reproducciones" } ] },
+              "thumbnail": { "thumbnails": [ { "url": "https://example.test/v2.jpg", "width": 320, "height": 180 } ] }
+            } } ] }
+            """,
+        )
+
+        val typedQueue = InnertubeParser.parseWatchQueue(
+            Json.parseToJsonElement("""{ "contents": [ $typedEs, $albumNamedViews ] }"""),
+            preferAudio = true,
+        )
+        assertTrue(typedQueue[0].isVideo)
+        assertFalse(typedQueue[1].isVideo)
+
+        val untypedQueue = InnertubeParser.parseWatchQueue(widescreenUntyped, preferAudio = true)
+        assertTrue(untypedQueue.single().isVideo)
+    }
 }

@@ -16,6 +16,7 @@ import okhttp3.Request
 import okhttp3.Response
 import java.io.IOException
 import java.io.OutputStream
+import java.util.concurrent.TimeUnit
 import kotlin.coroutines.coroutineContext
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -53,6 +54,9 @@ object Downloader {
     private const val CHUNK_BYTES = 2L * 1024 * 1024
 
     private const val BUFFER_BYTES = 64 * 1024
+
+    /** How many times a severed direct fetch may ask for the rest of the file. */
+    private const val MAX_RESUMES = 5
 
     /**
      * Fetch all of [stream] into [sink].
@@ -175,39 +179,75 @@ object Downloader {
         sink: OutputStream,
         onProgress: (written: Long, total: Long) -> Unit,
     ): Long = withContext(Dispatchers.IO) {
-        val request = Request.Builder().url(url)
-            .apply { headers.forEach { (name, value) -> header(name, value) } }
+        val client = Http.client.newBuilder()
+            // A lossless/hires FLAC is tens of megabytes through a proxy that
+            // may stall between bursts; the shared client's 30 s read timeout
+            // fires on silence, not slowness, and kills a download that was
+            // going to finish. No callTimeout: the body can legitimately take
+            // minutes, and each read still bounds itself.
+            .readTimeout(90, TimeUnit.SECONDS)
             .build()
 
-        Http.client.newCall(request).execute().use { response ->
-            if (response.code !in 200..299) error("Download failed (HTTP ${response.code})")
-            val body = response.body
-            val total = response.header("Content-Length")?.toLongOrNull()?.takeIf { it > 0 }
-            val source = body.byteStream()
-            val buffer = ByteArray(BUFFER_BYTES)
-            var written = 0L
+        var written = 0L
+        var total = -1L
+        var resumes = 0
 
-            while (true) {
+        // A proxy that cuts a long transfer partway through (observed on
+        // hi-res FLACs, dead at a consistent fraction) is not the download's
+        // verdict — it is one severed connection. Asking again for
+        // `bytes=<written>-` costs one round-trip and lands the rest of the
+        // file; the pending-row dance only sees a finished row either way.
+        // A server that ignores `Range` answers 200 with the whole file, and
+        // writing that after bytes already sunk would corrupt the track, so
+        // that shape refuses rather than resumes.
+        while (true) {
+            val request = Request.Builder().url(url)
+                .apply { headers.forEach { (name, value) -> header(name, value) } }
+                .apply { if (written > 0) header("Range", "bytes=$written-") }
+                .build()
+
+            try {
+                client.newCall(request).execute().use { response ->
+                    if (response.code !in 200..299) error("Download failed (HTTP ${response.code})")
+                    if (written > 0 && response.code != 206) {
+                        error("Download stalled at ${written}B and the server cannot resume — try again")
+                    }
+                    val body = response.body
+                    val stated = response.header("Content-Length")?.toLongOrNull()?.takeIf { it > 0 }
+                    // 206's length is the remainder, not the whole file.
+                    total = if (response.code == 206) written + (stated ?: 0L) else (stated ?: -1L)
+                    val source = body.byteStream()
+                    val buffer = ByteArray(BUFFER_BYTES)
+
+                    while (true) {
+                        coroutineContext.ensureActive()
+                        val read = source.read(buffer)
+                        if (read == -1) break
+                        sink.write(buffer, 0, read)
+                        written += read
+                        if (total > 0) onProgress(written, total)
+                    }
+                }
+                break
+            } catch (e: IOException) {
                 coroutineContext.ensureActive()
-                val read = source.read(buffer)
-                if (read == -1) break
-                sink.write(buffer, 0, read)
-                written += read
-                if (total != null) onProgress(written, total)
+                if (resumes >= MAX_RESUMES || written == 0L) throw e
+                resumes++
+                Log.w(TAG, "direct fetch severed at ${written}B; resuming (${resumes}/$MAX_RESUMES)")
             }
-            sink.flush()
-
-            // A stated length that didn't all arrive is the one failure the
-            // pending-row dance cannot catch on its own: nothing threw, so
-            // committing would publish a file that looks whole and stops
-            // halfway through the song.
-            if (total != null && written < total) {
-                error("Download stopped at ${written}B of $total — try again")
-            }
-            if (written == 0L) error("Download failed: nothing was sent")
-            Log.d(TAG, "fetched ${written}B directly")
-            written
         }
+        sink.flush()
+
+        // A stated length that didn't all arrive is the one failure the
+        // pending-row dance cannot catch on its own: nothing threw, so
+        // committing would publish a file that looks whole and stops
+        // halfway through the song.
+        if (total > 0 && written < total) {
+            error("Download stopped at ${written}B of $total — try again")
+        }
+        if (written == 0L) error("Download failed: nothing was sent")
+        Log.d(TAG, "fetched ${written}B directly")
+        written
     }
 
     /**

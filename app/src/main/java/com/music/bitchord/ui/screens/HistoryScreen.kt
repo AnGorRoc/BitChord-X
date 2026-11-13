@@ -16,6 +16,7 @@ import androidx.compose.ui.unit.dp
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.model.UiState
 import com.music.bitchord.data.model.playingRowMatcher
+import com.music.bitchord.data.settings.SongSwipeAction
 import com.music.bitchord.ui.components.MessageState
 import com.music.bitchord.ui.components.ROW_DIVIDER_INSET
 import com.music.bitchord.ui.components.SongRow
@@ -39,6 +40,8 @@ fun HistoryScreen(
     onSongClick: (List<Song>, Int) -> Unit,
     onSongLongPress: (Song) -> Unit,
     onSongSwipe: (Song) -> Unit,
+    onSongSwipeAction: ((Song, SongSwipeAction) -> Unit)? = null,
+    onSongHoldPlaylist: ((Song) -> Unit)? = null,
     onRetry: () -> Unit,
     contentPadding: PaddingValues,
     currentSong: Song? = null,
@@ -73,6 +76,12 @@ fun HistoryScreen(
                         onClick = { onSongClick(songs, index) },
                         onLongPress = { onSongLongPress(song) },
                         onSwipeToQueue = { onSongSwipe(song) },
+                        onSwipeAction = onSongSwipeAction?.let { handler ->
+                            { action -> handler(song, action) }
+                        },
+                        onSwipeHoldPlaylist = onSongHoldPlaylist?.let { handler ->
+                            { handler(song) }
+                        },
                         isCurrent = isCurrentRow(song),
                         isPlaying = isCurrentRow(song) && isPlaying,
                         searchPlayingStyle = true,

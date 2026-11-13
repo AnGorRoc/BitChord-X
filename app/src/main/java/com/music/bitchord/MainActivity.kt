@@ -163,6 +163,7 @@ import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.model.isUnresolvedSpotify
 import com.music.bitchord.data.model.UiState
 import com.music.bitchord.data.model.withoutVideos
+import com.music.bitchord.data.settings.SongSwipeAction
 import com.music.bitchord.data.model.UserPlaylist
 import com.music.bitchord.data.model.EntityType
 import com.music.bitchord.data.model.SearchHistoryEntity
@@ -364,6 +365,8 @@ import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.windowInsetsPadding
 import com.music.bitchord.ui.components.MiniPlayerPull
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableStateListOf
@@ -571,6 +574,17 @@ private fun BitChordApp(
     val context = LocalContext.current
     val clipboard = LocalClipboard.current
     val hazeState = remember { HazeState() }
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val displayRotation = com.music.bitchord.ui.components.rememberDisplayRotation()
+    val isLandscapeChrome = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE &&
+        windowWidth > windowHeight &&
+        windowHeight < 600.dp
+    val topBarOnLeft = displayRotation != android.view.Surface.ROTATION_270
+    val landscapeSidePadding = if (isLandscapeChrome) {
+        com.music.bitchord.ui.components.rememberLandscapeSideContentPadding(topBarOnLeft)
+    } else {
+        PaddingValues(0.dp)
+    }
     // Recording the backdrop layer costs a draw pass, so it only runs when a
     // liquid-glass surface (the nav bar or artwork-page back button) can sample it.
     val glassActive = LocalLiquidGlassEnabled.current && isGlassSupported()
@@ -1967,6 +1981,21 @@ private fun BitChordApp(
     val onSongSwipe: (Song) -> Unit = { song ->
         if (AppSettings.swipeToPlayNext.value) playNext(song) else addToQueue(song)
     }
+    val onSongSwipeAction: (Song, SongSwipeAction) -> Unit = { song, action ->
+        when (action) {
+            SongSwipeAction.PLAY_NEXT -> playNext(song)
+            SongSwipeAction.ADD_TO_QUEUE -> addToQueue(song)
+            SongSwipeAction.DISABLED -> Unit
+        }
+    }
+    val onSongHoldPlaylist: (Song) -> Unit = { song ->
+        if (song.localUri != null && (song.videoId.startsWith("content://") || song.videoId.startsWith("file://"))) {
+            offlinePlaylistTarget = song
+        } else {
+            viewModel.loadPlaylists()
+            playlistTarget = song
+        }
+    }
 
     /**
      * Opens an artist or release page given its browse id — or, failing that,
@@ -2575,8 +2604,16 @@ private fun BitChordApp(
     // so a fixed number only ever lines up on the one device it was picked on.
     // See [topBarContentPadding].
     val listPadding = PaddingValues(
-        top = topBarContentPadding(),
-        bottom = if (player.song != null) 210.dp else 140.dp,
+        top = if (isLandscapeChrome) {
+            com.music.bitchord.ui.theme.stableStatusBarInsets().asPaddingValues().calculateTopPadding() + 12.dp
+        } else {
+            topBarContentPadding()
+        },
+        bottom = if (isLandscapeChrome) {
+            if (player.song != null) 110.dp else 36.dp
+        } else {
+            if (player.song != null) 210.dp else 140.dp
+        },
     )
     val floatingBarsHeight = remember { mutableIntStateOf(0) }
 
@@ -2594,7 +2631,7 @@ private fun BitChordApp(
     val searchListPadding = if (keyboardUp) {
         PaddingValues(
             top = listPadding.calculateTopPadding(),
-            bottom = if (player.song != null) 132.dp else 82.dp,
+            bottom = if (isLandscapeChrome) 88.dp else if (player.song != null) 132.dp else 82.dp,
         )
     } else listPadding
 
@@ -2804,7 +2841,6 @@ private fun BitChordApp(
             },
             onRemoveFromQueue = { controller?.removeMediaItem(it) },
             onMoveInQueue = { from, to -> controller?.moveMediaItem(from, to) },
-            onSaveQueue = saveQueueAsPlaylist,
             onQueueDragActiveChange = { active -> controller?.setQueueDragActive(active) },
             onOpenMenu = {
                 menuFromPlayer = true
@@ -3021,6 +3057,7 @@ private fun BitChordApp(
         //
         // Everything a page's menu floats over, and so what [pageBackdrop]
         // takes its still of; the menus themselves are drawn outside it.
+        CompositionLocalProvider(com.music.bitchord.ui.components.LocalLandscapeChrome provides isLandscapeChrome) {
         Row(Modifier.fillMaxSize().snapshotBackdropSource(pageBackdrop)) {
             Box(Modifier.weight(1f).fillMaxHeight()) {
                 AnimatedContent(
@@ -3174,6 +3211,8 @@ private fun BitChordApp(
                                     openSongMenu(song)
                                 },
                                 onSongSwipe = onSongSwipe,
+                                onSongSwipeAction = onSongSwipeAction,
+                                onSongHoldPlaylist = onSongHoldPlaylist,
                                 onRetry = viewModel::loadHistory,
                                 contentPadding = listPadding,
                             )
@@ -3592,6 +3631,8 @@ private fun BitChordApp(
                                 },
                                 onSongLongPress = { openSongMenu(withAlbum(it)) },
                                 onSongSwipe = { onSongSwipe(withAlbum(it)) },
+                                onSongSwipeAction = { song, action -> onSongSwipeAction(withAlbum(song), action) },
+                                onSongHoldPlaylist = { song -> onSongHoldPlaylist(withAlbum(song)) },
                                 onShuffle = { songs ->
                                     if (songs.isNotEmpty()) {
                                         // Shuffle goes on first so the queue is built shuffled
@@ -3900,6 +3941,8 @@ private fun BitChordApp(
                                 },
                                 onSongLongPress = openSongMenu,
                                 onSongSwipe = onSongSwipe,
+                                onSongSwipeAction = onSongSwipeAction,
+                                onSongHoldPlaylist = onSongHoldPlaylist,
                                 onTopResultPlay = { song ->
                                     viewModel.recordEntity(SearchHistoryEntity(
                                         id = song.videoId,
@@ -4088,11 +4131,13 @@ private fun BitChordApp(
                     // them redraws the page under the glass, for nobody.
                     val barsMotion = artworkMotion && transition.targetState == EnterExitState.Visible
                     CompositionLocalProvider(LocalPlayingBarsMotion provides barsMotion) {
+                        Box(Modifier.fillMaxSize().padding(landscapeSidePadding)) {
                         if (destination is AppDestination.Tab) {
                             pageContent()
                         } else {
                             pageKeysSeen += key
                             pageStates.SaveableStateProvider(key, pageContent)
+                        }
                         }
                     }
                 }
@@ -4144,484 +4189,362 @@ private fun BitChordApp(
                             (header * fadeRamp)).coerceIn(0f, 1f)
                     }
                 }
-                if (reduceDynamicBlur || !glassActive || !progressiveBlur) {
-                    BottomFadeScrim(
-                        pageColor = chromePageColor,
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .rotate(180f)
-                            .graphicsLayer { alpha = topFadeAlpha },
-                    )
-                } else {
-                    TopFadeBlur(
-                        hazeState = hazeState,
-                        pageColor = chromePageColor,
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .graphicsLayer { alpha = topFadeAlpha },
-                    )
+                val offlineBannerActive by AppSettings.effectiveOffline.collectAsStateWithLifecycle()
+                val topBarOnBack: (() -> Unit)? = when {
+                    route != null || detail != null || selectedMoodGenre != null -> goBack
+                    selectedTab == TAB_SEARCH -> ({ selectedTab = lastNonSearchTab })
+                    else -> null
+                }
+                val topBarActionsVisible = !(route != null && AppRoute.Settings in navigator)
+                val topBarLeading: (@Composable () -> Unit)? = if (selectedTab == TAB_HOME && route == null && detail == null && selectedMoodGenre == null) {
+                    {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_logo),
+                            contentDescription = "BitChord",
+                            tint = MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier
+                                .padding(start = if (isLandscapeChrome) 0.dp else 4.dp)
+                                .size(width = 30.dp, height = 30.dp),
+                        )
+                    }
+                } else null
+                val notInSettings = !(route != null && AppRoute.Settings in navigator)
+                val releaseSongs = (detail?.songs as? UiState.Success)?.data.orEmpty()
+                val isLocalPlaylist = detail?.browseId?.startsWith("local:playlist:") == true &&
+                    com.music.bitchord.data.spotify.LocalPlaylistStore.getPlaylist(detail.browseId.orEmpty()) != null
+
+                // 1. Rightmost anchor slot: Profile (avatar) or More (three dots)
+                val anchorState = when {
+                    !notInSettings -> TopBarAnchor.None
+                    isReleaseDetail && detail != null && (releaseSongs.isNotEmpty() || detail.type == BrowseType.PLAYLIST || isLocalPlaylist) -> {
+                        TopBarAnchor.More(
+                            onClick = {
+                                detail.let { d ->
+                                    openBrowseMenu(BrowseTarget(
+                                        browseId = d.browseId,
+                                        title = d.title,
+                                        subtitle = d.subtitle,
+                                        thumbnailUrl = d.thumbnailUrl,
+                                        type = d.type,
+                                        songs = releaseSongs.sortedForDetail(songSort).map { song ->
+                                            if (d.type == BrowseType.ALBUM) {
+                                                song.copy(albumName = song.albumName ?: d.title)
+                                            } else {
+                                                song
+                                            }
+                                        },
+                                        fromCard = false,
+                                        downloadId = downloadIdFor(d.browseId),
+                                    ))
+                                }
+                            },
+                        )
+                    }
+                    else -> {
+                        TopBarAnchor.Profile(
+                            account = account,
+                            onClick = {
+                                if (signedIn) {
+                                    viewModel.loadChannels()
+                                    showAccountSelector = true
+                                } else navigator.push(AppRoute.Settings)
+                            },
+                            onSwipeProfile = { forward -> viewModel.stepProfile(forward) },
+                        )
+                    }
                 }
 
-                val offlineBannerActive by AppSettings.effectiveOffline.collectAsStateWithLifecycle()
-                com.music.bitchord.ui.components.OfflineBanner(
-                    visible = offlineBannerActive,
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = com.music.bitchord.ui.components.topBarHeight()),
-                )
-
-                FrostedTopBar(
-                    title = when (route) {
-                        AppRoute.Spotify -> stringResource(R.string.spotify)
-                        AppRoute.Downloads -> stringResource(R.string.downloads)
-                        AppRoute.Discord -> "Discord"
-                        AppRoute.History -> stringResource(R.string.history)
-                        is AppRoute.LibraryShowAll -> route.shelf.title
-                        is AppRoute.ArtistShelf -> route.shelf.title
-                        AppRoute.Moods -> stringResource(R.string.find_your_mood)
-                        AppRoute.AccountScrobbling -> stringResource(R.string.account_scrobbling)
-                        AppRoute.Sources -> stringResource(R.string.sources)
-                        AppRoute.ListenTogether -> stringResource(R.string.listen_together)
-                        AppRoute.WearOs -> stringResource(R.string.wear_os_page_title)
-                        AppRoute.Equalizer -> stringResource(R.string.equalizer)
-                        AppRoute.Settings -> stringResource(R.string.settings)
-                        is AppRoute.SettingsSection -> stringResource(route.category.title)
-                        is AppRoute.SettingsChoice -> stringResource(route.choice.title)
-                        AppRoute.EqualizerPresets -> stringResource(R.string.equalizer_preset)
-                        AppRoute.Replay -> stringResource(R.string.replay)
-                        null -> when {
-                            detail != null && detailActiveShelf != null -> detailActiveShelf.title.orEmpty()
-                            detail != null -> detail.title
-                            selectedMoodGenre != null -> selectedMoodGenre?.title.orEmpty()
-                            else -> if (selectedTab == TAB_HOME) "" else tabs[selectedTab].let {
-                                if (it.label == "Play") stringResource(R.string.listen_now) else it.label
-                            }
-                        }
-                    },
-                    // Every page, in either material, uses separated floating
-                    // circles over the shared gradient — no full-width pane.
-                    transparentBackdrop = true,
-                    artworkPageChrome = true,
-                    backButtonHazeState = hazeState,
-                    trailingTitle = if (detail != null && detailActiveShelf != null) detail.title else null,
-                    // Search has no large in-list header to hand the title back to —
-                    // the field takes that space — so its bar title is always up.
-                    scrolled = {
+                // 2. Auxiliary slots to the left of the anchor
+                // Index 0: adjacent to anchor; Index 1: outer left; Index 2: outermost
+                val downloadSession by DownloadSession.state.collectAsStateWithLifecycle()
+                val auxiliaryItems = buildList {
+                    if (notInSettings) {
                         when {
-                            // The page leads with its own large "Replay", so the bar
-                            // stays out of the way until that has been scrolled off.
-                            route == AppRoute.Replay -> replayScrolled
-                            route != null -> true
-                            detail != null && detailActiveShelf != null -> true
-                            detail != null -> detailScrolled
-                            selectedMoodGenre != null -> true
-                            else -> scrolled || selectedTab == TAB_SEARCH
-                        }
-                    },
-                    refreshing = currentFeed != null && currentFeed in refreshing,
-                    pullFraction = { currentPull?.distanceFraction ?: 0f },
-                    // The same step the back gesture takes — see [goBack] —
-                    // offered on anything pushed over a tab.
-                    onBack = when {
-                        route != null || detail != null || selectedMoodGenre != null -> goBack
-                        selectedTab == TAB_SEARCH -> ({ selectedTab = lastNonSearchTab })
-                        else -> null
-                    },
-                    modifier = Modifier.align(Alignment.TopCenter),
-                    // Settings is the profile's own destination: no actions there.
-                    actionsVisible = !(route != null && AppRoute.Settings in navigator),
-                    leading = if (selectedTab == TAB_HOME && route == null && detail == null && selectedMoodGenre == null) {
-                        {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_logo),
-                                contentDescription = "BitChord",
-                                tint = MaterialTheme.colorScheme.onBackground,
-                                modifier = Modifier
-                                    .padding(start = 2.dp)
-                                    .height(25.dp)
-                                    .aspectRatio(730f / 484f),
-                            )
-                        }
-                    } else null,
-                    accessory = if (
-                        selectedTab == TAB_SEARCH && route == null && detail == null && selectedMoodGenre == null
-                    ) {
-                        {
-                            SearchSourceSwitcher(
-                                searchSource = searchSource,
-                                onSearchSourceChange = { onSearchSourceChange(it) },
-                                hazeState = hazeState,
-                                // The accessory pill around it is the surface.
-                                surface = false,
-                            )
-                        }
-                    } else null,
-                    actions = {
-                        val notInSettings = !(route != null && AppRoute.Settings in navigator)
-                        val releaseSongs = (detail?.songs as? UiState.Success)?.data.orEmpty()
-                        val isLocalPlaylist = detail?.browseId?.startsWith("local:playlist:") == true &&
-                            com.music.bitchord.data.spotify.LocalPlaylistStore.getPlaylist(detail.browseId.orEmpty()) != null
-
-                        // 1. Rightmost anchor slot: Profile (avatar) or More (three dots)
-                        val anchorState = when {
-                            !notInSettings -> TopBarAnchor.None
-                            isReleaseDetail && detail != null && (releaseSongs.isNotEmpty() || detail.type == BrowseType.PLAYLIST || isLocalPlaylist) -> {
-                                TopBarAnchor.More(
-                                    onClick = {
-                                        detail.let { d ->
-                                            openBrowseMenu(BrowseTarget(
-                                                browseId = d.browseId,
-                                                title = d.title,
-                                                subtitle = d.subtitle,
-                                                thumbnailUrl = d.thumbnailUrl,
-                                                type = d.type,
-                                                songs = releaseSongs.sortedForDetail(songSort).map { song ->
-                                                    if (d.type == BrowseType.ALBUM) {
-                                                        song.copy(albumName = song.albumName ?: d.title)
-                                                    } else {
-                                                        song
-                                                    }
-                                                },
-                                                fromCard = false,
-                                                downloadId = downloadIdFor(d.browseId),
-                                            ))
-                                        }
-                                    },
-                                )
-                            }
-                            else -> {
-                                TopBarAnchor.Profile(
-                                    account = account,
-                                    onClick = {
-                                        if (signedIn) {
-                                            viewModel.loadChannels()
-                                            showAccountSelector = true
-                                        } else navigator.push(AppRoute.Settings)
-                                    },
-                                    onSwipeProfile = { forward -> viewModel.stepProfile(forward) },
-                                )
-                            }
-                        }
-
-                        // 2. Auxiliary slots to the left of the anchor
-                        // Index 0: adjacent to anchor; Index 1: outer left; Index 2: outermost
-                        val downloadSession by DownloadSession.state.collectAsStateWithLifecycle()
-                        val auxiliaryItems = buildList {
-                            if (notInSettings) {
-                                when {
-                                    // Playlist / Folder Detail
-                                    (isReleaseDetail || isLocalDetail) && detail != null -> {
-                                        // Index 0 (adjacent to More/Anchor): Sort button
-                                        add(
-                                            TopBarActionItem(key = "sort") {
-                                                IconButton(
-                                                    onClick = { if (isLocalDetail) folderMenuOpen = true else songSortMenuOpen = true },
-                                                    modifier = Modifier.size(TOP_CONTROL_SIZE),
-                                                ) {
-                                                    Icon(
-                                                        Icons.AutoMirrored.Rounded.Sort,
-                                                        contentDescription = stringResource(
-                                                            if (isLocalDetail) R.string.sort_music else R.string.sort_songs,
-                                                        ),
-                                                        tint = MaterialTheme.colorScheme.onSurface,
-                                                    )
-                                                }
-                                            },
-                                        )
-                                        // Index 1 (to the left of Sort): Search
-                                        if (releaseSongs.isNotEmpty()) {
-                                            add(
-                                                TopBarActionItem(key = "search") {
-                                                    IconButton(
-                                                        onClick = { detailSearching = !detailSearching },
-                                                        modifier = Modifier.size(TOP_CONTROL_SIZE),
-                                                    ) {
-                                                        Icon(
-                                                            if (detailSearching) Icons.Rounded.Close else BitChordIcons.Search,
-                                                            contentDescription = stringResource(
-                                                                if (detailSearching) R.string.close_search else R.string.search_this_list,
-                                                            ),
-                                                            tint = MaterialTheme.colorScheme.onSurface,
-                                                        )
-                                                    }
-                                                },
+                            // Playlist / Folder Detail
+                            (isReleaseDetail || isLocalDetail) && detail != null -> {
+                                // Index 0 (adjacent to More/Anchor): Sort button
+                                add(
+                                    TopBarActionItem(key = "sort") {
+                                        IconButton(
+                                            onClick = { if (isLocalDetail) folderMenuOpen = true else songSortMenuOpen = true },
+                                            modifier = Modifier.size(TOP_CONTROL_SIZE),
+                                        ) {
+                                            Icon(
+                                                Icons.AutoMirrored.Rounded.Sort,
+                                                contentDescription = stringResource(
+                                                    if (isLocalDetail) R.string.sort_music else R.string.sort_songs,
+                                                ),
+                                                tint = MaterialTheme.colorScheme.onSurface,
                                             )
                                         }
-                                    }
-
-                                    // Artist Detail
-                                    detail != null && !isLocalDetail && detail.type == BrowseType.ARTIST &&
-                                        detailActiveShelf == null && detail.browseId?.startsWith("UC") == true -> {
-                                        add(
-                                            TopBarActionItem(key = "share") {
-                                                detail.let { d ->
-                                                    IconButton(
-                                                        onClick = {
-                                                            val sendIntent = Intent(Intent.ACTION_SEND).apply {
-                                                                type = "text/plain"
-                                                                putExtra(
-                                                                    Intent.EXTRA_TEXT,
-                                                                    "https://music.youtube.com/channel/${d.browseId}",
-                                                                )
-                                                            }
-                                                            context.startActivity(Intent.createChooser(sendIntent, d.title))
-                                                        },
-                                                        modifier = Modifier.size(TOP_CONTROL_SIZE),
-                                                    ) {
-                                                        Icon(
-                                                            Icons.Rounded.IosShare,
-                                                            contentDescription = stringResource(R.string.share),
-                                                            tint = MaterialTheme.colorScheme.onSurface,
-                                                        )
-                                                    }
-                                                }
-                                            },
-                                        )
-                                    }
-
-                                    // Library tab root
-                                    route == null && detail == null && selectedTab == TAB_LIBRARY -> {
-                                        // Index 0 (adjacent to PFP): History
-                                        add(
-                                            TopBarActionItem(key = "history") {
-                                                IconButton(
-                                                    onClick = {
-                                                        navigator.push(AppRoute.History)
-                                                        viewModel.loadHistory()
-                                                    },
-                                                    modifier = Modifier.size(TOP_CONTROL_SIZE),
-                                                ) {
-                                                    Icon(
-                                                        Icons.Rounded.History,
-                                                        contentDescription = stringResource(R.string.listening_history),
-                                                        tint = MaterialTheme.colorScheme.onSurface,
-                                                    )
-                                                }
-                                            },
-                                        )
-                                        // Index 1 (to the left of History): Grid/List toggle
-                                        add(
-                                            TopBarActionItem(key = "view_type") {
-                                                val listStyle = libraryViewType == LibraryViewType.LIST
-                                                IconButton(
-                                                    onClick = {
-                                                        AppSettings.setLibraryViewType(
-                                                            if (listStyle) LibraryViewType.GRID else LibraryViewType.LIST,
-                                                        )
-                                                    },
-                                                    modifier = Modifier.size(TOP_CONTROL_SIZE),
-                                                ) {
-                                                    Icon(
-                                                        if (listStyle) BitChordIcons.GridView else BitChordIcons.ListView,
-                                                        contentDescription = stringResource(
-                                                            if (listStyle) R.string.switch_to_grid_view else R.string.switch_to_list_view,
-                                                        ),
-                                                        tint = MaterialTheme.colorScheme.onSurface,
-                                                    )
-                                                }
-                                            },
-                                        )
-                                    }
-
-                                    // Library ShowAll
-                                    route is AppRoute.LibraryShowAll -> {
-                                        // Index 0: Sort
-                                        add(
-                                            TopBarActionItem(key = "sort") {
-                                                Box {
-                                                    IconButton(
-                                                        onClick = { librarySortMenuOpen = true },
-                                                        modifier = Modifier.size(TOP_CONTROL_SIZE),
-                                                    ) {
-                                                        Icon(
-                                                            Icons.AutoMirrored.Rounded.Sort,
-                                                            contentDescription = stringResource(R.string.sort_library),
-                                                            tint = MaterialTheme.colorScheme.onSurface,
-                                                        )
-                                                    }
-                                                    DropdownMenu(
-                                                        expanded = librarySortMenuOpen,
-                                                        onDismissRequest = { librarySortMenuOpen = false },
-                                                    ) {
-                                                        LibrarySort.entries.forEach { option ->
-                                                            DropdownMenuItem(
-                                                                text = { Text(option.localizedLabel()) },
-                                                                trailingIcon = if (option == librarySort) {
-                                                                    { Icon(Icons.Rounded.Check, contentDescription = null) }
-                                                                } else null,
-                                                                onClick = {
-                                                                    AppSettings.setLibrarySort(option)
-                                                                    librarySortMenuOpen = false
-                                                                },
-                                                            )
-                                                        }
-                                                    }
-                                                }
-                                            },
-                                        )
-                                        // Index 1: Grid/List toggle
-                                        add(
-                                            TopBarActionItem(key = "view_type") {
-                                                val listStyle = libraryViewType == LibraryViewType.LIST
-                                                IconButton(
-                                                    onClick = {
-                                                        AppSettings.setLibraryViewType(
-                                                            if (listStyle) LibraryViewType.GRID else LibraryViewType.LIST,
-                                                        )
-                                                    },
-                                                    modifier = Modifier.size(TOP_CONTROL_SIZE),
-                                                ) {
-                                                    Icon(
-                                                        if (listStyle) BitChordIcons.GridView else BitChordIcons.ListView,
-                                                        contentDescription = stringResource(
-                                                            if (listStyle) R.string.switch_to_grid_view else R.string.switch_to_list_view,
-                                                        ),
-                                                        tint = MaterialTheme.colorScheme.onSurface,
-                                                    )
-                                                }
-                                            },
-                                        )
-                                    }
-
-                                    // Home tab with update notice
-                                    route == null && detail == null && selectedTab == TAB_HOME && updateNotice != null -> {
-                                        add(
-                                            TopBarActionItem(key = "update") {
-                                                IconButton(
-                                                    onClick = { showUpdateDialog = true },
-                                                    modifier = Modifier.size(TOP_CONTROL_SIZE),
-                                                ) {
-                                                    Icon(
-                                                        Icons.Rounded.Upgrade,
-                                                        contentDescription = stringResource(R.string.update_available, updateNotice.version.orEmpty()),
-                                                        tint = MaterialTheme.colorScheme.primary,
-                                                    )
-                                                }
-                                            },
-                                        )
-                                    }
-
-                                    // Import: straight into choosing which playlists to copy
-                                    route == AppRoute.Spotify && spotifyLibraryState.playlists.isNotEmpty() &&
-                                        !spotifyLibraryState.selecting && !spotifySyncRunning -> {
-                                        add(
-                                            TopBarActionItem(key = "spotify") {
-                                                IconButton(
-                                                    onClick = spotifyLibraryState::requestStartSelecting,
-                                                    modifier = Modifier.size(TOP_CONTROL_SIZE),
-                                                ) {
-                                                    Icon(
-                                                        Icons.Rounded.Download,
-                                                        contentDescription = stringResource(R.string.spotify_sync_menu),
-                                                        tint = MaterialTheme.colorScheme.onSurface,
-                                                    )
-                                                }
-                                            },
-                                        )
-                                    }
-
-                                    // Listen Together
-                                    route == AppRoute.ListenTogether -> {
-                                        add(
-                                            TopBarActionItem(key = "ping") {
-                                                Row(
-                                                    verticalAlignment = Alignment.CenterVertically,
-                                                    modifier = Modifier.padding(horizontal = 8.dp),
-                                                ) {
-                                                    when (val state = partyServerStatus) {
-                                                        is ServerConnectionState.CustomFallback -> {
-                                                            Icon(
-                                                                Icons.Rounded.CloudOff,
-                                                                contentDescription = stringResource(R.string.listen_together_top_bar_fallback, stringResource(R.string.listen_together_ping, state.latencyMs)),
-                                                                tint = MaterialTheme.colorScheme.error,
-                                                                modifier = Modifier.size(14.dp),
-                                                            )
-                                                            Spacer(Modifier.width(4.dp))
-                                                            Text(
-                                                                text = stringResource(R.string.listen_together_ping, state.latencyMs),
-                                                                style = MaterialTheme.typography.labelMedium,
-                                                                color = MaterialTheme.colorScheme.error,
-                                                                maxLines = 1,
-                                                            )
-                                                        }
-                                                        is ServerConnectionState.CustomOnline -> {
-                                                            Text(
-                                                                text = stringResource(R.string.listen_together_ping, state.latencyMs),
-                                                                style = MaterialTheme.typography.labelMedium,
-                                                                color = MaterialTheme.colorScheme.onSurface,
-                                                                maxLines = 1,
-                                                            )
-                                                        }
-                                                        is ServerConnectionState.DefaultOnline -> {
-                                                            Text(
-                                                                text = stringResource(R.string.listen_together_ping, state.latencyMs),
-                                                                style = MaterialTheme.typography.labelMedium,
-                                                                color = MaterialTheme.colorScheme.onSurface,
-                                                                maxLines = 1,
-                                                            )
-                                                        }
-                                                        ServerConnectionState.Checking -> {
-                                                            Text(
-                                                                text = stringResource(R.string.listen_together_server_checking),
-                                                                style = MaterialTheme.typography.labelMedium,
-                                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                                maxLines = 1,
-                                                            )
-                                                        }
-                                                        ServerConnectionState.Offline -> {
-                                                            Text(
-                                                                text = stringResource(R.string.listen_together_server_offline_dash),
-                                                                style = MaterialTheme.typography.labelMedium,
-                                                                color = MaterialTheme.colorScheme.error,
-                                                                maxLines = 1,
-                                                            )
-                                                        }
-                                                    }
-                                                }
-                                            },
-                                        )
-                                    }
-                                }
-
-                                // Download indicator (outermost auxiliary slot when downloading).
-                                // Not on the page it opens, where it would only lead back to itself.
-                                if (downloadSession.visible && route != AppRoute.Downloads) {
+                                    },
+                                )
+                                // Index 1 (to the left of Sort): Search
+                                if (releaseSongs.isNotEmpty()) {
                                     add(
-                                        TopBarActionItem(key = "download") {
-                                            TopBarDownloadButton(onClick = { navigator.push(AppRoute.Downloads) })
+                                        TopBarActionItem(key = "search") {
+                                            IconButton(
+                                                onClick = { detailSearching = !detailSearching },
+                                                modifier = Modifier.size(TOP_CONTROL_SIZE),
+                                            ) {
+                                                Icon(
+                                                    if (detailSearching) Icons.Rounded.Close else BitChordIcons.Search,
+                                                    contentDescription = stringResource(
+                                                        if (detailSearching) R.string.close_search else R.string.search_this_list,
+                                                    ),
+                                                    tint = MaterialTheme.colorScheme.onSurface,
+                                                )
+                                            }
                                         },
                                     )
                                 }
                             }
+
+                            // Artist Detail
+                            detail != null && !isLocalDetail && detail.type == BrowseType.ARTIST &&
+                                detailActiveShelf == null && detail.browseId?.startsWith("UC") == true -> {
+                                add(
+                                    TopBarActionItem(key = "share") {
+                                        detail.let { d ->
+                                            IconButton(
+                                                onClick = {
+                                                    val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                                                        type = "text/plain"
+                                                        putExtra(
+                                                            Intent.EXTRA_TEXT,
+                                                            "https://music.youtube.com/channel/${d.browseId}",
+                                                        )
+                                                    }
+                                                    context.startActivity(Intent.createChooser(sendIntent, d.title))
+                                                },
+                                                modifier = Modifier.size(TOP_CONTROL_SIZE),
+                                            ) {
+                                                Icon(
+                                                    Icons.Rounded.IosShare,
+                                                    contentDescription = stringResource(R.string.share),
+                                                    tint = MaterialTheme.colorScheme.onSurface,
+                                                )
+                                            }
+                                        }
+                                    },
+                                )
+                            }
+
+                            // Library tab root
+                            route == null && detail == null && selectedTab == TAB_LIBRARY -> {
+                                // Index 0 (adjacent to PFP): History
+                                add(
+                                    TopBarActionItem(key = "history") {
+                                        IconButton(
+                                            onClick = {
+                                                navigator.push(AppRoute.History)
+                                                viewModel.loadHistory()
+                                            },
+                                            modifier = Modifier.size(TOP_CONTROL_SIZE),
+                                        ) {
+                                            Icon(
+                                                Icons.Rounded.History,
+                                                contentDescription = stringResource(R.string.listening_history),
+                                                tint = MaterialTheme.colorScheme.onSurface,
+                                            )
+                                        }
+                                    },
+                                )
+                                // Index 1 (to the left of History): Grid/List toggle
+                                add(
+                                    TopBarActionItem(key = "view_type") {
+                                        val listStyle = libraryViewType == LibraryViewType.LIST
+                                        IconButton(
+                                            onClick = {
+                                                AppSettings.setLibraryViewType(
+                                                    if (listStyle) LibraryViewType.GRID else LibraryViewType.LIST,
+                                                )
+                                            },
+                                            modifier = Modifier.size(TOP_CONTROL_SIZE),
+                                        ) {
+                                            Icon(
+                                                if (listStyle) BitChordIcons.GridView else BitChordIcons.ListView,
+                                                contentDescription = stringResource(
+                                                    if (listStyle) R.string.switch_to_grid_view else R.string.switch_to_list_view,
+                                                ),
+                                                tint = MaterialTheme.colorScheme.onSurface,
+                                            )
+                                        }
+                                    },
+                                )
+                            }
+
+                            // Library ShowAll
+                            route is AppRoute.LibraryShowAll -> {
+                                // Index 0: Sort
+                                add(
+                                    TopBarActionItem(key = "sort") {
+                                        Box {
+                                            IconButton(
+                                                onClick = { librarySortMenuOpen = true },
+                                                modifier = Modifier.size(TOP_CONTROL_SIZE),
+                                            ) {
+                                                Icon(
+                                                    Icons.AutoMirrored.Rounded.Sort,
+                                                    contentDescription = stringResource(R.string.sort_library),
+                                                    tint = MaterialTheme.colorScheme.onSurface,
+                                                )
+                                            }
+                                            DropdownMenu(
+                                                expanded = librarySortMenuOpen,
+                                                onDismissRequest = { librarySortMenuOpen = false },
+                                            ) {
+                                                LibrarySort.entries.forEach { option ->
+                                                    DropdownMenuItem(
+                                                        text = { Text(option.localizedLabel()) },
+                                                        trailingIcon = if (option == librarySort) {
+                                                            { Icon(Icons.Rounded.Check, contentDescription = null) }
+                                                        } else null,
+                                                        onClick = {
+                                                            AppSettings.setLibrarySort(option)
+                                                            librarySortMenuOpen = false
+                                                        },
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    },
+                                )
+                                // Index 1: Grid/List toggle
+                                add(
+                                    TopBarActionItem(key = "view_type") {
+                                        val listStyle = libraryViewType == LibraryViewType.LIST
+                                        IconButton(
+                                            onClick = {
+                                                AppSettings.setLibraryViewType(
+                                                    if (listStyle) LibraryViewType.GRID else LibraryViewType.LIST,
+                                                )
+                                            },
+                                            modifier = Modifier.size(TOP_CONTROL_SIZE),
+                                        ) {
+                                            Icon(
+                                                if (listStyle) BitChordIcons.GridView else BitChordIcons.ListView,
+                                                contentDescription = stringResource(
+                                                    if (listStyle) R.string.switch_to_grid_view else R.string.switch_to_list_view,
+                                                ),
+                                                tint = MaterialTheme.colorScheme.onSurface,
+                                            )
+                                        }
+                                    },
+                                )
+                            }
+
+                            // Home tab with update notice
+                            route == null && detail == null && selectedTab == TAB_HOME && updateNotice != null -> {
+                                add(
+                                    TopBarActionItem(key = "update") {
+                                        IconButton(
+                                            onClick = { showUpdateDialog = true },
+                                            modifier = Modifier.size(TOP_CONTROL_SIZE),
+                                        ) {
+                                            Icon(
+                                                Icons.Rounded.Upgrade,
+                                                contentDescription = stringResource(R.string.update_available, updateNotice.version.orEmpty()),
+                                                tint = MaterialTheme.colorScheme.primary,
+                                            )
+                                        }
+                                    },
+                                )
+                            }
+
+                            // Import: straight into choosing which playlists to copy
+                            route == AppRoute.Spotify && spotifyLibraryState.playlists.isNotEmpty() &&
+                                !spotifyLibraryState.selecting && !spotifySyncRunning -> {
+                                add(
+                                    TopBarActionItem(key = "spotify") {
+                                        IconButton(
+                                            onClick = spotifyLibraryState::requestStartSelecting,
+                                            modifier = Modifier.size(TOP_CONTROL_SIZE),
+                                        ) {
+                                            Icon(
+                                                Icons.Rounded.Download,
+                                                contentDescription = stringResource(R.string.spotify_sync_menu),
+                                                tint = MaterialTheme.colorScheme.onSurface,
+                                            )
+                                        }
+                                    },
+                                )
+                            }
+
+                            // Listen Together
+                            route == AppRoute.ListenTogether -> {
+                                add(
+                                    TopBarActionItem(key = "ping") {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.padding(horizontal = 8.dp),
+                                        ) {
+                                            when (val state = partyServerStatus) {
+                                                is ServerConnectionState.CustomFallback -> {
+                                                    Icon(
+                                                        Icons.Rounded.CloudOff,
+                                                        contentDescription = stringResource(R.string.listen_together_top_bar_fallback, stringResource(R.string.listen_together_ping, state.latencyMs)),
+                                                        tint = MaterialTheme.colorScheme.error,
+                                                        modifier = Modifier.size(14.dp),
+                                                    )
+                                                    Spacer(Modifier.width(4.dp))
+                                                    Text(
+                                                        text = stringResource(R.string.listen_together_ping, state.latencyMs),
+                                                        style = MaterialTheme.typography.labelMedium,
+                                                        color = MaterialTheme.colorScheme.error,
+                                                        maxLines = 1,
+                                                    )
+                                                }
+                                                is ServerConnectionState.CustomOnline -> {
+                                                    Text(
+                                                        text = stringResource(R.string.listen_together_ping, state.latencyMs),
+                                                        style = MaterialTheme.typography.labelMedium,
+                                                        color = MaterialTheme.colorScheme.onSurface,
+                                                        maxLines = 1,
+                                                    )
+                                                }
+                                                is ServerConnectionState.DefaultOnline -> {
+                                                    Text(
+                                                        text = stringResource(R.string.listen_together_ping, state.latencyMs),
+                                                        style = MaterialTheme.typography.labelMedium,
+                                                        color = MaterialTheme.colorScheme.onSurface,
+                                                        maxLines = 1,
+                                                    )
+                                                }
+                                                ServerConnectionState.Checking -> {
+                                                    Text(
+                                                        text = stringResource(R.string.listen_together_server_checking),
+                                                        style = MaterialTheme.typography.labelMedium,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        maxLines = 1,
+                                                    )
+                                                }
+                                                ServerConnectionState.Offline -> {
+                                                    Text(
+                                                        text = stringResource(R.string.listen_together_server_offline_dash),
+                                                        style = MaterialTheme.typography.labelMedium,
+                                                        color = MaterialTheme.colorScheme.error,
+                                                        maxLines = 1,
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    },
+                                )
+                            }
                         }
 
-                        TopBarActions(
-                            anchor = anchorState,
-                            auxiliary = auxiliaryItems,
-                        )
-                    },
-                )
-
-                // Drawn before the bars so their own glass reads on top of it.
-                BottomFadeScrim(
-                    withMiniPlayer = player.song != null,
-                    // Not the wash: by the foot of the screen the page has finished
-                    // easing out of it and into this, so this is what is actually
-                    // under the tab bar.
-                    pageColor = chromePageColor,
-                    modifier = Modifier.align(Alignment.BottomCenter),
-                )
-
-                // Whichever bar is drawing reports its height here, for the
-                // guard to read at layout — never in composition, see the guard.
-                FloatingBarsTapGuard(
-                    barsHeight = { if (selectedTab == TAB_SEARCH) 0 else floatingBarsHeight.intValue },
-                    modifier = Modifier.align(Alignment.BottomCenter),
-                )
-
-                // One tab handler, whichever bar is drawing it.
-                // A tab is a fresh start: everything pushed over the old one —
-                // routes and release pages alike — goes with it.
+                        // Download indicator (outermost auxiliary slot when downloading).
+                        // Not on the page it opens, where it would only lead back to itself.
+                        if (downloadSession.visible && route != AppRoute.Downloads) {
+                            add(
+                                TopBarActionItem(key = "download") {
+                                    TopBarDownloadButton(onClick = { navigator.push(AppRoute.Downloads) })
+                                },
+                            )
+                        }
+                    }
+                }
                 val dismissSearch: () -> Unit = {
                     selectedTab = lastNonSearchTab
                 }
@@ -4653,108 +4576,382 @@ private fun BitChordApp(
                         }
                     }
                 }
-
-                val effectiveInline = navBarScroll.isInline && selectedTab != TAB_SEARCH && !keyboardUp && player.song != null
-
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .widthIn(max = FLOATING_BAR_MAX_WIDTH)
-                        .fillMaxWidth()
-                        .onSizeChanged { floatingBarsHeight.intValue = it.height },
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    QueueActionNoticeHost(queueNotice)
-                    val showTopMiniPlayer = player.song != null && !effectiveInline
-                    AnimatedVisibility(
-                        visible = showTopMiniPlayer,
-                        enter = if (reducePlayerMotion) {
-                            fadeIn(tween(180)) + expandVertically(tween(200))
-                        } else {
-                            fadeIn(tween(200)) +
-                                expandVertically(
-                                    expandFrom = Alignment.Bottom,
-                                    animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
-                                ) +
-                                scaleIn(
-                                    initialScale = 0.80f,
-                                    transformOrigin = TransformOrigin(0.5f, 1f),
-                                    animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
-                                )
-                        },
-                        exit = if (reducePlayerMotion) {
-                            fadeOut(tween(140)) + shrinkVertically(tween(180))
-                        } else {
-                            fadeOut(tween(160)) +
-                                shrinkVertically(
-                                    shrinkTowards = Alignment.Bottom,
-                                    animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
-                                ) +
-                                scaleOut(
-                                    targetScale = 0.80f,
-                                    transformOrigin = TransformOrigin(0.5f, 1f),
-                                    animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
-                                )
-                        },
-                    ) {
-                        player.song?.let { song ->
-                            Column {
-                                MiniPlayer(
-                                    song = song,
-                                    isPlaying = player.isPlaying,
-                                    isLoading = playPauseBusy,
-                                    hazeState = hazeState,
-                                    onPlayPause = {
-                                        togglePlayPause()
-                                    },
-                                    onNext = { controller?.seekToNextMediaItem() },
-                                    onPrevious = { controller?.seekToPrevious() },
-                                    onExpand = if (reducePlayerMotion) {
-                                        { showNowPlaying = true }
-                                    } else {
-                                        playerSheetMotion::open
-                                    },
-                                    controlsLocked = controlsLocked,
-                                    onBlockedControl = showHostOnlyNotice,
-                                    dock = activeDock,
-                                    pull = playerSheetMotion.takeIf { !reducePlayerMotion },
-                                    compact = keyboardUp,
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                                Spacer(Modifier.height(8.dp))
-                            }
-                        }
+                if (isLandscapeChrome) {
+                    com.music.bitchord.ui.components.OfflineBanner(
+                        visible = offlineBannerActive,
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(top = com.music.bitchord.ui.components.topBarHeight()),
+                    )
+                    if (selectedTab == TAB_SEARCH && route == null && detail == null && selectedMoodGenre == null) {
+                        SearchSourceSwitcher(
+                            searchSource = searchSource,
+                            onSearchSourceChange = { onSearchSourceChange(it) },
+                            hazeState = hazeState,
+                            surface = true,
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .padding(top = com.music.bitchord.ui.components.topBarHeight() + 8.dp)
+                                .padding(landscapeSidePadding),
+                        )
                     }
-                    MorphingBottomBar(
+                    if ((player.song != null && !keyboardUp) || selectedTab == TAB_SEARCH) {
+                        BottomFadeScrim(
+                            withMiniPlayer = false,
+                            fadeHeightOverride = 96.dp,
+                            pageColor = chromePageColor,
+                            modifier = Modifier.align(Alignment.BottomCenter),
+                        )
+                    }
+                    FloatingBarsTapGuard(
+                        barsHeight = { if (selectedTab == TAB_SEARCH || player.song == null || keyboardUp) 0 else floatingBarsHeight.intValue },
+                        modifier = Modifier.align(Alignment.BottomCenter),
+                    )
+                    com.music.bitchord.ui.components.LandscapeTopBarRail(
+                        topBarOnLeft = topBarOnLeft,
+                        anchor = anchorState,
+                        auxiliary = auxiliaryItems,
+                        actionsVisible = topBarActionsVisible,
+                        onBack = topBarOnBack,
+                        leading = topBarLeading,
+                        hazeState = hazeState,
+                        modifier = Modifier.align(if (topBarOnLeft) Alignment.CenterStart else Alignment.CenterEnd),
+                    )
+                    com.music.bitchord.ui.components.LandscapeNavBarRail(
                         tabs = tabs,
                         selectedIndex = selectedTab,
                         onTabSelected = onTabSelected,
-                        query = query,
-                        onQueryChange = viewModel::onQueryChange,
-                        onSubmit = viewModel::submitSearch,
                         onDismissSearch = dismissSearch,
-                        searchFocusRequester = searchFieldFocus,
+                        searchOnTop = topBarOnLeft,
                         hazeState = hazeState,
-                        isInline = effectiveInline,
-                        onExpandInline = { navBarScroll.expand() },
-                        inlineSong = player.song,
-                        isPlaying = player.isPlaying,
-                        isLoading = playPauseBusy,
-                        onPlayPause = { togglePlayPause() },
-                        onNext = { controller?.seekToNextMediaItem() },
-                        onPrevious = { controller?.seekToPrevious() },
-                        onExpandPlayer = if (reducePlayerMotion) {
-                            { showNowPlaying = true }
-                        } else {
-                            playerSheetMotion::open
-                        },
-                        pull = playerSheetMotion.takeIf { !reducePlayerMotion },
-                        controlsLocked = controlsLocked,
-                        onBlockedControl = showHostOnlyNotice,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.align(if (topBarOnLeft) Alignment.CenterEnd else Alignment.CenterStart),
                     )
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(landscapeSidePadding)
+                            .widthIn(max = com.music.bitchord.ui.components.LANDSCAPE_MINI_PLAYER_MAX_WIDTH)
+                            .fillMaxWidth()
+                            .onSizeChanged { floatingBarsHeight.intValue = it.height },
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        QueueActionNoticeHost(queueNotice)
+                        if (selectedTab == TAB_SEARCH) {
+                            SearchBottomPill(
+                                query = query,
+                                onQueryChange = viewModel::onQueryChange,
+                                onSubmit = viewModel::submitSearch,
+                                onDismiss = dismissSearch,
+                                focusRequester = searchFieldFocus,
+                                hazeState = hazeState,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        } else {
+                            AnimatedVisibility(
+                                visible = player.song != null && !keyboardUp,
+                                enter = if (reducePlayerMotion) {
+                                    fadeIn(tween(180)) + expandVertically(tween(200))
+                                } else {
+                                    fadeIn(tween(220)) +
+                                        expandVertically(
+                                            expandFrom = Alignment.Bottom,
+                                            clip = false,
+                                            animationSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                                        ) +
+                                        slideInVertically(
+                                            initialOffsetY = { (it * 0.45f).toInt() },
+                                            animationSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                                        ) +
+                                        scaleIn(
+                                            initialScale = 0.72f,
+                                            transformOrigin = TransformOrigin(0.5f, 1f),
+                                            animationSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                                        )
+                                },
+                                exit = if (reducePlayerMotion) {
+                                    fadeOut(tween(140)) + shrinkVertically(tween(180))
+                                } else {
+                                    fadeOut(tween(180)) +
+                                        shrinkVertically(
+                                            shrinkTowards = Alignment.Bottom,
+                                            clip = false,
+                                            animationSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                                        ) +
+                                        slideOutVertically(
+                                            targetOffsetY = { (it * 0.45f).toInt() },
+                                            animationSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                                        ) +
+                                        scaleOut(
+                                            targetScale = 0.72f,
+                                            transformOrigin = TransformOrigin(0.5f, 1f),
+                                            animationSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                                        )
+                                },
+                            ) {
+                                player.song?.let { song ->
+                                    Box(
+                                        modifier = Modifier
+                                            .windowInsetsPadding(com.music.bitchord.ui.components.floatingBarInsets)
+                                            .padding(bottom = 2.dp),
+                                    ) {
+                                        MiniPlayer(
+                                            song = song,
+                                            isPlaying = player.isPlaying,
+                                            isLoading = playPauseBusy,
+                                            hazeState = hazeState,
+                                            onPlayPause = { togglePlayPause() },
+                                            onNext = { controller?.seekToNextMediaItem() },
+                                            onPrevious = { controller?.seekToPrevious() },
+                                            onExpand = if (reducePlayerMotion) {
+                                                { showNowPlaying = true }
+                                            } else {
+                                                playerSheetMotion::open
+                                            },
+                                            controlsLocked = controlsLocked,
+                                            onBlockedControl = showHostOnlyNotice,
+                                            dock = activeDock,
+                                            pull = playerSheetMotion.takeIf { !reducePlayerMotion },
+                                            modifier = Modifier.fillMaxWidth(),
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (reduceDynamicBlur || !glassActive || !progressiveBlur) {
+                        BottomFadeScrim(
+                            pageColor = chromePageColor,
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .rotate(180f)
+                                .graphicsLayer { alpha = topFadeAlpha },
+                        )
+                    } else {
+                        TopFadeBlur(
+                            hazeState = hazeState,
+                            pageColor = chromePageColor,
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .graphicsLayer { alpha = topFadeAlpha },
+                        )
+                    }
+                    com.music.bitchord.ui.components.OfflineBanner(
+                        visible = offlineBannerActive,
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(top = com.music.bitchord.ui.components.topBarHeight()),
+                    )
+    
+                    FrostedTopBar(
+                        title = when (route) {
+                            AppRoute.Spotify -> stringResource(R.string.spotify)
+                            AppRoute.Downloads -> stringResource(R.string.downloads)
+                            AppRoute.Discord -> "Discord"
+                            AppRoute.History -> stringResource(R.string.history)
+                            is AppRoute.LibraryShowAll -> route.shelf.title
+                            is AppRoute.ArtistShelf -> route.shelf.title
+                            AppRoute.Moods -> stringResource(R.string.find_your_mood)
+                            AppRoute.AccountScrobbling -> stringResource(R.string.account_scrobbling)
+                            AppRoute.Sources -> stringResource(R.string.sources)
+                            AppRoute.ListenTogether -> stringResource(R.string.listen_together)
+                            AppRoute.WearOs -> stringResource(R.string.wear_os_page_title)
+                            AppRoute.Equalizer -> stringResource(R.string.equalizer)
+                            AppRoute.Settings -> stringResource(R.string.settings)
+                            is AppRoute.SettingsSection -> stringResource(route.category.title)
+                            is AppRoute.SettingsChoice -> stringResource(route.choice.title)
+                            AppRoute.EqualizerPresets -> stringResource(R.string.equalizer_preset)
+                            AppRoute.Replay -> stringResource(R.string.replay)
+                            null -> when {
+                                detail != null && detailActiveShelf != null -> detailActiveShelf.title.orEmpty()
+                                detail != null -> detail.title
+                                selectedMoodGenre != null -> selectedMoodGenre?.title.orEmpty()
+                                else -> if (selectedTab == TAB_HOME) "" else tabs[selectedTab].let {
+                                    if (it.label == "Play") stringResource(R.string.listen_now) else it.label
+                                }
+                            }
+                        },
+                        // Every page, in either material, uses separated floating
+                        // circles over the shared gradient — no full-width pane.
+                        transparentBackdrop = true,
+                        artworkPageChrome = true,
+                        backButtonHazeState = hazeState,
+                        trailingTitle = if (detail != null && detailActiveShelf != null) detail.title else null,
+                        // Search has no large in-list header to hand the title back to —
+                        // the field takes that space — so its bar title is always up.
+                        scrolled = {
+                            when {
+                                // The page leads with its own large "Replay", so the bar
+                                // stays out of the way until that has been scrolled off.
+                                route == AppRoute.Replay -> replayScrolled
+                                route != null -> true
+                                detail != null && detailActiveShelf != null -> true
+                                detail != null -> detailScrolled
+                                selectedMoodGenre != null -> true
+                                else -> scrolled || selectedTab == TAB_SEARCH
+                            }
+                        },
+                        refreshing = currentFeed != null && currentFeed in refreshing,
+                        pullFraction = { currentPull?.distanceFraction ?: 0f },
+                        // The same step the back gesture takes — see [goBack] —
+                        // offered on anything pushed over a tab.
+                        onBack = when {
+                            route != null || detail != null || selectedMoodGenre != null -> goBack
+                            selectedTab == TAB_SEARCH -> ({ selectedTab = lastNonSearchTab })
+                            else -> null
+                        },
+                        modifier = Modifier.align(Alignment.TopCenter),
+                        // Settings is the profile's own destination: no actions there.
+                        actionsVisible = !(route != null && AppRoute.Settings in navigator),
+                        leading = if (selectedTab == TAB_HOME && route == null && detail == null && selectedMoodGenre == null) {
+                            {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_logo),
+                                    contentDescription = "BitChord",
+                                    tint = MaterialTheme.colorScheme.onBackground,
+                                    modifier = Modifier
+                                        .padding(start = 4.dp)
+                                        .size(width = 30.dp, height = 30.dp),
+                                )
+                            }
+                        } else null,
+                        accessory = if (
+                            selectedTab == TAB_SEARCH && route == null && detail == null && selectedMoodGenre == null
+                        ) {
+                            {
+                                SearchSourceSwitcher(
+                                    searchSource = searchSource,
+                                    onSearchSourceChange = { onSearchSourceChange(it) },
+                                    hazeState = hazeState,
+                                    // The accessory pill around it is the surface.
+                                    surface = false,
+                                )
+                            }
+                        } else null,
+                        actions = {
+                            TopBarActions(
+                                anchor = anchorState,
+                                auxiliary = auxiliaryItems,
+                            )
+                        },
+                    )
+    
+                    // Drawn before the bars so their own glass reads on top of it.
+                    BottomFadeScrim(
+                        withMiniPlayer = player.song != null,
+                        // Not the wash: by the foot of the screen the page has finished
+                        // easing out of it and into this, so this is what is actually
+                        // under the tab bar.
+                        pageColor = chromePageColor,
+                        modifier = Modifier.align(Alignment.BottomCenter),
+                    )
+                    FloatingBarsTapGuard(
+                        barsHeight = { if (selectedTab == TAB_SEARCH) 0 else floatingBarsHeight.intValue },
+                        modifier = Modifier.align(Alignment.BottomCenter),
+                    )
+                    val effectiveInline = navBarScroll.isInline && selectedTab != TAB_SEARCH && !keyboardUp && player.song != null
+    
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .widthIn(max = FLOATING_BAR_MAX_WIDTH)
+                            .fillMaxWidth()
+                            .onSizeChanged { floatingBarsHeight.intValue = it.height },
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        QueueActionNoticeHost(queueNotice)
+                        val showTopMiniPlayer = player.song != null && !effectiveInline
+                        AnimatedVisibility(
+                            visible = showTopMiniPlayer,
+                            enter = if (reducePlayerMotion) {
+                                fadeIn(tween(180)) + expandVertically(tween(200))
+                            } else {
+                                fadeIn(tween(200)) +
+                                    expandVertically(
+                                        expandFrom = Alignment.Bottom,
+                                        animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+                                    ) +
+                                    scaleIn(
+                                        initialScale = 0.80f,
+                                        transformOrigin = TransformOrigin(0.5f, 1f),
+                                        animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+                                    )
+                            },
+                            exit = if (reducePlayerMotion) {
+                                fadeOut(tween(140)) + shrinkVertically(tween(180))
+                            } else {
+                                fadeOut(tween(160)) +
+                                    shrinkVertically(
+                                        shrinkTowards = Alignment.Bottom,
+                                        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+                                    ) +
+                                    scaleOut(
+                                        targetScale = 0.80f,
+                                        transformOrigin = TransformOrigin(0.5f, 1f),
+                                        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+                                    )
+                            },
+                        ) {
+                            player.song?.let { song ->
+                                Column {
+                                    MiniPlayer(
+                                        song = song,
+                                        isPlaying = player.isPlaying,
+                                        isLoading = playPauseBusy,
+                                        hazeState = hazeState,
+                                        onPlayPause = {
+                                            togglePlayPause()
+                                        },
+                                        onNext = { controller?.seekToNextMediaItem() },
+                                        onPrevious = { controller?.seekToPrevious() },
+                                        onExpand = if (reducePlayerMotion) {
+                                            { showNowPlaying = true }
+                                        } else {
+                                            playerSheetMotion::open
+                                        },
+                                        controlsLocked = controlsLocked,
+                                        onBlockedControl = showHostOnlyNotice,
+                                        dock = activeDock,
+                                        pull = playerSheetMotion.takeIf { !reducePlayerMotion },
+                                        modifier = Modifier.fillMaxWidth(),
+                                    )
+                                    Spacer(Modifier.height(8.dp))
+                                }
+                            }
+                        }
+                        MorphingBottomBar(
+                            tabs = tabs,
+                            selectedIndex = selectedTab,
+                            onTabSelected = onTabSelected,
+                            query = query,
+                            onQueryChange = viewModel::onQueryChange,
+                            onSubmit = viewModel::submitSearch,
+                            onDismissSearch = dismissSearch,
+                            searchFocusRequester = searchFieldFocus,
+                            hazeState = hazeState,
+                            isInline = effectiveInline,
+                            onExpandInline = { navBarScroll.expand() },
+                            inlineSong = player.song,
+                            isPlaying = player.isPlaying,
+                            isLoading = playPauseBusy,
+                            onPlayPause = { togglePlayPause() },
+                            onNext = { controller?.seekToNextMediaItem() },
+                            onPrevious = { controller?.seekToPrevious() },
+                            onExpandPlayer = if (reducePlayerMotion) {
+                                { showNowPlaying = true }
+                            } else {
+                                playerSheetMotion::open
+                            },
+                            pull = playerSheetMotion.takeIf { !reducePlayerMotion },
+                            controlsLocked = controlsLocked,
+                            onBlockedControl = showHostOnlyNotice,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                 }
             }
+
+        }
 
         }
 

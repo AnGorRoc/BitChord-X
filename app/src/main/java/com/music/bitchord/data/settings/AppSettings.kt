@@ -532,8 +532,17 @@ object AppSettings {
     /** Swiping a song row plays it next instead of adding it to the end of the queue. */
     val swipeToPlayNext = MutableStateFlow(false)
 
+    /** Action triggered when swiping a song row from left to right (start to end). */
+    val swipeRightAction = MutableStateFlow(SongSwipeAction.PLAY_NEXT)
+
+    /** Action triggered when swiping a song row from right to left (end to start). */
+    val swipeLeftAction = MutableStateFlow(SongSwipeAction.ADD_TO_QUEUE)
+
     /** Once a song has been suggested or played this session, AutoPlay won't offer it again. */
     val dontRepeatSuggestions = MutableStateFlow(false)
+
+    /** Strictly excludes music videos from AutoPlay recommendations and radio stations. */
+    val filterMusicVideosInAutoplay = MutableStateFlow(true)
 
     /** Analyzes audio waveform/envelope to align matching playback moment between versions. */
     val smartVersionAlignment = MutableStateFlow(true)
@@ -547,6 +556,12 @@ object AppSettings {
 
     /** Drops haze blur (status bar, mini player, bottom fade, lyrics focus) for a solid-fill look. */
     val reduceDynamicBlur = MutableStateFlow(false)
+
+    /**
+     * Draws the player's glyphs and text, and the dark menus' rows, in plain white
+     * over what is behind them instead of blending the artwork's colour into them.
+     */
+    val disableBlendEffects = MutableStateFlow(false)
 
     /** Real backdrop-sampled glass (blur, lens refraction) on the floating nav bar, Android 12+ only. */
     val liquidGlass = MutableStateFlow(false)
@@ -642,24 +657,20 @@ object AppSettings {
      * [NowPlayingScreen][com.music.bitchord.ui.player.NowPlayingScreen].
      */
     val fullBleedArtwork = MutableStateFlow(true)
-    val immersivePlayerMode = MutableStateFlow(true)
 
     /**
-     * Puts v1.5's backdrop back on the player: four quantised blobs drifting
-     * behind the whole screen, rather than the artwork's own colours hung off
-     * the sleeve's bottom edge.
+     * What the main player stands on below the artwork.
      *
-     * Off by default, because the current backdrop replaced it for two reasons
-     * that have not gone away â€” see [ArtworkMesh][com.music.bitchord.ui.player.ArtworkMesh]
-     * for the colour one (a cover that is nine-tenths black with a red stripe
-     * comes back from the quantiser as a red screen) and
-     * [ArtworkMeshBackdrop][com.music.bitchord.ui.player.ArtworkMeshBackdrop]
-     * for the cost one (blobs that drift are a full-screen blur redrawn while
-     * they move, where a mesh is drawn once per track and then composited).
-     * Kept as a switch because people asked for the old look back, and neither
-     * reason is one a listener has to agree with.
+     * [PlayerTheme.DEFAULT] because that is the look people asked to have back,
+     * and because the alternatives each give something up: see
+     * [ArtworkMesh][com.music.bitchord.ui.player.ArtworkMesh] for what
+     * [PlayerTheme.LEGACY]'s quantiser does to a cover that is nine-tenths black
+     * with a red stripe (a red screen), and
+     * [ArtworkMeshBackdrop][com.music.bitchord.ui.player.ArtworkMeshBackdrop] for
+     * its cost (blobs that drift are a full-screen blur redrawn while they move,
+     * where a mesh is drawn once per track and then composited).
      */
-    val legacyMeshGradient = MutableStateFlow(false)
+    val playerTheme = MutableStateFlow(PlayerTheme.DEFAULT)
 
     /** Restores the expanded player to the surface the listener left open. */
     val lastPlayerScreen = MutableStateFlow(LastPlayerScreen.MAIN)
@@ -1174,6 +1185,12 @@ object AppSettings {
         hideSongStatus.value = prefs.getBoolean(KEY_HIDE_SONG_STATUS, false)
         showQueueHistory.value = prefs.getBoolean(KEY_SHOW_QUEUE_HISTORY, false)
         swipeToPlayNext.value = prefs.getBoolean(KEY_SWIPE_TO_PLAY_NEXT, false)
+        swipeRightAction.value = prefs.getString(KEY_SWIPE_RIGHT_ACTION, null)
+            ?.let { runCatching { SongSwipeAction.valueOf(it) }.getOrNull() }
+            ?: SongSwipeAction.PLAY_NEXT
+        swipeLeftAction.value = prefs.getString(KEY_SWIPE_LEFT_ACTION, null)
+            ?.let { runCatching { SongSwipeAction.valueOf(it) }.getOrNull() }
+            ?: SongSwipeAction.ADD_TO_QUEUE
         dontRepeatSuggestions.value = prefs.getBoolean(KEY_DONT_REPEAT_SUGGESTIONS, false)
         preferMusicOnly.value = prefs.getBoolean(KEY_PREFER_MUSIC_ONLY, false)
         hideRecents.value = prefs.getBoolean(KEY_HIDE_RECENTS, false)
@@ -1182,9 +1199,11 @@ object AppSettings {
         hideHomeMoods.value = prefs.getBoolean(KEY_HIDE_HOME_MOODS, false)
         squareVideoThumbnails.value = prefs.getBoolean(KEY_SQUARE_VIDEO_THUMBNAILS, false)
         com.music.bitchord.ui.components.VideoThumbnails.square = squareVideoThumbnails.value
+        filterMusicVideosInAutoplay.value = prefs.getBoolean(KEY_FILTER_MUSIC_VIDEOS_IN_AUTOPLAY, true)
         smartVersionAlignment.value = prefs.getBoolean(KEY_SMART_VERSION_ALIGNMENT, true)
         smartSourceAlignment.value = prefs.getBoolean(KEY_SMART_SOURCE_ALIGNMENT, true)
         reduceDynamicBlur.value = prefs.getBoolean(KEY_REDUCE_BLUR, false)
+        disableBlendEffects.value = prefs.getBoolean(KEY_DISABLE_BLEND_EFFECTS, false)
         liquidGlass.value = prefs.getBoolean(KEY_LIQUID_GLASS, false)
         glassPerformance.value = prefs.getBoolean(KEY_GLASS_PERFORMANCE, false)
         progressiveBlur.value = prefs.getBoolean(KEY_PROGRESSIVE_BLUR, false)
@@ -1204,8 +1223,12 @@ object AppSettings {
         signatureApiUrl.value = normalizeSignatureApiUrl(prefs.getString(KEY_SIGNATURE_API_URL, "").orEmpty())
         fullBleedArtwork.value = prefs.getBoolean(KEY_FULL_BLEED_ARTWORK, true)
         fullBleedDetailArtwork.value = prefs.getBoolean(KEY_FULL_BLEED_DETAIL_ARTWORK, false)
-        immersivePlayerMode.value = prefs.getBoolean(KEY_IMMERSIVE_PLAYER_MODE, true)
-        legacyMeshGradient.value = prefs.getBoolean(KEY_LEGACY_MESH_GRADIENT, false)
+        // The old legacy mesh switch answers until a theme has been picked.
+        playerTheme.value = runCatching {
+            PlayerTheme.valueOf(prefs.getString(KEY_PLAYER_THEME, null).orEmpty())
+        }.getOrElse {
+            if (prefs.getBoolean(KEY_LEGACY_MESH_GRADIENT, false)) PlayerTheme.LEGACY else PlayerTheme.DEFAULT
+        }
         lastPlayerScreen.value = runCatching {
             LastPlayerScreen.valueOf(
                 prefs.getString(KEY_LAST_PLAYER_SCREEN, null) ?: LastPlayerScreen.MAIN.name,
@@ -1645,6 +1668,29 @@ object AppSettings {
         prefs.edit().putBoolean(KEY_SWIPE_TO_PLAY_NEXT, value).apply()
     }
 
+    fun setSwipeRightAction(value: SongSwipeAction) {
+        swipeRightAction.value = value
+        if (::prefs.isInitialized) prefs.edit().putString(KEY_SWIPE_RIGHT_ACTION, value.name).apply()
+    }
+
+    fun setSwipeLeftAction(value: SongSwipeAction) {
+        swipeLeftAction.value = value
+        if (::prefs.isInitialized) prefs.edit().putString(KEY_SWIPE_LEFT_ACTION, value.name).apply()
+    }
+
+    fun swapSwipeDirections() {
+        val prevRight = swipeRightAction.value
+        val prevLeft = swipeLeftAction.value
+        swipeRightAction.value = prevLeft
+        swipeLeftAction.value = prevRight
+        if (::prefs.isInitialized) {
+            prefs.edit()
+                .putString(KEY_SWIPE_RIGHT_ACTION, prevLeft.name)
+                .putString(KEY_SWIPE_LEFT_ACTION, prevRight.name)
+                .apply()
+        }
+    }
+
     fun setDontRepeatSuggestions(value: Boolean) {
         dontRepeatSuggestions.value = value
         prefs.edit().putBoolean(KEY_DONT_REPEAT_SUGGESTIONS, value).apply()
@@ -1693,6 +1739,11 @@ object AppSettings {
 
     fun setMixViewOpen(value: Boolean) {
         mixViewOpen.value = value
+    }
+
+    fun setFilterMusicVideosInAutoplay(value: Boolean) {
+        filterMusicVideosInAutoplay.value = value
+        prefs.edit().putBoolean(KEY_FILTER_MUSIC_VIDEOS_IN_AUTOPLAY, value).apply()
     }
 
     fun setSmartVersionAlignment(value: Boolean) {
@@ -1911,14 +1962,14 @@ object AppSettings {
         prefs.edit().putBoolean(KEY_FULL_BLEED_ARTWORK, value).apply()
     }
 
-    fun setImmersivePlayerMode(value: Boolean) {
-        immersivePlayerMode.value = value
-        prefs.edit().putBoolean(KEY_IMMERSIVE_PLAYER_MODE, value).apply()
+    fun setDisableBlendEffects(value: Boolean) {
+        disableBlendEffects.value = value
+        prefs.edit().putBoolean(KEY_DISABLE_BLEND_EFFECTS, value).apply()
     }
 
-    fun setLegacyMeshGradient(value: Boolean) {
-        legacyMeshGradient.value = value
-        prefs.edit().putBoolean(KEY_LEGACY_MESH_GRADIENT, value).apply()
+    fun setPlayerTheme(value: PlayerTheme) {
+        playerTheme.value = value
+        prefs.edit().putString(KEY_PLAYER_THEME, value.name).apply()
     }
 
     fun setLastPlayerScreen(value: LastPlayerScreen) {
@@ -2563,6 +2614,8 @@ object AppSettings {
     private const val KEY_HIDE_SONG_STATUS = "hide_song_status"
     private const val KEY_SHOW_QUEUE_HISTORY = "show_queue_history"
     private const val KEY_SWIPE_TO_PLAY_NEXT = "swipe_to_play_next"
+    private const val KEY_SWIPE_RIGHT_ACTION = "swipe_right_action"
+    private const val KEY_SWIPE_LEFT_ACTION = "swipe_left_action"
     private const val KEY_DONT_REPEAT_SUGGESTIONS = "dont_repeat_suggestions"
     private const val KEY_PREFER_MUSIC_ONLY = "prefer_music_only"
     private const val KEY_HIDE_RECENTS = "hide_recents"
@@ -2572,6 +2625,7 @@ object AppSettings {
     private const val KEY_SQUARE_VIDEO_THUMBNAILS = "square_video_thumbnails"
     private const val KEY_GLASS_PERFORMANCE = "glass_performance"
     private const val KEY_FULL_BLEED_DETAIL_ARTWORK = "full_bleed_detail_artwork"
+    private const val KEY_FILTER_MUSIC_VIDEOS_IN_AUTOPLAY = "filter_music_videos_in_autoplay"
     private const val KEY_SMART_VERSION_ALIGNMENT = "smart_version_alignment"
     private const val KEY_SMART_SOURCE_ALIGNMENT = "smart_source_alignment"
     private const val KEY_REDUCE_BLUR = "reduce_dynamic_blur"
@@ -2586,8 +2640,9 @@ object AppSettings {
     private const val KEY_PRIORITIZE_SPOTIFY_CANVAS = "prioritize_spotify_canvas"
     private const val KEY_SIGNATURE_API_ENABLED = "signature_api_enabled"
     private const val KEY_SIGNATURE_API_URL = "signature_api_url"
+    private const val KEY_DISABLE_BLEND_EFFECTS = "disable_blend_effects"
     private const val KEY_FULL_BLEED_ARTWORK = "full_bleed_artwork"
-    private const val KEY_IMMERSIVE_PLAYER_MODE = "immersive_player_mode"
+    private const val KEY_PLAYER_THEME = "player_theme"
     private const val KEY_LEGACY_MESH_GRADIENT = "legacy_mesh_gradient"
     private const val KEY_LAST_PLAYER_SCREEN = "last_player_screen"
     private const val KEY_SYNCED_LYRICS = "synced_lyrics"

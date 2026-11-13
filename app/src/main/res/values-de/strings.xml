@@ -1560,6 +1560,10 @@
     <string name="sing_status_karaoke">Karaoke</string>
     <string name="sing_engine_title">Acoustic Engine</string>
     <string name="sing_badge_dsp">BITCHORD SING</string>
+    <string name="swipe_right_action">Auf einem Song nach rechts wischen</string>
+    <string name="swipe_left_action">Auf einem Song nach links wischen</string>
+    <string name="swipe_hold_playlist_hint">Wischen und halten, um zu einer Playlist hinzuzufügen</string>
+    <string name="swipe_action_disabled">Aus</string>
 
     <!-- Spotify Onboarding -->
     <string name="onboarding_spotify_title">Connect your Spotify</string>

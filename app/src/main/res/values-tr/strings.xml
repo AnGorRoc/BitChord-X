@@ -1517,6 +1517,10 @@
     <string name="sing_status_karaoke">Karaoke</string>
     <string name="sing_engine_title">Acoustic Engine</string>
     <string name="sing_badge_dsp">BITCHORD SING</string>
+    <string name="swipe_right_action">Şarkıyı sağa kaydır</string>
+    <string name="swipe_left_action">Şarkıyı sola kaydır</string>
+    <string name="swipe_hold_playlist_hint">Çalma listesine eklemek için kaydırıp basılı tutun</string>
+    <string name="swipe_action_disabled">Kapalı</string>
 
     <!-- Spotify Onboarding -->
     <string name="onboarding_spotify_title">Connect your Spotify</string>

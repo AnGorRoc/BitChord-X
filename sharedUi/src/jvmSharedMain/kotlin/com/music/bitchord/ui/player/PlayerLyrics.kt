@@ -2,7 +2,6 @@ package com.music.bitchord.ui.player
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -64,6 +63,7 @@ import androidx.compose.runtime.MutableLongState
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -71,6 +71,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.structuralEqualityPolicy
 import androidx.compose.runtime.snapshots.Snapshot
@@ -149,8 +150,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.setValue
 
 
 /** Returns true if any character in [text] belongs to a BMP RTL script. */
@@ -169,6 +168,12 @@ private fun isRtl(text: String): Boolean {
         }
     }
     return rtlCount > ltrCount
+}
+
+/** Returns the text direction for [text]: LTR by default, RTL when detected. */
+private fun textDirectionFor(text: String): androidx.compose.ui.text.style.TextDirection {
+    return if (isRtl(text)) androidx.compose.ui.text.style.TextDirection.Rtl
+    else androidx.compose.ui.text.style.TextDirection.Ltr
 }
 
 /** Whether [text] carries Arabic-script letters (Persian, Arabic, Urdu…). */
@@ -249,8 +254,8 @@ private val GLOW_ROOM = 10.dp
  * Small enough to be read as a second voice at a glance and no smaller —
  * these are the words of the song, not a caption.
  */
-private val BACKING_FONT_SIZE = 26.sp
-private val BACKING_LINE_HEIGHT = 33.sp
+private val BACKING_FONT_SIZE = 23.sp
+private val BACKING_LINE_HEIGHT = 29.sp
 private const val BACKING_ALPHA = 0.72f
 
 /**
@@ -284,10 +289,10 @@ private const val BACKING_FADE_LEAD = 1.6f
  * way Apple Music prints pronunciation under the lyric, and tucked up into the
  * lead's glow inset so the two read as one line rather than two rows.
  */
-private val SUB_LYRIC_FONT_SIZE = 22.sp
-private val SUB_LYRIC_LINE_HEIGHT = 28.sp
-private val SUB_BACKING_FONT_SIZE = 18.sp
-private val SUB_BACKING_LINE_HEIGHT = 24.sp
+private val SUB_LYRIC_FONT_SIZE = 20.sp
+private val SUB_LYRIC_LINE_HEIGHT = 25.sp
+private val SUB_BACKING_FONT_SIZE = 16.sp
+private val SUB_BACKING_LINE_HEIGHT = 21.sp
 private const val SUB_LYRIC_ALPHA = 0.85f
 private val SUB_LYRIC_TUCK = 6.dp
 private const val SUB_LYRIC_OPEN_MS = 460
@@ -529,13 +534,13 @@ internal fun LyricsStatusWithChange(
 ) {
     val haptics = rememberHaptics()
     Row(
-        modifier = modifier,
+        modifier = modifier.additiveChrome(LocalPlayerChrome.current),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = status,
             style = MaterialTheme.typography.titleMedium,
-            color = LocalPlayerTint.current.copy(alpha = 0.55f),
+            color = chromeWhite(0.55f),
             textDecoration = if (onStatusClick != null) TextDecoration.Underline else null,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -1459,10 +1464,11 @@ internal fun TranslationToggleButton(
     onClick: () -> Unit,
 ) {
     val active = showingTranslation || state is LyricsTranslationUiState.Loading
+    val chrome = LocalPlayerChrome.current
     val tint = when {
-        !enabled || state is LyricsTranslationUiState.SameLanguage -> LocalPlayerTint.current.copy(alpha = 0.42f)
-        active -> LocalPlayerTint.current
-        else -> LocalPlayerTint.current.copy(alpha = 0.78f)
+        !enabled || state is LyricsTranslationUiState.SameLanguage -> chromeWhite(0.42f)
+        active -> Color.White.copy(alpha = if (chrome) CHROME_FULL_ALPHA else 1f)
+        else -> chromeWhite(0.78f)
     }
     val discAlpha by animateFloatAsState(
         targetValue = if (active) 0.34f else 0.18f,
@@ -1472,7 +1478,8 @@ internal fun TranslationToggleButton(
         modifier = Modifier
             .size(34.dp)
             .clip(CircleShape)
-            .background(LocalPlayerTint.current.copy(alpha = discAlpha))
+            .additiveChrome(chrome)
+            .background(Color.White.copy(alpha = discAlpha))
             .clickable(
                 enabled = enabled,
                 interactionSource = remember { MutableInteractionSource() },
@@ -1510,10 +1517,11 @@ internal fun RomanizationToggleButton(
     onClick: () -> Unit,
 ) {
     val active = showingRomanization || state is LyricsTranslationUiState.Loading
+    val chrome = LocalPlayerChrome.current
     val tint = when {
-        !enabled || state is LyricsTranslationUiState.SameLanguage -> LocalPlayerTint.current.copy(alpha = 0.42f)
-        active -> LocalPlayerTint.current
-        else -> LocalPlayerTint.current.copy(alpha = 0.78f)
+        !enabled || state is LyricsTranslationUiState.SameLanguage -> chromeWhite(0.42f)
+        active -> Color.White.copy(alpha = if (chrome) CHROME_FULL_ALPHA else 1f)
+        else -> chromeWhite(0.78f)
     }
     val discAlpha by animateFloatAsState(
         targetValue = if (active) 0.34f else 0.18f,
@@ -1523,7 +1531,8 @@ internal fun RomanizationToggleButton(
         modifier = Modifier
             .size(34.dp)
             .clip(CircleShape)
-            .background(LocalPlayerTint.current.copy(alpha = discAlpha))
+            .additiveChrome(chrome)
+            .background(Color.White.copy(alpha = discAlpha))
             .clickable(
                 enabled = enabled,
                 interactionSource = remember { MutableInteractionSource() },
@@ -1859,8 +1868,8 @@ internal fun LyricsPanel(
     val lyricsBlur by PlayerSettings.lyricsBlur.collectAsStateWithLifecycle()
     val reduceAnimation by PlayerSettings.reduceAnimation.collectAsStateWithLifecycle()
 
-    // Syllable glowing/halo runs independently of background line blur
-    val glowing = !reduceAnimation && !reduceDynamicBlur && renderEffectBlurSupported
+    val glowing = !reduceAnimation && !reduceDynamicBlur && lyricsBlur &&
+        renderEffectBlurSupported
 
     LaunchedEffect(listState) {
         listState.interactionSource.interactions.collect { interaction ->
@@ -1894,24 +1903,24 @@ internal fun LyricsPanel(
     )
 
     val currentLine by rememberUpdatedState(focusLine)
-    val activeNearCenter by remember(listState, currentLine) {
+    val activeOnScreen by remember(listState) {
         derivedStateOf {
-            val visible = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == currentLine }
-                ?: return@derivedStateOf false
-            val viewportCenter = (listState.layoutInfo.viewportStartOffset + listState.layoutInfo.viewportEndOffset) / 2
-            val itemCenter = visible.offset + visible.size / 2
-            val tolerance = (visible.size * 1.1f).toInt().coerceAtLeast(40)
-            abs(itemCenter - viewportCenter) <= tolerance
+            listState.layoutInfo.visibleItemsInfo.any { it.index == currentLine }
         }
     }
-    // Spotify reconnection: reconnects when the active lyric passes near the viewport center.
-    // If the user scrolled far away, auto-scroll remains disconnected until the song reaches the visible center.
-    LaunchedEffect(browsingByDrag, activeNearCenter, listState.isScrollInProgress, panelPlaying) {
-        if (panelPlaying && browsingByDrag && activeNearCenter && !listState.isScrollInProgress) {
-            delay(150)
-            if (panelPlaying && browsingByDrag && activeNearCenter && !listState.isScrollInProgress) {
-                browsingByDrag = false
-            }
+    // Paused, there is no song to follow back to, so a hand scroll should sit
+    // wherever it was left rather than snapping back on these timers.
+    LaunchedEffect(browsingByDrag, activeOnScreen, listState.isScrollInProgress, panelPlaying) {
+        if (panelPlaying && browsingByDrag && activeOnScreen && !listState.isScrollInProgress) {
+            delay(600)
+            browsingByDrag = false
+        }
+    }
+
+    LaunchedEffect(browsingByDrag, listState.isScrollInProgress, panelPlaying) {
+        if (panelPlaying && browsingByDrag && !listState.isScrollInProgress) {
+            delay(5_000)
+            browsingByDrag = false
         }
     }
 
@@ -2136,7 +2145,10 @@ internal fun LyricsPanel(
                 targetValue = when {
                     !isSynced -> 0.95f
                     isActive -> 1f
-                    browsing -> if (isEdgeItem) 0.65f else 0.95f
+                    // Reading by hand is not following along: the stack flattens
+                    // to one brightness so no row is being pointed at.
+                    browsing -> BROWSING_ALPHA
+                    // Lines that have already been sung remain legible rather than fading away.
                     offset < 0 -> 0.92f
                     else -> falloff[step]
                 },
@@ -2232,15 +2244,15 @@ internal fun LyricsPanel(
                 val alignEnd = duet && line.alignment == LyricAlignment.End
                 val style = if (isSynced) {
                     MaterialTheme.typography.headlineLarge.copy(
-                        fontSize = 38.sp,
-                        lineHeight = 46.sp,
+                        fontSize = 34.sp,
+                        lineHeight = 41.sp,
                         fontWeight = FontWeight.ExtraBold,
                         textAlign = if (alignEnd) TextAlign.End else TextAlign.Start,
                     )
                 } else {
                     MaterialTheme.typography.headlineMedium.copy(
-                        fontSize = 33.sp,
-                        lineHeight = 42.sp,
+                        fontSize = 30.sp,
+                        lineHeight = 38.sp,
                         fontWeight = FontWeight.ExtraBold,
                         textAlign = if (alignEnd) TextAlign.End else TextAlign.Start,
                     )
@@ -2585,21 +2597,6 @@ private fun PanelVoice(
         val vazirmatn = Font(Res.font.vazirmatn_regular)
         remember(style, vazirmatn) { style.copy(fontFamily = FontFamily(vazirmatn)) }
     } else style
-    // The line being sung is white; every other one — sung or still to come —
-    // takes the sleeve's tint, as the rest of the player's secondary text does
-    // (see [LocalPlayerTint]). Faded across the handover rather than cut, so a
-    // line warms to white as it is reached and cools as it is left. Lyrics
-    // with no timing have no line being sung, and stay white throughout.
-    val targetColor = when {
-        isActive || !synced -> Color.White
-        sung -> Color(0xFF8E8E93)
-        else -> LocalPlayerTint.current
-    }
-    val color by animateColorAsState(
-        targetValue = targetColor,
-        animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing),
-        label = "lyricLineColor",
-    )
     if (line.isWordSynced && !browsing) {
         // Every word-synced line goes through the sweep, not just the playing
         // one — a line that has already been sung is fully revealed and one
@@ -2627,7 +2624,7 @@ private fun PanelVoice(
             alignEnd = alignEnd,
             laneLocked = laneLocked,
             translationProgress = translationProgress,
-            color = color,
+            color = Color.White,
         )
     } else if (line.isWordSynced) {
         // Browsing: keep the sweep so sung lines stay fully lit and unsung
@@ -2650,7 +2647,7 @@ private fun PanelVoice(
             alignEnd = alignEnd,
             laneLocked = laneLocked,
             translationProgress = translationProgress,
-            color = color,
+            color = Color.White,
         )
     } else {
         // No word timings, so there is no sweep to light the words as they are
@@ -2670,7 +2667,7 @@ private fun PanelVoice(
         Text(
             text = line.text,
             style = lyricStyle,
-            color = color.copy(alpha = lit),
+            color = Color.White.copy(alpha = lit),
             onTextLayout = { layout = it },
             modifier = modifier.lyricParticles(layout, translationProgress, room).padding(room),
         )

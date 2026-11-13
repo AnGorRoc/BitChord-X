@@ -41,6 +41,7 @@ package com.music.bitchord.ui.components.floatingtabbar
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibilityScope
+import androidx.compose.animation.BoundsTransform
 import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.ExperimentalSharedTransitionApi
 import androidx.compose.animation.SharedTransitionLayout
@@ -48,10 +49,12 @@ import androidx.compose.animation.SharedTransitionScope
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.AnimationSpec
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.keyframes
 import androidx.compose.animation.core.snap
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -124,6 +127,13 @@ import kotlin.math.roundToInt
 
 /** Hoisted so the default is one stable lambda rather than a new one per call. */
 private val DefaultTabBarContentModifier: @Composable () -> Modifier = { Modifier }
+
+private val TabBarBoundsTransform = BoundsTransform { _, _ ->
+    spring(
+        dampingRatio = Spring.DampingRatioNoBouncy,
+        stiffness = Spring.StiffnessMediumLow,
+    )
+}
 
 /**
  * A floating tab bar that can transition between inline and expanded states.
@@ -495,6 +505,7 @@ private fun SharedTransitionScope.InlineTab(
             .sharedElement(
                 sharedContentState = rememberSharedContentState("tabGroup"),
                 animatedVisibilityScope = animatedVisibilityScope,
+                boundsTransform = TabBarBoundsTransform,
                 zIndexInOverlay = 1f
             )
             .shadow(
@@ -523,6 +534,7 @@ private fun SharedTransitionScope.InlineTab(
                     Modifier.sharedElement(
                         sharedContentState = rememberSharedContentState("tab#${inlineTab.key}-icon"),
                         animatedVisibilityScope = animatedVisibilityScope,
+                        boundsTransform = TabBarBoundsTransform,
                         zIndexInOverlay = 1f
                     )
                 ) {
@@ -554,6 +566,7 @@ private fun SharedTransitionScope.InlineStandaloneTab(
             .sharedElement(
                 sharedContentState = rememberSharedContentState("standaloneTab"),
                 animatedVisibilityScope = animatedVisibilityScope,
+                boundsTransform = TabBarBoundsTransform,
                 zIndexInOverlay = 1f
             )
             .shadow(
@@ -591,7 +604,8 @@ private fun SharedTransitionScope.InlineAccessory(
                     if (isAccessoryShared) {
                         Modifier.sharedElement(
                             sharedContentState = rememberSharedContentState("accessory"),
-                            animatedVisibilityScope = animatedVisibilityScope
+                            animatedVisibilityScope = animatedVisibilityScope,
+                            boundsTransform = TabBarBoundsTransform
                         )
                     } else {
                         Modifier.animateEnterExitAccessory(
@@ -710,7 +724,8 @@ private fun SharedTransitionScope.ExpandedAccessory(
                 if (isAccessoryShared) {
                     Modifier.sharedElement(
                         sharedContentState = rememberSharedContentState("accessory"),
-                        animatedVisibilityScope = animatedVisibilityScope
+                        animatedVisibilityScope = animatedVisibilityScope,
+                        boundsTransform = TabBarBoundsTransform
                     )
                 } else {
                     Modifier.animateEnterExitAccessory(
@@ -831,6 +846,7 @@ private fun SharedTransitionScope.ExpandedTabs(
             .sharedElement(
                 sharedContentState = rememberSharedContentState("tabGroup"),
                 animatedVisibilityScope = animatedVisibilityScope,
+                boundsTransform = TabBarBoundsTransform,
                 zIndexInOverlay = 1f
             )
     ) {
@@ -934,6 +950,7 @@ private fun SharedTransitionScope.ExpandedTabs(
                                         Modifier.sharedElement(
                                             sharedContentState = rememberSharedContentState("tab#${tab.key}-icon"),
                                             animatedVisibilityScope = animatedVisibilityScope,
+                                            boundsTransform = TabBarBoundsTransform,
                                             zIndexInOverlay = 1f
                                         )
                                     } else {
@@ -1015,6 +1032,7 @@ private fun SharedTransitionScope.ExpandedStandaloneTab(
             .sharedElement(
                 sharedContentState = rememberSharedContentState("standaloneTab"),
                 animatedVisibilityScope = animatedVisibilityScope,
+                boundsTransform = TabBarBoundsTransform,
                 zIndexInOverlay = 1f
             )
             .shadow(

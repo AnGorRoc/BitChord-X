@@ -1540,6 +1540,10 @@
     <string name="sing_status_karaoke">Karaoke</string>
     <string name="sing_engine_title">Acoustic Engine</string>
     <string name="sing_badge_dsp">BITCHORD SING</string>
+    <string name="swipe_right_action">向右滑動歌曲</string>
+    <string name="swipe_left_action">向左滑動歌曲</string>
+    <string name="swipe_hold_playlist_hint">滑動並按住即可加入播放清單</string>
+    <string name="swipe_action_disabled">關閉</string>
 
     <!-- Spotify Onboarding -->
     <string name="onboarding_spotify_title">Connect your Spotify</string>
