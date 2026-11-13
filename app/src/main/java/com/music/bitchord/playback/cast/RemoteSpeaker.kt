@@ -45,6 +45,12 @@ interface RemoteSpeaker {
      */
     fun jumpToPrevious(): Boolean = false
 
+    /**
+     * Next, when this speaker moves on by itself instead of being handed a new queue. True when it
+     * took the request; false and the caller moves the phone's player, whose move is then sent over.
+     */
+    fun next(): Boolean = false
+
     /** 0..1 of the receiver's own range. */
     fun setVolume(fraction: Float)
 

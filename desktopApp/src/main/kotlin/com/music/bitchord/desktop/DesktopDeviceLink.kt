@@ -95,6 +95,25 @@ internal class DesktopDeviceLink(
 
     /** Waiting to see whether the target that dropped off comes back. See [onAccountState]. */
     private var awayJob: Job? = null
+    /** When the person last pressed play or pause here: what they asked wins over a report for a moment. */
+    private var intentAtNanos = NEVER
+
+    /** The target is between songs (it reported the new one not playing yet): loading, not pausing. */
+    private var holdPlayingUntilNanos = NEVER
+
+    private fun recentIntent() = System.nanoTime() - intentAtNanos < INTENT_GRACE_NANOS
+
+    private fun effectivePlaying(): Boolean = when {
+        recentIntent() -> wantsPlay
+        status?.isPlaying == true -> true
+        else -> System.nanoTime() < holdPlayingUntilNanos
+    }
+
+    /** What this computer had before it became a remote, to give back when it stops being one. */
+    private class Stash(val queue: DesktopQueue, val song: Song?, val positionMs: Long)
+
+    private var stash: Stash? = null
+
     private var pulling = false
         set(value) {
             field = value
@@ -179,6 +198,8 @@ internal class DesktopDeviceLink(
 
     // ---- as a target -------------------------------------------------------------------------
 
+    private var lastPublishedPlaying = false
+
     private fun publish() {
         val state = engine.state.value
         val song = state.song
@@ -186,6 +207,11 @@ internal class DesktopDeviceLink(
             account.publish(null)
             return
         }
+        // A song being opened is not a pause: the engine says "not playing" while it finds the stream,
+        // and a remote that heard that showed paused for a second at every change of song. What was
+        // being reported carries through the load.
+        val playing = if (state.isLoading) lastPublishedPlaying else state.isPlaying
+        lastPublishedPlaying = playing
         account.publish(
             AccountNowPlaying(
                 videoId = song.videoId,
@@ -193,7 +219,7 @@ internal class DesktopDeviceLink(
                 artist = song.artist,
                 thumbnailUrl = song.thumbnailUrl,
                 durationMs = state.durationMs,
-                isPlaying = state.isPlaying,
+                isPlaying = playing,
                 positionMs = state.positionMs,
                 volume = state.volume.toDouble(),
             ),
@@ -430,9 +456,18 @@ internal class DesktopDeviceLink(
 
     private fun begin(deviceId: String) {
         confirmJob?.cancel()
+        // Only the first time: moving from one device to another keeps the original, not the mirror.
+        if (!active) {
+            val state = engine.state.value
+            stash = Stash(queue(), state.song, state.positionMs)
+        }
         targetId = deviceId
         active = true
+        holdPlayingUntilNanos = NEVER
+        intentAtNanos = NEVER
         status = account.state.value.devices.firstOrNull { it.deviceId == deviceId }?.nowPlaying?.let(::statusOf)
+        // A computer that connects to a device that is playing shows playing, not a stale "paused".
+        wantsPlay = status?.isPlaying == true
         refreshOverlay()
     }
 
@@ -479,12 +514,21 @@ internal class DesktopDeviceLink(
         targetId = null
         status = null
         wantsPlay = false
+        holdPlayingUntilNanos = NEVER
         account.detach()
-        val local = queue()
-        val at = s?.mediaId?.let { id -> local.songs.indexOfFirst { it.videoId == id } }?.takeIf { it >= 0 }
-        local.songs.getOrNull(at ?: local.index)?.let { song ->
-            if (at != null && at != local.index) setQueue(DesktopQueue(local.songs, at))
-            engine.load(song, resumeHere && wasPlaying, position)
+        val kept = stash
+        stash = null
+        if (kept != null) {
+            // What this computer had before it controlled anything, not what the other device had.
+            setQueue(kept.queue)
+            kept.song?.let { engine.load(it, false, kept.positionMs) }
+        } else {
+            val local = queue()
+            val at = s?.mediaId?.let { id -> local.songs.indexOfFirst { it.videoId == id } }?.takeIf { it >= 0 }
+            local.songs.getOrNull(at ?: local.index)?.let { song ->
+                if (at != null && at != local.index) setQueue(DesktopQueue(local.songs, at))
+                engine.load(song, resumeHere && wasPlaying, position)
+            }
         }
         _overlay.value = null
     }
@@ -493,6 +537,9 @@ internal class DesktopDeviceLink(
     private fun onPulled() {
         if (!pulling) return
         pulling = false
+        // The other device's music is what the person asked for here; nothing is given back.
+        stash = null
+        holdPlayingUntilNanos = NEVER
         active = false
         targetId = null
         status = null
@@ -506,11 +553,13 @@ internal class DesktopDeviceLink(
 
     fun play() {
         wantsPlay = true
+        intentAtNanos = System.nanoTime()
         command(DeviceActions.PLAY)
     }
 
     fun pause() {
         wantsPlay = false
+        intentAtNanos = System.nanoTime()
         command(DeviceActions.PAUSE)
     }
 
@@ -600,9 +649,17 @@ internal class DesktopDeviceLink(
         awayJob = null
         val np = target.nowPlaying
         if (np != null && np.updatedAtMs != status?.stamp) {
+            val before = status
             status = statusOf(np)
             requestedAtNanos = 0L
-            if (awaitingConfirm == null) wantsPlay = np.isPlaying
+            // A song change that comes with "not playing" is the target loading it, not pausing.
+            val changedSong = before != null && before.mediaId != np.videoId
+            holdPlayingUntilNanos = if (changedSong && !np.isPlaying && (before?.isPlaying == true || wantsPlay)) {
+                System.nanoTime() + HOLD_PLAYING_NANOS
+            } else {
+                NEVER
+            }
+            if (awaitingConfirm == null && !recentIntent()) wantsPlay = np.isPlaying || holdPlayingUntilNanos != NEVER
             // The other device moved on by itself: the queue shown follows it.
             val local = queue()
             val at = local.songs.indexOfFirst { it.videoId == np.videoId }
@@ -638,7 +695,7 @@ internal class DesktopDeviceLink(
         val s = status
         _overlay.value = base.copy(
             song = queue().current ?: base.song,
-            isPlaying = awaitingConfirm == null && s?.isPlaying == true,
+            isPlaying = awaitingConfirm == null && effectivePlaying(),
             isLoading = s == null || awaitingConfirm != null,
             positionMs = positionNow(),
             positionSampledAtNanos = System.nanoTime(),
@@ -674,6 +731,11 @@ internal class DesktopDeviceLink(
         const val HANDOVER_TIMEOUT_MS = 20_000L
         const val CONFIRM_POLL_MS = 250L
         const val SEEK_GRACE_NANOS = 1_500_000_000L
+        const val INTENT_GRACE_NANOS = 2_500_000_000L
+
+        /** "Not set": far enough back that no grace window around it can be open, whatever nanoTime reads. */
+        const val NEVER = Long.MIN_VALUE / 2
+        const val HOLD_PLAYING_NANOS = 3_000_000_000L
 
         /** How much of the queue one hand-over carries; the server allows 500. */
     }

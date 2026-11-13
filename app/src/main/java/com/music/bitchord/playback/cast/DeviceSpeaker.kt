@@ -173,8 +173,39 @@ internal class DeviceSpeaker(
         }
     }
 
-    override val playWhenReady: Boolean get() = wantsPlay
-    override val isPlaying: Boolean get() = active && status?.isPlaying == true && awaitingConfirm == null
+    /** When the person last pressed play or pause here: what they asked wins over a report for a moment. */
+    private var intentAt = NEVER
+
+    /**
+     * The target is between songs: it reported the new one not playing yet, which is it loading and
+     * not it pausing. Until then the bar keeps saying what it said. See [onAccountState].
+     */
+    private var holdPlayingUntil = NEVER
+
+    /** The person pressed play or pause: shown at once, and re-read against the target once it has had time to answer. */
+    private fun noteIntent() {
+        intentAt = SystemClock.elapsedRealtime()
+        scope.launch {
+            delay(INTENT_GRACE_MS + 50)
+            sink?.onRemotePlaybackChanged()
+            onChanged()
+        }
+    }
+
+    private fun recentIntent() = SystemClock.elapsedRealtime() - intentAt < INTENT_GRACE_MS
+
+    /**
+     * What the player shows as playing. The person's own press wins for a moment over what the
+     * target last reported, which was true before it heard them; a change of song is not a pause.
+     */
+    private fun effectivePlaying(): Boolean = when {
+        recentIntent() -> wantsPlay
+        status?.isPlaying == true -> true
+        else -> SystemClock.elapsedRealtime() < holdPlayingUntil
+    }
+
+    override val playWhenReady: Boolean get() = effectivePlaying()
+    override val isPlaying: Boolean get() = active && awaitingConfirm == null && effectivePlaying()
 
     override val playbackState: Int
         get() = when {
@@ -316,13 +347,33 @@ internal class DeviceSpeaker(
         }
     }
 
+    /** What this phone had before it became a remote, to give back when it stops being one. */
+    private class Stash(val items: List<MediaItem>, val index: Int, val positionMs: Long)
+
+    private var stash: Stash? = null
+
     private fun beginAs(deviceId: String) {
         confirmJob?.cancel()
+        // Only the first time: moving from one device to another keeps the original, not the mirror.
+        if (!active) {
+            stash = localPlayer()?.let { p ->
+                Stash(
+                    items = (0 until p.mediaItemCount).map { p.getMediaItemAt(it) },
+                    index = p.currentMediaItemIndex.coerceAtLeast(0),
+                    positionMs = p.currentPosition.coerceAtLeast(0L),
+                )
+            }
+        }
         targetId = deviceId
         active = true
+        holdPlayingUntil = NEVER
+        intentAt = NEVER
         // What the target is already playing is known; starting from it is what keeps this phone's
         // own mirror from looking like a change.
         status = account.state.value.devices.firstOrNull { it.deviceId == deviceId }?.nowPlaying?.let(::statusOf)
+        // And whether it is playing: a phone that connects to a device that is playing shows playing,
+        // not the stale "paused" it had before it was anything's remote.
+        wantsPlay = status?.isPlaying == true
         sink?.onRemoteRouteChanged()
         onChanged()
     }
@@ -385,12 +436,27 @@ internal class DeviceSpeaker(
         targetId = null
         status = null
         wantsPlay = false
+        holdPlayingUntil = NEVER
+        navExpected = null
         if (old != null) account.detach()
+        val kept = stash
+        stash = null
         localPlayer()?.let { player ->
-            val index = s?.mediaId?.let { indexOf(player, it) }
-            if (index != null) player.seekTo(index, position) else if (player.mediaItemCount > 0) player.seekTo(position)
-            if (player.playbackState == Player.STATE_IDLE && player.mediaItemCount > 0) player.prepare()
-            if (resumeHere && wasPlaying) player.play()
+            if (kept != null) {
+                // What this phone had before it controlled anything, not what the other device had.
+                if (kept.items.isEmpty()) {
+                    player.clearMediaItems()
+                } else {
+                    player.setMediaItems(kept.items, kept.index.coerceIn(0, kept.items.lastIndex), kept.positionMs)
+                    player.prepare()
+                    player.pause()
+                }
+            } else {
+                val index = s?.mediaId?.let { indexOf(player, it) }
+                if (index != null) player.seekTo(index, position) else if (player.mediaItemCount > 0) player.seekTo(position)
+                if (player.playbackState == Player.STATE_IDLE && player.mediaItemCount > 0) player.prepare()
+                if (resumeHere && wasPlaying) player.play()
+            }
         }
         sink?.onRemoteRouteChanged()
         onChanged()
@@ -400,6 +466,10 @@ internal class DeviceSpeaker(
     fun onPulled() {
         if (!pulling) return
         pulling = false
+        // The other device's music is what the person asked for here; nothing is given back.
+        stash = null
+        navExpected = null
+        holdPlayingUntil = NEVER
         active = false
         targetId = null
         status = null
@@ -415,6 +485,7 @@ internal class DeviceSpeaker(
     override fun play() {
         if (!active) return
         wantsPlay = true
+        noteIntent()
         command(DeviceActions.PLAY)
         onChanged()
     }
@@ -422,6 +493,7 @@ internal class DeviceSpeaker(
     override fun pause() {
         if (!active) return
         wantsPlay = false
+        noteIntent()
         command(DeviceActions.PAUSE)
         onChanged()
     }
@@ -432,6 +504,49 @@ internal class DeviceSpeaker(
         requestedAt = SystemClock.elapsedRealtime()
         command(DeviceActions.SEEK, buildJsonObject { put("positionMs", requestedPositionMs) })
         onChanged()
+    }
+
+    /**
+     * The song the phone's mirror was just moved to by a skip made here, and until when the target's
+     * reports of the songs it passed through on the way there are not news. Without it two quick
+     * skips pulled the bar back to the first, then forward again.
+     */
+    private var navExpected: String? = null
+    private var navUntil = 0L
+
+    /** Skips on the target. It moves through its own queue, so no queue travels and none can arrive late. */
+    override fun next(): Boolean {
+        if (!active || pulling || awaitingConfirm != null) return false
+        navigate(+1)
+        command(DeviceActions.NEXT)
+        return true
+    }
+
+    override fun jumpToPrevious(): Boolean {
+        if (!active || pulling || awaitingConfirm != null) return false
+        navigate(-1)
+        command(DeviceActions.PREVIOUS)
+        return true
+    }
+
+    /** Moves the phone's mirror to where the skip is going, at once, so the bar answers the tap. */
+    private fun navigate(delta: Int) {
+        val player = localPlayer() ?: return
+        val to = player.currentMediaItemIndex + delta
+        if (to !in 0 until player.mediaItemCount) return
+        navExpected = player.getMediaItemAt(to).mediaId
+        navUntil = SystemClock.elapsedRealtime() + NAV_WINDOW_MS
+        ignoreLocalUntil = SystemClock.elapsedRealtime() + NAV_SETTLE_MS
+        applyingMirror = true
+        try { player.seekTo(to, 0L) } finally { applyingMirror = false }
+        requestedPositionMs = 0L
+        requestedAt = SystemClock.elapsedRealtime()
+        onChanged()
+        // A report held back meanwhile is looked at again when the window closes.
+        scope.launch {
+            delay(NAV_WINDOW_MS + 50)
+            if (active) onAccountState(account.state.value.devices.firstOrNull { it.deviceId == targetId })
+        }
     }
 
     override fun setVolume(fraction: Float) {
@@ -448,7 +563,7 @@ internal class DeviceSpeaker(
     override fun onLocalTransition(item: MediaItem?, reason: Int) {
         if (!active || settling() || item == null || awaitingConfirm != null) return
         // Already there: the other device moved first and this is the phone catching up.
-        if (item.mediaId == status?.mediaId) return
+        if (item.mediaId == status?.mediaId || item.mediaId == navExpected) return
         val player = localPlayer() ?: return
         wantsPlay = wantsPlay || reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO
         requestedPositionMs = 0L
@@ -503,10 +618,29 @@ internal class DeviceSpeaker(
         awayJob = null
         val np = target.nowPlaying
         if (np != null && np.updatedAtMs != status?.stamp) {
+            // A song the target is passing through while the person skips ahead: the phone already
+            // shows where the skips end, and is not sent back to where they began.
+            val expected = navExpected
+            if (expected != null && SystemClock.elapsedRealtime() < navUntil && np.videoId != expected) return
+            if (expected != null && np.videoId == expected) navExpected = null
             val before = status
             status = statusOf(np)
             requestedAt = 0L
-            if (awaitingConfirm == null) wantsPlay = np.isPlaying
+            // A song change that comes with "not playing" is the target loading it, not pausing.
+            val changedSong = before != null && before.mediaId != np.videoId
+            holdPlayingUntil = if (changedSong && !np.isPlaying && (before?.isPlaying == true || wantsPlay)) {
+                SystemClock.elapsedRealtime() + HOLD_PLAYING_MS
+            } else {
+                NEVER
+            }
+            if (holdPlayingUntil != NEVER) {
+                scope.launch {
+                    delay(HOLD_PLAYING_MS + 50)
+                    sink?.onRemotePlaybackChanged()
+                    onChanged()
+                }
+            }
+            if (awaitingConfirm == null && !recentIntent()) wantsPlay = np.isPlaying || holdPlayingUntil != NEVER
             // The other device moved on by itself: this phone's queue follows.
             val player = localPlayer()
             if (player != null && np.videoId.isNotEmpty() && player.currentMediaItem?.mediaId != np.videoId) {
@@ -556,6 +690,19 @@ internal class DeviceSpeaker(
 
     private companion object {
         const val SEEK_GRACE_MS = 1_500L
+
+        /** "Not set", far enough back that no grace window around it can be open. */
+        const val NEVER = Long.MIN_VALUE / 2
+
+        /** What the person pressed wins over the target's last report for this long. */
+        const val INTENT_GRACE_MS = 2_500L
+
+        /** A new song reported "not playing" is it loading; the bar keeps saying playing this long. */
+        const val HOLD_PLAYING_MS = 3_000L
+
+        /** After a skip made here, reports of the songs passed on the way are not news for this long. */
+        const val NAV_WINDOW_MS = 2_500L
+        const val NAV_SETTLE_MS = 800L
         const val CONFIRM_TIMEOUT_MS = 8_000L
 
         /** A little longer than the server's own grace for a dropped socket. */

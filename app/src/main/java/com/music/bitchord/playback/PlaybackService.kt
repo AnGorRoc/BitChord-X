@@ -10049,6 +10049,7 @@ class PlaybackService : MediaLibraryService() {
             if (locked()) return
             onUserIntent()
             crossfade.onSkipRequested()
+            if (cast.active && cast.next()) return
             wrappedPlayer.seekToNextMediaItem()
         }
 
@@ -10056,6 +10057,7 @@ class PlaybackService : MediaLibraryService() {
             if (locked()) return
             onUserIntent()
             crossfade.onSkipRequested()
+            if (cast.active && cast.next()) return
             wrappedPlayer.seekToNext()
         }
     }
