@@ -182,6 +182,9 @@ class AndroidPlayerHost(context: Context) : PlayerHost {
     override val devices: StateFlow<com.music.bitchord.data.listentogether.account.AccountState>
         get() = ListenTogether.account.state
 
+    override val connectingDevice: StateFlow<String?>
+        get() = com.music.bitchord.playback.DeviceLink.connecting
+
     override fun pickDevice(deviceId: String, force: com.music.bitchord.data.listentogether.account.HandoffForce?) =
         com.music.bitchord.playback.DeviceLink.pick(deviceId, force)
 

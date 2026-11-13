@@ -8,7 +8,10 @@ import androidx.media3.exoplayer.ExoPlayer
 import com.music.bitchord.data.listentogether.ListenTogether
 import com.music.bitchord.data.listentogether.PartyTrack
 import com.music.bitchord.data.listentogether.account.AccountDevice
+import com.music.bitchord.data.listentogether.account.AccountConnection
 import com.music.bitchord.data.listentogether.account.AccountDevices
+import com.music.bitchord.data.listentogether.account.AccountState
+import com.music.bitchord.data.listentogether.account.LinkWatch
 import com.music.bitchord.data.listentogether.account.AccountNowPlaying
 import com.music.bitchord.data.listentogether.account.DeviceActions
 import com.music.bitchord.data.listentogether.account.DeviceCommand
@@ -17,6 +20,7 @@ import com.music.bitchord.data.listentogether.account.Handoff
 import com.music.bitchord.data.listentogether.account.HandoffForce
 import com.music.bitchord.data.listentogether.account.HandoffRules
 import com.music.bitchord.data.listentogether.account.HandoffWindow
+import com.music.bitchord.playback.DeviceLink
 import com.music.bitchord.playback.toMediaItem
 import com.music.bitchord.playback.toPartyTrack
 import com.music.bitchord.playback.toSong
@@ -85,6 +89,10 @@ internal class DeviceSpeaker(
 
     /** A hand-over is on its way; this device stays audible until the target confirms it. */
     private var awaitingConfirm: String? = null
+        set(value) {
+            field = value
+            refreshConnecting()
+        }
     private var confirmJob: Job? = null
 
     /** Waiting to see whether the target that dropped off comes back. See [onAccountState]. */
@@ -109,9 +117,58 @@ internal class DeviceSpeaker(
 
     /** This device asked for the other's music and is waiting for it to arrive. */
     private var pulling = false
+        set(value) {
+            field = value
+            refreshConnecting()
+        }
+
+    /** What the Connect sheet shows as "Connecting…": the target, from the tap until it answers. */
+    private fun refreshConnecting() {
+        DeviceLink.setConnecting(if (active && (awaitingConfirm != null || pulling)) targetId else null)
+    }
 
     init {
-        scope.launch { account.state.collect { onAccountState(it.devices.firstOrNull { d -> d.deviceId == targetId }) } }
+        scope.launch {
+            account.state.collect { state ->
+                watchOwnConnection(state)
+                onAccountState(state.devices.firstOrNull { d -> d.deviceId == targetId })
+            }
+        }
+    }
+
+    private val linkWatch = LinkWatch()
+
+    /** Waiting to see whether this phone's own connection comes back. See [watchOwnConnection]. */
+    private var offlineJob: Job? = null
+
+    /**
+     * The other end of this is [onAccountState]: that one covers the target dropping, this one the
+     * phone itself. Offline past the grace the server has freed the link and no command can reach
+     * the target any more, so the sound comes back here instead of the phone going on showing a
+     * device it can no longer drive. Back in time, the first list tells whether the link survived.
+     */
+    private fun watchOwnConnection(state: AccountState) {
+        val back = linkWatch.reconnected(state.connection)
+        if (!active) return
+        if (state.connection != AccountConnection.LIVE) {
+            if (offlineJob == null) {
+                offlineJob = scope.launch {
+                    delay(AWAY_GRACE_MS)
+                    offlineJob = null
+                    if (active && account.state.value.connection != AccountConnection.LIVE) {
+                        say(DeviceNotice.Disconnected(null))
+                        endLocally(resumeHere = false)
+                    }
+                }
+            }
+            return
+        }
+        offlineJob?.cancel()
+        offlineJob = null
+        if (back && awaitingConfirm == null && !pulling && LinkWatch.lost(state.self, targetId)) {
+            say(DeviceNotice.Disconnected(null))
+            endLocally(resumeHere = false)
+        }
     }
 
     override val playWhenReady: Boolean get() = wantsPlay
@@ -263,6 +320,8 @@ internal class DeviceSpeaker(
         confirmJob?.cancel()
         awayJob?.cancel()
         awayJob = null
+        offlineJob?.cancel()
+        offlineJob = null
         awaitingConfirm = null
         pulling = false
         active = false

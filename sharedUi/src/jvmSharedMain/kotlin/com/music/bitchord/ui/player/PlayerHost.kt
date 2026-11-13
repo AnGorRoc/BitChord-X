@@ -129,6 +129,12 @@ interface PlayerHost {
      */
     val devices: StateFlow<AccountState> get() = NoDevices
 
+    /**
+     * The device a hand-over is still on its way to (picked, not yet answering), or null. The Connect
+     * sheet shows it as "Connecting…" and stays open until it settles.
+     */
+    val connectingDevice: StateFlow<String?> get() = NoConnecting
+
     /** The person tapped a device: send the sound there, or control it. See HandoffRules. */
     fun pickDevice(deviceId: String, force: HandoffForce? = null) {}
 

@@ -33,11 +33,14 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -83,6 +86,29 @@ internal fun ConnectSheet(
     val host = PlayerPlatform.host
     val account by host.devices.collectAsStateWithLifecycle()
     val party by host.party.collectAsStateWithLifecycle()
+    val connecting by host.connectingDevice.collectAsStateWithLifecycle()
+
+    // The device just tapped. The sheet stays up while the hand-over is on its way, so the tap is
+    // answered where it was made, and goes when it settles (a failure is told by the notice).
+    var pending by remember { mutableStateOf<String?>(null) }
+    var seenConnecting by remember { mutableStateOf(false) }
+    LaunchedEffect(pending) {
+        // A pick that never began connecting (nothing to send, say) must not leave the row spinning.
+        if (pending != null) {
+            delay(PICK_BEGIN_MS)
+            if (!seenConnecting) pending = null
+        }
+    }
+    LaunchedEffect(connecting) {
+        val waiting = pending ?: return@LaunchedEffect
+        if (connecting == waiting) {
+            seenConnecting = true
+        } else if (seenConnecting) {
+            pending = null
+            seenConnecting = false
+            onDismiss()
+        }
+    }
 
     PlayerDrawer(
         hazeState = hazeState,
@@ -123,8 +149,9 @@ internal fun ConnectSheet(
                     nameOf = nameOf,
                     // Stays open when the pick is refused: the reason is shown, and the person is still
                     // looking at the devices they were choosing from.
-                    onClick = { host.pickDevice(device.deviceId, null); if (!blocked(device)) onDismiss() },
-                    onForce = { force -> host.pickDevice(device.deviceId, force); if (!blocked(device)) onDismiss() },
+                    onClick = { host.pickDevice(device.deviceId, null); if (!blocked(device)) pending = device.deviceId },
+                    onForce = { force -> host.pickDevice(device.deviceId, force); if (!blocked(device)) pending = device.deviceId },
+                    connecting = connecting == device.deviceId,
                 )
             }
             when {
@@ -230,12 +257,14 @@ private fun DeviceRow(
     nameOf: (String) -> String,
     onClick: () -> Unit,
     onForce: ((HandoffForce) -> Unit)?,
+    connecting: Boolean = false,
 ) {
     val haptics = rememberHaptics()
     val enabled = device.connected || isSelf
     val np = device.nowPlaying
     val minutesAway = ((nowMs - device.lastSeenMs) / 60_000L).coerceAtLeast(0L).toInt()
     val subtitle = when {
+        connecting -> stringResource(Res.string.connect_connecting_to)
         // When it was last seen, so a device that went to sleep a minute ago and one forgotten
         // for hours do not look the same.
         !device.connected && !isSelf -> when {
@@ -296,7 +325,13 @@ private fun DeviceRow(
                 )
             }
         }
-        if (onForce != null && device.connected) {
+        if (connecting) {
+            CircularProgressIndicator(
+                modifier = Modifier.size(20.dp),
+                strokeWidth = 2.dp,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        } else if (onForce != null && device.connected) {
             Box {
                 Icon(
                     imageVector = Icons.Rounded.MoreVert,
@@ -440,6 +475,13 @@ private fun iconFor(type: String): ImageVector = when (type) {
     "speaker" -> Icons.Rounded.Speaker
     else -> Icons.Rounded.PhoneAndroid
 }
+
+/** No hand-over in flight, for a platform with no account channel. */
+internal val NoConnecting: kotlinx.coroutines.flow.StateFlow<String?> =
+    kotlinx.coroutines.flow.MutableStateFlow(null)
+
+/** How long a tapped device may take to start connecting before the sheet stops waiting for it. */
+private const val PICK_BEGIN_MS = 1_500L
 
 /** Absent, for a platform with no account channel: the sheet then shows only the party half. */
 internal val NoDevices: kotlinx.coroutines.flow.StateFlow<AccountState> =

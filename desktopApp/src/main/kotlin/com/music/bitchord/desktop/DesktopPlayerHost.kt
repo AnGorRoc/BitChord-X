@@ -182,6 +182,14 @@ internal object DesktopPlayerHost : PlayerHost {
     override val devices: StateFlow<com.music.bitchord.data.listentogether.account.AccountState>
         get() = DesktopListenTogether.account.state
 
+    private val _connectingDevice = kotlinx.coroutines.flow.MutableStateFlow<String?>(null)
+    override val connectingDevice: kotlinx.coroutines.flow.StateFlow<String?> = _connectingDevice
+
+    /** Set by the window, which owns the device link, to the device a hand-over is on its way to. */
+    fun setConnectingDevice(deviceId: String?) {
+        _connectingDevice.value = deviceId
+    }
+
     /** Where a tap on a device goes — set by the window, which owns the engine. */
     var onPickDevice: (String, com.music.bitchord.data.listentogether.account.HandoffForce?) -> Unit = { _, _ -> }
     var onComeBack: () -> Unit = {}

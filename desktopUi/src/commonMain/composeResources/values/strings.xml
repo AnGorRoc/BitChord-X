@@ -326,6 +326,7 @@
   <string name="connect_away_minutes">Last seen %1$d min ago</string>
   <string name="connect_away_hours">Last seen %1$d h ago</string>
   <string name="connect_connecting">Connecting to your devices…</string>
+  <string name="connect_connecting_to">Connecting…</string>
   <string name="connect_signed_out">Sign in and get online to see your other devices here.</string>
   <string name="connect_playing_on">Playing on %1$s</string>
   <string name="connect_no_devices">Open BitChord with your account on another device and it will show up here.</string>

@@ -1949,10 +1949,13 @@ fun BitChordDesktopApp() {
         DesktopListenTogether.account.start()
         DesktopListenTogether.mirrorPartyToAccount()
         deviceLink.start()
+        val connectingWatch = scope.launch { deviceLink.connecting.collect { DesktopPlayerHost.setConnectingDevice(it) } }
         DesktopPlayerHost.onPickDevice = { id, force -> deviceLink.pick(id, force) }
         DesktopPlayerHost.onComeBack = { deviceLink.comeBack() }
         onDispose {
             if (deviceLinkHolder[0] === deviceLink) deviceLinkHolder[0] = null
+            connectingWatch.cancel()
+            DesktopPlayerHost.setConnectingDevice(null)
             DesktopPlayerHost.onPickDevice = { _, _ -> }
             DesktopPlayerHost.onComeBack = {}
         }

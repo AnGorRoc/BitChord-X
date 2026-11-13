@@ -2,7 +2,10 @@ package com.music.bitchord.desktop
 
 import com.music.bitchord.data.listentogether.PartyTrack
 import com.music.bitchord.data.listentogether.account.AccountDevice
+import com.music.bitchord.data.listentogether.account.AccountConnection
 import com.music.bitchord.data.listentogether.account.AccountDevices
+import com.music.bitchord.data.listentogether.account.AccountState
+import com.music.bitchord.data.listentogether.account.LinkWatch
 import com.music.bitchord.data.listentogether.account.AccountNowPlaying
 import com.music.bitchord.data.listentogether.account.DeviceActions
 import com.music.bitchord.data.listentogether.account.DeviceCommand
@@ -76,11 +79,56 @@ internal class DesktopDeviceLink(
     private var requestedPositionMs = 0L
     private var requestedAtNanos = 0L
     private var awaitingConfirm: String? = null
+        set(value) {
+            field = value
+            refreshConnecting()
+        }
     private var confirmJob: Job? = null
 
     /** Waiting to see whether the target that dropped off comes back. See [onAccountState]. */
     private var awayJob: Job? = null
     private var pulling = false
+        set(value) {
+            field = value
+            refreshConnecting()
+        }
+
+    private val _connecting = MutableStateFlow<String?>(null)
+
+    /** The device a hand-over is on its way to, for the Connect sheet's "Connecting…". */
+    val connecting: StateFlow<String?> = _connecting.asStateFlow()
+
+    private fun refreshConnecting() {
+        _connecting.value = if (active && (awaitingConfirm != null || pulling)) targetId else null
+    }
+
+    private val linkWatch = LinkWatch()
+    private var offlineJob: Job? = null
+
+    /** This computer's own connection: past the grace the server has freed the link (see the phone's twin). */
+    private fun watchOwnConnection(state: AccountState) {
+        val back = linkWatch.reconnected(state.connection)
+        if (!active) return
+        if (state.connection != AccountConnection.LIVE) {
+            if (offlineJob == null) {
+                offlineJob = scope.launch {
+                    delay(AWAY_GRACE_MS)
+                    offlineJob = null
+                    if (active && account.state.value.connection != AccountConnection.LIVE) {
+                        say(DeviceNotice.Disconnected(null))
+                        endLocally(false)
+                    }
+                }
+            }
+            return
+        }
+        offlineJob?.cancel()
+        offlineJob = null
+        if (back && awaitingConfirm == null && !pulling && LinkWatch.lost(state.self, targetId)) {
+            say(DeviceNotice.Disconnected(null))
+            endLocally(false)
+        }
+    }
 
     private val _overlay = MutableStateFlow<DesktopPlaybackState?>(null)
 
@@ -100,7 +148,12 @@ internal class DesktopDeviceLink(
                 .distinctUntilChanged()
                 .collect { owns -> if (owns && active) endLocally(false) }
         }
-        scope.launch { account.state.collect { onAccountState(it.devices.firstOrNull { d -> d.deviceId == targetId }) } }
+        scope.launch {
+            account.state.collect { state ->
+                watchOwnConnection(state)
+                onAccountState(state.devices.firstOrNull { d -> d.deviceId == targetId })
+            }
+        }
         scope.launch {
             while (true) {
                 delay(PUBLISH_MS)
@@ -330,6 +383,8 @@ internal class DesktopDeviceLink(
         confirmJob?.cancel()
         awayJob?.cancel()
         awayJob = null
+        offlineJob?.cancel()
+        offlineJob = null
         awaitingConfirm = null
         pulling = false
         active = false

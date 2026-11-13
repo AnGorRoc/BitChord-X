@@ -2,6 +2,9 @@ package com.music.bitchord.playback
 
 import com.music.bitchord.data.listentogether.account.HandoffForce
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
 
@@ -23,6 +26,15 @@ object DeviceLink {
 
     private val _requests = MutableSharedFlow<Request>(extraBufferCapacity = 8)
     val requests: SharedFlow<Request> = _requests.asSharedFlow()
+
+    private val _connecting = MutableStateFlow<String?>(null)
+
+    /** The device a hand-over is on its way to, set by the playback service; null when none is. */
+    val connecting: StateFlow<String?> = _connecting.asStateFlow()
+
+    fun setConnecting(deviceId: String?) {
+        _connecting.value = deviceId
+    }
 
     fun pick(deviceId: String, force: HandoffForce? = null) {
         _requests.tryEmit(Request.Pick(deviceId, force))
