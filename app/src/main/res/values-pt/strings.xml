@@ -1643,4 +1643,12 @@
     <string name="player_theme_default_subtitle">As cores da capa continuam abaixo dela</string>
     <string name="player_theme_simple_subtitle">Um desfoque suave da capa atrás de todo o player</string>
     <string name="player_theme_legacy_subtitle">Traz de volta as manchas de cor flutuantes atrás do player da v1.5</string>
+    <string name="device_notice_target_not_allowed">%1$s não aceita ser controlado pelos seus outros dispositivos.</string>
+    <string name="device_notice_target_not_allowed_generic">Esse dispositivo não aceita ser controlado pelos seus outros dispositivos.</string>
+    <string name="device_notice_target_not_reachable">Abra o BitChord em %1$s primeiro.</string>
+    <string name="device_notice_target_not_reachable_generic">Abra o BitChord nesse dispositivo primeiro.</string>
+    <string name="device_visible">Visível para meus outros dispositivos</string>
+    <string name="device_visible_subtitle">Mostra este dispositivo na lista Conectar dos seus outros dispositivos</string>
+    <string name="device_accepts_control">Permitir que meus outros dispositivos controlem este</string>
+    <string name="device_accepts_control_subtitle">Seus outros dispositivos podem tocar, pausar e enviar música para este</string>
 </resources>

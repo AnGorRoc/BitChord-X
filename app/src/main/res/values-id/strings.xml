@@ -1618,4 +1618,12 @@
     <string name="player_theme_default_subtitle">Warna sampul berlanjut di bawahnya</string>
     <string name="player_theme_simple_subtitle">Keburaman lembut sampul di belakang seluruh pemutar</string>
     <string name="player_theme_legacy_subtitle">Mengembalikan gumpalan warna melayang di belakang pemutar dari v1.5</string>
+    <string name="device_notice_target_not_allowed">%1$s tidak menerima kendali dari perangkat Anda yang lain.</string>
+    <string name="device_notice_target_not_allowed_generic">Perangkat itu tidak menerima kendali dari perangkat Anda yang lain.</string>
+    <string name="device_notice_target_not_reachable">Buka BitChord di %1$s terlebih dahulu.</string>
+    <string name="device_notice_target_not_reachable_generic">Buka BitChord di perangkat itu terlebih dahulu.</string>
+    <string name="device_visible">Terlihat oleh perangkat saya yang lain</string>
+    <string name="device_visible_subtitle">Menampilkan perangkat ini di daftar Hubungkan pada perangkat Anda yang lain</string>
+    <string name="device_accepts_control">Izinkan perangkat saya yang lain mengendalikan ini</string>
+    <string name="device_accepts_control_subtitle">Perangkat Anda yang lain dapat memutar, menjeda, dan mengirim musik ke sini</string>
 </resources>

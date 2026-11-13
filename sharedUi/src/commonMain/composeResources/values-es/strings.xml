@@ -56,6 +56,8 @@
     <string name="connect_away_hours">Visto hace %1$d h</string>
     <string name="connect_connecting">Conectando con tus dispositivos…</string>
     <string name="connect_connecting_to">Conectando…</string>
+    <string name="connect_not_reachable">Abre BitChord ahí primero</string>
+    <string name="connect_no_control">No permite que lo controlen</string>
     <string name="connect_signed_out">Inicia sesión y conéctate para ver aquí tus otros dispositivos.</string>
     <string name="connect_playing_on">Reproduciendo en %1$s</string>
     <string name="connect_no_devices">Abre BitChord con tu cuenta en otro dispositivo y aparecerá aquí.</string>

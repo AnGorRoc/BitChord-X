@@ -38,9 +38,22 @@ data class AccountDevice(
     val controlling: String? = null,
     /** The party this device is in, if any. */
     val partyCode: String? = null,
+    /** The person asked for this device not to be offered on their other devices. */
+    val hidden: Boolean = false,
+    /** This device does not let the person's other devices drive it. */
+    val noControl: Boolean = false,
+    /** Connected, but nothing on it is there to carry out a command until it is opened. */
+    val unreachable: Boolean = false,
 ) {
     val isPlaying: Boolean get() = connected && nowPlaying?.isPlaying == true
 }
+
+/** How this device asks to be treated by the person's others. The default is today's behaviour. */
+data class DevicePrefs(
+    val hidden: Boolean = false,
+    val noControl: Boolean = false,
+    val unreachable: Boolean = false,
+)
 
 /** A command another of the person's devices sent to this one. */
 data class DeviceCommand(

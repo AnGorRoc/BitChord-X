@@ -137,7 +137,9 @@ internal fun ConnectSheet(
             val nowMs = remember { System.currentTimeMillis() }
             // A device the server still remembers from long ago is not one the person is looking for.
             val others = account.others.filter {
-                it.deviceId != account.controlled?.deviceId && (it.connected || nowMs - it.lastSeenMs < FORGET_AWAY_MS)
+                it.deviceId != account.controlled?.deviceId && (it.connected || nowMs - it.lastSeenMs < FORGET_AWAY_MS) &&
+                // Asked not to be offered, unless it is part of a link this device is in.
+                (!it.hidden || it.controlledBy != null || it.controlling != null)
             }
             val nameOf = { id: String -> account.devices.firstOrNull { it.deviceId == id }?.name.orEmpty() }
             val blocked = { d: AccountDevice -> HandoffRules.blockedBy(d, party.ownsPlayer) != null }
@@ -275,6 +277,8 @@ private fun DeviceRow(
         // Who, not just that: with three devices "controlling this device" says nothing.
         device.controlledBy != null -> stringResource(Res.string.connect_controlled_by, nameOf(device.controlledBy!!))
         device.controlling != null -> stringResource(Res.string.connect_controlling_device, nameOf(device.controlling!!))
+        device.unreachable -> stringResource(Res.string.connect_not_reachable)
+        device.noControl -> stringResource(Res.string.connect_no_control)
         np != null && device.isPlaying -> "${np.title} — ${np.artist}"
         // A device in a party plays the party, so what is on it matters less than that.
         device.partyCode != null -> stringResource(Res.string.connect_in_party)

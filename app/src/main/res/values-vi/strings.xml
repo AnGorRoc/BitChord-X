@@ -1558,4 +1558,12 @@
     <string name="player_theme_default_subtitle">Màu của ảnh bìa tiếp nối bên dưới</string>
     <string name="player_theme_simple_subtitle">Ảnh bìa làm mờ nhẹ phía sau toàn bộ trình phát</string>
     <string name="player_theme_legacy_subtitle">Mang lại các đốm màu trôi phía sau trình phát từ v1.5</string>
+    <string name="device_notice_target_not_allowed">%1$s không cho phép các thiết bị khác của bạn điều khiển.</string>
+    <string name="device_notice_target_not_allowed_generic">Thiết bị đó không cho phép các thiết bị khác của bạn điều khiển.</string>
+    <string name="device_notice_target_not_reachable">Hãy mở BitChord trên %1$s trước.</string>
+    <string name="device_notice_target_not_reachable_generic">Hãy mở BitChord trên thiết bị đó trước.</string>
+    <string name="device_visible">Hiển thị với các thiết bị khác của tôi</string>
+    <string name="device_visible_subtitle">Hiện thiết bị này trong danh sách Kết nối của các thiết bị khác của bạn</string>
+    <string name="device_accepts_control">Cho phép các thiết bị khác của tôi điều khiển thiết bị này</string>
+    <string name="device_accepts_control_subtitle">Các thiết bị khác của bạn có thể phát, tạm dừng và gửi nhạc đến đây</string>
 </resources>

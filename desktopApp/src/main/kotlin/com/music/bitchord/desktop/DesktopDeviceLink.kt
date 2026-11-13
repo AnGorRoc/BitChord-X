@@ -602,6 +602,10 @@ internal fun DeviceNotice.english(): String = when (this) {
     is DeviceNotice.TargetInParty -> "$name is in a party. Leave it there first."
     is DeviceNotice.TargetIsRemote ->
         if (name != null) "$name is controlling another device." else "That device is controlling another device."
+    is DeviceNotice.TargetNotAllowed ->
+        if (name != null) "$name doesn't accept control from your other devices." else "That device doesn't accept control from your other devices."
+    is DeviceNotice.TargetNotReachable ->
+        if (name != null) "Open BitChord on $name first." else "Open BitChord on that device first."
     DeviceNotice.LocalFile -> "This song is a file on this device, so it can't be played on another one."
     DeviceNotice.NoAnswer -> "The other device did not answer."
     DeviceNotice.NoStart -> "The other device did not start playing."

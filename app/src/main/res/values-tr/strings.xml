@@ -1595,4 +1595,12 @@
     <string name="player_theme_default_subtitle">Kapağın renkleri altında devam eder</string>
     <string name="player_theme_simple_subtitle">Tüm oynatıcının arkasında kapağın yumuşak bir bulanıklığı</string>
     <string name="player_theme_legacy_subtitle">v1.5\'teki oynatıcı arkasında süzülen renk lekelerini geri getirir</string>
+    <string name="device_notice_target_not_allowed">%1$s diğer cihazlarının kontrol etmesine izin vermiyor.</string>
+    <string name="device_notice_target_not_allowed_generic">Bu cihaz diğer cihazlarının kontrol etmesine izin vermiyor.</string>
+    <string name="device_notice_target_not_reachable">Önce %1$s üzerinde BitChord\'u aç.</string>
+    <string name="device_notice_target_not_reachable_generic">Önce o cihazda BitChord\'u aç.</string>
+    <string name="device_visible">Diğer cihazlarıma görünür</string>
+    <string name="device_visible_subtitle">Bu cihazı diğer cihazlarının Bağlan listesinde gösterir</string>
+    <string name="device_accepts_control">Diğer cihazlarımın bunu kontrol etmesine izin ver</string>
+    <string name="device_accepts_control_subtitle">Diğer cihazların buradan müzik çalabilir, duraklatabilir ve buraya müzik gönderebilir</string>
 </resources>

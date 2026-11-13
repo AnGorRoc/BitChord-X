@@ -1676,4 +1676,12 @@
     <string name="player_theme_default_subtitle">Kolory okładki przechodzą poniżej niej</string>
     <string name="player_theme_simple_subtitle">Delikatne rozmycie okładki za całym odtwarzaczem</string>
     <string name="player_theme_legacy_subtitle">Przywraca dryfujące plamy kolorów za odtwarzaczem z wersji 1.5</string>
+    <string name="device_notice_target_not_allowed">%1$s nie pozwala na sterowanie z innych Twoich urządzeń.</string>
+    <string name="device_notice_target_not_allowed_generic">To urządzenie nie pozwala na sterowanie z innych Twoich urządzeń.</string>
+    <string name="device_notice_target_not_reachable">Najpierw otwórz BitChord na urządzeniu %1$s.</string>
+    <string name="device_notice_target_not_reachable_generic">Najpierw otwórz BitChord na tym urządzeniu.</string>
+    <string name="device_visible">Widoczne dla moich innych urządzeń</string>
+    <string name="device_visible_subtitle">Pokazuje to urządzenie na liście Połącz w Twoich innych urządzeniach</string>
+    <string name="device_accepts_control">Pozwól moim innym urządzeniom sterować tym</string>
+    <string name="device_accepts_control_subtitle">Twoje inne urządzenia mogą odtwarzać, wstrzymywać i wysyłać tu muzykę</string>
 </resources>

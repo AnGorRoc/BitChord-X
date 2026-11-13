@@ -334,3 +334,55 @@ func TestARemoteIsNotASpeaker(t *testing.T) {
 	}
 	_ = tablet
 }
+
+func TestADeviceThatRefusesControlCannotBeAttachedOrCommanded(t *testing.T) {
+	s := NewStore()
+	acc, phone, _ := connect(t, s, proofAna, "phone", "Pixel", "phone")
+	_, tv, _ := connect(t, s, proofAna, "tv", "TV", "tv")
+	acc.Lock()
+	defer acc.Unlock()
+	acc.SetPrefs(tv, false, true, false)
+	if err := acc.Attach(phone, "tv"); err != ErrNotAllowed {
+		t.Fatalf("attach to a device that does not allow control: %v", err)
+	}
+	if _, err := acc.Route(phone, "tv", "playQueue", 1); err != ErrNotAllowed {
+		t.Fatalf("hand over to a device that does not allow control: %v", err)
+	}
+	acc.SetPrefs(tv, false, false, true)
+	if err := acc.Attach(phone, "tv"); err != ErrNotReachable {
+		t.Fatalf("attach to a device nobody is there to drive: %v", err)
+	}
+	acc.SetPrefs(tv, true, false, false)
+	if err := acc.Attach(phone, "tv"); err != nil {
+		t.Fatalf("hiding is only a request to the other devices' lists, not a refusal: %v", err)
+	}
+}
+
+func TestTurningControlOffEndsTheLinkAtOnce(t *testing.T) {
+	s := NewStore()
+	acc, phone, _ := connect(t, s, proofAna, "phone", "Pixel", "phone")
+	_, tv, _ := connect(t, s, proofAna, "tv", "TV", "tv")
+	acc.Lock()
+	defer acc.Unlock()
+	if err := acc.Attach(phone, "tv"); err != nil {
+		t.Fatal(err)
+	}
+	acc.SetPrefs(tv, false, true, false)
+	if phone.Controlling != "" || tv.ControlledBy != "" {
+		t.Fatalf("the link should be gone: %q %q", phone.Controlling, tv.ControlledBy)
+	}
+}
+
+func TestReleaseStillWorksWhenControlIsOff(t *testing.T) {
+	s := NewStore()
+	acc, phone, _ := connect(t, s, proofAna, "phone", "Pixel", "phone")
+	_, tv, _ := connect(t, s, proofAna, "tv", "TV", "tv")
+	acc.Lock()
+	defer acc.Unlock()
+	_ = acc.Attach(phone, "tv")
+	// The phone does not accept control but is the one being asked to hand the sound back.
+	phone.NoControl = true
+	if _, err := acc.Route(tv, "phone", "release", 0); err != nil {
+		t.Fatalf("release must not be refused by settings: %v", err)
+	}
+}

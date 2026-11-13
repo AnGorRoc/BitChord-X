@@ -1639,4 +1639,12 @@
     <string name="player_theme_default_subtitle">Les couleurs de la pochette se prolongent en dessous</string>
     <string name="player_theme_simple_subtitle">Un doux flou de la pochette derrière tout le lecteur</string>
     <string name="player_theme_legacy_subtitle">Rétablit les taches de couleur flottantes derrière le lecteur de la v1.5</string>
+    <string name="device_notice_target_not_allowed">%1$s n\'accepte pas d\'être contrôlé par tes autres appareils.</string>
+    <string name="device_notice_target_not_allowed_generic">Cet appareil n\'accepte pas d\'être contrôlé par tes autres appareils.</string>
+    <string name="device_notice_target_not_reachable">Ouvre d\'abord BitChord sur %1$s.</string>
+    <string name="device_notice_target_not_reachable_generic">Ouvre d\'abord BitChord sur cet appareil.</string>
+    <string name="device_visible">Visible pour mes autres appareils</string>
+    <string name="device_visible_subtitle">Propose cet appareil dans la liste Connecter de tes autres appareils</string>
+    <string name="device_accepts_control">Autoriser mes autres appareils à contrôler celui-ci</string>
+    <string name="device_accepts_control_subtitle">Tes autres appareils peuvent lire, mettre en pause et envoyer de la musique ici</string>
 </resources>

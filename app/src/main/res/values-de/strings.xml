@@ -1638,4 +1638,12 @@
     <string name="player_theme_default_subtitle">Die Farben des Covers setzen sich darunter fort</string>
     <string name="player_theme_simple_subtitle">Ein weicher Unschärfeeffekt des Covers hinter dem ganzen Player</string>
     <string name="player_theme_legacy_subtitle">Bringt die schwebenden Farbflecken hinter dem Player aus v1.5 zurück</string>
+    <string name="device_notice_target_not_allowed">%1$s lässt sich nicht von deinen anderen Geräten steuern.</string>
+    <string name="device_notice_target_not_allowed_generic">Dieses Gerät lässt sich nicht von deinen anderen Geräten steuern.</string>
+    <string name="device_notice_target_not_reachable">Öffne zuerst BitChord auf %1$s.</string>
+    <string name="device_notice_target_not_reachable_generic">Öffne zuerst BitChord auf diesem Gerät.</string>
+    <string name="device_visible">Für meine anderen Geräte sichtbar</string>
+    <string name="device_visible_subtitle">Zeigt dieses Gerät in der Verbinden-Liste deiner anderen Geräte an</string>
+    <string name="device_accepts_control">Meinen anderen Geräten erlauben, dieses zu steuern</string>
+    <string name="device_accepts_control_subtitle">Deine anderen Geräte können abspielen, pausieren und Musik hierher senden</string>
 </resources>

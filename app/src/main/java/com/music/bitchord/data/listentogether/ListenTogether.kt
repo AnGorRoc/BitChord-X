@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.SystemClock
 import android.content.SharedPreferences
 import com.music.bitchord.data.listentogether.account.AccountDevices
+import com.music.bitchord.data.listentogether.account.DevicePrefs
 import com.music.bitchord.data.listentogether.account.DeviceSelf
 import android.net.ConnectivityManager
 import android.net.Network
@@ -1730,6 +1731,16 @@ object ListenTogether {
     /** Tells the person's other devices which party this device is in. Started once, with the account. */
     fun mirrorPartyToAccount() {
         scope.launch { _state.collect { account.setParty(it.code) } }
+        // How this device asks to be treated by the others: the person's two settings, and whether
+        // the playback service that would carry out a command is up.
+        scope.launch {
+            kotlinx.coroutines.flow.combine(
+                com.music.bitchord.data.settings.AppSettings.deviceVisible,
+                com.music.bitchord.data.settings.AppSettings.deviceAcceptsControl,
+                com.music.bitchord.playback.DeviceLink.serviceRunning,
+            ) { visible, accepts, running -> DevicePrefs(hidden = !visible, noControl = !accepts, unreachable = !running) }
+                .collect { account.setPrefs(it) }
+        }
     }
 
     /** What this device is called in the person's Connect list. Their choice, else the model. */

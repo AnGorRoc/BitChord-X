@@ -18,6 +18,12 @@ sealed interface DeviceNotice {
     /** The device they picked is itself another device's remote. [name] is null when not known. */
     data class TargetIsRemote(val name: String?) : DeviceNotice
 
+    /** The device they picked does not let their other devices drive it. [name] is null when not known. */
+    data class TargetNotAllowed(val name: String?) : DeviceNotice
+
+    /** The device they picked is connected but has to be opened before it can play. */
+    data class TargetNotReachable(val name: String?) : DeviceNotice
+
     /** The song is a file that lives on this device alone. */
     data object LocalFile : DeviceNotice
 
@@ -44,6 +50,8 @@ sealed interface DeviceNotice {
             "not_available" -> Unavailable
             "controlling_other" -> TargetIsRemote(null)
             "too_many_songs" -> TooManySongs
+            "not_allowed" -> TargetNotAllowed(null)
+            "not_reachable" -> TargetNotReachable(null)
             "not_linked", "self", "unknown_command" -> NotLinked
             else -> Refused(message)
         }

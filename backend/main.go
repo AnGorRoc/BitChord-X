@@ -295,6 +295,7 @@ var serverFeatures = []string{
 	"people",             // accountProof on join: one person's devices are one seat; personId on members
 	"addedBy",            // tracks carry who queued them
 	"accountDevices",     // /api/account/connect + /ws/account: a person's devices see each other
+	"devicePrefs",        // prefs frame: hidden / noControl / unreachable on a device
 }
 
 // handleInfo describes this server so a client can tell an extended build from

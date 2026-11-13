@@ -80,6 +80,13 @@ type Device struct {
 	// PartyCode is the party this device is in, if any, so the person's other devices can tell
 	// that joining it again means taking this device's sound (Connect), not a second seat.
 	PartyCode string `json:"partyCode,omitempty"`
+	// Hidden: the person asked this device not to be offered on their other devices.
+	Hidden bool `json:"hidden,omitempty"`
+	// NoControl: the person does not let their other devices drive this one.
+	NoControl bool `json:"noControl,omitempty"`
+	// Unreachable: connected, but nothing on it is there to carry out a command (the phone's
+	// playback service is not running), so picking it would go nowhere.
+	Unreachable bool `json:"unreachable,omitempty"`
 
 	token string
 	// awaySeq counts this device's drops, so a grace timer can tell its own drop from a later one.
@@ -268,6 +275,20 @@ func (a *Account) Publish(d *Device, np *NowPlaying, nowMs int64) {
 	d.LastSeenMs = nowMs
 }
 
+// SetPrefs records how this device wants to be treated by the person's others. Turning control off
+// also ends a link already in place, so the setting means what it says at once. The caller holds the
+// account lock.
+func (a *Account) SetPrefs(d *Device, hidden, noControl, unreachable bool) {
+	d.Hidden = hidden
+	d.NoControl = noControl
+	d.Unreachable = unreachable
+	if (noControl || unreachable) && d.ControlledBy != "" {
+		if remote := a.devices[d.ControlledBy]; remote != nil {
+			a.Detach(remote)
+		}
+	}
+}
+
 // Rename changes the device's own name. The caller holds the account lock.
 func (a *Account) Rename(d *Device, name string) error {
 	name = strings.TrimSpace(name)
@@ -288,6 +309,9 @@ func (a *Account) Attach(controller *Device, targetID string) error {
 	}
 	if target.DeviceID == controller.DeviceID {
 		return ErrSelf
+	}
+	if err := target.refuses(); err != nil {
+		return err
 	}
 	// A remote is not a speaker: what it plays comes from the device it controls. Picking it would
 	// make it hand your music on to that device, or tangle two links into a chain.
@@ -338,6 +362,13 @@ func (a *Account) Route(from *Device, to, action string, itemCount int) (*Device
 	if target.DeviceID == from.DeviceID {
 		return nil, ErrSelf
 	}
+	// "release" is the target answering its own remote: it is about to give the sound back, which
+	// must work whatever the person's settings say.
+	if action != "release" {
+		if err := target.refuses(); err != nil {
+			return nil, err
+		}
+	}
 	linked := from.Controlling == target.DeviceID && target.ControlledBy == from.DeviceID
 	switch {
 	case linked:
@@ -355,6 +386,17 @@ func (a *Account) Route(from *Device, to, action string, itemCount int) (*Device
 		return nil, ErrNotLinked
 	}
 	return target, nil
+}
+
+// refuses says why this device cannot be driven right now, or nil.
+func (d *Device) refuses() error {
+	switch {
+	case d.NoControl:
+		return ErrNotAllowed
+	case d.Unreachable:
+		return ErrNotReachable
+	}
+	return nil
 }
 
 // List is every device of the account in a stable order: connected first, then by name.
@@ -430,6 +472,8 @@ var (
 	ErrUnknownCommand   = errors.New("unknown command")
 	ErrTooMany          = errors.New("too many songs in one hand-over")
 	ErrNotLinked        = errors.New("not controlling that device")
+	ErrNotAllowed       = errors.New("that device does not accept control from your other devices")
+	ErrNotReachable     = errors.New("that device has to be opened first")
 )
 
 // Reason is the stable name of a refusal, or "" for one that has none.
@@ -447,6 +491,10 @@ func Reason(err error) string {
 		return "too_many_songs"
 	case errors.Is(err, ErrNotLinked):
 		return "not_linked"
+	case errors.Is(err, ErrNotAllowed):
+		return "not_allowed"
+	case errors.Is(err, ErrNotReachable):
+		return "not_reachable"
 	}
 	return ""
 }

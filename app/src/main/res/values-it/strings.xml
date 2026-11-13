@@ -1577,4 +1577,12 @@
     <string name="player_theme_default_subtitle">I colori della copertina continuano sotto di essa</string>
     <string name="player_theme_simple_subtitle">Una morbida sfocatura della copertina dietro tutto il player</string>
     <string name="player_theme_legacy_subtitle">Ripristina le macchie di colore fluttuanti dietro il player della v1.5</string>
+    <string name="device_notice_target_not_allowed">%1$s non accetta il controllo dai tuoi altri dispositivi.</string>
+    <string name="device_notice_target_not_allowed_generic">Quel dispositivo non accetta il controllo dai tuoi altri dispositivi.</string>
+    <string name="device_notice_target_not_reachable">Apri prima BitChord su %1$s.</string>
+    <string name="device_notice_target_not_reachable_generic">Apri prima BitChord su quel dispositivo.</string>
+    <string name="device_visible">Visibile ai miei altri dispositivi</string>
+    <string name="device_visible_subtitle">Mostra questo dispositivo nell\'elenco Connetti degli altri tuoi dispositivi</string>
+    <string name="device_accepts_control">Consenti ai miei altri dispositivi di controllare questo</string>
+    <string name="device_accepts_control_subtitle">I tuoi altri dispositivi possono riprodurre, mettere in pausa e inviare musica qui</string>
 </resources>

@@ -1474,4 +1474,12 @@
     <string name="player_theme_default_subtitle">앨범 아트의 색이 그 아래로 이어집니다</string>
     <string name="player_theme_simple_subtitle">플레이어 전체 뒤에 앨범 아트의 부드러운 블러를 표시합니다</string>
     <string name="player_theme_legacy_subtitle">v1.5의 플레이어 뒤에 떠다니는 색 덩어리를 되살립니다</string>
+    <string name="device_notice_target_not_allowed">%1$s은(는) 다른 기기의 제어를 허용하지 않습니다.</string>
+    <string name="device_notice_target_not_allowed_generic">그 기기는 다른 기기의 제어를 허용하지 않습니다.</string>
+    <string name="device_notice_target_not_reachable">먼저 %1$s에서 BitChord를 여세요.</string>
+    <string name="device_notice_target_not_reachable_generic">먼저 그 기기에서 BitChord를 여세요.</string>
+    <string name="device_visible">내 다른 기기에 표시</string>
+    <string name="device_visible_subtitle">내 다른 기기의 연결 목록에 이 기기를 표시합니다</string>
+    <string name="device_accepts_control">내 다른 기기가 이 기기를 제어하도록 허용</string>
+    <string name="device_accepts_control_subtitle">내 다른 기기에서 재생, 일시정지, 음악 전송을 할 수 있습니다</string>
 </resources>

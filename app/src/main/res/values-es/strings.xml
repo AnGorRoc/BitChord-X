@@ -1611,4 +1611,12 @@
     <string name="device_notice_not_linked">Ese dispositivo ya no está conectado a este.</string>
     <string name="device_notice_refused">El otro dispositivo lo rechazó.</string>
     <string name="device_notice_stop_casting">Deja de transmitir primero.</string>
+    <string name="device_notice_target_not_allowed">%1$s no acepta que lo controlen tus otros dispositivos.</string>
+    <string name="device_notice_target_not_allowed_generic">Ese dispositivo no acepta que lo controlen tus otros dispositivos.</string>
+    <string name="device_notice_target_not_reachable">Abre BitChord en %1$s primero.</string>
+    <string name="device_notice_target_not_reachable_generic">Abre BitChord en ese dispositivo primero.</string>
+    <string name="device_visible">Visible para mis otros dispositivos</string>
+    <string name="device_visible_subtitle">Ofrece este dispositivo en la lista de Conectar de tus otros dispositivos</string>
+    <string name="device_accepts_control">Permitir que mis otros dispositivos controlen este</string>
+    <string name="device_accepts_control_subtitle">Tus otros dispositivos pueden reproducir, pausar y enviarle música</string>
 </resources>

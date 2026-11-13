@@ -1618,4 +1618,12 @@
     <string name="player_theme_default_subtitle">封面本身的顏色在其下方延續</string>
     <string name="player_theme_simple_subtitle">在整個播放器後方顯示封面的柔和模糊</string>
     <string name="player_theme_legacy_subtitle">恢復 v1.5 中播放器後方漂浮的色塊</string>
+    <string name="device_notice_target_not_allowed">%1$s 不允許被你的其他裝置控制。</string>
+    <string name="device_notice_target_not_allowed_generic">該裝置不允許被你的其他裝置控制。</string>
+    <string name="device_notice_target_not_reachable">請先在 %1$s 上開啟 BitChord。</string>
+    <string name="device_notice_target_not_reachable_generic">請先在該裝置上開啟 BitChord。</string>
+    <string name="device_visible">對我的其他裝置可見</string>
+    <string name="device_visible_subtitle">在你其他裝置的「連接」清單中顯示此裝置</string>
+    <string name="device_accepts_control">允許我的其他裝置控制此裝置</string>
+    <string name="device_accepts_control_subtitle">你的其他裝置可以在此播放、暫停並傳送音樂</string>
 </resources>

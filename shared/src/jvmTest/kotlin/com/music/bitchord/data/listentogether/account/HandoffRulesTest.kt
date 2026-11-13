@@ -192,4 +192,14 @@ class HandoffRulesTest {
         val remote = device(id = "tab").copy(controlling = "pc")
         assertEquals(DeviceNotice.TargetIsRemote("tab"), HandoffRules.blockedBy(remote, partyOwnsPlayer = false))
     }
+
+    @Test
+    fun `a target that refuses control or has to be opened is refused, naming it`() {
+        val locked = device(id = "tv").copy(noControl = true)
+        assertEquals(DeviceNotice.TargetNotAllowed("tv"), HandoffRules.blockedBy(locked, partyOwnsPlayer = false))
+        val asleep = device(id = "tab").copy(unreachable = true)
+        assertEquals(DeviceNotice.TargetNotReachable("tab"), HandoffRules.blockedBy(asleep, partyOwnsPlayer = false))
+        // Hidden is a request about the list, not about being driven.
+        assertNull(HandoffRules.blockedBy(device(id = "pc").copy(hidden = true), partyOwnsPlayer = false))
+    }
 }

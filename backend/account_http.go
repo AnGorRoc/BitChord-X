@@ -223,6 +223,14 @@ func handleAccountFrame(acc *account.Account, d *account.Device, sc *hub.SafeCon
 		d.PartyCode = code
 		acc.Unlock()
 		broadcastDevices(acc)
+	case "prefs":
+		hidden, _ := frame["hidden"].(bool)
+		noControl, _ := frame["noControl"].(bool)
+		unreachable, _ := frame["unreachable"].(bool)
+		acc.Lock()
+		acc.SetPrefs(d, hidden, noControl, unreachable)
+		acc.Unlock()
+		broadcastDevices(acc)
 	case "ping":
 		acc.Lock()
 		d.LastSeenMs = now

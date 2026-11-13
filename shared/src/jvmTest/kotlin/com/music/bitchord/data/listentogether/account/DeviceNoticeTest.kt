@@ -14,6 +14,12 @@ class DeviceNoticeTest {
     }
 
     @Test
+    fun `a device that refuses control or has to be opened is told apart`() {
+        assertEquals(DeviceNotice.TargetNotAllowed(null), DeviceNotice.fromServer("not_allowed", null))
+        assertEquals(DeviceNotice.TargetNotReachable(null), DeviceNotice.fromServer("not_reachable", null))
+    }
+
+    @Test
     fun `a reason this build does not know falls back to what the server said`() {
         assertEquals(DeviceNotice.Refused("slow down"), DeviceNotice.fromServer(null, "slow down"))
         assertEquals(DeviceNotice.Refused("x"), DeviceNotice.fromServer("some_future_reason", "x"))

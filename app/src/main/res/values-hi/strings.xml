@@ -1638,4 +1638,12 @@
     <string name="player_theme_default_subtitle">कवर के अपने रंग उसके नीचे जारी रहते हैं</string>
     <string name="player_theme_simple_subtitle">पूरे प्लेयर के पीछे कवर का हल्का धुंधलापन</string>
     <string name="player_theme_legacy_subtitle">v1.5 के प्लेयर के पीछे तैरते रंगों के धब्बे वापस लाता है</string>
+    <string name="device_notice_target_not_allowed">%1$s आपके दूसरे डिवाइस से कंट्रोल की अनुमति नहीं देता।</string>
+    <string name="device_notice_target_not_allowed_generic">वह डिवाइस आपके दूसरे डिवाइस से कंट्रोल की अनुमति नहीं देता।</string>
+    <string name="device_notice_target_not_reachable">पहले %1$s पर BitChord खोलें।</string>
+    <string name="device_notice_target_not_reachable_generic">पहले उस डिवाइस पर BitChord खोलें।</string>
+    <string name="device_visible">मेरे दूसरे डिवाइस को दिखे</string>
+    <string name="device_visible_subtitle">इस डिवाइस को आपके दूसरे डिवाइस की कनेक्ट सूची में दिखाता है</string>
+    <string name="device_accepts_control">मेरे दूसरे डिवाइस को इसे कंट्रोल करने दें</string>
+    <string name="device_accepts_control_subtitle">आपके दूसरे डिवाइस यहाँ संगीत चला सकते हैं, रोक सकते हैं और भेज सकते हैं</string>
 </resources>

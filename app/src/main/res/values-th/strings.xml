@@ -1624,4 +1624,12 @@
     <string name="player_theme_default_subtitle">สีของปกต่อเนื่องลงไปด้านล่าง</string>
     <string name="player_theme_simple_subtitle">ภาพปกเบลอนุ่มนวลอยู่หลังเครื่องเล่นทั้งหมด</string>
     <string name="player_theme_legacy_subtitle">นำจุดสีที่ลอยอยู่หลังเครื่องเล่นจาก v1.5 กลับมา</string>
+    <string name="device_notice_target_not_allowed">%1$s ไม่อนุญาตให้อุปกรณ์อื่นของคุณควบคุม</string>
+    <string name="device_notice_target_not_allowed_generic">อุปกรณ์นั้นไม่อนุญาตให้อุปกรณ์อื่นของคุณควบคุม</string>
+    <string name="device_notice_target_not_reachable">เปิด BitChord บน %1$s ก่อน</string>
+    <string name="device_notice_target_not_reachable_generic">เปิด BitChord บนอุปกรณ์นั้นก่อน</string>
+    <string name="device_visible">มองเห็นได้จากอุปกรณ์อื่นของฉัน</string>
+    <string name="device_visible_subtitle">แสดงอุปกรณ์นี้ในรายการเชื่อมต่อของอุปกรณ์อื่นของคุณ</string>
+    <string name="device_accepts_control">อนุญาตให้อุปกรณ์อื่นของฉันควบคุมเครื่องนี้</string>
+    <string name="device_accepts_control_subtitle">อุปกรณ์อื่นของคุณสามารถเล่น หยุดชั่วคราว และส่งเพลงมาที่เครื่องนี้ได้</string>
 </resources>

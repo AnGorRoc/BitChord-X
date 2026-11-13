@@ -76,6 +76,8 @@ object HandoffRules {
     fun blockedBy(target: AccountDevice?, partyOwnsPlayer: Boolean): DeviceNotice? = when {
         target == null || !target.connected -> DeviceNotice.Unavailable
         partyOwnsPlayer -> DeviceNotice.PartyOnThisDevice
+        target.noControl -> DeviceNotice.TargetNotAllowed(target.name)
+        target.unreachable -> DeviceNotice.TargetNotReachable(target.name)
         target.partyCode != null -> DeviceNotice.TargetInParty(target.name)
         // A remote is not a speaker: what it plays comes from the device it controls.
         target.controlling != null -> DeviceNotice.TargetIsRemote(target.name)

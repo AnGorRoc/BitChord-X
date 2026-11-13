@@ -32,6 +32,19 @@ object DeviceLink {
     /** The device a hand-over is on its way to, set by the playback service; null when none is. */
     val connecting: StateFlow<String?> = _connecting.asStateFlow()
 
+    private val _serviceRunning = MutableStateFlow(false)
+
+    /**
+     * Whether the playback service is up. Commands from the person's other devices are carried out
+     * there, so while it is not the device says it is not reachable instead of taking commands it
+     * would ignore.
+     */
+    val serviceRunning: StateFlow<Boolean> = _serviceRunning.asStateFlow()
+
+    fun setServiceRunning(running: Boolean) {
+        _serviceRunning.value = running
+    }
+
     fun setConnecting(deviceId: String?) {
         _connecting.value = deviceId
     }

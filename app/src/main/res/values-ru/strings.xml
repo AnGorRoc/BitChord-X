@@ -1665,4 +1665,12 @@
     <string name="player_theme_default_subtitle">Цвета обложки продолжаются под ней</string>
     <string name="player_theme_simple_subtitle">Мягкое размытие обложки за всем плеером</string>
     <string name="player_theme_legacy_subtitle">Возвращает плавающие цветовые пятна за плеером из версии 1.5</string>
+    <string name="device_notice_target_not_allowed">%1$s не разрешает управлять собой с других ваших устройств.</string>
+    <string name="device_notice_target_not_allowed_generic">Это устройство не разрешает управлять собой с других ваших устройств.</string>
+    <string name="device_notice_target_not_reachable">Сначала откройте BitChord на устройстве %1$s.</string>
+    <string name="device_notice_target_not_reachable_generic">Сначала откройте BitChord на этом устройстве.</string>
+    <string name="device_visible">Видно моим другим устройствам</string>
+    <string name="device_visible_subtitle">Показывает это устройство в списке «Подключение» на других ваших устройствах</string>
+    <string name="device_accepts_control">Разрешить моим другим устройствам управлять этим</string>
+    <string name="device_accepts_control_subtitle">Другие ваши устройства могут воспроизводить, ставить на паузу и отправлять сюда музыку</string>
 </resources>

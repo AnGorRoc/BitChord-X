@@ -251,6 +251,8 @@ fun SettingsScreen(
     val spatialAudio by AppSettings.spatialAudio.collectAsStateWithLifecycle()
     val nerdStats by AppSettings.showNerdStats.collectAsStateWithLifecycle()
     val listenTogetherButton by AppSettings.showListenTogetherButton.collectAsStateWithLifecycle()
+    val deviceVisible by AppSettings.deviceVisible.collectAsStateWithLifecycle()
+    val deviceAcceptsControl by AppSettings.deviceAcceptsControl.collectAsStateWithLifecycle()
     val reduceAnimation by AppSettings.reduceAnimation.collectAsStateWithLifecycle()
     val navLabels by AppSettings.showNavLabels.collectAsStateWithLifecycle()
     val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
@@ -1808,6 +1810,30 @@ fun SettingsScreen(
                         )
                     },
                     onClick = { AppSettings.setShowListenTogetherButton(!listenTogetherButton) },
+                )
+            }
+            val deviceVisibleTitle = stringResource(R.string.device_visible)
+            row(deviceVisibleTitle, "connect", "devices", "visible", "hidden", "party") {
+                SettingsRow(
+                    icon = SfIcons.Groups,
+                    title = deviceVisibleTitle,
+                    subtitle = stringResource(R.string.device_visible_subtitle),
+                    trailing = {
+                        IosSwitch(checked = deviceVisible, onCheckedChange = AppSettings::setDeviceVisible)
+                    },
+                    onClick = { AppSettings.setDeviceVisible(!deviceVisible) },
+                )
+            }
+            val deviceControlTitle = stringResource(R.string.device_accepts_control)
+            row(deviceControlTitle, "connect", "devices", "control", "remote", "allow") {
+                SettingsRow(
+                    icon = SfIcons.Groups,
+                    title = deviceControlTitle,
+                    subtitle = stringResource(R.string.device_accepts_control_subtitle),
+                    trailing = {
+                        IosSwitch(checked = deviceAcceptsControl, onCheckedChange = AppSettings::setDeviceAcceptsControl)
+                    },
+                    onClick = { AppSettings.setDeviceAcceptsControl(!deviceAcceptsControl) },
                 )
             }
             val hideStatusBarTitle = stringResource(R.string.hide_status_bar_in_player)

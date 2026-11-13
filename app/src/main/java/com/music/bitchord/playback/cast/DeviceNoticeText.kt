@@ -12,6 +12,12 @@ internal fun DeviceNotice.text(context: Context): String = when (this) {
     is DeviceNotice.TargetIsRemote ->
         if (name != null) context.getString(R.string.device_notice_target_remote, name)
         else context.getString(R.string.device_notice_target_remote_generic)
+    is DeviceNotice.TargetNotAllowed ->
+        if (name != null) context.getString(R.string.device_notice_target_not_allowed, name)
+        else context.getString(R.string.device_notice_target_not_allowed_generic)
+    is DeviceNotice.TargetNotReachable ->
+        if (name != null) context.getString(R.string.device_notice_target_not_reachable, name)
+        else context.getString(R.string.device_notice_target_not_reachable_generic)
     DeviceNotice.LocalFile -> context.getString(R.string.device_notice_local_file)
     DeviceNotice.NoAnswer -> context.getString(R.string.device_notice_no_answer)
     DeviceNotice.NoStart -> context.getString(R.string.device_notice_no_start)

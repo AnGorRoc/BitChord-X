@@ -174,6 +174,29 @@ class AccountDevices(
         sendFrame(buildJsonObject { put("type", "party"); put("code", partyCode.orEmpty()) })
     }
 
+    @Volatile private var prefs = DevicePrefs()
+
+    /**
+     * How this device wants to be treated by the person's others (hidden, not controllable, not yet
+     * able to play). Sent again on every new socket; a server without it ignores the frame.
+     */
+    fun setPrefs(value: DevicePrefs) {
+        if (prefs == value) return
+        prefs = value
+        sendPrefs()
+    }
+
+    private fun sendPrefs() {
+        sendFrame(
+            buildJsonObject {
+                put("type", "prefs")
+                put("hidden", prefs.hidden)
+                put("noControl", prefs.noControl)
+                put("unreachable", prefs.unreachable)
+            },
+        )
+    }
+
     fun attach(deviceId: String) = sendFrame(buildJsonObject { put("type", "attach"); put("to", deviceId) })
 
     /** Stops being a remote. */
@@ -237,6 +260,7 @@ class AccountDevices(
                     }
                     backoffMs = 1_000L
                     if (partyCode != null) sendParty()
+                    if (prefs != DevicePrefs()) sendPrefs()
                     // What this device is playing is not known to the server on a new socket.
                     lastPublished?.let { last ->
                         lastPublished = null

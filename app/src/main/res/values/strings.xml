@@ -1477,4 +1477,12 @@
     <string name="device_notice_not_linked">That device is no longer connected to this one.</string>
     <string name="device_notice_refused">The other device refused that.</string>
     <string name="device_notice_stop_casting">Stop casting first.</string>
+    <string name="device_notice_target_not_allowed">%1$s doesn\'t accept control from your other devices.</string>
+    <string name="device_notice_target_not_allowed_generic">That device doesn\'t accept control from your other devices.</string>
+    <string name="device_notice_target_not_reachable">Open BitChord on %1$s first.</string>
+    <string name="device_notice_target_not_reachable_generic">Open BitChord on that device first.</string>
+    <string name="device_visible">Visible to my other devices</string>
+    <string name="device_visible_subtitle">Offer this device in the Connect list of your other devices</string>
+    <string name="device_accepts_control">Allow my other devices to control this one</string>
+    <string name="device_accepts_control_subtitle">Your other devices can play, pause and send music to this one</string>
 </resources>

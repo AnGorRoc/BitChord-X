@@ -1643,4 +1643,12 @@
     <string name="player_theme_default_subtitle">צבעי העטיפה נמשכים מתחתיה</string>
     <string name="player_theme_simple_subtitle">טשטוש רך של העטיפה מאחורי כל הנגן</string>
     <string name="player_theme_legacy_subtitle">מחזיר את כתמי הצבע הצפים שמאחורי הנגן מגרסה 1.5</string>
+    <string name="device_notice_target_not_allowed">%1$s לא מאפשר שליטה מהמכשירים האחרים שלך.</string>
+    <string name="device_notice_target_not_allowed_generic">המכשיר הזה לא מאפשר שליטה מהמכשירים האחרים שלך.</string>
+    <string name="device_notice_target_not_reachable">פתח קודם את BitChord ב-%1$s.</string>
+    <string name="device_notice_target_not_reachable_generic">פתח קודם את BitChord במכשיר הזה.</string>
+    <string name="device_visible">גלוי למכשירים האחרים שלי</string>
+    <string name="device_visible_subtitle">מציג את המכשיר הזה ברשימת החיבור של המכשירים האחרים שלך</string>
+    <string name="device_accepts_control">אפשר למכשירים האחרים שלי לשלוט בזה</string>
+    <string name="device_accepts_control_subtitle">המכשירים האחרים שלך יכולים לנגן, להשהות ולשלוח לכאן מוזיקה</string>
 </resources>
