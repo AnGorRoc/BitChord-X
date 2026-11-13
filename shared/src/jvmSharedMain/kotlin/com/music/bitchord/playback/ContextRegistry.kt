@@ -411,6 +411,27 @@ class ContextRegistry(
             )
         }
 
+    /**
+     * Gives up on a continuation whose loader keeps failing. The context is settled as blocked, so
+     * AutoPlay may take over from its last song; a claimed token is released for a later attempt.
+     */
+    fun abandon(request: ContinuationRequest): ContinuationResult =
+        synchronized(lock) {
+            val state = active
+            if (state == null || !state.matches(request)) {
+                return@synchronized staleResult(state)
+            }
+
+            state.request = null
+            state.continuationState = ContinuationState.BLOCKED
+            state.diagnostic = ContinuationDiagnostic.REQUEST_FAILED
+            ContinuationResult(
+                status = ContinuationResultStatus.FAILED,
+                snapshot = state.snapshot(),
+                diagnostic = ContinuationDiagnostic.REQUEST_FAILED,
+            )
+        }
+
     private fun staleResult(state: MutableContext?): ContinuationResult = ContinuationResult(
         status = ContinuationResultStatus.STALE_REQUEST,
         snapshot = state?.snapshot(),

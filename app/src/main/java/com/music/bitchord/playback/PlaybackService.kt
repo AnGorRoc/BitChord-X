@@ -3247,7 +3247,10 @@ class PlaybackService : MediaLibraryService() {
                     // hand the walk back to the detail page.
                     boundedContextRegistry.fail(request)
                     if (++failures > BOUNDED_CONTINUATION_RETRIES_MS.size) {
+                        // Given up: the context is settled, so AutoPlay may carry on from its last song.
+                        boundedContextRegistry.abandon(request)
                         boundedContextRequest?.handoffToken?.let(BoundedContextRequests::release)
+                        loadAutoplayForCurrentTrack()
                         return@launch
                     }
                     delay(BOUNDED_CONTINUATION_RETRIES_MS[failures - 1])
@@ -3267,7 +3270,15 @@ class PlaybackService : MediaLibraryService() {
                     request,
                     ContinuationPage(songs = songs, continuationToken = page.continuation),
                 )
-                if (result.status != ContinuationResultStatus.COMPLETED) return@launch
+                // AutoPlay only starts once the context is settled, and that happens here, in the
+                // background. When the last song is already playing no transition will ever ask
+                // again, so settling the context has to ask. A completed page grows the window and
+                // its top-up asks afterwards (see scheduleBoundedContextTopUp); a rejected page adds
+                // nothing, so nothing else would ask.
+                if (result.status != ContinuationResultStatus.COMPLETED) {
+                    loadAutoplayForCurrentTrack()
+                    return@launch
+                }
             }
         }
     }
@@ -3283,6 +3294,10 @@ class PlaybackService : MediaLibraryService() {
             }
             applyBoundedContextTopUp()
             boundedEditState = boundedEditState.copy(topUpPending = false)
+            // The window has just been extended, so AutoPlay now sees whether anything is left
+            // after the current song. Before this, a context that settled while its last song
+            // played could not tell, and nothing asked again.
+            loadAutoplayForCurrentTrack()
         }
     }
 
