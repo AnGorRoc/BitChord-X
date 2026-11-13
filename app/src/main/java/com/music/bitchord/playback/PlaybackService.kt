@@ -85,6 +85,7 @@ import com.music.bitchord.playback.cast.receiverCanOpen
 import com.music.bitchord.playback.cast.CastPlayback
 import com.music.bitchord.playback.cast.DeviceSpeaker
 import com.music.bitchord.playback.cast.DeviceTarget
+import com.music.bitchord.playback.cast.text
 import com.music.bitchord.playback.cast.CastSink
 import com.music.bitchord.playback.cast.RemoteSpeaker
 import com.music.bitchord.playback.cast.Speakers
@@ -823,7 +824,7 @@ class PlaybackService : MediaLibraryService() {
             localPlayer = { player },
             account = ListenTogether.account,
             onChanged = { publishWidgetState() },
-            say = { message -> Toast.makeText(applicationContext, message, Toast.LENGTH_SHORT).show() },
+            say = { notice -> Toast.makeText(applicationContext, notice.text(applicationContext), Toast.LENGTH_SHORT).show() },
         )
     }
 
@@ -1926,8 +1927,8 @@ class PlaybackService : MediaLibraryService() {
         DeviceTarget(scope, { player }, ListenTogether.account, deviceSpeaker).start()
         // What the server refused, so a command that goes nowhere is not silent until a timeout.
         scope.launch {
-            ListenTogether.account.errors.collect { message ->
-                Toast.makeText(applicationContext, message, Toast.LENGTH_SHORT).show()
+            ListenTogether.account.errors.collect { notice ->
+                Toast.makeText(applicationContext, notice.text(applicationContext), Toast.LENGTH_SHORT).show()
             }
         }
         scope.launch {
@@ -1935,7 +1936,7 @@ class PlaybackService : MediaLibraryService() {
                 when (request) {
                     is DeviceLink.Request.Pick -> {
                         if (castPlayback.active || watchSpeaker.active) {
-                            Toast.makeText(applicationContext, "Stop casting first.", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(applicationContext, getString(R.string.device_notice_stop_casting), Toast.LENGTH_SHORT).show()
                         } else {
                             deviceSpeaker.pick(request.deviceId, request.force)
                         }

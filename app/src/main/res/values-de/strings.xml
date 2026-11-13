@@ -1619,4 +1619,18 @@
     <string name="listen_together_play_here_off">Der Ton kommt nur vom Host. Du siehst die Party weiterhin und steuerst sie.</string>
     <string name="listen_together_play_remote">Nur auf dem anderen Gerät</string>
     <string name="listen_together_silent_member">Hört über den Host</string>
+    <string name="device_notice_unavailable">Dieses Gerät ist nicht verfügbar.</string>
+    <string name="device_notice_party_here">Auf diesem Gerät läuft eine Party. Verlasse sie oder schalte „Auf diesem Gerät abspielen“ zuerst aus.</string>
+    <string name="device_notice_target_in_party">%1$s ist in einer Party. Verlasse sie dort zuerst.</string>
+    <string name="device_notice_target_remote">%1$s steuert ein anderes Gerät.</string>
+    <string name="device_notice_target_remote_generic">Dieses Gerät steuert ein anderes Gerät.</string>
+    <string name="device_notice_local_file">Dieser Titel ist eine Datei auf diesem Gerät und kann auf keinem anderen abgespielt werden.</string>
+    <string name="device_notice_no_answer">Das andere Gerät hat nicht geantwortet.</string>
+    <string name="device_notice_no_start">Das andere Gerät hat die Wiedergabe nicht gestartet.</string>
+    <string name="device_notice_disconnected">%1$s wurde getrennt.</string>
+    <string name="device_notice_disconnected_generic">Das andere Gerät wurde getrennt.</string>
+    <string name="device_notice_too_many">Zu viele Titel für eine Übergabe.</string>
+    <string name="device_notice_not_linked">Dieses Gerät ist nicht mehr mit diesem verbunden.</string>
+    <string name="device_notice_refused">Das andere Gerät hat das abgelehnt.</string>
+    <string name="device_notice_stop_casting">Beende zuerst das Streamen.</string>
 </resources>

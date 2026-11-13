@@ -1601,4 +1601,18 @@
     <string name="swipe_left_action">Deslizar canción a la izquierda</string>
     <string name="swipe_hold_playlist_hint">Mantené el deslizamiento para añadir a una playlist</string>
     <string name="swipe_action_disabled">Desactivado</string>
+    <string name="device_notice_unavailable">Ese dispositivo no está disponible.</string>
+    <string name="device_notice_party_here">Estás en una party en este dispositivo. Sal de ella o desactiva “Reproducir en este dispositivo” primero.</string>
+    <string name="device_notice_target_in_party">%1$s está en una party. Sal de ella allí primero.</string>
+    <string name="device_notice_target_remote">%1$s está controlando otro dispositivo.</string>
+    <string name="device_notice_target_remote_generic">Ese dispositivo está controlando otro dispositivo.</string>
+    <string name="device_notice_local_file">Esta canción es un archivo de este dispositivo, así que no se puede reproducir en otro.</string>
+    <string name="device_notice_no_answer">El otro dispositivo no respondió.</string>
+    <string name="device_notice_no_start">El otro dispositivo no empezó a reproducir.</string>
+    <string name="device_notice_disconnected">%1$s se desconectó.</string>
+    <string name="device_notice_disconnected_generic">El otro dispositivo se desconectó.</string>
+    <string name="device_notice_too_many">Demasiadas canciones para traspasar de una vez.</string>
+    <string name="device_notice_not_linked">Ese dispositivo ya no está conectado a este.</string>
+    <string name="device_notice_refused">El otro dispositivo lo rechazó.</string>
+    <string name="device_notice_stop_casting">Deja de transmitir primero.</string>
 </resources>

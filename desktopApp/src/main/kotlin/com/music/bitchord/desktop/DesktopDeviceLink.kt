@@ -6,6 +6,7 @@ import com.music.bitchord.data.listentogether.account.AccountDevices
 import com.music.bitchord.data.listentogether.account.AccountNowPlaying
 import com.music.bitchord.data.listentogether.account.DeviceActions
 import com.music.bitchord.data.listentogether.account.DeviceCommand
+import com.music.bitchord.data.listentogether.account.DeviceNotice
 import com.music.bitchord.data.listentogether.account.Handoff
 import com.music.bitchord.data.listentogether.account.HandoffForce
 import com.music.bitchord.data.listentogether.account.HandoffRules
@@ -52,7 +53,7 @@ internal class DesktopDeviceLink(
     private val next: () -> Unit,
     private val previous: () -> Unit,
     private val enqueue: (Song, Boolean) -> Unit,
-    private val say: (String) -> Unit,
+    private val say: (DeviceNotice) -> Unit,
 ) {
     private class Status(
         val mediaId: String,
@@ -230,21 +231,21 @@ internal class DesktopDeviceLink(
     fun pick(deviceId: String, force: HandoffForce?) {
         val target = account.state.value.devices.firstOrNull { it.deviceId == deviceId }
         if (target == null || !target.connected) {
-            say("That device is not available.")
+            say(DeviceNotice.Unavailable)
             return
         }
         // A party and a hand-over would fight over the same player. One or the other.
         if (DesktopListenTogether.partyOwnsPlayer()) {
-            say("This computer is playing a party. Leave it, or turn off “Play on this device”, first.")
+            say(DeviceNotice.PartyOnThisDevice)
             return
         }
         if (target.partyCode != null) {
-            say("${target.name} is in a party. Leave it there first.")
+            say(DeviceNotice.TargetInParty(target.name))
             return
         }
         // A remote is not a speaker: what it plays comes from the device it controls.
         if (target.controlling != null) {
-            say("${target.name} is controlling another device.")
+            say(DeviceNotice.TargetIsRemote(target.name))
             return
         }
         when (HandoffRules.onPick(target, queue().songs.isNotEmpty(), force)) {
@@ -273,7 +274,7 @@ internal class DesktopDeviceLink(
         val current = local.current ?: return
         if (window(local.songs, local.index.coerceAtLeast(0)) == null) {
             // A file that lives on this computer alone: the other device has nothing to play.
-            say("This song is a file on this computer, so it can't be played on another device.")
+            say(DeviceNotice.LocalFile)
             return
         }
         begin(target.deviceId)
@@ -295,7 +296,7 @@ internal class DesktopDeviceLink(
             delay(CONFIRM_TIMEOUT_MS)
             if (pulling) {
                 pulling = false
-                say("The other device did not answer.")
+                say(DeviceNotice.NoAnswer)
                 endLocally(false)
             }
         }
@@ -328,7 +329,7 @@ internal class DesktopDeviceLink(
             if (awaitingConfirm != null) {
                 // The target never took it up. Nothing was silenced, so nobody is left in silence.
                 awaitingConfirm = null
-                say("The other device did not start playing.")
+                say(DeviceNotice.NoStart)
                 command(DeviceActions.PAUSE)
                 endLocally(false)
             }
@@ -456,14 +457,14 @@ internal class DesktopDeviceLink(
                         awayJob = null
                         val now = account.state.value.devices.firstOrNull { it.deviceId == targetId }
                         if (active && (now == null || !now.connected)) {
-                            say("${now?.name ?: "The other device"} disconnected.")
+                            say(DeviceNotice.Disconnected(now?.name))
                             endLocally(false)
                         }
                     }
                 }
                 return
             }
-            say("The other device disconnected.")
+            say(DeviceNotice.Disconnected(null))
             endLocally(false)
             return
         }
@@ -548,4 +549,24 @@ internal class DesktopDeviceLink(
 
         /** How much of the queue one hand-over carries; the server allows 500. */
     }
+}
+
+/**
+ * What the person is told about handing the sound around. The desktop app's own messages are
+ * English throughout, so this is too; the facts themselves ([DeviceNotice]) carry no wording.
+ */
+internal fun DeviceNotice.english(): String = when (this) {
+    DeviceNotice.Unavailable -> "That device is not available."
+    DeviceNotice.PartyOnThisDevice ->
+        "You're in a party on this device. Leave it, or turn off “Play on this device”, first."
+    is DeviceNotice.TargetInParty -> "$name is in a party. Leave it there first."
+    is DeviceNotice.TargetIsRemote ->
+        if (name != null) "$name is controlling another device." else "That device is controlling another device."
+    DeviceNotice.LocalFile -> "This song is a file on this device, so it can't be played on another one."
+    DeviceNotice.NoAnswer -> "The other device did not answer."
+    DeviceNotice.NoStart -> "The other device did not start playing."
+    is DeviceNotice.Disconnected -> if (name != null) "$name disconnected." else "The other device disconnected."
+    DeviceNotice.TooManySongs -> "Too many songs to hand over at once."
+    DeviceNotice.NotLinked -> "That device is no longer connected to this one."
+    is DeviceNotice.Refused -> message?.takeIf { it.isNotBlank() } ?: "The other device refused that."
 }

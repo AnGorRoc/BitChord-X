@@ -1467,4 +1467,18 @@
     <string name="swipe_left_action">Swipe left on a song</string>
     <string name="swipe_hold_playlist_hint">Hold the swipe to add to a playlist</string>
     <string name="swipe_action_disabled">Off</string>
+    <string name="device_notice_unavailable">That device is not available.</string>
+    <string name="device_notice_party_here">You’re in a party on this device. Leave it, or turn off “Play on this device”, first.</string>
+    <string name="device_notice_target_in_party">%1$s is in a party. Leave it there first.</string>
+    <string name="device_notice_target_remote">%1$s is controlling another device.</string>
+    <string name="device_notice_target_remote_generic">That device is controlling another device.</string>
+    <string name="device_notice_local_file">This song is a file on this device, so it can’t be played on another one.</string>
+    <string name="device_notice_no_answer">The other device did not answer.</string>
+    <string name="device_notice_no_start">The other device did not start playing.</string>
+    <string name="device_notice_disconnected">%1$s disconnected.</string>
+    <string name="device_notice_disconnected_generic">The other device disconnected.</string>
+    <string name="device_notice_too_many">Too many songs to hand over at once.</string>
+    <string name="device_notice_not_linked">That device is no longer connected to this one.</string>
+    <string name="device_notice_refused">The other device refused that.</string>
+    <string name="device_notice_stop_casting">Stop casting first.</string>
 </resources>

@@ -1624,4 +1624,18 @@
     <string name="listen_together_play_here_off">הצליל מגיע רק מהמארח. אתה עדיין רואה ושולט בפארטי.</string>
     <string name="listen_together_play_remote">רק במכשיר השני</string>
     <string name="listen_together_silent_member">מאזין דרך המארח</string>
+    <string name="device_notice_unavailable">המכשיר הזה אינו זמין.</string>
+    <string name="device_notice_party_here">אתה בפארטי במכשיר הזה. עזוב אותו או כבה את “נגן במכשיר הזה” קודם.</string>
+    <string name="device_notice_target_in_party">%1$s נמצא בפארטי. עזוב אותו שם קודם.</string>
+    <string name="device_notice_target_remote">%1$s שולט במכשיר אחר.</string>
+    <string name="device_notice_target_remote_generic">המכשיר הזה שולט במכשיר אחר.</string>
+    <string name="device_notice_local_file">השיר הזה הוא קובץ במכשיר הזה, ולכן אי אפשר לנגן אותו במכשיר אחר.</string>
+    <string name="device_notice_no_answer">המכשיר השני לא הגיב.</string>
+    <string name="device_notice_no_start">המכשיר השני לא התחיל לנגן.</string>
+    <string name="device_notice_disconnected">%1$s התנתק.</string>
+    <string name="device_notice_disconnected_generic">המכשיר השני התנתק.</string>
+    <string name="device_notice_too_many">יותר מדי שירים להעברה בבת אחת.</string>
+    <string name="device_notice_not_linked">המכשיר הזה כבר אינו מחובר למכשיר הזה.</string>
+    <string name="device_notice_refused">המכשיר השני סירב.</string>
+    <string name="device_notice_stop_casting">הפסק קודם את ההעברה (Cast).</string>
 </resources>

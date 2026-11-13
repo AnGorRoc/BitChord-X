@@ -1600,4 +1600,18 @@
     <string name="listen_together_play_here_off">音はホストからのみ出ます。パーティーの表示と操作はできます。</string>
     <string name="listen_together_play_remote">他のデバイスでのみ再生</string>
     <string name="listen_together_silent_member">ホスト経由で再生中</string>
+    <string name="device_notice_unavailable">そのデバイスは利用できません。</string>
+    <string name="device_notice_party_here">このデバイスでパーティーに参加しています。先にパーティーを退出するか、「このデバイスで再生」をオフにしてください。</string>
+    <string name="device_notice_target_in_party">%1$s はパーティーに参加中です。先にそちらで退出してください。</string>
+    <string name="device_notice_target_remote">%1$s は別のデバイスを操作中です。</string>
+    <string name="device_notice_target_remote_generic">そのデバイスは別のデバイスを操作中です。</string>
+    <string name="device_notice_local_file">この曲はこのデバイス上のファイルのため、他のデバイスでは再生できません。</string>
+    <string name="device_notice_no_answer">もう一方のデバイスから応答がありません。</string>
+    <string name="device_notice_no_start">もう一方のデバイスが再生を開始しませんでした。</string>
+    <string name="device_notice_disconnected">%1$s が切断されました。</string>
+    <string name="device_notice_disconnected_generic">もう一方のデバイスが切断されました。</string>
+    <string name="device_notice_too_many">一度に引き継ぐ曲が多すぎます。</string>
+    <string name="device_notice_not_linked">そのデバイスはもうこのデバイスに接続されていません。</string>
+    <string name="device_notice_refused">もう一方のデバイスが拒否しました。</string>
+    <string name="device_notice_stop_casting">先にキャストを停止してください。</string>
 </resources>

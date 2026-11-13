@@ -318,6 +318,15 @@
   <string name="connect_nothing_playing">Nothing playing</string>
   <string name="connect_away">Last seen away</string>
   <string name="connect_controlling">Controlling this device</string>
+  <string name="connect_controlled_by">Controlled by %1$s</string>
+  <string name="connect_controlling_device">Controlling %1$s</string>
+  <string name="connect_in_party">In a party</string>
+  <string name="connect_paused">Paused · %1$s</string>
+  <string name="connect_away_now">Last seen just now</string>
+  <string name="connect_away_minutes">Last seen %1$d min ago</string>
+  <string name="connect_away_hours">Last seen %1$d h ago</string>
+  <string name="connect_connecting">Connecting to your devices…</string>
+  <string name="connect_signed_out">Sign in and get online to see your other devices here.</string>
   <string name="connect_no_devices">Open BitChord with your account on another device and it will show up here.</string>
   <string name="connect_unsupported">This party server does not connect your devices.</string>
   <string name="connect_send_mine">Send my music here</string>

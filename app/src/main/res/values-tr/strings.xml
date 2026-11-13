@@ -1576,4 +1576,18 @@
     <string name="listen_together_play_here_off">Ses yalnızca ev sahibinden gelir. Partiyi yine de görür ve yönetirsin.</string>
     <string name="listen_together_play_remote">Yalnızca diğer cihazda</string>
     <string name="listen_together_silent_member">Ev sahibi üzerinden dinliyor</string>
+    <string name="device_notice_unavailable">O cihaz kullanılamıyor.</string>
+    <string name="device_notice_party_here">Bu cihazda bir partidesin. Önce partiden çık ya da “Bu cihazda çal” seçeneğini kapat.</string>
+    <string name="device_notice_target_in_party">%1$s bir partide. Önce orada partiden çık.</string>
+    <string name="device_notice_target_remote">%1$s başka bir cihazı kontrol ediyor.</string>
+    <string name="device_notice_target_remote_generic">O cihaz başka bir cihazı kontrol ediyor.</string>
+    <string name="device_notice_local_file">Bu şarkı bu cihazdaki bir dosya, bu yüzden başka bir cihazda çalınamaz.</string>
+    <string name="device_notice_no_answer">Diğer cihaz yanıt vermedi.</string>
+    <string name="device_notice_no_start">Diğer cihaz çalmaya başlamadı.</string>
+    <string name="device_notice_disconnected">%1$s bağlantısı kesildi.</string>
+    <string name="device_notice_disconnected_generic">Diğer cihazın bağlantısı kesildi.</string>
+    <string name="device_notice_too_many">Tek seferde devretmek için çok fazla şarkı var.</string>
+    <string name="device_notice_not_linked">O cihaz artık bununla bağlı değil.</string>
+    <string name="device_notice_refused">Diğer cihaz bunu reddetti.</string>
+    <string name="device_notice_stop_casting">Önce yayını durdur.</string>
 </resources>

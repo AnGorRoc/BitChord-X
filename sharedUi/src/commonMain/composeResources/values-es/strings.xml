@@ -47,6 +47,15 @@
     <string name="connect_nothing_playing">Nada sonando</string>
     <string name="connect_away">Visto fuera de línea</string>
     <string name="connect_controlling">Controlando este dispositivo</string>
+    <string name="connect_controlled_by">Controlado por %1$s</string>
+    <string name="connect_controlling_device">Controlando %1$s</string>
+    <string name="connect_in_party">En una party</string>
+    <string name="connect_paused">En pausa · %1$s</string>
+    <string name="connect_away_now">Visto hace un momento</string>
+    <string name="connect_away_minutes">Visto hace %1$d min</string>
+    <string name="connect_away_hours">Visto hace %1$d h</string>
+    <string name="connect_connecting">Conectando con tus dispositivos…</string>
+    <string name="connect_signed_out">Inicia sesión y conéctate para ver aquí tus otros dispositivos.</string>
     <string name="connect_no_devices">Abre BitChord con tu cuenta en otro dispositivo y aparecerá aquí.</string>
     <string name="connect_unsupported">Este servidor de parties no conecta tus dispositivos.</string>
     <string name="connect_send_mine">Enviar mi música aquí</string>

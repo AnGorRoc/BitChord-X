@@ -103,14 +103,24 @@ internal fun ConnectSheet(
                 DeviceRow(
                     device = thisDevice,
                     isSelf = true,
+                    nowMs = 0L,
+                    nameOf = { id -> account.devices.firstOrNull { it.deviceId == id }?.name.orEmpty() },
                     onClick = { host.comeBackToThisDevice(); onDismiss() },
                     onForce = null,
                 )
             }
-            account.others.filter { it.deviceId != account.controlled?.deviceId }.forEach { device ->
+            val nowMs = remember { System.currentTimeMillis() }
+            // A device the server still remembers from long ago is not one the person is looking for.
+            val others = account.others.filter {
+                it.deviceId != account.controlled?.deviceId && (it.connected || nowMs - it.lastSeenMs < FORGET_AWAY_MS)
+            }
+            val nameOf = { id: String -> account.devices.firstOrNull { it.deviceId == id }?.name.orEmpty() }
+            others.forEach { device ->
                 DeviceRow(
                     device = device,
                     isSelf = false,
+                    nowMs = nowMs,
+                    nameOf = nameOf,
                     onClick = { host.pickDevice(device.deviceId, null); onDismiss() },
                     onForce = { force -> host.pickDevice(device.deviceId, force); onDismiss() },
                 )
@@ -118,8 +128,15 @@ internal fun ConnectSheet(
             when {
                 account.connection == AccountConnection.UNSUPPORTED ->
                     Hint(stringResource(Res.string.connect_unsupported))
-                account.others.isEmpty() && account.controlled == null ->
-                    Hint(stringResource(Res.string.connect_no_devices))
+                others.isEmpty() && account.controlled == null -> Hint(
+                    // "No other devices" is only true once the channel is up; before that the
+                    // honest answer is that it is still being reached, or cannot be.
+                    when (account.connection) {
+                        AccountConnection.CONNECTING -> stringResource(Res.string.connect_connecting)
+                        AccountConnection.IDLE -> stringResource(Res.string.connect_signed_out)
+                        else -> stringResource(Res.string.connect_no_devices)
+                    },
+                )
             }
 
             Spacer(Modifier.height(4.dp))
@@ -215,15 +232,30 @@ private fun SoundingCard(device: AccountDevice, isSelf: Boolean) {
 private fun DeviceRow(
     device: AccountDevice,
     isSelf: Boolean,
+    nowMs: Long,
+    nameOf: (String) -> String,
     onClick: () -> Unit,
     onForce: ((HandoffForce) -> Unit)?,
 ) {
     val haptics = rememberHaptics()
     val enabled = device.connected || isSelf
+    val np = device.nowPlaying
+    val minutesAway = ((nowMs - device.lastSeenMs) / 60_000L).coerceAtLeast(0L).toInt()
     val subtitle = when {
-        !device.connected && !isSelf -> stringResource(Res.string.connect_away)
-        device.controlledBy != null -> stringResource(Res.string.connect_controlling)
-        device.nowPlaying != null && device.isPlaying -> device.nowPlaying?.let { "${it.title} — ${it.artist}" }
+        // When it was last seen, so a device that went to sleep a minute ago and one forgotten
+        // for hours do not look the same.
+        !device.connected && !isSelf -> when {
+            minutesAway < 1 -> stringResource(Res.string.connect_away_now)
+            minutesAway < 60 -> stringResource(Res.string.connect_away_minutes, minutesAway)
+            else -> stringResource(Res.string.connect_away_hours, minutesAway / 60)
+        }
+        // Who, not just that: with three devices "controlling this device" says nothing.
+        device.controlledBy != null -> stringResource(Res.string.connect_controlled_by, nameOf(device.controlledBy!!))
+        device.controlling != null -> stringResource(Res.string.connect_controlling_device, nameOf(device.controlling!!))
+        np != null && device.isPlaying -> "${np.title} — ${np.artist}"
+        // A device in a party plays the party, so what is on it matters less than that.
+        device.partyCode != null -> stringResource(Res.string.connect_in_party)
+        np != null -> stringResource(Res.string.connect_paused, np.title)
         else -> stringResource(Res.string.connect_idle)
     }
     var menu by remember { mutableStateOf(false) }
@@ -402,6 +434,8 @@ private fun Hint(text: String) {
     )
 }
 
+/** A device that has been away longer than this is left out of the list, however long the server remembers it. */
+private const val FORGET_AWAY_MS = 6L * 60 * 60 * 1000
 private val CARD_SHAPE = RoundedCornerShape(20.dp)
 
 private fun iconFor(type: String): ImageVector = when (type) {

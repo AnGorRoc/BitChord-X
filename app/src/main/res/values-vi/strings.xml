@@ -1539,4 +1539,18 @@
     <string name="listen_together_play_here_off">Âm thanh chỉ phát từ chủ phòng. Bạn vẫn xem và điều khiển được party.</string>
     <string name="listen_together_play_remote">Chỉ trên thiết bị kia</string>
     <string name="listen_together_silent_member">Nghe qua chủ phòng</string>
+    <string name="device_notice_unavailable">Thiết bị đó không khả dụng.</string>
+    <string name="device_notice_party_here">Bạn đang trong một party trên thiết bị này. Hãy rời khỏi party hoặc tắt “Phát trên thiết bị này” trước.</string>
+    <string name="device_notice_target_in_party">%1$s đang trong một party. Hãy rời khỏi party ở đó trước.</string>
+    <string name="device_notice_target_remote">%1$s đang điều khiển một thiết bị khác.</string>
+    <string name="device_notice_target_remote_generic">Thiết bị đó đang điều khiển một thiết bị khác.</string>
+    <string name="device_notice_local_file">Bài hát này là tệp trên thiết bị này nên không thể phát trên thiết bị khác.</string>
+    <string name="device_notice_no_answer">Thiết bị kia không phản hồi.</string>
+    <string name="device_notice_no_start">Thiết bị kia không bắt đầu phát.</string>
+    <string name="device_notice_disconnected">%1$s đã ngắt kết nối.</string>
+    <string name="device_notice_disconnected_generic">Thiết bị kia đã ngắt kết nối.</string>
+    <string name="device_notice_too_many">Có quá nhiều bài hát để chuyển cùng lúc.</string>
+    <string name="device_notice_not_linked">Thiết bị đó không còn kết nối với thiết bị này.</string>
+    <string name="device_notice_refused">Thiết bị kia đã từ chối.</string>
+    <string name="device_notice_stop_casting">Hãy dừng truyền trước.</string>
 </resources>

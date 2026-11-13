@@ -1455,4 +1455,18 @@
     <string name="listen_together_play_here_off">소리는 호스트에서만 나옵니다. 파티를 보고 제어할 수는 있습니다.</string>
     <string name="listen_together_play_remote">다른 기기에서만 재생</string>
     <string name="listen_together_silent_member">호스트를 통해 듣는 중</string>
+    <string name="device_notice_unavailable">해당 기기를 사용할 수 없습니다.</string>
+    <string name="device_notice_party_here">이 기기에서 파티에 참여 중입니다. 먼저 파티를 나가거나 “이 기기에서 재생”을 끄세요.</string>
+    <string name="device_notice_target_in_party">%1$s 기기가 파티에 참여 중입니다. 먼저 그곳에서 파티를 나가세요.</string>
+    <string name="device_notice_target_remote">%1$s 기기가 다른 기기를 제어하고 있습니다.</string>
+    <string name="device_notice_target_remote_generic">해당 기기가 다른 기기를 제어하고 있습니다.</string>
+    <string name="device_notice_local_file">이 곡은 이 기기에 있는 파일이라 다른 기기에서 재생할 수 없습니다.</string>
+    <string name="device_notice_no_answer">다른 기기가 응답하지 않았습니다.</string>
+    <string name="device_notice_no_start">다른 기기가 재생을 시작하지 않았습니다.</string>
+    <string name="device_notice_disconnected">%1$s 기기의 연결이 끊어졌습니다.</string>
+    <string name="device_notice_disconnected_generic">다른 기기의 연결이 끊어졌습니다.</string>
+    <string name="device_notice_too_many">한 번에 넘기기에는 곡이 너무 많습니다.</string>
+    <string name="device_notice_not_linked">해당 기기는 더 이상 이 기기와 연결되어 있지 않습니다.</string>
+    <string name="device_notice_refused">다른 기기가 거부했습니다.</string>
+    <string name="device_notice_stop_casting">먼저 캐스트를 중지하세요.</string>
 </resources>

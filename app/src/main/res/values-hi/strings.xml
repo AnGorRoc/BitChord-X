@@ -1619,4 +1619,18 @@
     <string name="listen_together_play_here_off">आवाज़ केवल होस्ट से आती है। आप फिर भी पार्टी देख और नियंत्रित कर सकते हैं।</string>
     <string name="listen_together_play_remote">केवल दूसरे डिवाइस पर</string>
     <string name="listen_together_silent_member">होस्ट के ज़रिए सुन रहे हैं</string>
+    <string name="device_notice_unavailable">वह डिवाइस उपलब्ध नहीं है।</string>
+    <string name="device_notice_party_here">आप इस डिवाइस पर एक पार्टी में हैं। पहले उसे छोड़ें या “इस डिवाइस पर चलाएँ” बंद करें।</string>
+    <string name="device_notice_target_in_party">%1$s एक पार्टी में है। पहले उसे वहीं छोड़ें।</string>
+    <string name="device_notice_target_remote">%1$s दूसरे डिवाइस को नियंत्रित कर रहा है।</string>
+    <string name="device_notice_target_remote_generic">वह डिवाइस दूसरे डिवाइस को नियंत्रित कर रहा है।</string>
+    <string name="device_notice_local_file">यह गाना इस डिवाइस की एक फ़ाइल है, इसलिए इसे दूसरे डिवाइस पर नहीं चलाया जा सकता।</string>
+    <string name="device_notice_no_answer">दूसरे डिवाइस ने जवाब नहीं दिया।</string>
+    <string name="device_notice_no_start">दूसरे डिवाइस पर चलना शुरू नहीं हुआ।</string>
+    <string name="device_notice_disconnected">%1$s डिस्कनेक्ट हो गया।</string>
+    <string name="device_notice_disconnected_generic">दूसरा डिवाइस डिस्कनेक्ट हो गया।</string>
+    <string name="device_notice_too_many">एक बार में सौंपने के लिए बहुत ज़्यादा गाने हैं।</string>
+    <string name="device_notice_not_linked">वह डिवाइस अब इससे जुड़ा नहीं है।</string>
+    <string name="device_notice_refused">दूसरे डिवाइस ने इसे अस्वीकार कर दिया।</string>
+    <string name="device_notice_stop_casting">पहले कास्टिंग रोकें।</string>
 </resources>

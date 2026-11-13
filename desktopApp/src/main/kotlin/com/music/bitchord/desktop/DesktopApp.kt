@@ -1940,7 +1940,7 @@ fun BitChordDesktopApp() {
             next = { playNext() },
             previous = { playPrevious() },
             enqueue = { song, next -> enqueue(song, next) },
-            say = { DesktopPlayerHost.showMessage(it) },
+            say = { DesktopPlayerHost.showMessage(it.english()) },
         )
     }
     // Set before the window first draws, since the player reads its overlay straight away.

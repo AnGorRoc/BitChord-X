@@ -1599,4 +1599,18 @@
     <string name="listen_together_play_here_off">聲音只來自主持人。你仍可查看並控制派對。</string>
     <string name="listen_together_play_remote">僅在另一台裝置上播放</string>
     <string name="listen_together_silent_member">透過主持人收聽</string>
+    <string name="device_notice_unavailable">該裝置無法使用。</string>
+    <string name="device_notice_party_here">你正在此裝置上參加派對。請先退出派對，或關閉「在此裝置上播放」。</string>
+    <string name="device_notice_target_in_party">%1$s 正在派對中。請先在那裡退出。</string>
+    <string name="device_notice_target_remote">%1$s 正在控制另一台裝置。</string>
+    <string name="device_notice_target_remote_generic">該裝置正在控制另一台裝置。</string>
+    <string name="device_notice_local_file">這首歌是此裝置上的檔案，無法在其他裝置上播放。</string>
+    <string name="device_notice_no_answer">另一台裝置沒有回應。</string>
+    <string name="device_notice_no_start">另一台裝置沒有開始播放。</string>
+    <string name="device_notice_disconnected">%1$s 已中斷連線。</string>
+    <string name="device_notice_disconnected_generic">另一台裝置已中斷連線。</string>
+    <string name="device_notice_too_many">一次要轉移的歌曲太多。</string>
+    <string name="device_notice_not_linked">該裝置已不再與此裝置連線。</string>
+    <string name="device_notice_refused">另一台裝置拒絕了。</string>
+    <string name="device_notice_stop_casting">請先停止投放。</string>
 </resources>

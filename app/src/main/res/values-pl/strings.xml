@@ -1657,4 +1657,18 @@
     <string name="listen_together_play_here_off">Dźwięk pochodzi tylko od gospodarza. Nadal widzisz party i możesz nim sterować.</string>
     <string name="listen_together_play_remote">Tylko na drugim urządzeniu</string>
     <string name="listen_together_silent_member">Słucha przez gospodarza</string>
+    <string name="device_notice_unavailable">To urządzenie jest niedostępne.</string>
+    <string name="device_notice_party_here">Jesteś w party na tym urządzeniu. Najpierw ją opuść lub wyłącz „Odtwarzaj na tym urządzeniu”.</string>
+    <string name="device_notice_target_in_party">%1$s jest w party. Najpierw opuść ją tam.</string>
+    <string name="device_notice_target_remote">%1$s steruje innym urządzeniem.</string>
+    <string name="device_notice_target_remote_generic">To urządzenie steruje innym urządzeniem.</string>
+    <string name="device_notice_local_file">Ten utwór to plik na tym urządzeniu, więc nie można go odtworzyć na innym.</string>
+    <string name="device_notice_no_answer">Drugie urządzenie nie odpowiedziało.</string>
+    <string name="device_notice_no_start">Drugie urządzenie nie rozpoczęło odtwarzania.</string>
+    <string name="device_notice_disconnected">%1$s rozłączono.</string>
+    <string name="device_notice_disconnected_generic">Drugie urządzenie rozłączono.</string>
+    <string name="device_notice_too_many">Za dużo utworów do przekazania naraz.</string>
+    <string name="device_notice_not_linked">To urządzenie nie jest już połączone z tym.</string>
+    <string name="device_notice_refused">Drugie urządzenie odmówiło.</string>
+    <string name="device_notice_stop_casting">Najpierw zatrzymaj przesyłanie.</string>
 </resources>

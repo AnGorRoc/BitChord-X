@@ -12,6 +12,7 @@ import com.music.bitchord.data.listentogether.account.AccountDevices
 import com.music.bitchord.data.listentogether.account.AccountNowPlaying
 import com.music.bitchord.data.listentogether.account.DeviceActions
 import com.music.bitchord.data.listentogether.account.DeviceCommand
+import com.music.bitchord.data.listentogether.account.DeviceNotice
 import com.music.bitchord.data.listentogether.account.Handoff
 import com.music.bitchord.data.listentogether.account.HandoffForce
 import com.music.bitchord.data.listentogether.account.HandoffRules
@@ -53,7 +54,7 @@ internal class DeviceSpeaker(
     private val localPlayer: () -> ExoPlayer?,
     private val account: AccountDevices,
     private val onChanged: () -> Unit,
-    private val say: (String) -> Unit,
+    private val say: (DeviceNotice) -> Unit,
 ) : RemoteSpeaker {
 
     override var sink: CastSink? = null
@@ -142,22 +143,22 @@ internal class DeviceSpeaker(
     fun pick(deviceId: String, force: HandoffForce?) {
         val target = account.state.value.devices.firstOrNull { it.deviceId == deviceId }
         if (target == null || !target.connected) {
-            say("That device is not available.")
+            say(DeviceNotice.Unavailable)
             return
         }
         // A party and a hand-over would fight over the same player: the party puts it back where
         // it says within a second. One or the other, until the person chooses.
         if (ListenTogether.partyOwnsPlayer()) {
-            say("This phone is playing a party. Leave it, or turn off “Play on this device”, first.")
+            say(DeviceNotice.PartyOnThisDevice)
             return
         }
         if (target.partyCode != null) {
-            say("${target.name} is in a party. Leave it there first.")
+            say(DeviceNotice.TargetInParty(target.name))
             return
         }
         // A remote is not a speaker: what it plays comes from the device it controls.
         if (target.controlling != null) {
-            say("${target.name} is controlling another device.")
+            say(DeviceNotice.TargetIsRemote(target.name))
             return
         }
         val player = localPlayer()
@@ -190,7 +191,7 @@ internal class DeviceSpeaker(
         val item = player.currentMediaItem ?: return
         if (player.handoffWindow() == null) {
             // A file that lives on this phone alone: the other device has nothing to play.
-            say("This song is a file on this phone, so it can't be played on another device.")
+            say(DeviceNotice.LocalFile)
             return
         }
         beginAs(target.deviceId)
@@ -211,7 +212,7 @@ internal class DeviceSpeaker(
             delay(CONFIRM_TIMEOUT_MS)
             if (pulling) {
                 pulling = false
-                say("The other device did not answer.")
+                say(DeviceNotice.NoAnswer)
                 endLocally(resumeHere = false)
             }
         }
@@ -248,7 +249,7 @@ internal class DeviceSpeaker(
             if (awaitingConfirm != null) {
                 // The target never took it up. Nothing was silenced, so nobody is left in silence.
                 awaitingConfirm = null
-                say("The other device did not start playing.")
+                say(DeviceNotice.NoStart)
                 // It may still start late; left alone it would play on with nobody holding its remote.
                 command(DeviceActions.PAUSE)
                 endLocally(resumeHere = false)
@@ -386,7 +387,7 @@ internal class DeviceSpeaker(
                         awayJob = null
                         val now = account.state.value.devices.firstOrNull { it.deviceId == targetId }
                         if (active && (now == null || !now.connected)) {
-                            say("${now?.name ?: "The other device"} disconnected.")
+                            say(DeviceNotice.Disconnected(now?.name))
                             endLocally(resumeHere = false)
                         }
                     }
@@ -394,7 +395,7 @@ internal class DeviceSpeaker(
                 return
             }
             // Forgotten by the server: it is not coming back.
-            say("The other device disconnected.")
+            say(DeviceNotice.Disconnected(null))
             endLocally(resumeHere = false)
             return
         }

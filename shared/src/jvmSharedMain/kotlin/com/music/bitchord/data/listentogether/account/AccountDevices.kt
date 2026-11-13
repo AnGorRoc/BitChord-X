@@ -89,10 +89,10 @@ class AccountDevices(
     /** Commands addressed to this device by another of the person's devices. */
     val commands: SharedFlow<DeviceCommand> = _commands.asSharedFlow()
 
-    private val _errors = MutableSharedFlow<String>(extraBufferCapacity = 8)
+    private val _errors = MutableSharedFlow<DeviceNotice>(extraBufferCapacity = 8)
 
-    /** Short, user-facing reasons something was refused ("That device is not available."). */
-    val errors: SharedFlow<String> = _errors.asSharedFlow()
+    /** What the server refused, as something to tell the person ("That device is not available."). */
+    val errors: SharedFlow<DeviceNotice> = _errors.asSharedFlow()
 
     private var job: Job? = null
     /**
@@ -293,8 +293,14 @@ class AccountDevices(
         }
         AccountFrames.command(frame)?.let { _commands.emit(it); return }
         if (frame["type"]?.jsonPrimitive?.contentOrNull == "error") {
-            val reason = frame["message"]?.jsonPrimitive?.contentOrNull
-            if (!reason.isNullOrBlank()) _errors.emit(reason)
+            // A flood guard is not news to the person; the rest is.
+            if (frame["error"]?.jsonPrimitive?.contentOrNull == "rate_limited") return
+            _errors.emit(
+                DeviceNotice.fromServer(
+                    reason = frame["reason"]?.jsonPrimitive?.contentOrNull,
+                    message = frame["message"]?.jsonPrimitive?.contentOrNull,
+                ),
+            )
         }
     }
 
