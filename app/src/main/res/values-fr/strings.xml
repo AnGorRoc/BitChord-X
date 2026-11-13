@@ -1614,5 +1614,6 @@
     <string name="listen_together_play_here">Lire sur cet appareil</string>
     <string name="listen_together_play_here_on">Vous l’entendez ici et les autres l’entendent sur le leur.</string>
     <string name="listen_together_play_here_off">Le son vient uniquement de l’hôte. Vous voyez et contrôlez toujours la party.</string>
+    <string name="listen_together_play_remote">Uniquement sur un autre appareil</string>
     <string name="listen_together_silent_member">Écoute via l’hôte</string>
 </resources>

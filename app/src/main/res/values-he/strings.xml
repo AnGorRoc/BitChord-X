@@ -1618,5 +1618,6 @@
     <string name="listen_together_play_here">נגן במכשיר הזה</string>
     <string name="listen_together_play_here_on">אתה שומע את זה כאן וכולם שומעים בשלהם.</string>
     <string name="listen_together_play_here_off">הצליל מגיע רק מהמארח. אתה עדיין רואה ושולט בפארטי.</string>
+    <string name="listen_together_play_remote">רק במכשיר השני</string>
     <string name="listen_together_silent_member">מאזין דרך המארח</string>
 </resources>

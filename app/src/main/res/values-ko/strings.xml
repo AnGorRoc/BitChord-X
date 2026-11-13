@@ -1449,5 +1449,6 @@
     <string name="listen_together_play_here">이 기기에서 재생</string>
     <string name="listen_together_play_here_on">여기서 들리고 다른 사람은 각자의 기기에서 듣습니다.</string>
     <string name="listen_together_play_here_off">소리는 호스트에서만 나옵니다. 파티를 보고 제어할 수는 있습니다.</string>
+    <string name="listen_together_play_remote">다른 기기에서만 재생</string>
     <string name="listen_together_silent_member">호스트를 통해 듣는 중</string>
 </resources>

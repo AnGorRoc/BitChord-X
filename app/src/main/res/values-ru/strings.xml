@@ -1640,5 +1640,6 @@
     <string name="listen_together_play_here">Играть на этом устройстве</string>
     <string name="listen_together_play_here_on">Вы слышите это здесь, а остальные — на своих устройствах.</string>
     <string name="listen_together_play_here_off">Звук идёт только от хоста. Вы по-прежнему видите пати и управляете ею.</string>
+    <string name="listen_together_play_remote">Только на другом устройстве</string>
     <string name="listen_together_silent_member">Слушает через хоста</string>
 </resources>

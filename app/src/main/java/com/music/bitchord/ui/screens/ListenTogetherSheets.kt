@@ -448,6 +448,61 @@ internal fun PlayHereRow(playHere: Boolean, onChange: (Boolean) -> Unit, enabled
     }
 }
 
+/**
+ * Where the sound comes out, as two options stacked at the same width. The one chosen is filled.
+ * Confirming is the join button under them.
+ */
+@Composable
+internal fun PlayHereChoice(playHere: Boolean, onChange: (Boolean) -> Unit, enabled: Boolean = true) {
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        PlayHereOption(
+            selected = playHere,
+            title = stringResource(R.string.listen_together_play_here),
+            subtitle = stringResource(R.string.listen_together_play_here_on),
+            enabled = enabled,
+            onClick = { onChange(true) },
+        )
+        PlayHereOption(
+            selected = !playHere,
+            title = stringResource(R.string.listen_together_play_remote),
+            subtitle = stringResource(R.string.listen_together_play_here_off),
+            enabled = enabled,
+            onClick = { onChange(false) },
+        )
+    }
+}
+
+@Composable
+private fun PlayHereOption(
+    selected: Boolean,
+    title: String,
+    subtitle: String,
+    enabled: Boolean,
+    onClick: () -> Unit,
+) {
+    val scheme = MaterialTheme.colorScheme
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .background(if (selected) scheme.primaryContainer else scheme.surfaceVariant.copy(alpha = 0.5f))
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+    ) {
+        Text(
+            title,
+            style = MaterialTheme.typography.bodyLarge,
+            fontWeight = FontWeight.SemiBold,
+            color = if (selected) scheme.onPrimaryContainer else scheme.onSurface,
+        )
+        Text(
+            subtitle,
+            style = MaterialTheme.typography.bodySmall,
+            color = if (selected) scheme.onPrimaryContainer else scheme.onSurfaceVariant,
+        )
+    }
+}
+
 @Composable
 private fun StepperButton(label: String, enabled: Boolean, onClick: () -> Unit) {
     TextButton(onClick = onClick, enabled = enabled) {
@@ -627,9 +682,6 @@ internal fun MemberAvatarStack(
 @Composable
 internal fun JoinConfirmSheet(
     preview: PartyPreview,
-    avatarUrl: String?,
-    nickname: String,
-    onNicknameChange: (String) -> Unit,
     playHere: Boolean,
     onPlayHereChange: (Boolean) -> Unit,
     busy: Boolean,
@@ -682,20 +734,7 @@ internal fun JoinConfirmSheet(
             }
         }
         Spacer(Modifier.height(20.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            PartySheetAvatar(url = avatarUrl)
-            Spacer(Modifier.width(ICON_GAP))
-            PillTextField(
-                value = nickname,
-                onValueChange = onNicknameChange,
-                placeholder = stringResource(R.string.listen_together_nickname_hint),
-                container = MaterialTheme.colorScheme.surfaceVariant,
-                enabled = !busy,
-                keyboardOptions = KeyboardOptions(imeAction = androidx.compose.ui.text.input.ImeAction.Done),
-            )
-        }
-        Spacer(Modifier.height(14.dp))
-        PlayHereRow(playHere = playHere, onChange = onPlayHereChange, enabled = !busy)
+        PlayHereChoice(playHere = playHere, onChange = onPlayHereChange, enabled = !busy)
         Spacer(Modifier.height(20.dp))
         Button(
             onClick = onJoin,

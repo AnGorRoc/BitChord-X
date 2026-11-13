@@ -1594,5 +1594,6 @@
     <string name="listen_together_play_here">このデバイスで再生</string>
     <string name="listen_together_play_here_on">ここで聞こえ、他の人は各自のデバイスで聞こえます。</string>
     <string name="listen_together_play_here_off">音はホストからのみ出ます。パーティーの表示と操作はできます。</string>
+    <string name="listen_together_play_remote">他のデバイスでのみ再生</string>
     <string name="listen_together_silent_member">ホスト経由で再生中</string>
 </resources>

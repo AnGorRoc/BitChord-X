@@ -1651,5 +1651,6 @@
     <string name="listen_together_play_here">Odtwarzaj na tym urządzeniu</string>
     <string name="listen_together_play_here_on">Słyszysz to tutaj, a pozostali na swoich urządzeniach.</string>
     <string name="listen_together_play_here_off">Dźwięk pochodzi tylko od gospodarza. Nadal widzisz party i możesz nim sterować.</string>
+    <string name="listen_together_play_remote">Tylko na drugim urządzeniu</string>
     <string name="listen_together_silent_member">Słucha przez gospodarza</string>
 </resources>

@@ -1533,5 +1533,6 @@
     <string name="listen_together_play_here">Phát trên thiết bị này</string>
     <string name="listen_together_play_here_on">Bạn nghe ở đây còn mọi người nghe trên thiết bị của họ.</string>
     <string name="listen_together_play_here_off">Âm thanh chỉ phát từ chủ phòng. Bạn vẫn xem và điều khiển được party.</string>
+    <string name="listen_together_play_remote">Chỉ trên thiết bị kia</string>
     <string name="listen_together_silent_member">Nghe qua chủ phòng</string>
 </resources>

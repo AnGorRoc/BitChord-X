@@ -525,12 +525,6 @@ fun ListenTogetherScreen(
 
                 is PartySheet.Confirm -> JoinConfirmSheet(
                     preview = open.preview,
-                    avatarUrl = ListenTogether.myAvatarUrl(),
-                    nickname = nickname,
-                    onNicknameChange = {
-                        nickname = it.take(80)
-                        ListenTogether.setNickname(nickname)
-                    },
                     playHere = joinPlayHere,
                     onPlayHereChange = { joinPlayHere = it },
                     busy = busy,
