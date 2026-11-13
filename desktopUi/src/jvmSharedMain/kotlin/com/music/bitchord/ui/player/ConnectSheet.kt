@@ -7,8 +7,11 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -53,6 +56,7 @@ import com.music.bitchord.data.listentogether.account.HandoffForce
 import com.music.bitchord.sharedui.resources.*
 import com.music.bitchord.ui.haptics.Haptic
 import com.music.bitchord.ui.haptics.rememberHaptics
+import com.music.bitchord.ui.icons.BitChordIcons
 import dev.chrisbanes.haze.HazeState
 import org.jetbrains.compose.resources.stringResource
 
@@ -128,9 +132,22 @@ internal fun ConnectSheet(
                     onClick = { onDismiss(); onOpenParty() },
                 )
             } else {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    PillButton(stringResource(Res.string.connect_start_party), Modifier.weight(1f)) { onDismiss(); onStartParty() }
-                    PillButton(stringResource(Res.string.connect_join_party), Modifier.weight(1f)) { onDismiss(); onJoinParty() }
+                // Starting a party is the way in, so it takes the room; joining one
+                // is the short way into somebody else's, so it is only the circle.
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                ) {
+                    PillButton(
+                        text = stringResource(Res.string.connect_start_party),
+                        icon = BitChordIcons.PartyStart,
+                        modifier = Modifier.weight(1f),
+                    ) { onDismiss(); onStartParty() }
+                    JoinCircle(
+                        label = stringResource(Res.string.connect_join_party),
+                        modifier = Modifier.fillMaxHeight().aspectRatio(1f, matchHeightConstraintsFirst = true),
+                    ) { onDismiss(); onJoinParty() }
                 }
             }
 
@@ -316,9 +333,9 @@ private fun ActionRow(title: String, subtitle: String?, leading: ImageVector? = 
 }
 
 @Composable
-private fun PillButton(text: String, modifier: Modifier, onClick: () -> Unit) {
+private fun PillButton(text: String, icon: ImageVector, modifier: Modifier, onClick: () -> Unit) {
     val haptics = rememberHaptics()
-    Box(
+    Column(
         modifier = modifier
             .clip(RoundedCornerShape(50))
             .background(Color.White.copy(alpha = 0.10f))
@@ -326,10 +343,42 @@ private fun PillButton(text: String, modifier: Modifier, onClick: () -> Unit) {
                 haptics.play(Haptic.Select)
                 onClick()
             }
-            .padding(vertical = 13.dp),
+            .padding(vertical = 11.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+    ) {
+        Icon(icon, null, tint = Color.White.copy(alpha = 0.9f), modifier = Modifier.size(22.dp))
+        Spacer(Modifier.height(4.dp))
+        Text(
+            text,
+            style = MaterialTheme.typography.labelLarge,
+            color = Color.White.copy(alpha = 0.9f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+/** Joining asks for a code on the next sheet, so the circle says only that much. */
+@Composable
+private fun JoinCircle(label: String, modifier: Modifier, onClick: () -> Unit) {
+    val haptics = rememberHaptics()
+    Box(
+        modifier = modifier
+            .clip(CircleShape)
+            .background(Color.White.copy(alpha = 0.10f))
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
+                haptics.play(Haptic.Select)
+                onClick()
+            },
         contentAlignment = Alignment.Center,
     ) {
-        Text(text, style = MaterialTheme.typography.labelLarge, color = Color.White.copy(alpha = 0.9f), maxLines = 1)
+        Icon(
+            BitChordIcons.PartyJoin,
+            contentDescription = label,
+            tint = Color.White.copy(alpha = 0.9f),
+            modifier = Modifier.size(22.dp),
+        )
     }
 }
 

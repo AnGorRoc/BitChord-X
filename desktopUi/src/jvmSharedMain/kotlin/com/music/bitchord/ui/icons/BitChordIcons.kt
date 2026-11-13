@@ -7,6 +7,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.addPathNodes
+import androidx.compose.ui.graphics.vector.group
 import androidx.compose.ui.graphics.vector.path
 import androidx.compose.ui.unit.dp
 
@@ -816,5 +817,80 @@ object BitChordIcons {
                 moveTo(9.5f, 17.5f); lineTo(19.5f, 17.5f)
             }
         }.build()
+    }
+
+    /**
+     * Two people inside the arcs of a party, for the Connect sheet's Start party
+     * button. It keeps the drawing's own 135-unit canvas instead of being redrawn
+     * on 24 so the arcs, the gap between them and the silhouettes hold the
+     * proportions they were drawn with; the people sit in a translated group,
+     * exactly as in the source.
+     */
+    val PartyStart: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "bc_party_start",
+            defaultWidth = 24.dp, defaultHeight = 24.dp,
+            viewportWidth = 135.00748f, viewportHeight = 134.65581f,
+        )
+            .addPath(
+                pathData = addPathNodes(
+                    "M62.895834 128.39305 A61.235412 61.235412 0 0 1 6.4385949 62.719966",
+                ),
+                stroke = stroke,
+                strokeLineWidth = 12.5255f,
+                strokeLineCap = StrokeCap.Round,
+            )
+            .addPath(
+                pathData = addPathNodes(
+                    "M72.111624 6.2627551 A61.235412 61.235412 0 0 1 128.56885 71.935776",
+                ),
+                stroke = stroke,
+                strokeLineWidth = 12.5255f,
+                strokeLineCap = StrokeCap.Round,
+            )
+            .group(translationX = 182.64352f, translationY = -81.467764f) {
+                addPath(
+                    pathData = addPathNodes(
+                        "m -122.94887,179.56064 v -0.7388 c 0.67236,-8.59704 6.16676,-12.98877 " +
+                            "12.97535,-17.24233 1.80632,-0.96246 7.20569,-3.81501 7.15907,-5.55992 " +
+                            "-0.0466,-1.74491 -2.86091,-4.65518 -4.50693,-7.31554 " +
+                            "-0.66496,-1.09422 -2.9663,-4.55755 -3.03623,-9.7317 " +
+                            "-0.12238,-8.68926 6.09837,-14.64808 13.951105,-14.7179 " +
+                            "7.852736,-0.0698 13.305479,7.17314 13.410358,14.7179 " +
+                            "0.140807,3.51172 -2.600755,8.65037 -3.138032,9.52077 " +
+                            "-1.460398,2.90991 -4.348867,5.50607 -4.280308,7.28721 " +
+                            "0.06856,1.78114 3.838098,3.57891 6.167891,5.13669 " +
+                            "11.365333,7.59928 13.930714,14.38297 13.950369,18.93346 " +
+                            "-16.654078,0.006 -35.397573,-0.23338 -52.652643,-0.28984 z " +
+                            "m -26.69178,-26.13741 c 5.47434,-5.47434 14.35705,-8.37894 " +
+                            "14.30248,-10.65931 -0.0555,-2.32098 -8.13749,-7.15359 " +
+                            "-7.71502,-18.3437 0.81876,-8.04735 6.87561,-13.21018 " +
+                            "13.88844,-13.16236 6.67884,0.44506 9.58906,4.1284 " +
+                            "12.83901,9.2683 -4.2187,4.64063 -5.84673,8.36648 " +
+                            "-6.61139,14.47739 -0.98932,6.19197 0.83528,12.02406 " +
+                            "3.29027,17.6795 -6.47438,2.77502 -11.86773,8.70018 " +
+                            "-13.43845,13.93822 h -11.07993 l -11.19866,-0.0552 " +
+                            "c 0.0262,-1.55607 1.07863,-8.49822 5.72325,-13.14284 z",
+                    ),
+                    fill = stroke,
+                )
+            }
+            .build()
+    }
+
+    /** The same group, with the plus that says this is the way in. */
+    val PartyJoin: ImageVector by lazy {
+        ImageVector.Builder(
+            name = "bc_party_join",
+            defaultWidth = 24.dp, defaultHeight = 24.dp,
+            viewportWidth = 24f, viewportHeight = 24f,
+        ).addPath(
+            pathData = addPathNodes(
+                "M8 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4z" +
+                    "M8 14c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" +
+                    "M22 10h-2V8h-2v2h-2v2h2v2h2v-2h2z",
+            ),
+            fill = stroke,
+        ).build()
     }
 }
