@@ -1626,4 +1626,5 @@
     <string name="device_visible_subtitle">在你其他设备的“连接”列表中显示此设备</string>
     <string name="device_accepts_control">允许我的其他设备控制此设备</string>
     <string name="device_accepts_control_subtitle">你的其他设备可以在此播放、暂停并发送音乐</string>
+    <string name="mini_player_playing_on">正在 %1$s 上播放</string>
 </resources>

@@ -1585,4 +1585,5 @@
     <string name="device_visible_subtitle">Mostra questo dispositivo nell\'elenco Connetti degli altri tuoi dispositivi</string>
     <string name="device_accepts_control">Consenti ai miei altri dispositivi di controllare questo</string>
     <string name="device_accepts_control_subtitle">I tuoi altri dispositivi possono riprodurre, mettere in pausa e inviare musica qui</string>
+    <string name="mini_player_playing_on">In riproduzione su %1$s</string>
 </resources>

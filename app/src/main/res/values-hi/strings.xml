@@ -1646,4 +1646,5 @@
     <string name="device_visible_subtitle">इस डिवाइस को आपके दूसरे डिवाइस की कनेक्ट सूची में दिखाता है</string>
     <string name="device_accepts_control">मेरे दूसरे डिवाइस को इसे कंट्रोल करने दें</string>
     <string name="device_accepts_control_subtitle">आपके दूसरे डिवाइस यहाँ संगीत चला सकते हैं, रोक सकते हैं और भेज सकते हैं</string>
+    <string name="mini_player_playing_on">%1$s पर चल रहा है</string>
 </resources>

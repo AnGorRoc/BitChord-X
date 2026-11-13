@@ -1485,4 +1485,5 @@
     <string name="device_visible_subtitle">Offer this device in the Connect list of your other devices</string>
     <string name="device_accepts_control">Allow my other devices to control this one</string>
     <string name="device_accepts_control_subtitle">Your other devices can play, pause and send music to this one</string>
+    <string name="mini_player_playing_on">Playing on %1$s</string>
 </resources>

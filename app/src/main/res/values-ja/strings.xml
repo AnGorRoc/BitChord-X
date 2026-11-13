@@ -1627,4 +1627,5 @@
     <string name="device_visible_subtitle">このデバイスを他のデバイスの接続リストに表示します</string>
     <string name="device_accepts_control">他のデバイスからこのデバイスの操作を許可する</string>
     <string name="device_accepts_control_subtitle">他のデバイスから再生、一時停止、音楽の送信ができます</string>
+    <string name="mini_player_playing_on">%1$s で再生中</string>
 </resources>

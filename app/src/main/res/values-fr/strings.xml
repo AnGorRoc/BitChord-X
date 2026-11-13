@@ -1647,4 +1647,5 @@
     <string name="device_visible_subtitle">Propose cet appareil dans la liste Connecter de tes autres appareils</string>
     <string name="device_accepts_control">Autoriser mes autres appareils à contrôler celui-ci</string>
     <string name="device_accepts_control_subtitle">Tes autres appareils peuvent lire, mettre en pause et envoyer de la musique ici</string>
+    <string name="mini_player_playing_on">Lecture sur %1$s</string>
 </resources>

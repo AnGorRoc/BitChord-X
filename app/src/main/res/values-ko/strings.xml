@@ -1482,4 +1482,5 @@
     <string name="device_visible_subtitle">내 다른 기기의 연결 목록에 이 기기를 표시합니다</string>
     <string name="device_accepts_control">내 다른 기기가 이 기기를 제어하도록 허용</string>
     <string name="device_accepts_control_subtitle">내 다른 기기에서 재생, 일시정지, 음악 전송을 할 수 있습니다</string>
+    <string name="mini_player_playing_on">%1$s에서 재생 중</string>
 </resources>

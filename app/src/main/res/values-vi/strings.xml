@@ -1566,4 +1566,5 @@
     <string name="device_visible_subtitle">Hiện thiết bị này trong danh sách Kết nối của các thiết bị khác của bạn</string>
     <string name="device_accepts_control">Cho phép các thiết bị khác của tôi điều khiển thiết bị này</string>
     <string name="device_accepts_control_subtitle">Các thiết bị khác của bạn có thể phát, tạm dừng và gửi nhạc đến đây</string>
+    <string name="mini_player_playing_on">Đang phát trên %1$s</string>
 </resources>

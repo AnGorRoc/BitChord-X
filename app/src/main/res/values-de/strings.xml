@@ -1646,4 +1646,5 @@
     <string name="device_visible_subtitle">Zeigt dieses Gerät in der Verbinden-Liste deiner anderen Geräte an</string>
     <string name="device_accepts_control">Meinen anderen Geräten erlauben, dieses zu steuern</string>
     <string name="device_accepts_control_subtitle">Deine anderen Geräte können abspielen, pausieren und Musik hierher senden</string>
+    <string name="mini_player_playing_on">Wiedergabe auf %1$s</string>
 </resources>

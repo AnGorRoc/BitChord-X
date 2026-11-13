@@ -1651,4 +1651,5 @@
     <string name="device_visible_subtitle">Mostra este dispositivo na lista Conectar dos seus outros dispositivos</string>
     <string name="device_accepts_control">Permitir que meus outros dispositivos controlem este</string>
     <string name="device_accepts_control_subtitle">Seus outros dispositivos podem tocar, pausar e enviar música para este</string>
+    <string name="mini_player_playing_on">Tocando em %1$s</string>
 </resources>

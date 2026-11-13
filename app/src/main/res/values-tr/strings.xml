@@ -1603,4 +1603,5 @@
     <string name="device_visible_subtitle">Bu cihazı diğer cihazlarının Bağlan listesinde gösterir</string>
     <string name="device_accepts_control">Diğer cihazlarımın bunu kontrol etmesine izin ver</string>
     <string name="device_accepts_control_subtitle">Diğer cihazların buradan müzik çalabilir, duraklatabilir ve buraya müzik gönderebilir</string>
+    <string name="mini_player_playing_on">%1$s üzerinde çalıyor</string>
 </resources>

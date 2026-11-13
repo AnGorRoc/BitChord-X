@@ -1632,4 +1632,5 @@
     <string name="device_visible_subtitle">แสดงอุปกรณ์นี้ในรายการเชื่อมต่อของอุปกรณ์อื่นของคุณ</string>
     <string name="device_accepts_control">อนุญาตให้อุปกรณ์อื่นของฉันควบคุมเครื่องนี้</string>
     <string name="device_accepts_control_subtitle">อุปกรณ์อื่นของคุณสามารถเล่น หยุดชั่วคราว และส่งเพลงมาที่เครื่องนี้ได้</string>
+    <string name="mini_player_playing_on">กำลังเล่นบน %1$s</string>
 </resources>
