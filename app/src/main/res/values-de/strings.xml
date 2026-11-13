@@ -1560,6 +1560,10 @@
     <string name="sing_status_karaoke">Karaoke</string>
     <string name="sing_engine_title">Acoustic Engine</string>
     <string name="sing_badge_dsp">BITCHORD SING</string>
+    <string name="swipe_right_action">Auf einem Song nach rechts wischen</string>
+    <string name="swipe_left_action">Auf einem Song nach links wischen</string>
+    <string name="swipe_hold_playlist_hint">Wischen und halten, um zu einer Playlist hinzuzufügen</string>
+    <string name="swipe_action_disabled">Aus</string>
 
     <!-- Spotify Onboarding -->
     <string name="onboarding_spotify_title">Connect your Spotify</string>
@@ -1614,4 +1618,13 @@
     <string name="listen_together_play_here_on">Du hörst es hier und alle anderen auf ihrem Gerät.</string>
     <string name="listen_together_play_here_off">Der Ton kommt nur vom Host. Du siehst die Party weiterhin und steuerst sie.</string>
     <string name="listen_together_silent_member">Hört über den Host</string>
+    <string name="disable_blend_effects">Mischeffekte deaktivieren</string>
+    <string name="disable_blend_effects_subtitle">Zeigt Player-Symbole, Text und dunkle Menüs in schlichtem Weiß statt in den Farben des Covers</string>
+    <string name="player_theme">Player-Design</string>
+    <string name="player_theme_default">Standard</string>
+    <string name="player_theme_legacy">Klassisch</string>
+    <string name="player_theme_simple">Schlicht</string>
+    <string name="player_theme_default_subtitle">Die Farben des Covers setzen sich darunter fort</string>
+    <string name="player_theme_simple_subtitle">Ein weicher Weichzeichner des Covers hinter dem gesamten Player</string>
+    <string name="player_theme_legacy_subtitle">Bringt die schwebenden Farbkleckse von v1.5 hinter dem Player zurück</string>
 </resources>

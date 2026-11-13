@@ -37,7 +37,13 @@ object QueueBuilder {
      * The subset of [candidates] worth appending after [existing]: nothing
      * already queued, nothing repeated, at most [limit] tracks.
      */
-    fun extend(existing: List<Song>, candidates: List<Song>, limit: Int, preferVideos: Boolean = false): List<Song> {
+    fun extend(
+        existing: List<Song>,
+        candidates: List<Song>,
+        limit: Int,
+        preferVideos: Boolean = false,
+        allowVideoFallback: Boolean = true,
+    ): List<Song> {
         val taken = existing.toMutableList()
         val perArtist = mutableMapOf<String, Int>()
         val seedArtists = existing.lastOrNull()?.artist?.let(::artistSet).orEmpty()
@@ -47,7 +53,8 @@ object QueueBuilder {
         // the same recording under a different id, titled far enough apart
         // ("Dildaara (Stand By Me)" against "Lyrical Video: Dildara Song")
         // that no title match will catch it. The catalogue cut is the one a
-        // music app wants; videos only stand in when there is nothing else.
+        // music app wants; videos only stand in when there is nothing else
+        // and [allowVideoFallback] permits it.
         // [preferVideos] turns that round for a station playing on from a music
         // video: its videos, where the mix has enough of them to be one.
         val songsOnly = candidates.filterNot { it.isVideo }
@@ -55,7 +62,8 @@ object QueueBuilder {
         val ordered = when {
             preferVideos && videosOnly.size >= MIN_VIDEO_STATION -> videosOnly
             preferVideos -> candidates
-            else -> songsOnly.ifEmpty { candidates }
+            allowVideoFallback -> songsOnly.ifEmpty { candidates }
+            else -> songsOnly
         }
 
         for (candidate in ordered) {
@@ -87,14 +95,37 @@ object QueueBuilder {
      */
     fun isSameRecording(a: Song, b: Song): Boolean {
         if (a.videoId == b.videoId) return true
-        val title = normalisedTitle(a.title)
-        if (title.isEmpty() || title != normalisedTitle(b.title)) return false
         // One shared name is enough. The two cuts of a track get billed in
         // whatever order the upload used — "Pritam, Arijit Singh & Shilpa Rao"
         // against "Shilpa Rao, Arijit Singh, & Pritam" is one song, twice.
         val left = artistSet(a.artist)
         val right = artistSet(b.artist)
-        return left.isEmpty() || right.isEmpty() || left.any { it in right }
+        val sameArtist = left.isEmpty() || right.isEmpty() || left.any { it in right }
+        if (!sameArtist) return false
+        val knownArtists = left + right
+        val titlesA = titleVariants(a.title, knownArtists)
+        val titlesB = titleVariants(b.title, knownArtists)
+        return titlesA.isNotEmpty() && titlesA.any { it in titlesB }
+    }
+
+    private fun titleVariants(raw: String, knownArtists: Set<String>): Set<String> {
+        val base = normalisedTitle(raw)
+        if (base.isEmpty()) return emptySet()
+        if (knownArtists.isEmpty()) return setOf(base)
+        val clean = raw.substringBefore(" | ")
+        val sepIndex = clean.indexOf(" - ")
+        if (sepIndex <= 0) return setOf(base)
+        val out = linkedSetOf(base)
+        val head = clean.substring(0, sepIndex)
+        val tail = clean.substring(sepIndex + 3)
+        if (artistSet(head).any { it in knownArtists }) {
+            normalisedTitle(tail).takeIf { it.isNotEmpty() }?.let(out::add)
+        }
+        val tailClean = normalisedTitle(tail)
+        if (tailClean.isNotEmpty() && artistSet(tailClean).any { it in knownArtists }) {
+            normalisedTitle(head).takeIf { it.isNotEmpty() }?.let(out::add)
+        }
+        return out
     }
 
     /**
@@ -118,10 +149,10 @@ object QueueBuilder {
         .toSet()
 
     private val NOISE = Regex(
-        """\((?:official|lyric|lyrics|lyrical|audio|video|visuali[sz]er|full song|hd|4k)[^)]*\)""" +
+        """\((?:official|oficial|lyric|lyrics|lyrical|letra|audio|video|videoclip|video\s*clip|visuali[sz]er|full song|hd|4k)[^)]*\)""" +
             """|\(from[^)]*\)""" +
             """|\[[^]]*]""" +
-            """|\b(?:official (?:video|audio|music video)|lyrical video|full video|4k video)\b""",
+            """|\b(?:official\s+(?:video|audio|music\s+video)|video\s+oficial|videoclip(?:\s+oficial)?|video\s+musical|video\s+letra|audio\s+oficial|lyrical?\s+video|full\s+video|4k\s+video)\b""",
         RegexOption.IGNORE_CASE,
     )
     private val TOPIC = Regex("""\s*-\s*topic\b""", RegexOption.IGNORE_CASE)

@@ -1598,6 +1598,10 @@
     <string name="sing_status_karaoke">Karaoke</string>
     <string name="sing_engine_title">Acoustic Engine</string>
     <string name="sing_badge_dsp">BITCHORD SING</string>
+    <string name="swipe_right_action">Przesuń utwór w prawo</string>
+    <string name="swipe_left_action">Przesuń utwór w lewo</string>
+    <string name="swipe_hold_playlist_hint">Przytrzymaj przesunięcie, aby dodać do playlisty</string>
+    <string name="swipe_action_disabled">Wyłączone</string>
 
     <!-- Spotify Onboarding -->
     <string name="onboarding_spotify_title">Connect your Spotify</string>
@@ -1652,4 +1656,13 @@
     <string name="listen_together_play_here_on">Słyszysz to tutaj, a pozostali na swoich urządzeniach.</string>
     <string name="listen_together_play_here_off">Dźwięk pochodzi tylko od gospodarza. Nadal widzisz party i możesz nim sterować.</string>
     <string name="listen_together_silent_member">Słucha przez gospodarza</string>
+    <string name="disable_blend_effects">Wyłącz efekty przenikania</string>
+    <string name="disable_blend_effects_subtitle">Wyświetla ikony, tekst i ciemne menu odtwarzacza w zwykłej bieli zamiast barwić je kolorami okładki</string>
+    <string name="player_theme">Motyw odtwarzacza</string>
+    <string name="player_theme_default">Domyślny</string>
+    <string name="player_theme_legacy">Klasyczny</string>
+    <string name="player_theme_simple">Prosty</string>
+    <string name="player_theme_default_subtitle">Kolory okładki przechodzą płynnie poniżej niej</string>
+    <string name="player_theme_simple_subtitle">Delikatne rozmycie okładki za całym odtwarzaczem</string>
+    <string name="player_theme_legacy_subtitle">Przywraca dryfujące plamy kolorów z wersji 1.5 za odtwarzaczem</string>
 </resources>

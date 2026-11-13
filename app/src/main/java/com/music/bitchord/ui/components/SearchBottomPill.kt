@@ -7,12 +7,18 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.max
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
@@ -94,11 +100,20 @@ fun SearchBottomPill(
         keyboardController?.show()
     }
 
+    val density = LocalDensity.current
+    val imeInsets = WindowInsets.ime
+    val navBottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding()
+    val restingBottomPx = with(density) { (max(navBottom, 15.dp) + 2.dp).roundToPx() }
+    val keyboardGapPx = with(density) { 10.dp.roundToPx() }
+
     Box(
         modifier = modifier
-            .windowInsetsPadding(floatingBarInsets)
             .padding(horizontal = BAR_GUTTER)
-            .padding(bottom = 2.dp)
+            .layout { measurable, constraints ->
+                val placeable = measurable.measure(constraints)
+                val bottom = maxOf(restingBottomPx, imeInsets.getBottom(this) + keyboardGapPx)
+                layout(placeable.width, placeable.height + bottom) { placeable.place(0, 0) }
+            }
             .fillMaxWidth()
             .clip(pillShape)
             .then(

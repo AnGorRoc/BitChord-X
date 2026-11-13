@@ -18,6 +18,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 /**
@@ -68,6 +69,7 @@ private const val STOPS = 16
 fun BottomFadeScrim(
     modifier: Modifier = Modifier,
     withMiniPlayer: Boolean = false,
+    fadeHeightOverride: Dp? = null,
     /**
      * The colour to fade in — whatever the page is painting at the foot of the
      * screen. The theme's background on a tab, and on a detail page the tint
@@ -79,7 +81,7 @@ fun BottomFadeScrim(
     // added on rather than being part of the fade's own run.
     val inset = floatingBarInsets.asPaddingValues().calculateBottomPadding()
     val height by animateDpAsState(
-        targetValue = inset + if (withMiniPlayer) FADE_HEIGHT_WITH_MINI_PLAYER else FADE_HEIGHT,
+        targetValue = inset + (fadeHeightOverride ?: if (withMiniPlayer) FADE_HEIGHT_WITH_MINI_PLAYER else FADE_HEIGHT),
         // Matches the beat the mini player takes to appear, so the floor grows
         // with it instead of snapping ahead of it.
         animationSpec = tween(220),

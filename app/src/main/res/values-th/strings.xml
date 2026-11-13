@@ -1546,6 +1546,10 @@
     <string name="sing_status_karaoke">Karaoke</string>
     <string name="sing_engine_title">Acoustic Engine</string>
     <string name="sing_badge_dsp">BITCHORD SING</string>
+    <string name="swipe_right_action">ปัดขวาที่เพลง</string>
+    <string name="swipe_left_action">ปัดซ้ายที่เพลง</string>
+    <string name="swipe_hold_playlist_hint">ปัดค้างไว้เพื่อเพิ่มลงในเพลย์ลิสต์</string>
+    <string name="swipe_action_disabled">ปิด</string>
 
     <!-- Spotify Onboarding -->
     <string name="onboarding_spotify_title">Connect your Spotify</string>
@@ -1600,4 +1604,13 @@
     <string name="listen_together_play_here_on">คุณได้ยินที่นี่ และคนอื่นได้ยินบนอุปกรณ์ของตน</string>
     <string name="listen_together_play_here_off">เสียงมาจากโฮสต์เท่านั้น คุณยังเห็นและควบคุมปาร์ตี้ได้</string>
     <string name="listen_together_silent_member">ฟังผ่านโฮสต์</string>
+    <string name="disable_blend_effects">ปิดใช้งานเอฟเฟกต์การผสานสี</string>
+    <string name="disable_blend_effects_subtitle">แสดงไอคอน ข้อความ และเมนูสีเข้มของเครื่องเล่นเป็นสีขาวล้วนแทนการย้อมสีตามปก</string>
+    <string name="player_theme">ธีมเครื่องเล่น</string>
+    <string name="player_theme_default">ค่าเริ่มต้น</string>
+    <string name="player_theme_legacy">คลาสสิก</string>
+    <string name="player_theme_simple">เรียบง่าย</string>
+    <string name="player_theme_default_subtitle">สีของปกจะไล่ต่อเนื่องลงมาด้านล่าง</string>
+    <string name="player_theme_simple_subtitle">ภาพปกเบลอนุ่มนวลด้านหลังเครื่องเล่นทั้งหมด</string>
+    <string name="player_theme_legacy_subtitle">นำกลุ่มสีที่ลอยเคลื่อนไหวด้านหลังเครื่องเล่นจาก v1.5 กลับมา</string>
 </resources>

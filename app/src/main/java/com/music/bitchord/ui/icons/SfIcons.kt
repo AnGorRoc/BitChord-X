@@ -202,6 +202,7 @@ object SfIcons {
     val Performance: ImageVector by lazy { bold(SfSymbols.Monochrome.SFGaugeWithDotsNeedle67percent) }
     val Person: ImageVector by lazy { bold(SfSymbols.Monochrome.SFPerson) }
     val PlayCircle: ImageVector by lazy { bold(SfSymbols.Monochrome.SFPlayCircle) }
+    val PlaylistAdd: ImageVector by lazy { bold(SfSymbols.Monochrome.SFTextBadgePlus) }
     val PlaylistPlay: ImageVector by lazy { bold(SfSymbols.Monochrome.SFMusicNoteList) }
     val RadioButtonChecked: ImageVector by lazy { bold(SfSymbols.Monochrome.SFRecordCircle) }
     val Settings: ImageVector by lazy { bold(SfSymbols.Monochrome.SFGearshape) }

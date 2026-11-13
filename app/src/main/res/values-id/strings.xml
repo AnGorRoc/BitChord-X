@@ -1540,6 +1540,10 @@
     <string name="sing_status_karaoke">Karaoke</string>
     <string name="sing_engine_title">Acoustic Engine</string>
     <string name="sing_badge_dsp">BITCHORD SING</string>
+    <string name="swipe_right_action">Geser kanan pada lagu</string>
+    <string name="swipe_left_action">Geser kiri pada lagu</string>
+    <string name="swipe_hold_playlist_hint">Tahan geseran untuk menambahkan ke playlist</string>
+    <string name="swipe_action_disabled">Nonaktif</string>
 
     <!-- Spotify Onboarding -->
     <string name="onboarding_spotify_title">Connect your Spotify</string>
@@ -1594,4 +1598,13 @@
     <string name="listen_together_play_here_on">Anda mendengarnya di sini dan yang lain di perangkat masing-masing.</string>
     <string name="listen_together_play_here_off">Suara hanya berasal dari host. Anda tetap melihat dan mengendalikan party.</string>
     <string name="listen_together_silent_member">Mendengarkan lewat host</string>
+    <string name="disable_blend_effects">Nonaktifkan efek perpaduan</string>
+    <string name="disable_blend_effects_subtitle">Menampilkan ikon, teks, dan menu gelap pemutar dalam warna putih polos alih-alih mengikuti warna sampul</string>
+    <string name="player_theme">Tema pemutar</string>
+    <string name="player_theme_default">Default</string>
+    <string name="player_theme_legacy">Klasik</string>
+    <string name="player_theme_simple">Sederhana</string>
+    <string name="player_theme_default_subtitle">Warna sampul berlanjut ke bagian bawahnya</string>
+    <string name="player_theme_simple_subtitle">Blur lembut dari sampul di belakang seluruh pemutar</string>
+    <string name="player_theme_legacy_subtitle">Mengembalikan gumpalan warna bergerak di belakang pemutar dari v1.5</string>
 </resources>

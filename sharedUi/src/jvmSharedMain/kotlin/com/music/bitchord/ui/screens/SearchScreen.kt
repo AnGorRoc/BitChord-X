@@ -90,6 +90,7 @@ import com.music.bitchord.ui.components.RowMoreButton
 import com.music.bitchord.ui.components.ROW_DIVIDER_INSET
 import com.music.bitchord.ui.components.SearchField
 import com.music.bitchord.ui.components.SongRow
+import com.music.bitchord.data.settings.SongSwipeAction
 import com.music.bitchord.ui.components.SearchPlayingBars
 import com.music.bitchord.ui.components.thumbnailBorder
 import com.music.bitchord.ui.components.songListSkeleton
@@ -113,6 +114,8 @@ fun SearchScreen(
     onSongClick: (List<Song>, Int) -> Unit,
     onSongLongPress: (Song) -> Unit,
     onSongSwipe: (Song) -> Unit,
+    onSongSwipeAction: ((Song, SongSwipeAction) -> Unit)? = null,
+    onSongHoldPlaylist: ((Song) -> Unit)? = null,
     onTopResultPlay: (Song) -> Unit,
     onTopResultPlaylist: (Song) -> Unit,
     onBrowseClick: (BrowseItem) -> Unit,
@@ -302,6 +305,8 @@ fun SearchScreen(
                     onSongClick = onLibrarySongClick,
                     onSongLongPress = onSongLongPress,
                     onSongSwipe = onSongSwipe,
+                    onSongSwipeAction = onSongSwipeAction,
+                    onSongHoldPlaylist = onSongHoldPlaylist,
                     isBlocked = if (searchingAddons) isBlocked else { _ -> false },
                     onBlockedSongClick = onBlockedSongClick,
                 )
@@ -341,6 +346,8 @@ fun SearchScreen(
                         onRemove = onHistoryRemove,
                         onClear = onHistoryClear,
                         onSongSwipe = onSongSwipe,
+                        onSongSwipeAction = onSongSwipeAction,
+                        onSongHoldPlaylist = onSongHoldPlaylist,
                     )
                 }
                 results is UiState.Loading -> songListSkeleton(circular = filter == SearchFilter.ARTISTS)
@@ -362,6 +369,10 @@ fun SearchScreen(
                             item(key = "search:top-result:${topResult.song.videoId}") {
                                 SwipeToQueueBox(
                                     onSwipeToQueue = { onSongSwipe(topResult.song) },
+                                    onSwipeAction = onSongSwipeAction?.let { handler ->
+                                        { action -> handler(topResult.song, action) }
+                                    },
+                                    onSwipeHoldPlaylist = { onTopResultPlaylist(topResult.song) },
                                     modifier = Modifier.fillMaxWidth(),
                                 ) {
                                     TopResultCard(
@@ -411,6 +422,12 @@ fun SearchScreen(
                                     },
                                     onLongPress = { onSongLongPress(row.song) },
                                     onSwipeToQueue = { onSongSwipe(row.song) },
+                                    onSwipeAction = onSongSwipeAction?.let { handler ->
+                                        { action -> handler(row.song, action) }
+                                    },
+                                    onSwipeHoldPlaylist = onSongHoldPlaylist?.let { handler ->
+                                        { handler(row.song) }
+                                    },
                                     isCurrent = isCurrentRow(row.song),
                                     isPlaying = isPlaying && isCurrentRow(row.song),
                                     searchPlayingStyle = true,
@@ -488,6 +505,8 @@ private fun LazyListScope.librarySearchResults(
     onSongClick: (List<Song>, Int) -> Unit,
     onSongLongPress: (Song) -> Unit,
     onSongSwipe: (Song) -> Unit,
+    onSongSwipeAction: ((Song, SongSwipeAction) -> Unit)? = null,
+    onSongHoldPlaylist: ((Song) -> Unit)? = null,
     isBlocked: (Song) -> Boolean,
     onBlockedSongClick: (Song) -> Unit,
 ) {
@@ -533,6 +552,12 @@ private fun LazyListScope.librarySearchResults(
                     },
                     onLongPress = { onSongLongPress(song) },
                     onSwipeToQueue = { if (blocked) onBlockedSongClick(song) else onSongSwipe(song) },
+                    onSwipeAction = onSongSwipeAction?.let { handler ->
+                        { action -> if (blocked) onBlockedSongClick(song) else handler(song, action) }
+                    },
+                    onSwipeHoldPlaylist = onSongHoldPlaylist?.let { handler ->
+                        { if (blocked) onBlockedSongClick(song) else handler(song) }
+                    },
                     isCurrent = isCurrentRow(song),
                     isPlaying = isPlaying && isCurrentRow(song),
                     searchPlayingStyle = true,
@@ -852,6 +877,8 @@ private fun LazyListScope.recentSearches(
     onRemove: (String) -> Unit,
     onClear: () -> Unit,
     onSongSwipe: (Song) -> Unit,
+    onSongSwipeAction: ((Song, SongSwipeAction) -> Unit)? = null,
+    onSongHoldPlaylist: ((Song) -> Unit)? = null,
 ) {
     item(key = "recent:header") {
         Row(
@@ -890,6 +917,16 @@ private fun LazyListScope.recentSearches(
             onLongPress = song?.let { { onSongLongPress(it) } },
             onRemove = { onRemove(entity.id) },
             onSwipeToQueue = song?.let { { onSongSwipe(it) } },
+            onSwipeAction = if (song != null && onSongSwipeAction != null) {
+                { action -> onSongSwipeAction(song, action) }
+            } else {
+                null
+            },
+            onSwipeHoldPlaylist = if (song != null && onSongHoldPlaylist != null) {
+                { onSongHoldPlaylist(song) }
+            } else {
+                null
+            },
         )
     }
 }
@@ -981,9 +1018,13 @@ private fun RecentSearchEntityRow(
     onLongPress: (() -> Unit)?,
     onRemove: () -> Unit,
     onSwipeToQueue: (() -> Unit)? = null,
+    onSwipeAction: ((SongSwipeAction) -> Unit)? = null,
+    onSwipeHoldPlaylist: (() -> Unit)? = null,
 ) {
     SwipeToQueueBox(
         onSwipeToQueue = onSwipeToQueue,
+        onSwipeAction = onSwipeAction,
+        onSwipeHoldPlaylist = onSwipeHoldPlaylist,
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(

@@ -1517,6 +1517,10 @@
     <string name="sing_status_karaoke">Karaoke</string>
     <string name="sing_engine_title">Acoustic Engine</string>
     <string name="sing_badge_dsp">BITCHORD SING</string>
+    <string name="swipe_right_action">Şarkıyı sağa kaydır</string>
+    <string name="swipe_left_action">Şarkıyı sola kaydır</string>
+    <string name="swipe_hold_playlist_hint">Çalma listesine eklemek için kaydırıp basılı tutun</string>
+    <string name="swipe_action_disabled">Kapalı</string>
 
     <!-- Spotify Onboarding -->
     <string name="onboarding_spotify_title">Connect your Spotify</string>
@@ -1571,4 +1575,13 @@
     <string name="listen_together_play_here_on">Burada sen duyarsın, diğer herkes kendi cihazında duyar.</string>
     <string name="listen_together_play_here_off">Ses yalnızca ev sahibinden gelir. Partiyi yine de görür ve yönetirsin.</string>
     <string name="listen_together_silent_member">Ev sahibi üzerinden dinliyor</string>
+    <string name="disable_blend_effects">Karıştırma efektlerini devre dışı bırak</string>
+    <string name="disable_blend_effects_subtitle">Oynatıcı simgelerini, metnini ve koyu menüleri kapakla renklendirmek yerine düz beyaz gösterir</string>
+    <string name="player_theme">Oynatıcı teması</string>
+    <string name="player_theme_default">Varsayılan</string>
+    <string name="player_theme_legacy">Klasik</string>
+    <string name="player_theme_simple">Basit</string>
+    <string name="player_theme_default_subtitle">Kapağın kendi renkleri altında devam eder</string>
+    <string name="player_theme_simple_subtitle">Tüm oynatıcının arkasında yumuşak bir kapak bulanıklığı</string>
+    <string name="player_theme_legacy_subtitle">v1.5 sürümündeki oynatıcı arkasında süzülen renk lekelerini geri getirir</string>
 </resources>

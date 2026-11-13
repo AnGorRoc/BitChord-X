@@ -163,6 +163,7 @@ import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.model.isUnresolvedSpotify
 import com.music.bitchord.data.model.UiState
 import com.music.bitchord.data.model.withoutVideos
+import com.music.bitchord.data.settings.SongSwipeAction
 import com.music.bitchord.data.model.UserPlaylist
 import com.music.bitchord.data.model.EntityType
 import com.music.bitchord.data.model.SearchHistoryEntity
@@ -364,6 +365,8 @@ import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.windowInsetsPadding
 import com.music.bitchord.ui.components.MiniPlayerPull
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableStateListOf
@@ -571,6 +574,17 @@ private fun BitChordApp(
     val context = LocalContext.current
     val clipboard = LocalClipboard.current
     val hazeState = remember { HazeState() }
+    val configuration = androidx.compose.ui.platform.LocalConfiguration.current
+    val displayRotation = com.music.bitchord.ui.components.rememberDisplayRotation()
+    val isLandscapeChrome = configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE &&
+        windowWidth > windowHeight &&
+        windowHeight < 600.dp
+    val topBarOnLeft = displayRotation != android.view.Surface.ROTATION_270
+    val landscapeSidePadding = if (isLandscapeChrome) {
+        com.music.bitchord.ui.components.rememberLandscapeSideContentPadding(topBarOnLeft)
+    } else {
+        PaddingValues(0.dp)
+    }
     // Recording the backdrop layer costs a draw pass, so it only runs when a
     // liquid-glass surface (the nav bar or artwork-page back button) can sample it.
     val glassActive = LocalLiquidGlassEnabled.current && isGlassSupported()
@@ -789,8 +803,6 @@ private fun BitChordApp(
     // The Spotify page's playlists and its import selection, here so the top
     // bar's import button can start the selection on the page.
     val spotifyLibraryState = remember { SpotifyLibraryState() }
-    val spotifySyncRunning = com.music.bitchord.data.spotify.SpotifySync.state
-        .collectAsStateWithLifecycle().value is com.music.bitchord.data.spotify.SpotifySyncState.Running
     // Which album or playlist the collection menu is open on, or null when it
     // is shut. One slot for every surface that can open it — the shelves on
     // three tabs, the search rows, the artist page's carousels, the release
@@ -824,7 +836,6 @@ private fun BitChordApp(
     // turned the party's setting on while the label already said so.
     val autoplayEnabled = autoplayEnabledFor(partyState, autoplay)
     val partyServerStatus by ListenTogether.serverConnectionState.collectAsStateWithLifecycle()
-    val listenBrainzToken by AppSettings.listenBrainzToken.collectAsStateWithLifecycle()
     // Set each time the search tab is tapped, which SearchScreen uses as a
     // signal to focus the input field.
     var searchFocusRequested by remember { mutableStateOf(false) }
@@ -861,6 +872,12 @@ private fun BitChordApp(
     val detailActiveShelf = artistShelfRoute?.shelf
     /** The route on screen, or null when a release page or a tab is. */
     val route = visibleEntry?.route
+    val spotifySyncRunning = if (route == AppRoute.Spotify) {
+        com.music.bitchord.data.spotify.SpotifySync.state
+            .collectAsStateWithLifecycle().value is com.music.bitchord.data.spotify.SpotifySyncState.Running
+    } else {
+        false
+    }
     /**
      * The release page at the top of its stack, whether or not a route
      * covers it. Most things want [detail] — the one actually on screen.
@@ -877,28 +894,6 @@ private fun BitChordApp(
     SystemBarIcons(
         dark = !darkTheme && !showNowPlaying && route != AppRoute.Replay && replayStory == null && !onboardingVisible,
     )
-
-    val homeState by viewModel.home.collectAsStateWithLifecycle()
-    val hideRecents by AppSettings.hideRecents.collectAsStateWithLifecycle()
-    val hideHomeVideos by AppSettings.hideHomeVideos.collectAsStateWithLifecycle()
-    val hideTopPicks by AppSettings.hideTopPicks.collectAsStateWithLifecycle()
-    val hideHomeMoods by AppSettings.hideHomeMoods.collectAsStateWithLifecycle()
-    // Only what Home draws: Top Picks reads the unfiltered feed from the view model.
-    val visibleHomeState = remember(homeState, hideHomeVideos, hideRecents) {
-        val loaded = homeState as? UiState.Success
-        if (loaded != null && (hideHomeVideos || hideRecents)) {
-            var shelves = loaded.data
-            if (hideRecents) shelves = shelves.filterNot { it.title == YtMusicRepository.RECENT_TITLE }
-            if (hideHomeVideos) shelves = shelves.withoutVideos()
-            UiState.Success(shelves)
-        } else {
-            homeState
-        }
-    }
-    val homeLoadingMore by viewModel.homeLoadingMore.collectAsStateWithLifecycle()
-    val homeRecentlyPlayedLoading by viewModel.homeRecentlyPlayedLoading.collectAsStateWithLifecycle()
-    val topPicks by viewModel.topPicks.collectAsStateWithLifecycle()
-    val topPicksLoading by viewModel.topPicksLoading.collectAsStateWithLifecycle()
 
     // The top bar's icon is the quiet, always-there nudge; this is the
     // once-per-launch popup version of the same news. `updateDialogShown`
@@ -922,26 +917,9 @@ private fun BitChordApp(
         }
     }
     val query by viewModel.query.collectAsStateWithLifecycle()
-    val results by viewModel.results.collectAsStateWithLifecycle()
-    val exploreState by viewModel.explore.collectAsStateWithLifecycle()
-    val chartsState by viewModel.charts.collectAsStateWithLifecycle()
-    val chartsRegion by viewModel.chartsRegion.collectAsStateWithLifecycle()
-    val newReleasesState by viewModel.newReleases.collectAsStateWithLifecycle()
     val selectedMoodGenre by viewModel.selectedMoodGenre.collectAsStateWithLifecycle()
-    val moodGenreShelves by viewModel.moodGenreShelves.collectAsStateWithLifecycle()
     val libraryState by viewModel.library.collectAsStateWithLifecycle()
-    val filter by viewModel.filter.collectAsStateWithLifecycle()
     val searchSource by viewModel.searchSource.collectAsStateWithLifecycle()
-    val libraryResults by viewModel.libraryResults.collectAsStateWithLifecycle()
-    val addonResults by viewModel.addonResults.collectAsStateWithLifecycle()
-    // Collected rather than read once, so addon rows in search re-dim the
-    // moment the quality setting, the connection or the watch's cap moves.
-    val addonCeiling = AppSettings.ceilingFor(
-        wifi = AppSettings.audioQualityWifi.collectAsStateWithLifecycle().value,
-        cellular = AppSettings.audioQualityCellular.collectAsStateWithLifecycle().value,
-        metered = AppSettings.meteredConnection.collectAsStateWithLifecycle().value,
-        override = AppSettings.streamCeilingOverride.collectAsStateWithLifecycle().value,
-    )
     val signedIn by viewModel.signedIn.collectAsStateWithLifecycle()
     val incomingJamInvite by JamInviteLink.pending.collectAsStateWithLifecycle()
     var activeJamInviteCode by rememberSaveable { mutableStateOf<String?>(null) }
@@ -973,15 +951,6 @@ private fun BitChordApp(
     val googleAccounts by viewModel.googleAccounts.collectAsStateWithLifecycle()
     val activeAccountId by viewModel.activeAccountId.collectAsStateWithLifecycle()
     val activeProfileId by viewModel.activeProfileId.collectAsStateWithLifecycle()
-    val historyState by viewModel.history.collectAsStateWithLifecycle()
-    val lyrics by viewModel.lyrics.collectAsStateWithLifecycle()
-    val lyricsSource by viewModel.lyricsSource.collectAsStateWithLifecycle()
-    val lyricsChecked by viewModel.lyricsChecked.collectAsStateWithLifecycle()
-    val lyricsProviderStates by viewModel.lyricsProviderStates.collectAsStateWithLifecycle()
-    val searchHistory by viewModel.searchHistory.collectAsStateWithLifecycle()
-    val searchSuggestions by viewModel.suggestions.collectAsStateWithLifecycle()
-    val searchLoadingMore by viewModel.searchLoadingMore.collectAsStateWithLifecycle()
-    val searchScrollReset by viewModel.searchScrollReset.collectAsStateWithLifecycle()
     val releaseLibrary by viewModel.releaseLibrary.collectAsStateWithLifecycle()
     // Local Music, Downloads and the other device folders draw as release
     // pages, but they have no artwork to wash the top inset in, so they keep
@@ -1276,34 +1245,11 @@ private fun BitChordApp(
     // Optimistically updated track for instant UI updates when switching versions
     var optimisticVersionSong by remember { mutableStateOf<Song?>(null) }
 
-    // Lyrics follow whatever is playing; duration lands a beat after the track.
-    // Keyed on the lyric settings too, so turning a source on or off, reordering
-    // them or changing the syllable preference applies to the track already
-    // playing rather than only the next one.
-    val syncedLyricsEnabled by AppSettings.syncedLyrics.collectAsStateWithLifecycle()
-    val lyricsSources by AppSettings.lyricsSources.collectAsStateWithLifecycle()
-    val lyricsSourceOrder by AppSettings.lyricsSourceOrder.collectAsStateWithLifecycle()
-    val prioritizeSyllableSync by AppSettings.prioritizeSyllableSync.collectAsStateWithLifecycle()
-    LaunchedEffect(
-        player.song?.videoId, player.durationMs, syncedLyricsEnabled, lyricsSources,
-        lyricsSourceOrder, prioritizeSyllableSync,
-    ) {
-        player.song?.let {
-            viewModel.loadLyrics(
-                it.videoId,
-                it.title,
-                it.artist,
-                // The player's own length, and the catalogue's where it has
-                // none yet. Paused, ExoPlayer never finishes preparing the
-                // track it was skipped to, so it reports no duration at all —
-                // and a lookup that waits for one waits for ever, which left
-                // the lyrics of a paused track loading until it was played.
-                player.durationMs.takeIf { ms -> ms > 0L } ?: it.durationMillis(),
-                it.albumName,
-                it.localUri,
-            )
-        }
-    }
+    LyricsLoaderEffect(
+        viewModel = viewModel,
+        song = player.song,
+        durationMs = player.durationMs,
+    )
 
     val homeListState = rememberLazyListState()
     val exploreListState = rememberLazyListState()
@@ -1869,7 +1815,7 @@ private fun BitChordApp(
      * built with.
      */
     val playMood: (TopPickMood, String) -> Unit = { mood, title ->
-        val hints = topPicks?.firstOrNull { it.kind == TopPickKind.MOOD }?.hints
+        val hints = viewModel.topPicks.value?.firstOrNull { it.kind == TopPickKind.MOOD }?.hints
         openTopPick(
             if (hints != null) TopPicks.moodStation(mood, hints) else TopPicks.moodStation(mood),
             title,
@@ -1966,6 +1912,21 @@ private fun BitChordApp(
     }
     val onSongSwipe: (Song) -> Unit = { song ->
         if (AppSettings.swipeToPlayNext.value) playNext(song) else addToQueue(song)
+    }
+    val onSongSwipeAction: (Song, SongSwipeAction) -> Unit = { song, action ->
+        when (action) {
+            SongSwipeAction.PLAY_NEXT -> playNext(song)
+            SongSwipeAction.ADD_TO_QUEUE -> addToQueue(song)
+            SongSwipeAction.DISABLED -> Unit
+        }
+    }
+    val onSongHoldPlaylist: (Song) -> Unit = { song ->
+        if (song.localUri != null && (song.videoId.startsWith("content://") || song.videoId.startsWith("file://"))) {
+            offlinePlaylistTarget = song
+        } else {
+            viewModel.loadPlaylists()
+            playlistTarget = song
+        }
     }
 
     /**
@@ -2575,8 +2536,16 @@ private fun BitChordApp(
     // so a fixed number only ever lines up on the one device it was picked on.
     // See [topBarContentPadding].
     val listPadding = PaddingValues(
-        top = topBarContentPadding(),
-        bottom = if (player.song != null) 210.dp else 140.dp,
+        top = if (isLandscapeChrome) {
+            com.music.bitchord.ui.theme.stableStatusBarInsets().asPaddingValues().calculateTopPadding() + 12.dp
+        } else {
+            topBarContentPadding()
+        },
+        bottom = if (isLandscapeChrome) {
+            if (player.song != null) 110.dp else 36.dp
+        } else {
+            if (player.song != null) 210.dp else 140.dp
+        },
     )
     val floatingBarsHeight = remember { mutableIntStateOf(0) }
 
@@ -2594,7 +2563,7 @@ private fun BitChordApp(
     val searchListPadding = if (keyboardUp) {
         PaddingValues(
             top = listPadding.calculateTopPadding(),
-            bottom = if (player.song != null) 132.dp else 82.dp,
+            bottom = if (isLandscapeChrome) 88.dp else if (player.song != null) 132.dp else 82.dp,
         )
     } else listPadding
 
@@ -2666,6 +2635,10 @@ private fun BitChordApp(
     // The player's whole parameter list, kept apart from the sheet that
     // mounts it so the sheet's own setup reads on its own.
     val nowPlaying: @Composable (Song) -> Unit = { song ->
+        val lyrics by viewModel.lyrics.collectAsStateWithLifecycle()
+        val lyricsSource by viewModel.lyricsSource.collectAsStateWithLifecycle()
+        val lyricsChecked by viewModel.lyricsChecked.collectAsStateWithLifecycle()
+        val lyricsProviderStates by viewModel.lyricsProviderStates.collectAsStateWithLifecycle()
         val effectiveSong = optimisticVersionSong?.takeIf {
             it.videoId == convertedAudioId || it.videoId == convertedVideoId || it.videoId == keepVideoId ||
             it.videoId == YtMusicRepository.cachedAudioVersion(song.videoId)?.videoId ||
@@ -2804,7 +2777,6 @@ private fun BitChordApp(
             },
             onRemoveFromQueue = { controller?.removeMediaItem(it) },
             onMoveInQueue = { from, to -> controller?.moveMediaItem(from, to) },
-            onSaveQueue = saveQueueAsPlaylist,
             onQueueDragActiveChange = { active -> controller?.setQueueDragActive(active) },
             onOpenMenu = {
                 menuFromPlayer = true
@@ -3021,6 +2993,7 @@ private fun BitChordApp(
         //
         // Everything a page's menu floats over, and so what [pageBackdrop]
         // takes its still of; the menus themselves are drawn outside it.
+        CompositionLocalProvider(com.music.bitchord.ui.components.LocalLandscapeChrome provides isLandscapeChrome) {
         Row(Modifier.fillMaxSize().snapshotBackdropSource(pageBackdrop)) {
             Box(Modifier.weight(1f).fillMaxHeight()) {
                 AnimatedContent(
@@ -3161,22 +3134,27 @@ private fun BitChordApp(
                     }
                     val pageContent: @Composable () -> Unit = {
                         if (pageRoute == AppRoute.History) {
-                            HistoryScreen(
-                                state = historyState,
-                                listState = historyListState,
-                                currentSong = player.song,
-                                isPlaying = player.isPlaying,
-                                onSongClick = { songs, index ->
-                                    playFrom(songs, index, QueueSource(historyLabel, PlaybackSourceType.HISTORY))
-                                },
-                                onSongLongPress = { song ->
-                                    menuFromHistory = true
-                                    openSongMenu(song)
-                                },
-                                onSongSwipe = onSongSwipe,
-                                onRetry = viewModel::loadHistory,
-                                contentPadding = listPadding,
-                            )
+                            Isolated {
+                                val historyState by viewModel.history.collectAsStateWithLifecycle()
+                                HistoryScreen(
+                                    state = historyState,
+                                    listState = historyListState,
+                                    currentSong = player.song,
+                                    isPlaying = player.isPlaying,
+                                    onSongClick = { songs, index ->
+                                        playFrom(songs, index, QueueSource(historyLabel, PlaybackSourceType.HISTORY))
+                                    },
+                                    onSongLongPress = { song ->
+                                        menuFromHistory = true
+                                        openSongMenu(song)
+                                    },
+                                    onSongSwipe = onSongSwipe,
+                                    onSongSwipeAction = onSongSwipeAction,
+                                    onSongHoldPlaylist = onSongHoldPlaylist,
+                                    onRetry = viewModel::loadHistory,
+                                    contentPadding = listPadding,
+                                )
+                            }
                         } else if (pageRoute is AppRoute.LibraryShowAll) {
                             // The route carries the shelf as it was when "Show
                             // all" was tapped; a playlist deleted from this very
@@ -3295,14 +3273,16 @@ private fun BitChordApp(
                                 contentPadding = listPadding,
                             )
                         } else if (pageRoute == AppRoute.Discord) {
-                            DiscordScreen(
-                                song = player.song,
-                                positionMs = player.position.positionMs,
-                                durationMs = player.durationMs,
-                                onOpenLogin = { showDiscordLogin = true },
-                                onOpenDialog = { discordDialog = it },
-                                contentPadding = listPadding,
-                            )
+                            Isolated {
+                                DiscordScreen(
+                                    song = player.song,
+                                    positionMs = player.position.positionMs,
+                                    durationMs = player.durationMs,
+                                    onOpenLogin = { showDiscordLogin = true },
+                                    onOpenDialog = { discordDialog = it },
+                                    contentPadding = listPadding,
+                                )
+                            }
                         } else if (pageRoute == AppRoute.AccountScrobbling) {
                             AccountAndScrobblingScreen(
                                 signedIn = signedIn,
@@ -3592,6 +3572,8 @@ private fun BitChordApp(
                                 },
                                 onSongLongPress = { openSongMenu(withAlbum(it)) },
                                 onSongSwipe = { onSongSwipe(withAlbum(it)) },
+                                onSongSwipeAction = { song, action -> onSongSwipeAction(withAlbum(song), action) },
+                                onSongHoldPlaylist = { song -> onSongHoldPlaylist(withAlbum(song)) },
                                 onShuffle = { songs ->
                                     if (songs.isNotEmpty()) {
                                         // Shuffle goes on first so the queue is built shuffled
@@ -3685,362 +3667,62 @@ private fun BitChordApp(
                                 onDelete = onDeleteDetail,
                             )
                         } else when ((destination as? AppDestination.Tab)?.index ?: selectedTab) {
-                            TAB_HOME -> HomeScreen(
-                                state = visibleHomeState,
+                            TAB_HOME -> HomeTabHost(
+                                viewModel = viewModel,
                                 listState = homeListState,
                                 currentSong = player.song,
                                 isPlaying = player.isPlaying,
-                                title = null,
                                 signedIn = signedIn,
-                                onSignIn = { webSession = WebSessionMode.SIGN_IN },
-                                onItemClick = { item, shelfTitle ->
-                                    val song = shelfSong(item)
-                                    // Hoisted because ShelfItem lives in :shared, and
-                                    // Kotlin will not smart-cast a public nullable
-                                    // property declared in another module.
-                                    val browseId = item.browseId
-                                    when {
-                                        song != null -> playRadio(
-                                            song,
-                                            QueueSource(shelfTitle, PlaybackSourceType.HOME),
-                                        )
-                                        browseId != null -> viewModel.openDetail(
-                                            browseId = browseId,
-                                            title = item.title,
-                                            subtitle = item.subtitle,
-                                            thumbnailUrl = item.thumbnailUrl,
-                                        )
-                                    }
-                                },
-                                onItemLongPress = onShelfLongPress,
-                                onRetry = viewModel::loadHome,
                                 refreshing = MainViewModel.Feed.HOME in refreshing,
-                                onRefresh = { viewModel.refresh(MainViewModel.Feed.HOME) },
                                 pullState = homePull,
                                 contentPadding = listPadding,
-                                onLoadMore = viewModel::loadMoreHome,
-                                loadingMore = homeLoadingMore,
-                                recentlyPlayedLoading = homeRecentlyPlayedLoading && !hideRecents,
-                                topPicks = topPicks,
-                                topPicksLoading = topPicksLoading,
-                                listenerName = account?.name,
-                                // Neither shelf is drawn without its callback.
-                                onTopPickClick = openTopPick.takeUnless { hideTopPicks },
-                                onMoodClick = playMood.takeUnless { hideHomeMoods },
-                                onMoodsShowAll = { navigator.push(AppRoute.Moods) },
+                                accountName = account?.name,
                                 artworkMotion = artworkMotion,
+                                shelfSong = shelfSong,
+                                onSignIn = { webSession = WebSessionMode.SIGN_IN },
+                                onPlayRadio = playRadio,
+                                onShelfLongPress = onShelfLongPress,
+                                onOpenTopPick = openTopPick,
+                                onPlayMood = playMood,
+                                onMoodsShowAll = { navigator.push(AppRoute.Moods) },
                                 onOpenDownloads = { selectedTab = TAB_LIBRARY },
-                                onTopPickLongPress = { pick ->
-                                    pick.browseId?.let { browseId ->
-                                        onShelfLongPress(
-                                            ShelfItem(
-                                                title = pick.title,
-                                                subtitle = pick.artistName.orEmpty(),
-                                                thumbnailUrl = pick.images.firstOrNull(),
-                                                videoId = null,
-                                                browseId = browseId,
-                                            ),
-                                        )
-                                    }
-                                }
                             )
-                            TAB_EXPLORE -> selectedMoodGenre?.let { category ->
-                                MoodGenrePlaylistsScreen(
-                                    title = category.title,
-                                    state = moodGenreShelves,
-                                    listState = moodGenreListState,
-                                    onItemClick = { item ->
-                                        item.videoId?.let { videoId ->
-                                            playRadio(
-                                                Song(
-                                                    videoId = videoId,
-                                                    title = item.title,
-                                                    artist = InnertubeParser.artistFromSubtitle(item.subtitle),
-                                                    thumbnailUrl = item.thumbnailUrl,
-                                                    isVideo = item.isVideo,
-                                                ),
-                                                QueueSource(
-                                                    category.title,
-                                                    PlaybackSourceType.EXPLORE,
-                                                    category.browseId,
-                                                ),
-                                            )
-                                        } ?: item.browseId?.let { browseId ->
-                                            viewModel.openDetail(
-                                                browseId = browseId,
-                                                title = item.title,
-                                                subtitle = item.subtitle,
-                                                thumbnailUrl = item.thumbnailUrl,
-                                            )
-                                        }
-                                    },
-                                    onRetry = { viewModel.openMoodGenre(category) },
-                                    contentPadding = listPadding,
-                                )
-                            } ?: ExploreScreen(
-                                state = exploreState,
-                                listState = exploreListState,
-                                onCategoryClick = viewModel::openMoodGenre,
-                                onRetry = viewModel::loadExplore,
+                            TAB_EXPLORE -> ExploreTabHost(
+                                viewModel = viewModel,
+                                selectedMoodGenre = selectedMoodGenre,
+                                exploreListState = exploreListState,
+                                moodGenreListState = moodGenreListState,
                                 refreshing = MainViewModel.Feed.EXPLORE in refreshing,
-                                onRefresh = { viewModel.refresh(MainViewModel.Feed.EXPLORE) },
                                 pullState = explorePull,
                                 contentPadding = listPadding,
-                                chartsState = chartsState,
-                                newReleasesState = newReleasesState,
-                                chartsRegion = chartsRegion,
-                                onRegionChange = viewModel::setChartsRegion,
-                                onRefreshCharts = viewModel::refreshCharts,
-                                onSongClick = { item ->
-                                    item.videoId?.let { videoId ->
-                                        playRadio(
-                                            Song(
-                                                videoId = videoId,
-                                                title = item.title,
-                                                artist = InnertubeParser.artistFromSubtitle(item.subtitle),
-                                                thumbnailUrl = item.thumbnailUrl,
-                                                isVideo = item.isVideo,
-                                            ),
-                                            QueueSource("Charts", PlaybackSourceType.BROWSE, "FEmusic_charts"),
-                                        )
-                                    }
-                                },
-                                onSongOptionsClick = onShelfLongPress,
-                                onItemClick = { item ->
-                                    val song = shelfSong(item)
-                                    val browseId = item.browseId
-                                    when {
-                                        song != null -> playRadio(
-                                            song,
-                                            QueueSource("Explore", PlaybackSourceType.EXPLORE),
-                                        )
-                                        browseId != null -> viewModel.openDetail(
-                                            browseId = browseId,
-                                            title = item.title,
-                                            subtitle = item.subtitle,
-                                            thumbnailUrl = item.thumbnailUrl,
-                                        )
-                                    }
-                                },
-                                onPlayAll = { items ->
-                                    val songs = items.mapNotNull { item ->
-                                        item.videoId?.let { vid ->
-                                            Song(
-                                                videoId = vid,
-                                                title = item.title,
-                                                artist = InnertubeParser.artistFromSubtitle(item.subtitle),
-                                                thumbnailUrl = item.thumbnailUrl,
-                                            )
-                                        }
-                                    }
-                                    if (songs.isNotEmpty()) {
-                                        playFrom(songs, 0, QueueSource("Top Charts", PlaybackSourceType.BROWSE, "FEmusic_charts"))
-                                    }
-                                },
-                                onShufflePlay = { items ->
-                                    val songs = items.mapNotNull { item ->
-                                        item.videoId?.let { vid ->
-                                            Song(
-                                                videoId = vid,
-                                                title = item.title,
-                                                artist = InnertubeParser.artistFromSubtitle(item.subtitle),
-                                                thumbnailUrl = item.thumbnailUrl,
-                                            )
-                                        }
-                                    }.shuffled()
-                                    if (songs.isNotEmpty()) {
-                                        playFrom(songs, 0, QueueSource("Top Charts", PlaybackSourceType.BROWSE, "FEmusic_charts"))
-                                    }
-                                },
-                                onAddToQueue = { items ->
-                                    val songs = items.mapNotNull { item ->
-                                        item.videoId?.let { vid ->
-                                            Song(
-                                                videoId = vid,
-                                                title = item.title,
-                                                artist = InnertubeParser.artistFromSubtitle(item.subtitle),
-                                                thumbnailUrl = item.thumbnailUrl,
-                                            )
-                                        }
-                                    }
-                                    songs.forEach { addToQueue(it) }
-                                },
-                                onOpenTrendingPlaylist = { regionCode, regionName, allSongs, videoShelf, artistShelf ->
-                                    viewModel.openTrendingDetail(regionCode, regionName, allSongs, videoShelf, artistShelf)
-                                },
-                                onOpenTopicPlaylist = viewModel::openTopicPlaylist,
+                                shelfSong = shelfSong,
+                                onPlayRadio = playRadio,
+                                onPlayFrom = ::playFrom,
+                                onAddToQueue = addToQueue,
+                                onShelfLongPress = onShelfLongPress,
                             )
-                            TAB_SEARCH -> SearchScreen(
+                            TAB_SEARCH -> SearchTabHost(
+                                viewModel = viewModel,
+                                context = context,
                                 query = query,
-                                onQueryChange = viewModel::onQueryChange,
-                                filter = filter,
+                                searchSource = searchSource,
+                                searchLabel = searchLabel,
                                 currentSong = player.song,
                                 isPlaying = player.isPlaying,
-                                onFilterChange = viewModel::onFilterChange,
-                                results = results,
-                                loadingMore = searchLoadingMore,
-                                onLoadMore = viewModel::loadMoreSearchResults,
                                 listState = searchListState,
-                                scrollResetTrigger = searchScrollReset,
                                 focusRequested = searchFocusRequested,
                                 onFocusHandled = { searchFocusRequested = false },
-                                // Search hits are alternatives to each other, not a running
-                                // order — play the one tapped and build a station from it.
-                                onSongClick = { songs, index ->
-                                    songs.getOrNull(index)?.let { song ->
-                                        viewModel.recordEntity(SearchHistoryEntity(
-                                            id = song.videoId,
-                                            title = song.title,
-                                            subtitle = song.artist.ifEmpty { "" },
-                                            artworkUrl = song.thumbnailUrl,
-                                            entityType = EntityType.TRACK,
-                                        ))
-                                        playRadio(song, QueueSource(searchLabel, PlaybackSourceType.SEARCH))
-                                    }
-                                },
-                                onSongLongPress = openSongMenu,
-                                onSongSwipe = onSongSwipe,
-                                onTopResultPlay = { song ->
-                                    viewModel.recordEntity(SearchHistoryEntity(
-                                        id = song.videoId,
-                                        title = song.title,
-                                        subtitle = song.artist.ifEmpty { "" },
-                                        artworkUrl = song.thumbnailUrl,
-                                        entityType = EntityType.TRACK,
-                                    ))
-                                    playRadio(song, QueueSource(searchLabel, PlaybackSourceType.SEARCH))
-                                },
-                                onTopResultPlaylist = { song ->
-                                    viewModel.recordEntity(SearchHistoryEntity(
-                                        id = song.videoId,
-                                        title = song.title,
-                                        subtitle = song.artist.ifEmpty { "" },
-                                        artworkUrl = song.thumbnailUrl,
-                                        entityType = EntityType.TRACK,
-                                    ))
-                                    viewModel.loadPlaylists()
-                                    playlistTarget = song
-                                },
-                                onBrowseClick = { item ->
-                                    viewModel.recordEntity(SearchHistoryEntity(
-                                        id = item.browseId,
-                                        title = item.title,
-                                        subtitle = item.subtitle.ifBlank { "" },
-                                        artworkUrl = item.thumbnailUrl,
-                                        entityType = when (item.type) {
-                                            BrowseType.ALBUM -> EntityType.ALBUM
-                                            BrowseType.ARTIST -> EntityType.ARTIST
-                                            BrowseType.PLAYLIST -> EntityType.PLAYLIST
-                                            BrowseType.OTHER -> EntityType.OTHER
-                                        },
-                                    ))
-                                    viewModel.openDetail(
-                                        browseId = item.browseId,
-                                        title = item.title,
-                                        subtitle = item.subtitle,
-                                        thumbnailUrl = item.thumbnailUrl,
-                                        type = item.type,
-                                    )
-                                },
-                                onBrowseLongPress = { item ->
-                                    // A search row does say what it is, so its own type is
-                                    // better than what the browse id can be read to mean.
-                                    if (item.type != BrowseType.ARTIST) {
-                                        openBrowseMenu(
-                                            BrowseTarget(
-                                                browseId = item.browseId,
-                                                title = item.title,
-                                                subtitle = item.subtitle,
-                                                thumbnailUrl = item.thumbnailUrl,
-                                                type = item.type,
-                                                downloadId = downloadIdFor(item.browseId),
-                                            ),
-                                        )
-                                    }
-                                },
-                                history = searchHistory,
-                                suggestions = searchSuggestions,
-                                typeaheadResults = viewModel.typeaheadResults.collectAsStateWithLifecycle().value,
-                                onSubmit = viewModel::submitSearch,
-                                // Suggestions land in search history via searchFor → recordSearch.
-                                // History items (onHistoryClick) navigate/play without re-logging.
-                                onSuggestionClick = viewModel::searchFor,
-                                onHistoryClick = { entity ->
-                                    // Tap a history entity: navigate to it or play it directly.
-                                    // Do NOT recordEntity here — tapping an existing history item
-                                    // must not update its timestamp and push it to the top.
-                                    when (entity.entityType) {
-                                        EntityType.TRACK -> {
-                                            // Play the track by its video id
-                                            playRadio(
-                                                com.music.bitchord.data.model.Song(
-                                                    videoId = entity.id,
-                                                    title = entity.title,
-                                                    artist = entity.subtitle,
-                                                    thumbnailUrl = entity.artworkUrl,
-                                                ),
-                                                QueueSource(entity.title, PlaybackSourceType.SEARCH),
-                                            )
-                                        }
-                                        EntityType.ALBUM, EntityType.ARTIST, EntityType.PLAYLIST, EntityType.OTHER -> {
-                                            viewModel.openDetail(
-                                                browseId = entity.id,
-                                                title = entity.title,
-                                                subtitle = entity.subtitle,
-                                                thumbnailUrl = entity.artworkUrl,
-                                            )
-                                        }
-                                    }
-                                },
-                                onHistoryRemove = viewModel::removeSearch,
-                                onHistoryClear = viewModel::clearSearchHistory,
-                                onTypeaheadLongPress = openSongMenu,
                                 contentPadding = searchListPadding,
-                                // Snug under the bar rather than a page's breathing
-                                // gap below it: the field is in the bar (see the bar's
-                                // accessory), so what comes next is the field's own
-                                // suggestions and filters, and a gap reads as a break.
-                                topPadding = topBarHeight() + 4.dp,
-                                showField = false,
-                                 // Source switcher is in top bar accessory.
-                                 sourceSwitcher = null,
-                                searchingLibrary = searchSource == SearchSource.LIBRARY,
-                                libraryResults = libraryResults,
-                                searchingAddons = searchSource == SearchSource.ADDONS,
-                                addonResults = addonResults,
-                                isBlocked = { song ->
-                                    val configId = SourceRegistry.parseTrackKey(song.videoId)?.first
-                                    !SourceRegistry.permitsForPlayback(configId, addonCeiling)
-                                },
-                                onBlockedSongClick = { song -> blockedAddonSong = song },
-                                addonHistory =viewModel.addonSearchHistory.collectAsStateWithLifecycle().value,
-                                onAddonHistoryClick = { term ->
-                                    viewModel.onQueryChange(term)
-                                    viewModel.submitSearch()
-                                },
-                                onAddonHistoryRemove = viewModel::removeAddonSearch,
-                                onAddonHistoryClear = viewModel::clearAddonSearchHistory,
-                                // The same queue opening the Local Music folder and
-                                // tapping the row there would give.
-                                onLibrarySongClick = { songs, index ->
-                                    playFrom(
-                                        songs,
-                                        index,
-                                        if (searchSource == SearchSource.ADDONS) {
-                                            QueueSource(
-                                                context.getString(R.string.search_source_addons),
-                                                PlaybackSourceType.BROWSE,
-                                                "addons:search",
-                                            )
-                                        } else {
-                                            QueueSource(
-                                                context.getString(R.string.local_music),
-                                                PlaybackSourceType.BROWSE,
-                                                "local:all",
-                                            )
-                                        },
-                                    )
-                                },
+                                downloadIdFor = downloadIdFor,
+                                onPlayRadio = playRadio,
+                                onPlayFrom = ::playFrom,
+                                onOpenSongMenu = openSongMenu,
+                                onSongSwipe = onSongSwipe,
+                                onSongSwipeAction = onSongSwipeAction,
+                                onSongHoldPlaylist = onSongHoldPlaylist,
+                                onSetPlaylistTarget = { playlistTarget = it },
+                                onOpenBrowseMenu = openBrowseMenu,
+                                onBlockedAddonSongClick = { song -> blockedAddonSong = song },
                             )
                             else -> LibraryScreen(
                                 signedIn = signedIn,
@@ -4088,11 +3770,13 @@ private fun BitChordApp(
                     // them redraws the page under the glass, for nobody.
                     val barsMotion = artworkMotion && transition.targetState == EnterExitState.Visible
                     CompositionLocalProvider(LocalPlayingBarsMotion provides barsMotion) {
+                        Box(Modifier.fillMaxSize().padding(landscapeSidePadding)) {
                         if (destination is AppDestination.Tab) {
                             pageContent()
                         } else {
                             pageKeysSeen += key
                             pageStates.SaveableStateProvider(key, pageContent)
+                        }
                         }
                     }
                 }
@@ -4144,484 +3828,362 @@ private fun BitChordApp(
                             (header * fadeRamp)).coerceIn(0f, 1f)
                     }
                 }
-                if (reduceDynamicBlur || !glassActive || !progressiveBlur) {
-                    BottomFadeScrim(
-                        pageColor = chromePageColor,
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .rotate(180f)
-                            .graphicsLayer { alpha = topFadeAlpha },
-                    )
-                } else {
-                    TopFadeBlur(
-                        hazeState = hazeState,
-                        pageColor = chromePageColor,
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .graphicsLayer { alpha = topFadeAlpha },
-                    )
+                val offlineBannerActive by AppSettings.effectiveOffline.collectAsStateWithLifecycle()
+                val topBarOnBack: (() -> Unit)? = when {
+                    route != null || detail != null || selectedMoodGenre != null -> goBack
+                    selectedTab == TAB_SEARCH -> ({ selectedTab = lastNonSearchTab })
+                    else -> null
+                }
+                val topBarActionsVisible = !(route != null && AppRoute.Settings in navigator)
+                val topBarLeading: (@Composable () -> Unit)? = if (selectedTab == TAB_HOME && route == null && detail == null && selectedMoodGenre == null) {
+                    {
+                        Icon(
+                            painter = painterResource(R.drawable.ic_logo),
+                            contentDescription = "BitChord",
+                            tint = MaterialTheme.colorScheme.onBackground,
+                            modifier = Modifier
+                                .padding(start = if (isLandscapeChrome) 0.dp else 4.dp)
+                                .size(width = 30.dp, height = 30.dp),
+                        )
+                    }
+                } else null
+                val notInSettings = !(route != null && AppRoute.Settings in navigator)
+                val releaseSongs = (detail?.songs as? UiState.Success)?.data.orEmpty()
+                val isLocalPlaylist = detail?.browseId?.startsWith("local:playlist:") == true &&
+                    com.music.bitchord.data.spotify.LocalPlaylistStore.getPlaylist(detail.browseId.orEmpty()) != null
+
+                // 1. Rightmost anchor slot: Profile (avatar) or More (three dots)
+                val anchorState = when {
+                    !notInSettings -> TopBarAnchor.None
+                    isReleaseDetail && detail != null && (releaseSongs.isNotEmpty() || detail.type == BrowseType.PLAYLIST || isLocalPlaylist) -> {
+                        TopBarAnchor.More(
+                            onClick = {
+                                detail.let { d ->
+                                    openBrowseMenu(BrowseTarget(
+                                        browseId = d.browseId,
+                                        title = d.title,
+                                        subtitle = d.subtitle,
+                                        thumbnailUrl = d.thumbnailUrl,
+                                        type = d.type,
+                                        songs = releaseSongs.sortedForDetail(songSort).map { song ->
+                                            if (d.type == BrowseType.ALBUM) {
+                                                song.copy(albumName = song.albumName ?: d.title)
+                                            } else {
+                                                song
+                                            }
+                                        },
+                                        fromCard = false,
+                                        downloadId = downloadIdFor(d.browseId),
+                                    ))
+                                }
+                            },
+                        )
+                    }
+                    else -> {
+                        TopBarAnchor.Profile(
+                            account = account,
+                            onClick = {
+                                if (signedIn) {
+                                    viewModel.loadChannels()
+                                    showAccountSelector = true
+                                } else navigator.push(AppRoute.Settings)
+                            },
+                            onSwipeProfile = { forward -> viewModel.stepProfile(forward) },
+                        )
+                    }
                 }
 
-                val offlineBannerActive by AppSettings.effectiveOffline.collectAsStateWithLifecycle()
-                com.music.bitchord.ui.components.OfflineBanner(
-                    visible = offlineBannerActive,
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = com.music.bitchord.ui.components.topBarHeight()),
-                )
-
-                FrostedTopBar(
-                    title = when (route) {
-                        AppRoute.Spotify -> stringResource(R.string.spotify)
-                        AppRoute.Downloads -> stringResource(R.string.downloads)
-                        AppRoute.Discord -> "Discord"
-                        AppRoute.History -> stringResource(R.string.history)
-                        is AppRoute.LibraryShowAll -> route.shelf.title
-                        is AppRoute.ArtistShelf -> route.shelf.title
-                        AppRoute.Moods -> stringResource(R.string.find_your_mood)
-                        AppRoute.AccountScrobbling -> stringResource(R.string.account_scrobbling)
-                        AppRoute.Sources -> stringResource(R.string.sources)
-                        AppRoute.ListenTogether -> stringResource(R.string.listen_together)
-                        AppRoute.WearOs -> stringResource(R.string.wear_os_page_title)
-                        AppRoute.Equalizer -> stringResource(R.string.equalizer)
-                        AppRoute.Settings -> stringResource(R.string.settings)
-                        is AppRoute.SettingsSection -> stringResource(route.category.title)
-                        is AppRoute.SettingsChoice -> stringResource(route.choice.title)
-                        AppRoute.EqualizerPresets -> stringResource(R.string.equalizer_preset)
-                        AppRoute.Replay -> stringResource(R.string.replay)
-                        null -> when {
-                            detail != null && detailActiveShelf != null -> detailActiveShelf.title.orEmpty()
-                            detail != null -> detail.title
-                            selectedMoodGenre != null -> selectedMoodGenre?.title.orEmpty()
-                            else -> if (selectedTab == TAB_HOME) "" else tabs[selectedTab].let {
-                                if (it.label == "Play") stringResource(R.string.listen_now) else it.label
-                            }
-                        }
-                    },
-                    // Every page, in either material, uses separated floating
-                    // circles over the shared gradient — no full-width pane.
-                    transparentBackdrop = true,
-                    artworkPageChrome = true,
-                    backButtonHazeState = hazeState,
-                    trailingTitle = if (detail != null && detailActiveShelf != null) detail.title else null,
-                    // Search has no large in-list header to hand the title back to —
-                    // the field takes that space — so its bar title is always up.
-                    scrolled = {
+                // 2. Auxiliary slots to the left of the anchor
+                // Index 0: adjacent to anchor; Index 1: outer left; Index 2: outermost
+                val downloadSession by DownloadSession.state.collectAsStateWithLifecycle()
+                val auxiliaryItems = buildList {
+                    if (notInSettings) {
                         when {
-                            // The page leads with its own large "Replay", so the bar
-                            // stays out of the way until that has been scrolled off.
-                            route == AppRoute.Replay -> replayScrolled
-                            route != null -> true
-                            detail != null && detailActiveShelf != null -> true
-                            detail != null -> detailScrolled
-                            selectedMoodGenre != null -> true
-                            else -> scrolled || selectedTab == TAB_SEARCH
-                        }
-                    },
-                    refreshing = currentFeed != null && currentFeed in refreshing,
-                    pullFraction = { currentPull?.distanceFraction ?: 0f },
-                    // The same step the back gesture takes — see [goBack] —
-                    // offered on anything pushed over a tab.
-                    onBack = when {
-                        route != null || detail != null || selectedMoodGenre != null -> goBack
-                        selectedTab == TAB_SEARCH -> ({ selectedTab = lastNonSearchTab })
-                        else -> null
-                    },
-                    modifier = Modifier.align(Alignment.TopCenter),
-                    // Settings is the profile's own destination: no actions there.
-                    actionsVisible = !(route != null && AppRoute.Settings in navigator),
-                    leading = if (selectedTab == TAB_HOME && route == null && detail == null && selectedMoodGenre == null) {
-                        {
-                            Icon(
-                                painter = painterResource(R.drawable.ic_logo),
-                                contentDescription = "BitChord",
-                                tint = MaterialTheme.colorScheme.onBackground,
-                                modifier = Modifier
-                                    .padding(start = 2.dp)
-                                    .height(25.dp)
-                                    .aspectRatio(730f / 484f),
-                            )
-                        }
-                    } else null,
-                    accessory = if (
-                        selectedTab == TAB_SEARCH && route == null && detail == null && selectedMoodGenre == null
-                    ) {
-                        {
-                            SearchSourceSwitcher(
-                                searchSource = searchSource,
-                                onSearchSourceChange = { onSearchSourceChange(it) },
-                                hazeState = hazeState,
-                                // The accessory pill around it is the surface.
-                                surface = false,
-                            )
-                        }
-                    } else null,
-                    actions = {
-                        val notInSettings = !(route != null && AppRoute.Settings in navigator)
-                        val releaseSongs = (detail?.songs as? UiState.Success)?.data.orEmpty()
-                        val isLocalPlaylist = detail?.browseId?.startsWith("local:playlist:") == true &&
-                            com.music.bitchord.data.spotify.LocalPlaylistStore.getPlaylist(detail.browseId.orEmpty()) != null
-
-                        // 1. Rightmost anchor slot: Profile (avatar) or More (three dots)
-                        val anchorState = when {
-                            !notInSettings -> TopBarAnchor.None
-                            isReleaseDetail && detail != null && (releaseSongs.isNotEmpty() || detail.type == BrowseType.PLAYLIST || isLocalPlaylist) -> {
-                                TopBarAnchor.More(
-                                    onClick = {
-                                        detail.let { d ->
-                                            openBrowseMenu(BrowseTarget(
-                                                browseId = d.browseId,
-                                                title = d.title,
-                                                subtitle = d.subtitle,
-                                                thumbnailUrl = d.thumbnailUrl,
-                                                type = d.type,
-                                                songs = releaseSongs.sortedForDetail(songSort).map { song ->
-                                                    if (d.type == BrowseType.ALBUM) {
-                                                        song.copy(albumName = song.albumName ?: d.title)
-                                                    } else {
-                                                        song
-                                                    }
-                                                },
-                                                fromCard = false,
-                                                downloadId = downloadIdFor(d.browseId),
-                                            ))
-                                        }
-                                    },
-                                )
-                            }
-                            else -> {
-                                TopBarAnchor.Profile(
-                                    account = account,
-                                    onClick = {
-                                        if (signedIn) {
-                                            viewModel.loadChannels()
-                                            showAccountSelector = true
-                                        } else navigator.push(AppRoute.Settings)
-                                    },
-                                    onSwipeProfile = { forward -> viewModel.stepProfile(forward) },
-                                )
-                            }
-                        }
-
-                        // 2. Auxiliary slots to the left of the anchor
-                        // Index 0: adjacent to anchor; Index 1: outer left; Index 2: outermost
-                        val downloadSession by DownloadSession.state.collectAsStateWithLifecycle()
-                        val auxiliaryItems = buildList {
-                            if (notInSettings) {
-                                when {
-                                    // Playlist / Folder Detail
-                                    (isReleaseDetail || isLocalDetail) && detail != null -> {
-                                        // Index 0 (adjacent to More/Anchor): Sort button
-                                        add(
-                                            TopBarActionItem(key = "sort") {
-                                                IconButton(
-                                                    onClick = { if (isLocalDetail) folderMenuOpen = true else songSortMenuOpen = true },
-                                                    modifier = Modifier.size(TOP_CONTROL_SIZE),
-                                                ) {
-                                                    Icon(
-                                                        Icons.AutoMirrored.Rounded.Sort,
-                                                        contentDescription = stringResource(
-                                                            if (isLocalDetail) R.string.sort_music else R.string.sort_songs,
-                                                        ),
-                                                        tint = MaterialTheme.colorScheme.onSurface,
-                                                    )
-                                                }
-                                            },
-                                        )
-                                        // Index 1 (to the left of Sort): Search
-                                        if (releaseSongs.isNotEmpty()) {
-                                            add(
-                                                TopBarActionItem(key = "search") {
-                                                    IconButton(
-                                                        onClick = { detailSearching = !detailSearching },
-                                                        modifier = Modifier.size(TOP_CONTROL_SIZE),
-                                                    ) {
-                                                        Icon(
-                                                            if (detailSearching) Icons.Rounded.Close else BitChordIcons.Search,
-                                                            contentDescription = stringResource(
-                                                                if (detailSearching) R.string.close_search else R.string.search_this_list,
-                                                            ),
-                                                            tint = MaterialTheme.colorScheme.onSurface,
-                                                        )
-                                                    }
-                                                },
+                            // Playlist / Folder Detail
+                            (isReleaseDetail || isLocalDetail) && detail != null -> {
+                                // Index 0 (adjacent to More/Anchor): Sort button
+                                add(
+                                    TopBarActionItem(key = "sort") {
+                                        IconButton(
+                                            onClick = { if (isLocalDetail) folderMenuOpen = true else songSortMenuOpen = true },
+                                            modifier = Modifier.size(TOP_CONTROL_SIZE),
+                                        ) {
+                                            Icon(
+                                                Icons.AutoMirrored.Rounded.Sort,
+                                                contentDescription = stringResource(
+                                                    if (isLocalDetail) R.string.sort_music else R.string.sort_songs,
+                                                ),
+                                                tint = MaterialTheme.colorScheme.onSurface,
                                             )
                                         }
-                                    }
-
-                                    // Artist Detail
-                                    detail != null && !isLocalDetail && detail.type == BrowseType.ARTIST &&
-                                        detailActiveShelf == null && detail.browseId?.startsWith("UC") == true -> {
-                                        add(
-                                            TopBarActionItem(key = "share") {
-                                                detail.let { d ->
-                                                    IconButton(
-                                                        onClick = {
-                                                            val sendIntent = Intent(Intent.ACTION_SEND).apply {
-                                                                type = "text/plain"
-                                                                putExtra(
-                                                                    Intent.EXTRA_TEXT,
-                                                                    "https://music.youtube.com/channel/${d.browseId}",
-                                                                )
-                                                            }
-                                                            context.startActivity(Intent.createChooser(sendIntent, d.title))
-                                                        },
-                                                        modifier = Modifier.size(TOP_CONTROL_SIZE),
-                                                    ) {
-                                                        Icon(
-                                                            Icons.Rounded.IosShare,
-                                                            contentDescription = stringResource(R.string.share),
-                                                            tint = MaterialTheme.colorScheme.onSurface,
-                                                        )
-                                                    }
-                                                }
-                                            },
-                                        )
-                                    }
-
-                                    // Library tab root
-                                    route == null && detail == null && selectedTab == TAB_LIBRARY -> {
-                                        // Index 0 (adjacent to PFP): History
-                                        add(
-                                            TopBarActionItem(key = "history") {
-                                                IconButton(
-                                                    onClick = {
-                                                        navigator.push(AppRoute.History)
-                                                        viewModel.loadHistory()
-                                                    },
-                                                    modifier = Modifier.size(TOP_CONTROL_SIZE),
-                                                ) {
-                                                    Icon(
-                                                        Icons.Rounded.History,
-                                                        contentDescription = stringResource(R.string.listening_history),
-                                                        tint = MaterialTheme.colorScheme.onSurface,
-                                                    )
-                                                }
-                                            },
-                                        )
-                                        // Index 1 (to the left of History): Grid/List toggle
-                                        add(
-                                            TopBarActionItem(key = "view_type") {
-                                                val listStyle = libraryViewType == LibraryViewType.LIST
-                                                IconButton(
-                                                    onClick = {
-                                                        AppSettings.setLibraryViewType(
-                                                            if (listStyle) LibraryViewType.GRID else LibraryViewType.LIST,
-                                                        )
-                                                    },
-                                                    modifier = Modifier.size(TOP_CONTROL_SIZE),
-                                                ) {
-                                                    Icon(
-                                                        if (listStyle) BitChordIcons.GridView else BitChordIcons.ListView,
-                                                        contentDescription = stringResource(
-                                                            if (listStyle) R.string.switch_to_grid_view else R.string.switch_to_list_view,
-                                                        ),
-                                                        tint = MaterialTheme.colorScheme.onSurface,
-                                                    )
-                                                }
-                                            },
-                                        )
-                                    }
-
-                                    // Library ShowAll
-                                    route is AppRoute.LibraryShowAll -> {
-                                        // Index 0: Sort
-                                        add(
-                                            TopBarActionItem(key = "sort") {
-                                                Box {
-                                                    IconButton(
-                                                        onClick = { librarySortMenuOpen = true },
-                                                        modifier = Modifier.size(TOP_CONTROL_SIZE),
-                                                    ) {
-                                                        Icon(
-                                                            Icons.AutoMirrored.Rounded.Sort,
-                                                            contentDescription = stringResource(R.string.sort_library),
-                                                            tint = MaterialTheme.colorScheme.onSurface,
-                                                        )
-                                                    }
-                                                    DropdownMenu(
-                                                        expanded = librarySortMenuOpen,
-                                                        onDismissRequest = { librarySortMenuOpen = false },
-                                                    ) {
-                                                        LibrarySort.entries.forEach { option ->
-                                                            DropdownMenuItem(
-                                                                text = { Text(option.localizedLabel()) },
-                                                                trailingIcon = if (option == librarySort) {
-                                                                    { Icon(Icons.Rounded.Check, contentDescription = null) }
-                                                                } else null,
-                                                                onClick = {
-                                                                    AppSettings.setLibrarySort(option)
-                                                                    librarySortMenuOpen = false
-                                                                },
-                                                            )
-                                                        }
-                                                    }
-                                                }
-                                            },
-                                        )
-                                        // Index 1: Grid/List toggle
-                                        add(
-                                            TopBarActionItem(key = "view_type") {
-                                                val listStyle = libraryViewType == LibraryViewType.LIST
-                                                IconButton(
-                                                    onClick = {
-                                                        AppSettings.setLibraryViewType(
-                                                            if (listStyle) LibraryViewType.GRID else LibraryViewType.LIST,
-                                                        )
-                                                    },
-                                                    modifier = Modifier.size(TOP_CONTROL_SIZE),
-                                                ) {
-                                                    Icon(
-                                                        if (listStyle) BitChordIcons.GridView else BitChordIcons.ListView,
-                                                        contentDescription = stringResource(
-                                                            if (listStyle) R.string.switch_to_grid_view else R.string.switch_to_list_view,
-                                                        ),
-                                                        tint = MaterialTheme.colorScheme.onSurface,
-                                                    )
-                                                }
-                                            },
-                                        )
-                                    }
-
-                                    // Home tab with update notice
-                                    route == null && detail == null && selectedTab == TAB_HOME && updateNotice != null -> {
-                                        add(
-                                            TopBarActionItem(key = "update") {
-                                                IconButton(
-                                                    onClick = { showUpdateDialog = true },
-                                                    modifier = Modifier.size(TOP_CONTROL_SIZE),
-                                                ) {
-                                                    Icon(
-                                                        Icons.Rounded.Upgrade,
-                                                        contentDescription = stringResource(R.string.update_available, updateNotice.version.orEmpty()),
-                                                        tint = MaterialTheme.colorScheme.primary,
-                                                    )
-                                                }
-                                            },
-                                        )
-                                    }
-
-                                    // Import: straight into choosing which playlists to copy
-                                    route == AppRoute.Spotify && spotifyLibraryState.playlists.isNotEmpty() &&
-                                        !spotifyLibraryState.selecting && !spotifySyncRunning -> {
-                                        add(
-                                            TopBarActionItem(key = "spotify") {
-                                                IconButton(
-                                                    onClick = spotifyLibraryState::requestStartSelecting,
-                                                    modifier = Modifier.size(TOP_CONTROL_SIZE),
-                                                ) {
-                                                    Icon(
-                                                        Icons.Rounded.Download,
-                                                        contentDescription = stringResource(R.string.spotify_sync_menu),
-                                                        tint = MaterialTheme.colorScheme.onSurface,
-                                                    )
-                                                }
-                                            },
-                                        )
-                                    }
-
-                                    // Listen Together
-                                    route == AppRoute.ListenTogether -> {
-                                        add(
-                                            TopBarActionItem(key = "ping") {
-                                                Row(
-                                                    verticalAlignment = Alignment.CenterVertically,
-                                                    modifier = Modifier.padding(horizontal = 8.dp),
-                                                ) {
-                                                    when (val state = partyServerStatus) {
-                                                        is ServerConnectionState.CustomFallback -> {
-                                                            Icon(
-                                                                Icons.Rounded.CloudOff,
-                                                                contentDescription = stringResource(R.string.listen_together_top_bar_fallback, stringResource(R.string.listen_together_ping, state.latencyMs)),
-                                                                tint = MaterialTheme.colorScheme.error,
-                                                                modifier = Modifier.size(14.dp),
-                                                            )
-                                                            Spacer(Modifier.width(4.dp))
-                                                            Text(
-                                                                text = stringResource(R.string.listen_together_ping, state.latencyMs),
-                                                                style = MaterialTheme.typography.labelMedium,
-                                                                color = MaterialTheme.colorScheme.error,
-                                                                maxLines = 1,
-                                                            )
-                                                        }
-                                                        is ServerConnectionState.CustomOnline -> {
-                                                            Text(
-                                                                text = stringResource(R.string.listen_together_ping, state.latencyMs),
-                                                                style = MaterialTheme.typography.labelMedium,
-                                                                color = MaterialTheme.colorScheme.onSurface,
-                                                                maxLines = 1,
-                                                            )
-                                                        }
-                                                        is ServerConnectionState.DefaultOnline -> {
-                                                            Text(
-                                                                text = stringResource(R.string.listen_together_ping, state.latencyMs),
-                                                                style = MaterialTheme.typography.labelMedium,
-                                                                color = MaterialTheme.colorScheme.onSurface,
-                                                                maxLines = 1,
-                                                            )
-                                                        }
-                                                        ServerConnectionState.Checking -> {
-                                                            Text(
-                                                                text = stringResource(R.string.listen_together_server_checking),
-                                                                style = MaterialTheme.typography.labelMedium,
-                                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                                                maxLines = 1,
-                                                            )
-                                                        }
-                                                        ServerConnectionState.Offline -> {
-                                                            Text(
-                                                                text = stringResource(R.string.listen_together_server_offline_dash),
-                                                                style = MaterialTheme.typography.labelMedium,
-                                                                color = MaterialTheme.colorScheme.error,
-                                                                maxLines = 1,
-                                                            )
-                                                        }
-                                                    }
-                                                }
-                                            },
-                                        )
-                                    }
-                                }
-
-                                // Download indicator (outermost auxiliary slot when downloading).
-                                // Not on the page it opens, where it would only lead back to itself.
-                                if (downloadSession.visible && route != AppRoute.Downloads) {
+                                    },
+                                )
+                                // Index 1 (to the left of Sort): Search
+                                if (releaseSongs.isNotEmpty()) {
                                     add(
-                                        TopBarActionItem(key = "download") {
-                                            TopBarDownloadButton(onClick = { navigator.push(AppRoute.Downloads) })
+                                        TopBarActionItem(key = "search") {
+                                            IconButton(
+                                                onClick = { detailSearching = !detailSearching },
+                                                modifier = Modifier.size(TOP_CONTROL_SIZE),
+                                            ) {
+                                                Icon(
+                                                    if (detailSearching) Icons.Rounded.Close else BitChordIcons.Search,
+                                                    contentDescription = stringResource(
+                                                        if (detailSearching) R.string.close_search else R.string.search_this_list,
+                                                    ),
+                                                    tint = MaterialTheme.colorScheme.onSurface,
+                                                )
+                                            }
                                         },
                                     )
                                 }
                             }
+
+                            // Artist Detail
+                            detail != null && !isLocalDetail && detail.type == BrowseType.ARTIST &&
+                                detailActiveShelf == null && detail.browseId?.startsWith("UC") == true -> {
+                                add(
+                                    TopBarActionItem(key = "share") {
+                                        detail.let { d ->
+                                            IconButton(
+                                                onClick = {
+                                                    val sendIntent = Intent(Intent.ACTION_SEND).apply {
+                                                        type = "text/plain"
+                                                        putExtra(
+                                                            Intent.EXTRA_TEXT,
+                                                            "https://music.youtube.com/channel/${d.browseId}",
+                                                        )
+                                                    }
+                                                    context.startActivity(Intent.createChooser(sendIntent, d.title))
+                                                },
+                                                modifier = Modifier.size(TOP_CONTROL_SIZE),
+                                            ) {
+                                                Icon(
+                                                    Icons.Rounded.IosShare,
+                                                    contentDescription = stringResource(R.string.share),
+                                                    tint = MaterialTheme.colorScheme.onSurface,
+                                                )
+                                            }
+                                        }
+                                    },
+                                )
+                            }
+
+                            // Library tab root
+                            route == null && detail == null && selectedTab == TAB_LIBRARY -> {
+                                // Index 0 (adjacent to PFP): History
+                                add(
+                                    TopBarActionItem(key = "history") {
+                                        IconButton(
+                                            onClick = {
+                                                navigator.push(AppRoute.History)
+                                                viewModel.loadHistory()
+                                            },
+                                            modifier = Modifier.size(TOP_CONTROL_SIZE),
+                                        ) {
+                                            Icon(
+                                                Icons.Rounded.History,
+                                                contentDescription = stringResource(R.string.listening_history),
+                                                tint = MaterialTheme.colorScheme.onSurface,
+                                            )
+                                        }
+                                    },
+                                )
+                                // Index 1 (to the left of History): Grid/List toggle
+                                add(
+                                    TopBarActionItem(key = "view_type") {
+                                        val listStyle = libraryViewType == LibraryViewType.LIST
+                                        IconButton(
+                                            onClick = {
+                                                AppSettings.setLibraryViewType(
+                                                    if (listStyle) LibraryViewType.GRID else LibraryViewType.LIST,
+                                                )
+                                            },
+                                            modifier = Modifier.size(TOP_CONTROL_SIZE),
+                                        ) {
+                                            Icon(
+                                                if (listStyle) BitChordIcons.GridView else BitChordIcons.ListView,
+                                                contentDescription = stringResource(
+                                                    if (listStyle) R.string.switch_to_grid_view else R.string.switch_to_list_view,
+                                                ),
+                                                tint = MaterialTheme.colorScheme.onSurface,
+                                            )
+                                        }
+                                    },
+                                )
+                            }
+
+                            // Library ShowAll
+                            route is AppRoute.LibraryShowAll -> {
+                                // Index 0: Sort
+                                add(
+                                    TopBarActionItem(key = "sort") {
+                                        Box {
+                                            IconButton(
+                                                onClick = { librarySortMenuOpen = true },
+                                                modifier = Modifier.size(TOP_CONTROL_SIZE),
+                                            ) {
+                                                Icon(
+                                                    Icons.AutoMirrored.Rounded.Sort,
+                                                    contentDescription = stringResource(R.string.sort_library),
+                                                    tint = MaterialTheme.colorScheme.onSurface,
+                                                )
+                                            }
+                                            DropdownMenu(
+                                                expanded = librarySortMenuOpen,
+                                                onDismissRequest = { librarySortMenuOpen = false },
+                                            ) {
+                                                LibrarySort.entries.forEach { option ->
+                                                    DropdownMenuItem(
+                                                        text = { Text(option.localizedLabel()) },
+                                                        trailingIcon = if (option == librarySort) {
+                                                            { Icon(Icons.Rounded.Check, contentDescription = null) }
+                                                        } else null,
+                                                        onClick = {
+                                                            AppSettings.setLibrarySort(option)
+                                                            librarySortMenuOpen = false
+                                                        },
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    },
+                                )
+                                // Index 1: Grid/List toggle
+                                add(
+                                    TopBarActionItem(key = "view_type") {
+                                        val listStyle = libraryViewType == LibraryViewType.LIST
+                                        IconButton(
+                                            onClick = {
+                                                AppSettings.setLibraryViewType(
+                                                    if (listStyle) LibraryViewType.GRID else LibraryViewType.LIST,
+                                                )
+                                            },
+                                            modifier = Modifier.size(TOP_CONTROL_SIZE),
+                                        ) {
+                                            Icon(
+                                                if (listStyle) BitChordIcons.GridView else BitChordIcons.ListView,
+                                                contentDescription = stringResource(
+                                                    if (listStyle) R.string.switch_to_grid_view else R.string.switch_to_list_view,
+                                                ),
+                                                tint = MaterialTheme.colorScheme.onSurface,
+                                            )
+                                        }
+                                    },
+                                )
+                            }
+
+                            // Home tab with update notice
+                            route == null && detail == null && selectedTab == TAB_HOME && updateNotice != null -> {
+                                add(
+                                    TopBarActionItem(key = "update") {
+                                        IconButton(
+                                            onClick = { showUpdateDialog = true },
+                                            modifier = Modifier.size(TOP_CONTROL_SIZE),
+                                        ) {
+                                            Icon(
+                                                Icons.Rounded.Upgrade,
+                                                contentDescription = stringResource(R.string.update_available, updateNotice.version.orEmpty()),
+                                                tint = MaterialTheme.colorScheme.primary,
+                                            )
+                                        }
+                                    },
+                                )
+                            }
+
+                            // Import: straight into choosing which playlists to copy
+                            route == AppRoute.Spotify && spotifyLibraryState.playlists.isNotEmpty() &&
+                                !spotifyLibraryState.selecting && !spotifySyncRunning -> {
+                                add(
+                                    TopBarActionItem(key = "spotify") {
+                                        IconButton(
+                                            onClick = spotifyLibraryState::requestStartSelecting,
+                                            modifier = Modifier.size(TOP_CONTROL_SIZE),
+                                        ) {
+                                            Icon(
+                                                Icons.Rounded.Download,
+                                                contentDescription = stringResource(R.string.spotify_sync_menu),
+                                                tint = MaterialTheme.colorScheme.onSurface,
+                                            )
+                                        }
+                                    },
+                                )
+                            }
+
+                            // Listen Together
+                            route == AppRoute.ListenTogether -> {
+                                add(
+                                    TopBarActionItem(key = "ping") {
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            modifier = Modifier.padding(horizontal = 8.dp),
+                                        ) {
+                                            when (val state = partyServerStatus) {
+                                                is ServerConnectionState.CustomFallback -> {
+                                                    Icon(
+                                                        Icons.Rounded.CloudOff,
+                                                        contentDescription = stringResource(R.string.listen_together_top_bar_fallback, stringResource(R.string.listen_together_ping, state.latencyMs)),
+                                                        tint = MaterialTheme.colorScheme.error,
+                                                        modifier = Modifier.size(14.dp),
+                                                    )
+                                                    Spacer(Modifier.width(4.dp))
+                                                    Text(
+                                                        text = stringResource(R.string.listen_together_ping, state.latencyMs),
+                                                        style = MaterialTheme.typography.labelMedium,
+                                                        color = MaterialTheme.colorScheme.error,
+                                                        maxLines = 1,
+                                                    )
+                                                }
+                                                is ServerConnectionState.CustomOnline -> {
+                                                    Text(
+                                                        text = stringResource(R.string.listen_together_ping, state.latencyMs),
+                                                        style = MaterialTheme.typography.labelMedium,
+                                                        color = MaterialTheme.colorScheme.onSurface,
+                                                        maxLines = 1,
+                                                    )
+                                                }
+                                                is ServerConnectionState.DefaultOnline -> {
+                                                    Text(
+                                                        text = stringResource(R.string.listen_together_ping, state.latencyMs),
+                                                        style = MaterialTheme.typography.labelMedium,
+                                                        color = MaterialTheme.colorScheme.onSurface,
+                                                        maxLines = 1,
+                                                    )
+                                                }
+                                                ServerConnectionState.Checking -> {
+                                                    Text(
+                                                        text = stringResource(R.string.listen_together_server_checking),
+                                                        style = MaterialTheme.typography.labelMedium,
+                                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                        maxLines = 1,
+                                                    )
+                                                }
+                                                ServerConnectionState.Offline -> {
+                                                    Text(
+                                                        text = stringResource(R.string.listen_together_server_offline_dash),
+                                                        style = MaterialTheme.typography.labelMedium,
+                                                        color = MaterialTheme.colorScheme.error,
+                                                        maxLines = 1,
+                                                    )
+                                                }
+                                            }
+                                        }
+                                    },
+                                )
+                            }
                         }
 
-                        TopBarActions(
-                            anchor = anchorState,
-                            auxiliary = auxiliaryItems,
-                        )
-                    },
-                )
-
-                // Drawn before the bars so their own glass reads on top of it.
-                BottomFadeScrim(
-                    withMiniPlayer = player.song != null,
-                    // Not the wash: by the foot of the screen the page has finished
-                    // easing out of it and into this, so this is what is actually
-                    // under the tab bar.
-                    pageColor = chromePageColor,
-                    modifier = Modifier.align(Alignment.BottomCenter),
-                )
-
-                // Whichever bar is drawing reports its height here, for the
-                // guard to read at layout — never in composition, see the guard.
-                FloatingBarsTapGuard(
-                    barsHeight = { if (selectedTab == TAB_SEARCH) 0 else floatingBarsHeight.intValue },
-                    modifier = Modifier.align(Alignment.BottomCenter),
-                )
-
-                // One tab handler, whichever bar is drawing it.
-                // A tab is a fresh start: everything pushed over the old one —
-                // routes and release pages alike — goes with it.
+                        // Download indicator (outermost auxiliary slot when downloading).
+                        // Not on the page it opens, where it would only lead back to itself.
+                        if (downloadSession.visible && route != AppRoute.Downloads) {
+                            add(
+                                TopBarActionItem(key = "download") {
+                                    TopBarDownloadButton(onClick = { navigator.push(AppRoute.Downloads) })
+                                },
+                            )
+                        }
+                    }
+                }
                 val dismissSearch: () -> Unit = {
                     selectedTab = lastNonSearchTab
                 }
@@ -4653,108 +4215,382 @@ private fun BitChordApp(
                         }
                     }
                 }
-
-                val effectiveInline = navBarScroll.isInline && selectedTab != TAB_SEARCH && !keyboardUp && player.song != null
-
-                Column(
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .widthIn(max = FLOATING_BAR_MAX_WIDTH)
-                        .fillMaxWidth()
-                        .onSizeChanged { floatingBarsHeight.intValue = it.height },
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                ) {
-                    QueueActionNoticeHost(queueNotice)
-                    val showTopMiniPlayer = player.song != null && !effectiveInline
-                    AnimatedVisibility(
-                        visible = showTopMiniPlayer,
-                        enter = if (reducePlayerMotion) {
-                            fadeIn(tween(180)) + expandVertically(tween(200))
-                        } else {
-                            fadeIn(tween(200)) +
-                                expandVertically(
-                                    expandFrom = Alignment.Bottom,
-                                    animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
-                                ) +
-                                scaleIn(
-                                    initialScale = 0.80f,
-                                    transformOrigin = TransformOrigin(0.5f, 1f),
-                                    animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
-                                )
-                        },
-                        exit = if (reducePlayerMotion) {
-                            fadeOut(tween(140)) + shrinkVertically(tween(180))
-                        } else {
-                            fadeOut(tween(160)) +
-                                shrinkVertically(
-                                    shrinkTowards = Alignment.Bottom,
-                                    animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
-                                ) +
-                                scaleOut(
-                                    targetScale = 0.80f,
-                                    transformOrigin = TransformOrigin(0.5f, 1f),
-                                    animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
-                                )
-                        },
-                    ) {
-                        player.song?.let { song ->
-                            Column {
-                                MiniPlayer(
-                                    song = song,
-                                    isPlaying = player.isPlaying,
-                                    isLoading = playPauseBusy,
-                                    hazeState = hazeState,
-                                    onPlayPause = {
-                                        togglePlayPause()
-                                    },
-                                    onNext = { controller?.seekToNextMediaItem() },
-                                    onPrevious = { controller?.seekToPrevious() },
-                                    onExpand = if (reducePlayerMotion) {
-                                        { showNowPlaying = true }
-                                    } else {
-                                        playerSheetMotion::open
-                                    },
-                                    controlsLocked = controlsLocked,
-                                    onBlockedControl = showHostOnlyNotice,
-                                    dock = activeDock,
-                                    pull = playerSheetMotion.takeIf { !reducePlayerMotion },
-                                    compact = keyboardUp,
-                                    modifier = Modifier.fillMaxWidth(),
-                                )
-                                Spacer(Modifier.height(8.dp))
-                            }
-                        }
+                if (isLandscapeChrome) {
+                    com.music.bitchord.ui.components.OfflineBanner(
+                        visible = offlineBannerActive,
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(top = com.music.bitchord.ui.components.topBarHeight()),
+                    )
+                    if (selectedTab == TAB_SEARCH && route == null && detail == null && selectedMoodGenre == null) {
+                        SearchSourceSwitcher(
+                            searchSource = searchSource,
+                            onSearchSourceChange = { onSearchSourceChange(it) },
+                            hazeState = hazeState,
+                            surface = true,
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .padding(top = com.music.bitchord.ui.components.topBarHeight() + 8.dp)
+                                .padding(landscapeSidePadding),
+                        )
                     }
-                    MorphingBottomBar(
+                    if ((player.song != null && !keyboardUp) || selectedTab == TAB_SEARCH) {
+                        BottomFadeScrim(
+                            withMiniPlayer = false,
+                            fadeHeightOverride = 96.dp,
+                            pageColor = chromePageColor,
+                            modifier = Modifier.align(Alignment.BottomCenter),
+                        )
+                    }
+                    FloatingBarsTapGuard(
+                        barsHeight = { if (selectedTab == TAB_SEARCH || player.song == null || keyboardUp) 0 else floatingBarsHeight.intValue },
+                        modifier = Modifier.align(Alignment.BottomCenter),
+                    )
+                    com.music.bitchord.ui.components.LandscapeTopBarRail(
+                        topBarOnLeft = topBarOnLeft,
+                        anchor = anchorState,
+                        auxiliary = auxiliaryItems,
+                        actionsVisible = topBarActionsVisible,
+                        onBack = topBarOnBack,
+                        leading = topBarLeading,
+                        hazeState = hazeState,
+                        modifier = Modifier.align(if (topBarOnLeft) Alignment.CenterStart else Alignment.CenterEnd),
+                    )
+                    com.music.bitchord.ui.components.LandscapeNavBarRail(
                         tabs = tabs,
                         selectedIndex = selectedTab,
                         onTabSelected = onTabSelected,
-                        query = query,
-                        onQueryChange = viewModel::onQueryChange,
-                        onSubmit = viewModel::submitSearch,
                         onDismissSearch = dismissSearch,
-                        searchFocusRequester = searchFieldFocus,
+                        searchOnTop = topBarOnLeft,
                         hazeState = hazeState,
-                        isInline = effectiveInline,
-                        onExpandInline = { navBarScroll.expand() },
-                        inlineSong = player.song,
-                        isPlaying = player.isPlaying,
-                        isLoading = playPauseBusy,
-                        onPlayPause = { togglePlayPause() },
-                        onNext = { controller?.seekToNextMediaItem() },
-                        onPrevious = { controller?.seekToPrevious() },
-                        onExpandPlayer = if (reducePlayerMotion) {
-                            { showNowPlaying = true }
-                        } else {
-                            playerSheetMotion::open
-                        },
-                        pull = playerSheetMotion.takeIf { !reducePlayerMotion },
-                        controlsLocked = controlsLocked,
-                        onBlockedControl = showHostOnlyNotice,
-                        modifier = Modifier.fillMaxWidth(),
+                        modifier = Modifier.align(if (topBarOnLeft) Alignment.CenterEnd else Alignment.CenterStart),
                     )
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(landscapeSidePadding)
+                            .widthIn(max = com.music.bitchord.ui.components.LANDSCAPE_MINI_PLAYER_MAX_WIDTH)
+                            .fillMaxWidth()
+                            .onSizeChanged { floatingBarsHeight.intValue = it.height },
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        QueueActionNoticeHost(queueNotice)
+                        if (selectedTab == TAB_SEARCH) {
+                            SearchBottomPill(
+                                query = query,
+                                onQueryChange = viewModel::onQueryChange,
+                                onSubmit = viewModel::submitSearch,
+                                onDismiss = dismissSearch,
+                                focusRequester = searchFieldFocus,
+                                hazeState = hazeState,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        } else {
+                            AnimatedVisibility(
+                                visible = player.song != null && !keyboardUp,
+                                enter = if (reducePlayerMotion) {
+                                    fadeIn(tween(180)) + expandVertically(tween(200))
+                                } else {
+                                    fadeIn(tween(220)) +
+                                        expandVertically(
+                                            expandFrom = Alignment.Bottom,
+                                            clip = false,
+                                            animationSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                                        ) +
+                                        slideInVertically(
+                                            initialOffsetY = { (it * 0.45f).toInt() },
+                                            animationSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                                        ) +
+                                        scaleIn(
+                                            initialScale = 0.72f,
+                                            transformOrigin = TransformOrigin(0.5f, 1f),
+                                            animationSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                                        )
+                                },
+                                exit = if (reducePlayerMotion) {
+                                    fadeOut(tween(140)) + shrinkVertically(tween(180))
+                                } else {
+                                    fadeOut(tween(180)) +
+                                        shrinkVertically(
+                                            shrinkTowards = Alignment.Bottom,
+                                            clip = false,
+                                            animationSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                                        ) +
+                                        slideOutVertically(
+                                            targetOffsetY = { (it * 0.45f).toInt() },
+                                            animationSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                                        ) +
+                                        scaleOut(
+                                            targetScale = 0.72f,
+                                            transformOrigin = TransformOrigin(0.5f, 1f),
+                                            animationSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                                        )
+                                },
+                            ) {
+                                player.song?.let { song ->
+                                    Box(
+                                        modifier = Modifier
+                                            .windowInsetsPadding(com.music.bitchord.ui.components.floatingBarInsets)
+                                            .padding(bottom = 2.dp),
+                                    ) {
+                                        MiniPlayer(
+                                            song = song,
+                                            isPlaying = player.isPlaying,
+                                            isLoading = playPauseBusy,
+                                            hazeState = hazeState,
+                                            onPlayPause = { togglePlayPause() },
+                                            onNext = { controller?.seekToNextMediaItem() },
+                                            onPrevious = { controller?.seekToPrevious() },
+                                            onExpand = if (reducePlayerMotion) {
+                                                { showNowPlaying = true }
+                                            } else {
+                                                playerSheetMotion::open
+                                            },
+                                            controlsLocked = controlsLocked,
+                                            onBlockedControl = showHostOnlyNotice,
+                                            dock = activeDock,
+                                            pull = playerSheetMotion.takeIf { !reducePlayerMotion },
+                                            modifier = Modifier.fillMaxWidth(),
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (reduceDynamicBlur || !glassActive || !progressiveBlur) {
+                        BottomFadeScrim(
+                            pageColor = chromePageColor,
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .rotate(180f)
+                                .graphicsLayer { alpha = topFadeAlpha },
+                        )
+                    } else {
+                        TopFadeBlur(
+                            hazeState = hazeState,
+                            pageColor = chromePageColor,
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .graphicsLayer { alpha = topFadeAlpha },
+                        )
+                    }
+                    com.music.bitchord.ui.components.OfflineBanner(
+                        visible = offlineBannerActive,
+                        modifier = Modifier
+                            .align(Alignment.TopCenter)
+                            .padding(top = com.music.bitchord.ui.components.topBarHeight()),
+                    )
+    
+                    FrostedTopBar(
+                        title = when (route) {
+                            AppRoute.Spotify -> stringResource(R.string.spotify)
+                            AppRoute.Downloads -> stringResource(R.string.downloads)
+                            AppRoute.Discord -> "Discord"
+                            AppRoute.History -> stringResource(R.string.history)
+                            is AppRoute.LibraryShowAll -> route.shelf.title
+                            is AppRoute.ArtistShelf -> route.shelf.title
+                            AppRoute.Moods -> stringResource(R.string.find_your_mood)
+                            AppRoute.AccountScrobbling -> stringResource(R.string.account_scrobbling)
+                            AppRoute.Sources -> stringResource(R.string.sources)
+                            AppRoute.ListenTogether -> stringResource(R.string.listen_together)
+                            AppRoute.WearOs -> stringResource(R.string.wear_os_page_title)
+                            AppRoute.Equalizer -> stringResource(R.string.equalizer)
+                            AppRoute.Settings -> stringResource(R.string.settings)
+                            is AppRoute.SettingsSection -> stringResource(route.category.title)
+                            is AppRoute.SettingsChoice -> stringResource(route.choice.title)
+                            AppRoute.EqualizerPresets -> stringResource(R.string.equalizer_preset)
+                            AppRoute.Replay -> stringResource(R.string.replay)
+                            null -> when {
+                                detail != null && detailActiveShelf != null -> detailActiveShelf.title.orEmpty()
+                                detail != null -> detail.title
+                                selectedMoodGenre != null -> selectedMoodGenre?.title.orEmpty()
+                                else -> if (selectedTab == TAB_HOME) "" else tabs[selectedTab].let {
+                                    if (it.label == "Play") stringResource(R.string.listen_now) else it.label
+                                }
+                            }
+                        },
+                        // Every page, in either material, uses separated floating
+                        // circles over the shared gradient — no full-width pane.
+                        transparentBackdrop = true,
+                        artworkPageChrome = true,
+                        backButtonHazeState = hazeState,
+                        trailingTitle = if (detail != null && detailActiveShelf != null) detail.title else null,
+                        // Search has no large in-list header to hand the title back to —
+                        // the field takes that space — so its bar title is always up.
+                        scrolled = {
+                            when {
+                                // The page leads with its own large "Replay", so the bar
+                                // stays out of the way until that has been scrolled off.
+                                route == AppRoute.Replay -> replayScrolled
+                                route != null -> true
+                                detail != null && detailActiveShelf != null -> true
+                                detail != null -> detailScrolled
+                                selectedMoodGenre != null -> true
+                                else -> scrolled || selectedTab == TAB_SEARCH
+                            }
+                        },
+                        refreshing = currentFeed != null && currentFeed in refreshing,
+                        pullFraction = { currentPull?.distanceFraction ?: 0f },
+                        // The same step the back gesture takes — see [goBack] —
+                        // offered on anything pushed over a tab.
+                        onBack = when {
+                            route != null || detail != null || selectedMoodGenre != null -> goBack
+                            selectedTab == TAB_SEARCH -> ({ selectedTab = lastNonSearchTab })
+                            else -> null
+                        },
+                        modifier = Modifier.align(Alignment.TopCenter),
+                        // Settings is the profile's own destination: no actions there.
+                        actionsVisible = !(route != null && AppRoute.Settings in navigator),
+                        leading = if (selectedTab == TAB_HOME && route == null && detail == null && selectedMoodGenre == null) {
+                            {
+                                Icon(
+                                    painter = painterResource(R.drawable.ic_logo),
+                                    contentDescription = "BitChord",
+                                    tint = MaterialTheme.colorScheme.onBackground,
+                                    modifier = Modifier
+                                        .padding(start = 4.dp)
+                                        .size(width = 30.dp, height = 30.dp),
+                                )
+                            }
+                        } else null,
+                        accessory = if (
+                            selectedTab == TAB_SEARCH && route == null && detail == null && selectedMoodGenre == null
+                        ) {
+                            {
+                                SearchSourceSwitcher(
+                                    searchSource = searchSource,
+                                    onSearchSourceChange = { onSearchSourceChange(it) },
+                                    hazeState = hazeState,
+                                    // The accessory pill around it is the surface.
+                                    surface = false,
+                                )
+                            }
+                        } else null,
+                        actions = {
+                            TopBarActions(
+                                anchor = anchorState,
+                                auxiliary = auxiliaryItems,
+                            )
+                        },
+                    )
+    
+                    // Drawn before the bars so their own glass reads on top of it.
+                    BottomFadeScrim(
+                        withMiniPlayer = player.song != null,
+                        // Not the wash: by the foot of the screen the page has finished
+                        // easing out of it and into this, so this is what is actually
+                        // under the tab bar.
+                        pageColor = chromePageColor,
+                        modifier = Modifier.align(Alignment.BottomCenter),
+                    )
+                    FloatingBarsTapGuard(
+                        barsHeight = { if (selectedTab == TAB_SEARCH) 0 else floatingBarsHeight.intValue },
+                        modifier = Modifier.align(Alignment.BottomCenter),
+                    )
+                    val effectiveInline = navBarScroll.isInline && selectedTab != TAB_SEARCH && !keyboardUp && player.song != null
+    
+                    Column(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .widthIn(max = FLOATING_BAR_MAX_WIDTH)
+                            .fillMaxWidth()
+                            .onSizeChanged { floatingBarsHeight.intValue = it.height },
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                    ) {
+                        QueueActionNoticeHost(queueNotice)
+                        val showTopMiniPlayer = player.song != null && !effectiveInline
+                        AnimatedVisibility(
+                            visible = showTopMiniPlayer,
+                            enter = if (reducePlayerMotion) {
+                                fadeIn(tween(180)) + expandVertically(tween(200))
+                            } else {
+                                fadeIn(tween(200)) +
+                                    expandVertically(
+                                        expandFrom = Alignment.Bottom,
+                                        animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+                                    ) +
+                                    scaleIn(
+                                        initialScale = 0.80f,
+                                        transformOrigin = TransformOrigin(0.5f, 1f),
+                                        animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+                                    )
+                            },
+                            exit = if (reducePlayerMotion) {
+                                fadeOut(tween(140)) + shrinkVertically(tween(180))
+                            } else {
+                                fadeOut(tween(160)) +
+                                    shrinkVertically(
+                                        shrinkTowards = Alignment.Bottom,
+                                        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+                                    ) +
+                                    scaleOut(
+                                        targetScale = 0.80f,
+                                        transformOrigin = TransformOrigin(0.5f, 1f),
+                                        animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+                                    )
+                            },
+                        ) {
+                            player.song?.let { song ->
+                                Column {
+                                    MiniPlayer(
+                                        song = song,
+                                        isPlaying = player.isPlaying,
+                                        isLoading = playPauseBusy,
+                                        hazeState = hazeState,
+                                        onPlayPause = {
+                                            togglePlayPause()
+                                        },
+                                        onNext = { controller?.seekToNextMediaItem() },
+                                        onPrevious = { controller?.seekToPrevious() },
+                                        onExpand = if (reducePlayerMotion) {
+                                            { showNowPlaying = true }
+                                        } else {
+                                            playerSheetMotion::open
+                                        },
+                                        controlsLocked = controlsLocked,
+                                        onBlockedControl = showHostOnlyNotice,
+                                        dock = activeDock,
+                                        pull = playerSheetMotion.takeIf { !reducePlayerMotion },
+                                        modifier = Modifier.fillMaxWidth(),
+                                    )
+                                    Spacer(Modifier.height(8.dp))
+                                }
+                            }
+                        }
+                        MorphingBottomBar(
+                            tabs = tabs,
+                            selectedIndex = selectedTab,
+                            onTabSelected = onTabSelected,
+                            query = query,
+                            onQueryChange = viewModel::onQueryChange,
+                            onSubmit = viewModel::submitSearch,
+                            onDismissSearch = dismissSearch,
+                            searchFocusRequester = searchFieldFocus,
+                            hazeState = hazeState,
+                            isInline = effectiveInline,
+                            onExpandInline = { navBarScroll.expand() },
+                            inlineSong = player.song,
+                            isPlaying = player.isPlaying,
+                            isLoading = playPauseBusy,
+                            onPlayPause = { togglePlayPause() },
+                            onNext = { controller?.seekToNextMediaItem() },
+                            onPrevious = { controller?.seekToPrevious() },
+                            onExpandPlayer = if (reducePlayerMotion) {
+                                { showNowPlaying = true }
+                            } else {
+                                playerSheetMotion::open
+                            },
+                            pull = playerSheetMotion.takeIf { !reducePlayerMotion },
+                            controlsLocked = controlsLocked,
+                            onBlockedControl = showHostOnlyNotice,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                 }
             }
+
+        }
 
         }
 
@@ -5950,182 +5786,52 @@ private fun BitChordApp(
         }
 
         // ---- Welcome (once; under the sign-in WebView it can open) ----
-        // There from the first frame, so no way in; on the way out it drops
-        // like a dismissed sheet onto the app it was standing in front of.
-        AnimatedVisibility(
-            visibleState = onboardingShown,
-            enter = EnterTransition.None,
-            exit = slideOutVertically(
-                tween<IntOffset>(durationMillis = 560, easing = OnboardingDismissEasing),
-            ) { it },
-        ) {
-            val spotifySpdcToken by AppSettings.spotifySpdcToken.collectAsStateWithLifecycle()
-            OnboardingScreen(
-                signedIn = signedIn,
-                spotifyConnected = spotifySpdcToken.isNotBlank(),
-                initialName = remember {
-                    ListenTogether.nickname().ifBlank { account?.name.orEmpty() }
-                },
-                onNameChosen = ListenTogether::setNickname,
-                onSignIn = { webSession = WebSessionMode.SIGN_IN },
-                onConnectSpotify = { showSpotifyLogin = true },
-                onOpenSpotifyTokenSetup = { showSpotifyCanvasAuth = true },
-                onFinish = AppSettings::setOnboardingComplete,
-            )
-        }
+        OnboardingOverlay(
+            onboardingShown = onboardingShown,
+            signedIn = signedIn,
+            accountName = account?.name,
+            onSignIn = { webSession = WebSessionMode.SIGN_IN },
+            onConnectSpotify = { showSpotifyLogin = true },
+            onOpenSpotifyTokenSetup = { showSpotifyCanvasAuth = true },
+        )
 
         // ---- Google sign-in (full screen WebView) ----
         webSession?.let { mode ->
-            BackHandler { webSession = null }
-            // Raised by "Use this channel", read by the browser as "take the
-            // session from the page as it now stands". A counter rather than a
-            // flag so a second tap, after a failed first one, is still a new
-            // request rather than a value that was already true.
-            var captureRequest by remember(mode) { mutableIntStateOf(0) }
-            var captureFailed by remember(mode) { mutableStateOf(false) }
-            var pageReady by remember(mode) { mutableStateOf(false) }
-            var confirmingProfile by remember(mode) { mutableStateOf(false) }
-            // A fresh sign-in confirms itself once, the first time the signed-in
-            // Music page is up. A login with several channels is rolled back by
-            // the view model and left to the button; so is any attempt that finds
-            // the page not ready yet.
-            var autoTried by remember(mode) { mutableStateOf(false) }
-            var autoAttempt by remember(mode) { mutableStateOf(false) }
-            LaunchedEffect(pageReady) {
-                if (pageReady && mode == WebSessionMode.SIGN_IN && !autoTried) {
-                    autoTried = true
-                    autoAttempt = true
-                    confirmingProfile = true
-                    captureRequest++
-                }
-            }
-            Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                Column(Modifier.fillMaxSize()) {
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .statusBarsPadding()
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        IconButton(onClick = { webSession = null }) {
-                            Icon(
-                                Icons.Rounded.Close,
-                                contentDescription = stringResource(R.string.close),
-                                tint = MaterialTheme.colorScheme.onBackground,
-                            )
-                        }
-                        Column(Modifier.weight(1f)) {
-                            Text(
-                                text = when (mode) {
-                                    WebSessionMode.SIGN_IN -> stringResource(R.string.sign_in_youtube_music)
-                                    WebSessionMode.SWITCH_CHANNEL -> stringResource(R.string.choose_profile)
-                                },
-                                style = MaterialTheme.typography.titleMedium,
-                                color = MaterialTheme.colorScheme.onBackground,
-                            )
-                            if (pageReady) {
-                                Text(
-                                    text = if (captureFailed) {
-                                         stringResource(R.string.profile_unavailable)
-                                     } else {
-                                         stringResource(R.string.switch_profile_hint)
-                                    },
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    maxLines = 2,
-                                )
+            GoogleSignInWebViewOverlay(
+                mode = mode,
+                initialCookie = if (mode == WebSessionMode.SWITCH_CHANNEL) {
+                    googleAccounts.firstOrNull { it.accountId == activeAccountId }?.cookie
+                } else null,
+                onDismiss = { webSession = null },
+                onSessionCaptured = { session, autoConfirm, onNeedsChoice, onResult ->
+                    viewModel.onWebSession(
+                        session,
+                        mode,
+                        autoConfirm = autoConfirm,
+                        onNeedsChoice = onNeedsChoice,
+                    ) { accepted ->
+                        if (accepted) {
+                            webSession = null
+                            if (mode == WebSessionMode.SIGN_IN) {
+                                navigator.clear()
+                                selectedTab = TAB_LIBRARY
                             }
                         }
-                        if (pageReady) {
-                            TextButton(onClick = {
-                                captureFailed = false
-                                autoAttempt = false
-                                confirmingProfile = true
-                                captureRequest++
-                            }, enabled = !confirmingProfile) {
-                                Text(
-                                    if (confirmingProfile) stringResource(R.string.checking)
-                                    else stringResource(R.string.use_this_profile),
-                                )
-                            }
-                        }
+                        onResult(accepted)
                     }
-                    YtMusicLoginScreen(
-                        mode = mode,
-                        initialCookie = if (mode == WebSessionMode.SWITCH_CHANNEL) {
-                            googleAccounts.firstOrNull { it.accountId == activeAccountId }?.cookie
-                        } else null,
-                        captureRequest = captureRequest,
-                        onPageReady = { pageReady = it },
-                        onCaptureUnavailable = {
-                            confirmingProfile = false
-                            if (autoAttempt) autoAttempt = false else captureFailed = true
-                        },
-                        onCaptured = { session ->
-                            val auto = autoAttempt
-                            autoAttempt = false
-                            viewModel.onWebSession(
-                                session,
-                                mode,
-                                autoConfirm = auto,
-                                onNeedsChoice = { confirmingProfile = false },
-                            ) { accepted ->
-                                confirmingProfile = false
-                                if (accepted) {
-                                    webSession = null
-                                    if (mode == WebSessionMode.SIGN_IN) {
-                                        navigator.clear()
-                                        selectedTab = TAB_LIBRARY
-                                    }
-                                } else {
-                                    captureFailed = true
-                                }
-                            }
-                        },
-                    )
-                }
-            }
+                },
+            )
         }
 
         // ---- Update available (once per launch; held until the welcome is done) ----
-        AnimatedVisibility(
-            visible = showUpdateDialog && onboardingComplete && updateNotice != null,
-            enter = fadeIn(tween(durationMillis = 200)),
-            exit = fadeOut(tween(durationMillis = 180)),
-        ) {
-            updateNotice?.let { update ->
-                UpdateAvailableDialog(
-                    version = update.version,
-                    notes = update.notes,
-                    hazeState = hazeState,
-                    // A download in progress keeps running behind the closed
-                    // sheet — only the sheet itself goes away. The top bar's
-                    // update icon reopens it onto whatever state it reached.
-                    onDismiss = { showUpdateDialog = false },
-                    onDownload = {
-                        if (update.apkUrl != null) {
-                            scope.launch { AppUpdateChecker.downloadApk(context) }
-                        } else {
-                            context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(update.releaseUrl)))
-                            showUpdateDialog = false
-                        }
-                    },
-                    onCancelDownload = {
-                        AppUpdateChecker.cancelDownload()
-                    },
-                    onInstall = {
-                        val ready = AppUpdateChecker.download.value as? AppUpdateChecker.DownloadState.Ready
-                        ready?.let { AppUpdateChecker.installApk(context, it.file) }
-                    },
-                    onOpenReleasePage = {
-                        AppUpdateChecker.resetDownload()
-                        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(update.releaseUrl)))
-                        showUpdateDialog = false
-                    },
-                )
-            }
-        }
+        UpdateAvailableOverlay(
+            visible = showUpdateDialog && onboardingComplete,
+            updateNotice = updateNotice,
+            hazeState = hazeState,
+            context = context,
+            scope = scope,
+            onDismiss = { showUpdateDialog = false },
+        )
 
         if (showLyricsSources) {
             BackHandler { showLyricsSources = false }
@@ -6227,7 +5933,7 @@ private fun BitChordApp(
         }
 
         if (showListenBrainzLogin) {
-            var tokenInput by remember { mutableStateOf(listenBrainzToken) }
+            var tokenInput by remember { mutableStateOf(AppSettings.listenBrainzToken.value) }
             ListenBrainzTokenAlert(
                 hazeState = hazeState,
                 tokenInput = tokenInput,
@@ -6418,75 +6124,14 @@ private fun BitChordApp(
 
         // ---- Discord sign-in (full screen WebView) ----
         if (showDiscordLogin) {
-            BackHandler { showDiscordLogin = false }
-            Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                Column(Modifier.fillMaxSize()) {
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .statusBarsPadding()
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        IconButton(onClick = { showDiscordLogin = false }) {
-                            Icon(
-                                Icons.Rounded.Close,
-                                contentDescription = stringResource(R.string.close),
-                                tint = MaterialTheme.colorScheme.onBackground,
-                            )
-                        }
-                        Text(
-                            "Sign in to Discord",
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onBackground,
-                        )
-                    }
-                    DiscordLoginScreen(
-                        onTokenCaptured = { token ->
-                            AppSettings.setDiscordToken(token)
-                            showDiscordLogin = false
-                        },
-                    )
-                }
-            }
+            DiscordSignInWebViewOverlay(onDismiss = { showDiscordLogin = false })
         }
 
         // ---- Spotify sign-in (full screen WebView) ----
         // Out here with Discord's rather than on the Spotify page itself: see
         // SpotifyLoginScreen for what the blurred content tree does to a WebView.
         if (showSpotifyLogin) {
-            BackHandler { showSpotifyLogin = false }
-            Surface(Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-                Column(Modifier.fillMaxSize()) {
-                    Row(
-                        Modifier
-                            .fillMaxWidth()
-                            .statusBarsPadding()
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        IconButton(onClick = { showSpotifyLogin = false }) {
-                            Icon(
-                                Icons.Rounded.Close,
-                                contentDescription = stringResource(R.string.close),
-                                tint = MaterialTheme.colorScheme.onBackground,
-                            )
-                        }
-                        Text(
-                            stringResource(R.string.spotify_sign_in),
-                            style = MaterialTheme.typography.titleMedium,
-                            color = MaterialTheme.colorScheme.onBackground,
-                        )
-                    }
-                    SpotifyLoginScreen(
-                        modifier = Modifier.navigationBarsPadding(),
-                        onConnected = { token ->
-                            AppSettings.setSpotifySpdcToken(token)
-                            showSpotifyLogin = false
-                        },
-                    )
-                }
-            }
+            SpotifySignInWebViewOverlay(onDismiss = { showSpotifyLogin = false })
         }
 
         if (showSpotifyCanvasAuth) {
@@ -6641,206 +6286,8 @@ private fun BitChordApp(
  */
 private val explainedDownloadExclusions = java.util.Collections.synchronizedSet(mutableSetOf<String>())
 
-/** UIKit's sheet curve: leaves at once, settles long — a sheet let go of, not pushed. */
-private val OnboardingDismissEasing = CubicBezierEasing(0.32f, 0.72f, 0f, 1f)
-
 private fun tween(durationMillis: Int) =
     androidx.compose.animation.core.tween<Float>(durationMillis)
-
-@Composable
-private fun LibrarySort.localizedLabel(): String = when (this) {
-    LibrarySort.DEFAULT -> stringResource(R.string.sort_default)
-    LibrarySort.TITLE_ASC -> stringResource(R.string.sort_title_ascending)
-    LibrarySort.TITLE_DESC -> stringResource(R.string.sort_title_descending)
-}
-
-/**
- * The track-list sort menu, styled after the account switcher: a full-screen
- * scrim to catch the dismissal tap, and the options on a frosted panel that
- * blurs the page behind it. Composed here in the main hierarchy rather than
- * as a popup window — which is exactly what lets the haze see the content it
- * is blurring.
- */
-@Composable
-private fun FrostedSortMenu(
-    hazeState: HazeState,
-    selected: SongSort,
-    onSelect: (SongSort) -> Unit,
-    onFlipDateDirection: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    FrostedMenuPanel(hazeState = hazeState, onDismiss = onDismiss) {
-        // Date added is one row, Spotify-style: the arrow on it shows
-        // the direction — up for newest first, down for oldest — and
-        // tapping flips it, the rotation animating the flip. Up is
-        // also where a fresh activation lands, newest first being the
-        // point of the feature.
-        val dateActive = selected == SongSort.DATE_ADDED_ASC ||
-            selected == SongSort.DATE_ADDED_DESC
-        val arrowRotation by animateFloatAsState(
-            targetValue = if (selected == SongSort.DATE_ADDED_ASC) 180f else 0f,
-            animationSpec = tween(durationMillis = 200),
-            label = "dateAddedArrow",
-        )
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .heightIn(min = 48.dp)
-                .clickable(role = Role.Button) { onFlipDateDirection() }
-                .padding(horizontal = 20.dp, vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                stringResource(R.string.sort_date_added_toggle),
-                style = MaterialTheme.typography.bodyLarge,
-                modifier = Modifier.weight(1f),
-            )
-            if (dateActive) {
-                Icon(
-                    Icons.Rounded.ArrowUpward,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.rotate(arrowRotation),
-                )
-            }
-        }
-        SongSort.entries
-            .filter { it != SongSort.DATE_ADDED_ASC && it != SongSort.DATE_ADDED_DESC }
-            .forEach { option ->
-                FrostedMenuRow(
-                    label = option.localizedLabel(),
-                    checked = option == selected,
-                    onClick = { onSelect(option) },
-                )
-            }
-    }
-}
-
-/**
- * A device folder's menu, off the same button: list or grid for its tabs, then
- * its sort orders — the Files app's arrangement, view first and order under it.
- */
-@Composable
-private fun FrostedFolderMenu(
-    hazeState: HazeState,
-    sort: LocalMusicSort,
-    viewType: LibraryViewType,
-    onSort: (LocalMusicSort) -> Unit,
-    onToggleViewType: () -> Unit,
-    onDismiss: () -> Unit,
-) {
-    FrostedMenuPanel(hazeState = hazeState, onDismiss = onDismiss) {
-        val grid = viewType == LibraryViewType.GRID
-        FrostedMenuRow(
-            label = stringResource(if (grid) R.string.switch_to_list_view else R.string.switch_to_grid_view),
-            checked = false,
-            onClick = onToggleViewType,
-            icon = if (grid) BitChordIcons.ListView else BitChordIcons.GridView,
-        )
-        HorizontalDivider(
-            modifier = Modifier.padding(vertical = 4.dp),
-            thickness = 0.5.dp,
-            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.5f),
-        )
-        LocalMusicSort.entries.forEach { option ->
-            FrostedMenuRow(
-                label = option.localizedLabel(),
-                checked = option == sort,
-                onClick = { onSort(option) },
-            )
-        }
-    }
-}
-
-/** The scrim and frosted panel both top-bar menus are drawn on. */
-@OptIn(ExperimentalHazeMaterialsApi::class)
-@Composable
-private fun FrostedMenuPanel(
-    hazeState: HazeState,
-    onDismiss: () -> Unit,
-    content: @Composable ColumnScope.() -> Unit,
-) {
-    val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
-    val shape = MaterialTheme.shapes.extraLarge
-    Box(
-        Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.scrim.copy(alpha = .48f))
-            .clickable(onClick = onDismiss),
-        contentAlignment = Alignment.TopEnd,
-    ) {
-        Surface(
-            color = Color.Transparent,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-            shape = shape,
-            modifier = Modifier
-                .padding(top = 56.dp, end = 20.dp)
-                .width(IntrinsicSize.Max)
-                .clip(shape)
-                .then(
-                    if (reduceDynamicBlur) {
-                        Modifier.background(MaterialTheme.colorScheme.surface)
-                    } else {
-                        Modifier.optimizedHazeEffect(
-                            state = hazeState,
-                            style = HazeMaterials.thin(MaterialTheme.colorScheme.surface),
-                        )
-                    },
-                )
-                .clickable(onClick = {}),
-        ) {
-            Column(Modifier.padding(vertical = 8.dp), content = content)
-        }
-    }
-}
-
-/** One option on a frosted menu: its label, and a tick or [icon] at the end. */
-@Composable
-private fun FrostedMenuRow(
-    label: String,
-    checked: Boolean,
-    onClick: () -> Unit,
-    icon: ImageVector? = null,
-) {
-    Row(
-        Modifier
-            .fillMaxWidth()
-            .heightIn(min = 44.dp)
-            .clickable(role = Role.Button, onClick = onClick)
-            .padding(horizontal = 20.dp, vertical = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            label,
-            style = MaterialTheme.typography.bodyLarge,
-            modifier = Modifier.weight(1f),
-        )
-        if (checked) {
-            Icon(
-                Icons.Rounded.Check,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-            )
-        } else if (icon != null) {
-            Spacer(Modifier.width(16.dp))
-            Icon(
-                icon,
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.size(20.dp),
-            )
-        }
-    }
-}
-
-@Composable
-private fun SongSort.localizedLabel(): String = when (this) {
-    SongSort.DEFAULT -> stringResource(R.string.sort_default)
-    SongSort.TITLE_ASC -> stringResource(R.string.sort_title_ascending)
-    SongSort.TITLE_DESC -> stringResource(R.string.sort_title_descending)
-    SongSort.DATE_ADDED_ASC -> stringResource(R.string.sort_date_added_oldest)
-    SongSort.DATE_ADDED_DESC -> stringResource(R.string.sort_date_added)
-}
 
 /**
  * Whether this page id is one of the device folders — `local:downloads`,

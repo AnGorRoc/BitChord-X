@@ -1540,6 +1540,10 @@
     <string name="sing_status_karaoke">Karaoke</string>
     <string name="sing_engine_title">Acoustic Engine</string>
     <string name="sing_badge_dsp">BITCHORD SING</string>
+    <string name="swipe_right_action">向右滑動歌曲</string>
+    <string name="swipe_left_action">向左滑動歌曲</string>
+    <string name="swipe_hold_playlist_hint">滑動並按住即可加入播放清單</string>
+    <string name="swipe_action_disabled">關閉</string>
 
     <!-- Spotify Onboarding -->
     <string name="onboarding_spotify_title">Connect your Spotify</string>
@@ -1594,4 +1598,13 @@
     <string name="listen_together_play_here_on">你在這裡聽到，其他人在各自的裝置上聽到。</string>
     <string name="listen_together_play_here_off">聲音只來自主持人。你仍可查看並控制派對。</string>
     <string name="listen_together_silent_member">透過主持人收聽</string>
+    <string name="disable_blend_effects">停用混合效果</string>
+    <string name="disable_blend_effects_subtitle">以純白色顯示播放器圖示、文字與深色選單，而非隨封面著色</string>
+    <string name="player_theme">播放器主題</string>
+    <string name="player_theme_default">預設</string>
+    <string name="player_theme_legacy">經典</string>
+    <string name="player_theme_simple">簡潔</string>
+    <string name="player_theme_default_subtitle">封面本身的色彩將向下方自然延伸</string>
+    <string name="player_theme_simple_subtitle">在整個播放器後方呈現柔和的封面模糊效果</string>
+    <string name="player_theme_legacy_subtitle">帶回 v1.5 版本中播放器背後的流動色塊效果</string>
 </resources>

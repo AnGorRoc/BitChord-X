@@ -1480,6 +1480,10 @@
     <string name="sing_status_karaoke">Karaoke</string>
     <string name="sing_engine_title">Acoustic Engine</string>
     <string name="sing_badge_dsp">BITCHORD SING</string>
+    <string name="swipe_right_action">Vuốt sang phải trên bài hát</string>
+    <string name="swipe_left_action">Vuốt sang trái trên bài hát</string>
+    <string name="swipe_hold_playlist_hint">Giữ thao tác vuốt để thêm vào danh sách phát</string>
+    <string name="swipe_action_disabled">Tắt</string>
 
     <!-- Spotify Onboarding -->
     <string name="onboarding_spotify_title">Connect your Spotify</string>
@@ -1534,4 +1538,13 @@
     <string name="listen_together_play_here_on">Bạn nghe ở đây còn mọi người nghe trên thiết bị của họ.</string>
     <string name="listen_together_play_here_off">Âm thanh chỉ phát từ chủ phòng. Bạn vẫn xem và điều khiển được party.</string>
     <string name="listen_together_silent_member">Nghe qua chủ phòng</string>
+    <string name="disable_blend_effects">Tắt hiệu ứng hòa trộn</string>
+    <string name="disable_blend_effects_subtitle">Hiển thị biểu tượng, văn bản và menu tối của trình phát bằng màu trắng trơn thay vì nhuộm màu theo ảnh bìa</string>
+    <string name="player_theme">Giao diện trình phát</string>
+    <string name="player_theme_default">Mặc định</string>
+    <string name="player_theme_legacy">Cổ điển</string>
+    <string name="player_theme_simple">Đơn giản</string>
+    <string name="player_theme_default_subtitle">Màu sắc của ảnh bìa tiếp nối xuống phía dưới</string>
+    <string name="player_theme_simple_subtitle">Lớp làm mờ nhẹ của ảnh bìa phía sau toàn bộ trình phát</string>
+    <string name="player_theme_legacy_subtitle">Mang lại các mảng màu trôi nổi phía sau trình phát từ bản v1.5</string>
 </resources>

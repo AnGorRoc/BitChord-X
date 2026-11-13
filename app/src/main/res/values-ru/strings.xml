@@ -1587,6 +1587,10 @@
     <string name="sing_status_karaoke">Karaoke</string>
     <string name="sing_engine_title">Acoustic Engine</string>
     <string name="sing_badge_dsp">BITCHORD SING</string>
+    <string name="swipe_right_action">Свайп вправо по треку</string>
+    <string name="swipe_left_action">Свайп влево по треку</string>
+    <string name="swipe_hold_playlist_hint">Удерживайте свайп для добавления в плейлист</string>
+    <string name="swipe_action_disabled">Выкл.</string>
 
     <!-- Spotify Onboarding -->
     <string name="onboarding_spotify_title">Connect your Spotify</string>
@@ -1641,4 +1645,13 @@
     <string name="listen_together_play_here_on">Вы слышите это здесь, а остальные — на своих устройствах.</string>
     <string name="listen_together_play_here_off">Звук идёт только от хоста. Вы по-прежнему видите пати и управляете ею.</string>
     <string name="listen_together_silent_member">Слушает через хоста</string>
+    <string name="disable_blend_effects">Отключить эффекты смешивания</string>
+    <string name="disable_blend_effects_subtitle">Отображает значки, текст и тёмные меню плеера обычным белым цветом вместо окрашивания в тона обложки</string>
+    <string name="player_theme">Тема плеера</string>
+    <string name="player_theme_default">По умолчанию</string>
+    <string name="player_theme_legacy">Классическая</string>
+    <string name="player_theme_simple">Простая</string>
+    <string name="player_theme_default_subtitle">Цвета обложки плавно продолжаются под ней</string>
+    <string name="player_theme_simple_subtitle">Мягкое размытие обложки позади всего плеера</string>
+    <string name="player_theme_legacy_subtitle">Возвращает плавающие цветные пятна позади плеера из версии 1.5</string>
 </resources>

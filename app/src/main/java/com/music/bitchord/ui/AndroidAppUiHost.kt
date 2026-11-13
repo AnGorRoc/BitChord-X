@@ -14,6 +14,8 @@ import com.music.bitchord.download.Downloads
 /** The shared pages' settings and downloads, answered from the phone's own stores. */
 object AndroidAppUiHost : AppUiHost {
     override val swipeToPlayNext = AppSettings.swipeToPlayNext
+    override val swipeRightAction = AppSettings.swipeRightAction
+    override val swipeLeftAction = AppSettings.swipeLeftAction
     override val pinnedPlaylists = AppSettings.pinnedPlaylists
     override val librarySort = AppSettings.librarySort
     override val libraryViewType = AppSettings.libraryViewType

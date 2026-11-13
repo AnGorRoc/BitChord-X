@@ -1561,6 +1561,10 @@
     <string name="sing_status_karaoke">Karaoke</string>
     <string name="sing_engine_title">Acoustic Engine</string>
     <string name="sing_badge_dsp">BITCHORD SING</string>
+    <string name="swipe_right_action">Balayer un titre vers la droite</string>
+    <string name="swipe_left_action">Balayer un titre vers la gauche</string>
+    <string name="swipe_hold_playlist_hint">Maintenir le balayage pour ajouter à une playlist</string>
+    <string name="swipe_action_disabled">Désactivé</string>
 
     <!-- Spotify Onboarding -->
     <string name="onboarding_spotify_title">Connect your Spotify</string>
@@ -1615,4 +1619,13 @@
     <string name="listen_together_play_here_on">Vous l’entendez ici et les autres l’entendent sur le leur.</string>
     <string name="listen_together_play_here_off">Le son vient uniquement de l’hôte. Vous voyez et contrôlez toujours la party.</string>
     <string name="listen_together_silent_member">Écoute via l’hôte</string>
+    <string name="disable_blend_effects">Désactiver les effets de fusion</string>
+    <string name="disable_blend_effects_subtitle">Affiche les icônes, le texte et les menus sombres du lecteur en blanc uni au lieu de les teinter avec la pochette</string>
+    <string name="player_theme">Thème du lecteur</string>
+    <string name="player_theme_default">Par défaut</string>
+    <string name="player_theme_legacy">Classique</string>
+    <string name="player_theme_simple">Simple</string>
+    <string name="player_theme_default_subtitle">Les couleurs de la pochette se prolongent en dessous</string>
+    <string name="player_theme_simple_subtitle">Un léger flou de la pochette derrière tout le lecteur</string>
+    <string name="player_theme_legacy_subtitle">Ramène les taches de couleur flottantes de la v1.5 derrière le lecteur</string>
 </resources>

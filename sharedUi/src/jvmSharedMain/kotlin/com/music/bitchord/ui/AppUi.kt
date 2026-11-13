@@ -5,6 +5,8 @@ import androidx.compose.runtime.staticCompositionLocalOf
 import com.music.bitchord.data.canvas.CanvasArtwork
 import com.music.bitchord.data.settings.LibrarySort
 import com.music.bitchord.data.settings.LibraryViewType
+import com.music.bitchord.data.settings.SongSwipeAction
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
 /**
@@ -17,6 +19,14 @@ import kotlinx.coroutines.flow.StateFlow
 interface AppUiHost {
     /** A swipe on a track row plays it next rather than adding it to the end of the queue. */
     val swipeToPlayNext: StateFlow<Boolean>
+
+    /** Action triggered when swiping a song row from left to right (start to end). */
+    val swipeRightAction: StateFlow<SongSwipeAction>
+        get() = MutableStateFlow(SongSwipeAction.PLAY_NEXT)
+
+    /** Action triggered when swiping a song row from right to left (end to start). */
+    val swipeLeftAction: StateFlow<SongSwipeAction>
+        get() = MutableStateFlow(SongSwipeAction.ADD_TO_QUEUE)
 
     /** Playlist browse ids pinned to the front of the Library's Playlists shelf, in pin order. */
     val pinnedPlaylists: StateFlow<List<String>>

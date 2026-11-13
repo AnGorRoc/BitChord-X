@@ -159,4 +159,41 @@ class QueueBuilderTest {
         val extra = QueueBuilder.extend(listOf(seed), candidates, limit = 10)
         assertEquals(listOf("v1", "v2"), extra.map { it.videoId })
     }
+
+    @Test
+    fun `spanish video suffixes and artist-prefixed video titles match the same recording`() {
+        val original = song("aaa", "La Canción", "J Balvin, Bad Bunny")
+        assertTrue(
+            QueueBuilder.isSameRecording(
+                original,
+                song("bbb", "La Canción (Video Oficial)", "J Balvin, Bad Bunny"),
+            ),
+        )
+        assertTrue(
+            QueueBuilder.isSameRecording(
+                original,
+                song("ccc", "J Balvin, Bad Bunny - La Canción (Videoclip Oficial)", "J Balvin"),
+            ),
+        )
+        assertTrue(
+            QueueBuilder.isSameRecording(
+                original,
+                song("ddd", "La Canción (Letra)", "Bad Bunny"),
+            ),
+        )
+    }
+
+    @Test
+    fun `strict video filter drops videos even when no audio songs exist`() {
+        val extra = QueueBuilder.extend(
+            existing = emptyList(),
+            candidates = listOf(
+                video("vid1", "Video One", "A"),
+                video("vid2", "Video Two", "B"),
+            ),
+            limit = 10,
+            allowVideoFallback = false,
+        )
+        assertTrue(extra.isEmpty())
+    }
 }

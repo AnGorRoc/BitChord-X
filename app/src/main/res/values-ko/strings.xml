@@ -1396,6 +1396,10 @@
     <string name="sing_status_karaoke">Karaoke</string>
     <string name="sing_engine_title">Acoustic Engine</string>
     <string name="sing_badge_dsp">BITCHORD SING</string>
+    <string name="swipe_right_action">곡을 오른쪽으로 스와이프</string>
+    <string name="swipe_left_action">곡을 왼쪽으로 스와이프</string>
+    <string name="swipe_hold_playlist_hint">길게 스와이프하여 플레이리스트에 추가</string>
+    <string name="swipe_action_disabled">끔</string>
 
     <!-- Spotify Onboarding -->
     <string name="onboarding_spotify_title">Connect your Spotify</string>
@@ -1450,4 +1454,13 @@
     <string name="listen_together_play_here_on">여기서 들리고 다른 사람은 각자의 기기에서 듣습니다.</string>
     <string name="listen_together_play_here_off">소리는 호스트에서만 나옵니다. 파티를 보고 제어할 수는 있습니다.</string>
     <string name="listen_together_silent_member">호스트를 통해 듣는 중</string>
+    <string name="disable_blend_effects">블렌드 효과 끄기</string>
+    <string name="disable_blend_effects_subtitle">플레이어 아이콘, 텍스트, 어두운 메뉴에 앨범 아트 색상을 입히지 않고 순백색으로 표시합니다</string>
+    <string name="player_theme">플레이어 테마</string>
+    <string name="player_theme_default">기본값</string>
+    <string name="player_theme_legacy">클래식</string>
+    <string name="player_theme_simple">심플</string>
+    <string name="player_theme_default_subtitle">앨범 아트의 색상이 아래로 자연스럽게 이어집니다</string>
+    <string name="player_theme_simple_subtitle">플레이어 전체 배경에 앨범 아트를 부드럽게 흐리게 표시합니다</string>
+    <string name="player_theme_legacy_subtitle">v1.5의 플레이어 뒤를 떠다니던 색상 방울 효과를 다시 사용합니다</string>
 </resources>

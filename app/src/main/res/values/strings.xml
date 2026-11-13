@@ -48,7 +48,7 @@
     <string name="shuffle">Shuffle</string>
     <string name="more">More</string>
     <string name="lyrics_offset">Lyrics offset</string>
-    <string name="automix_overview">Automix overview</string>
+    <string name="automix_overview" translatable="false">Automix overview</string>
     <string name="auto_quick_picks">Quick picks</string>
     <string name="auto_recents">Recent</string>
     <string name="auto_liked">Liked songs</string>
@@ -292,19 +292,19 @@
     <string name="show_nerd_stats_subtitle">Codec, bitrate and sample rate on the player</string>
     <string name="show_listen_together_button">Show Listen Together button</string>
     <string name="show_listen_together_button_subtitle">Off, the player shows only the audio output button between lyrics and the queue</string>
-    <string name="content_preferences">Content Preferences</string>
-    <string name="hide_recents">Hide Recents</string>
-    <string name="hide_home_videos">Hide videos from Home</string>
-    <string name="hide_home_videos_subtitle">Shelves of only videos go too. Search, artists and playlists still show them</string>
-    <string name="hide_top_picks">Hide Top Picks for You</string>
-    <string name="hide_home_moods">Hide Find Your Mood</string>
-    <string name="square_video_thumbnails">Square video thumbnails</string>
-    <string name="square_video_thumbnails_subtitle">Show music videos as squares everywhere, including the player</string>
-    <string name="prefer_music_only">Prefer music-only version</string>
-    <string name="prefer_music_only_subtitle">Music videos play as their audio version, and the next track in the queue is converted ahead of time so Automix and crossfade work</string>
-    <string name="glass_performance">Better Performance for Glass</string>
-    <string name="full_screen_detail_cover">Full-screen album/playlist cover</string>
-    <string name="full_screen_detail_cover_subtitle">Runs album and playlist covers to the edges of the page instead of a framed sleeve</string>
+    <string name="content_preferences" translatable="false">Content Preferences</string>
+    <string name="hide_recents" translatable="false">Hide Recents</string>
+    <string name="hide_home_videos" translatable="false">Hide videos from Home</string>
+    <string name="hide_home_videos_subtitle" translatable="false">Shelves of only videos go too. Search, artists and playlists still show them</string>
+    <string name="hide_top_picks" translatable="false">Hide Top Picks for You</string>
+    <string name="hide_home_moods" translatable="false">Hide Find Your Mood</string>
+    <string name="square_video_thumbnails" translatable="false">Square video thumbnails</string>
+    <string name="square_video_thumbnails_subtitle" translatable="false">Show music videos as squares everywhere, including the player</string>
+    <string name="prefer_music_only" translatable="false">Prefer music-only version</string>
+    <string name="prefer_music_only_subtitle" translatable="false">Music videos play as their audio version, and the next track in the queue is converted ahead of time so Automix and crossfade work</string>
+    <string name="glass_performance" translatable="false">Better Performance for Glass</string>
+    <string name="full_screen_detail_cover" translatable="false">Full-screen album/playlist cover</string>
+    <string name="full_screen_detail_cover_subtitle" translatable="false">Runs album and playlist covers to the edges of the page instead of a framed sleeve</string>
     <string name="app_icon">App icon</string>
     <string name="app_icon_default">Default</string>
     <string name="app_icon_monochrome" translatable="false">Monochrome</string>
@@ -340,6 +340,8 @@
     <string name="reduce_animation_subtitle">Freezes the main player\'s gradient instead of drifting</string>
     <string name="reduce_dynamic_blur">Reduce dynamic blur</string>
     <string name="reduce_dynamic_blur_subtitle">Swaps frosted glass for solid fills across the app</string>
+    <string name="disable_blend_effects">Disable blend effects</string>
+    <string name="disable_blend_effects_subtitle">Shows player icons, text and dark menus in plain white instead of tinting them with the artwork</string>
     <string name="liquid_glass">Liquid Glass</string>
     <string name="liquid_glass_subtitle">Real refracting glass on the floating nav bar. Android 12+ only; uses more GPU.</string>
     <string name="progressive_blur">Progressive Blur</string>
@@ -347,10 +349,13 @@
     <string name="show_nav_labels">Show tab labels</string>
     <string name="show_nav_labels_subtitle">Names under the icons in the bottom bar. Off keeps the bar slimmer</string>
     <string name="full_screen_cover_art">Full-screen cover art</string>
-    <string name="immersive_player_mode">Immersive player mode</string>
-    <string name="immersive_player_mode_subtitle">Artwork expands at the top with ambient reflection over controls</string>
-    <string name="legacy_mesh_gradient">Legacy mesh gradient</string>
-    <string name="legacy_mesh_gradient_subtitle">Brings back the drifting colour blobs behind the player from v1.5</string>
+    <string name="player_theme">Player theme</string>
+    <string name="player_theme_default">Default</string>
+    <string name="player_theme_legacy">Legacy</string>
+    <string name="player_theme_simple">Simple</string>
+    <string name="player_theme_default_subtitle">The cover\'s own colours carry on below it</string>
+    <string name="player_theme_simple_subtitle">A soft blur of the cover behind the whole player</string>
+    <string name="player_theme_legacy_subtitle">Brings back the drifting colour blobs behind the player from v1.5</string>
     <string name="animated_cover_art">Animated cover art</string>
     <string name="artist_signatures">Artist signatures</string>
     <string name="artist_signatures_subtitle">Shows a handwritten signature when Apple Music has no title logo</string>
@@ -387,6 +392,7 @@
     <string name="clear_image_cache_subtitle">Frees space used by album artwork</string>
     <string name="play_next_on_swipe">Play next on swipe</string>
     <string name="dont_repeat_songs">Don’t repeat songs in current session</string>
+    <string name="filter_music_videos_autoplay" translatable="false">Filter music videos in AutoPlay</string>
     <string name="stop_music_on_close">Stop music on close from recents</string>
     <string name="stop_music_on_close_subtitle">Stops playback when swiped away from recent apps</string>
     <string name="hide_volume_bar">Hide volume bar</string>
@@ -409,6 +415,7 @@
     <string name="full_screen_cover_art_subtitle">Runs the cover to the edges of the player instead of a square sleeve</string>
     <string name="animated_cover_art_subtitle">Plays the looping video some releases ship instead of a still sleeve</string>
     <string name="dont_repeat_songs_subtitle">AutoPlay won’t suggest a song already played or suggested this session</string>
+    <string name="filter_music_videos_autoplay_subtitle" translatable="false">Only queue audio tracks in AutoPlay and radio recommendations, never music videos</string>
     <string name="download_quality_subtitle">%1$s per track, whatever the connection</string>
     <string name="filter_non_music_audio">Filter non-music audio</string>
     <string name="filter_non_music_audio_subtitle">Hides clips under 30 seconds, WAV files, voice notes, recordings and system sounds</string>
@@ -1451,6 +1458,10 @@
     <string name="pipeline_status_audition_rejected" translatable="false">Rejected in test (%1$s)</string>
     <string name="tidal_no_answer" translatable="false">No answer</string>
     <string name="tidal_providers_refresh" translatable="false">Refresh</string>
+    <string name="swipe_right_action">Swipe right on a song</string>
+    <string name="swipe_left_action">Swipe left on a song</string>
+    <string name="swipe_hold_playlist_hint">Hold the swipe to add to a playlist</string>
+    <string name="swipe_action_disabled">Off</string>
     <string name="created_by_bitchord">Created by BitChord</string>
     <string name="trending_title">Trending</string>
     <string name="region_global">Global</string>

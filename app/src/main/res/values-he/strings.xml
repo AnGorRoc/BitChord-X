@@ -1565,6 +1565,10 @@
     <string name="sing_status_karaoke">Karaoke</string>
     <string name="sing_engine_title">Acoustic Engine</string>
     <string name="sing_badge_dsp">BITCHORD SING</string>
+    <string name="swipe_right_action">החלקה ימינה על שיר</string>
+    <string name="swipe_left_action">החלקה שמאלה על שיר</string>
+    <string name="swipe_hold_playlist_hint">החזק את ההחלקה להוספה לפלייליסט</string>
+    <string name="swipe_action_disabled">כבוי</string>
 
     <!-- Spotify Onboarding -->
     <string name="onboarding_spotify_title">Connect your Spotify</string>
@@ -1619,4 +1623,13 @@
     <string name="listen_together_play_here_on">אתה שומע את זה כאן וכולם שומעים בשלהם.</string>
     <string name="listen_together_play_here_off">הצליל מגיע רק מהמארח. אתה עדיין רואה ושולט בפארטי.</string>
     <string name="listen_together_silent_member">מאזין דרך המארח</string>
+    <string name="disable_blend_effects">השבת אפקטי מיזוג</string>
+    <string name="disable_blend_effects_subtitle">מציג סמלים, טקסט ותפריטים כהים בנגן בלבן רגיל במקום לצבוע אותם לפי העטיפה</string>
+    <string name="player_theme">ערכת נושא של הנגן</string>
+    <string name="player_theme_default">ברירת מחדל</string>
+    <string name="player_theme_legacy">קלאסי</string>
+    <string name="player_theme_simple">פשוט</string>
+    <string name="player_theme_default_subtitle">צבעי העטיפה ממשיכים מתחתיה</string>
+    <string name="player_theme_simple_subtitle">טשטוש עדין של העטיפה מאחורי כל הנגן</string>
+    <string name="player_theme_legacy_subtitle">מחזיר את כתמי הצבע הנעים מאחורי הנגן מגרסה 1.5</string>
 </resources>
