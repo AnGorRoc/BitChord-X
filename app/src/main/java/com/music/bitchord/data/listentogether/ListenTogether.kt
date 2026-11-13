@@ -3,6 +3,7 @@ package com.music.bitchord.data.listentogether
 import android.content.Context
 import android.os.SystemClock
 import android.content.SharedPreferences
+import com.music.bitchord.data.listentogether.account.AccountDevice
 import com.music.bitchord.data.listentogether.account.AccountDevices
 import com.music.bitchord.data.listentogether.account.DeviceSelf
 import android.net.ConnectivityManager
@@ -1718,6 +1719,15 @@ object ListenTogether {
             self = { DeviceSelf(deviceId(), deviceName(), deviceType()) },
         )
     }
+
+    /** Tells the person's other devices which party this device is in. Started once, with the account. */
+    fun mirrorPartyToAccount() {
+        scope.launch { _state.collect { account.setParty(it.code) } }
+    }
+
+    /** Another of the person's devices that is in [code] right now, if any. */
+    fun siblingInParty(code: String): AccountDevice? =
+        account.state.value.others.firstOrNull { it.connected && it.partyCode == code }
 
     /** What this device is called in the person's Connect list. Their choice, else the model. */
     fun deviceName(): String =

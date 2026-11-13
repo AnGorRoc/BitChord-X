@@ -140,17 +140,20 @@ internal fun DesktopListenTogetherDialog(autoplayEnabled: Boolean, onDismiss: ()
                     foreignServerHost = previewServer
                         ?.takeUnless(DesktopListenTogether::isKnownServer)
                         ?.let(DesktopListenTogether::serverHost),
-                    nickname = nickname,
-                    onNicknameChange = {
-                        nickname = it.take(80)
-                        DesktopListenTogether.setNickname(nickname)
-                    },
                     playHere = joinPlayHere,
                     onPlayHereChange = { joinPlayHere = it },
                     busy = busy,
                     error = localError ?: state.error,
                     onBack = { preview = null; localError = null },
                     onJoin = {
+                        // Already playing on one of this person's devices: Connect takes it there
+                        // instead of a second seat for the same person.
+                        val own = DesktopListenTogether.siblingInParty(preview!!.code)
+                        if (own != null) {
+                            DesktopPlayerHost.onPickDevice(own.deviceId, null)
+                            preview = null
+                            return@JoinConfirmation
+                        }
                         busy = true
                         localError = null
                         scope.launch {
@@ -356,8 +359,6 @@ private fun JoinConfirmation(
     preview: PartyPreview,
     /** Set when the invite points at a server this build does not already use. */
     foreignServerHost: String?,
-    nickname: String,
-    onNicknameChange: (String) -> Unit,
     playHere: Boolean,
     onPlayHereChange: (Boolean) -> Unit,
     busy: Boolean,
@@ -391,15 +392,7 @@ private fun JoinConfirmation(
             preview.members.take(5).forEach { PartyAvatar(it.avatarUrl, 50, it.displayName) }
         }
         Spacer(Modifier.height(24.dp))
-        OutlinedTextField(
-            value = nickname,
-            onValueChange = onNicknameChange,
-            label = { Text("Nickname") },
-            singleLine = true,
-            modifier = Modifier.width(360.dp),
-        )
-        Spacer(Modifier.height(14.dp))
-        PlayHereRow(playHere, onPlayHereChange, Modifier.width(360.dp), enabled = !busy)
+        PlayHereChoice(playHere, onPlayHereChange, Modifier.width(360.dp), enabled = !busy)
         error?.let { Spacer(Modifier.height(10.dp)); Text(it, color = DesktopDestructive) }
         Spacer(Modifier.height(20.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -733,4 +726,31 @@ private fun serverStatusLine(status: DesktopListenTogether.ServerStatus): String
     status.health == DesktopListenTogether.Health.OFFLINE -> "Party server is offline"
     status.isFallback -> "Custom server is offline · built-in server online · ${status.latencyMs} ms"
     else -> "Party server online · ${status.latencyMs} ms"
+}
+
+/**
+ * Where the sound comes out, as two options stacked at the same width. The one chosen is filled.
+ * Confirming is the join button under them.
+ */
+@Composable
+private fun PlayHereChoice(playHere: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        PlayHereOption(playHere, "Play on this computer", "You hear it here and everyone else hears it on theirs.", enabled) { onChange(true) }
+        PlayHereOption(!playHere, "Only on the other device", "Sound comes only from the host. You still see and control the party.", enabled) { onChange(false) }
+    }
+}
+
+@Composable
+private fun PlayHereOption(selected: Boolean, title: String, subtitle: String, enabled: Boolean, onClick: () -> Unit) {
+    Column(
+        Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(12.dp))
+            .background(if (selected) DesktopAccent.copy(alpha = 0.22f) else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+    ) {
+        Text(title, fontWeight = FontWeight.SemiBold, color = if (selected) DesktopAccent else MaterialTheme.colorScheme.onSurface)
+        Text(subtitle, style = MaterialTheme.typography.bodySmall, color = DesktopSecondary)
+    }
 }

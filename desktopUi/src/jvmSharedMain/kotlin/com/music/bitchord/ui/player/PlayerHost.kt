@@ -362,6 +362,8 @@ data class PartyUi(
     val members: List<PartyMember> = emptyList(),
     val you: PartyMember? = null,
     val code: String? = null,
+    /** Whose party this is, as the host is named in it. */
+    val hostName: String? = null,
     /** Who queued each song, by video id, for the picture on its cover in the queue. */
     val addedBy: Map<String, AddedByUi> = emptyMap(),
 )

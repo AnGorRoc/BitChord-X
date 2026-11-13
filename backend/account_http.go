@@ -174,6 +174,15 @@ func handleAccountFrame(acc *account.Account, d *account.Device, sc *hub.SafeCon
 	now := clock.NowMs()
 
 	switch kind {
+	case "party":
+		code, _ := frame["code"].(string)
+		if len(code) > 16 {
+			code = code[:16]
+		}
+		acc.Lock()
+		d.PartyCode = code
+		acc.Unlock()
+		broadcastDevices(acc)
 	case "ping":
 		acc.Lock()
 		d.LastSeenMs = now

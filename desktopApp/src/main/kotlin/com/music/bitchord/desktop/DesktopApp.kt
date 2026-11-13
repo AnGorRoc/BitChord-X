@@ -1947,6 +1947,7 @@ fun BitChordDesktopApp() {
     deviceLinkHolder[0] = deviceLink
     DisposableEffect(deviceLink) {
         DesktopListenTogether.account.start()
+        DesktopListenTogether.mirrorPartyToAccount()
         deviceLink.start()
         DesktopPlayerHost.onPickDevice = { id, force -> deviceLink.pick(id, force) }
         DesktopPlayerHost.onComeBack = { deviceLink.comeBack() }

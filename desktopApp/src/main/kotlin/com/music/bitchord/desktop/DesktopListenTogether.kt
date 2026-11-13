@@ -2,6 +2,7 @@ package com.music.bitchord.desktop
 
 import com.music.bitchord.data.listentogether.ApiError
 import com.music.bitchord.data.listentogether.DeviceGroup
+import com.music.bitchord.data.listentogether.account.AccountDevice
 import com.music.bitchord.data.listentogether.account.AccountDevices
 import com.music.bitchord.data.listentogether.account.DeviceSelf
 import com.music.bitchord.data.listentogether.JoinRequest
@@ -515,6 +516,15 @@ internal object DesktopListenTogether {
      * handing the sound around. Runs for as long as the app does; a server without the channel
      * makes it settle into UNSUPPORTED by itself. See [AccountDevices].
      */
+    /** Tells the person's other devices which party this computer is in. Started once, with the account. */
+    fun mirrorPartyToAccount() {
+        scope.launch { _state.collect { account.setParty(it.code) } }
+    }
+
+    /** Another of the person's devices that is in [code] right now, if any. */
+    fun siblingInParty(code: String): AccountDevice? =
+        account.state.value.others.firstOrNull { it.connected && it.partyCode == code }
+
     val account: AccountDevices by lazy {
         AccountDevices(
             http = http,

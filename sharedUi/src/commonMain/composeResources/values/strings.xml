@@ -58,6 +58,7 @@
     <string name="connect_start_party">Start a party</string>
     <string name="connect_join_party">Join</string>
     <string name="connect_view_party">View party</string>
+    <string name="connect_in_party_of">In %1$s's party</string>
     <string name="connect_settings">Listen Together settings</string>
     <string name="listen_together_open">Listen together</string>
     <string name="listen_together_open_count">Listening together · %1$d</string>

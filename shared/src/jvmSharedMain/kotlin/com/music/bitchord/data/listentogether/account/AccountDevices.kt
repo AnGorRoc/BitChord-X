@@ -139,6 +139,19 @@ class AccountDevices(
     }
 
     /** Makes this device the remote of [deviceId]. */
+    /** The party this device is in now (null when none). Sent again on every new socket. */
+    @Volatile private var partyCode: String? = null
+
+    fun setParty(code: String?) {
+        if (partyCode == code) return
+        partyCode = code
+        sendParty()
+    }
+
+    private fun sendParty() {
+        sendFrame(buildJsonObject { put("type", "party"); put("code", partyCode.orEmpty()) })
+    }
+
     fun attach(deviceId: String) = sendFrame(buildJsonObject { put("type", "attach"); put("to", deviceId) })
 
     /** Stops being a remote. */
@@ -197,6 +210,7 @@ class AccountDevices(
                 ) {
                     session = this
                     backoffMs = 1_000L
+                    if (partyCode != null) sendParty()
                     // What this device is playing is not known to the server on a new socket.
                     lastPublished?.let { last ->
                         lastPublished = null

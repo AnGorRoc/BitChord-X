@@ -73,6 +73,9 @@ type Device struct {
 	ControlledBy string `json:"controlledBy,omitempty"`
 	// Controlling is the device this one is acting as the remote of, if any.
 	Controlling string `json:"controlling,omitempty"`
+	// PartyCode is the party this device is in, if any, so the person's other devices can tell
+	// that joining it again means taking this device's sound (Connect), not a second seat.
+	PartyCode string `json:"partyCode,omitempty"`
 
 	token string
 }

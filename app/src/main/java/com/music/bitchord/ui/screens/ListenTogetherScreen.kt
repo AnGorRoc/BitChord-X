@@ -1,5 +1,6 @@
 package com.music.bitchord.ui.screens
 
+import com.music.bitchord.playback.DeviceLink
 import com.music.bitchord.ui.icons.SfIcons
 import android.content.Intent
 import android.text.format.DateFormat
@@ -534,6 +535,14 @@ fun ListenTogetherScreen(
                         failure = null
                     },
                     onJoin = {
+                        // This party already plays on one of the person's own devices: joining it
+                        // again would be a second seat for the same person. Connect takes it there.
+                        val own = ListenTogether.siblingInParty(open.preview.code)
+                        if (own != null) {
+                            DeviceLink.pick(own.deviceId)
+                            sheet = null
+                            return@JoinConfirmSheet
+                        }
                         busy = true
                         failure = null
                         scope.launch {

@@ -164,6 +164,7 @@ internal object DesktopPlayerHost : PlayerHost {
                 members = it.members,
                 you = it.you,
                 code = it.code,
+                hostName = it.members.firstOrNull { m -> m.isHost }?.displayName?.takeIf { n -> n.isNotBlank() },
                 addedBy = if (!it.inParty) emptyMap() else buildMap {
                     it.queue.items.forEach { track ->
                         val name = track.addedByName

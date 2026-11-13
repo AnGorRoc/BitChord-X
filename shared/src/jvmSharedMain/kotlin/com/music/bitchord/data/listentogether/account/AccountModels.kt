@@ -36,6 +36,8 @@ data class AccountDevice(
     val controlledBy: String? = null,
     /** The device this one is acting as the remote of. */
     val controlling: String? = null,
+    /** The party this device is in, if any. */
+    val partyCode: String? = null,
 ) {
     val isPlaying: Boolean get() = connected && nowPlaying?.isPlaying == true
 }

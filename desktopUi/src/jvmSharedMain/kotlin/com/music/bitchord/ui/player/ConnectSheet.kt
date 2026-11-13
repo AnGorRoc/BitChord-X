@@ -123,7 +123,8 @@ internal fun ConnectSheet(
             if (party.inParty) {
                 ActionRow(
                     title = stringResource(Res.string.connect_view_party),
-                    subtitle = party.code?.let { stringResource(Res.string.listen_together_in_party, it) },
+                    subtitle = party.hostName?.let { stringResource(Res.string.connect_in_party_of, it) }
+                        ?: party.code?.let { stringResource(Res.string.listen_together_in_party, it) },
                     onClick = { onDismiss(); onOpenParty() },
                 )
             } else {
