@@ -16,6 +16,8 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
@@ -82,6 +84,17 @@ internal class DesktopDeviceLink(
 
     fun start() {
         scope.launch { account.commands.collect { handle(it) } }
+        // What the server refused ("not controlling that device", "too many devices"): without this
+        // a command that goes nowhere looks like nothing happening until a timeout.
+        scope.launch { account.errors.collect { say(it) } }
+        // Entering a party while this computer is another device's remote: the party takes the
+        // player, so the remote link ends here instead of the two fighting over it.
+        scope.launch {
+            DesktopListenTogether.state
+                .map { DesktopListenTogether.partyOwnsPlayer() }
+                .distinctUntilChanged()
+                .collect { owns -> if (owns && active) endLocally(false) }
+        }
         scope.launch { account.state.collect { onAccountState(it.devices.firstOrNull { d -> d.deviceId == targetId }) } }
         scope.launch {
             while (true) {
@@ -137,6 +150,8 @@ internal class DesktopDeviceLink(
     }
 
     private fun handle(command: DeviceCommand) {
+        // The party owns this player; a command from another device would be undone by it at once.
+        if (DesktopListenTogether.partyOwnsPlayer()) return
         val payload = command.payload
         when (command.action) {
             DeviceActions.PLAY -> engine.play()
@@ -213,6 +228,15 @@ internal class DesktopDeviceLink(
         val target = account.state.value.devices.firstOrNull { it.deviceId == deviceId }
         if (target == null || !target.connected) {
             say("That device is not available.")
+            return
+        }
+        // A party and a hand-over would fight over the same player. One or the other.
+        if (DesktopListenTogether.partyOwnsPlayer()) {
+            say("This computer is playing a party. Leave it, or turn off “Play on this device”, first.")
+            return
+        }
+        if (target.partyCode != null) {
+            say("${target.name} is in a party. Leave it there first.")
             return
         }
         when (HandoffRules.onPick(target, queue().songs.isNotEmpty(), force)) {

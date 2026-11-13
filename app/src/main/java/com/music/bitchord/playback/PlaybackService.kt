@@ -1924,6 +1924,12 @@ class PlaybackService : MediaLibraryService() {
         // This phone among its owner's other devices: it reports what it plays, applies what they
         // ask of it, and can be their speaker. See [DeviceTarget] and [DeviceLink].
         DeviceTarget(scope, { player }, ListenTogether.account, deviceSpeaker).start()
+        // What the server refused, so a command that goes nowhere is not silent until a timeout.
+        scope.launch {
+            ListenTogether.account.errors.collect { message ->
+                Toast.makeText(applicationContext, message, Toast.LENGTH_SHORT).show()
+            }
+        }
         scope.launch {
             DeviceLink.requests.collect { request ->
                 when (request) {
@@ -1964,6 +1970,14 @@ class PlaybackService : MediaLibraryService() {
                     if (wasInParty && !inParty) rebuildBoundedContextAfterParty()
                     wasInParty = inParty
                 }
+        }
+        // Entering a party while this phone is another device's remote: the party takes the
+        // player, so the remote link ends here instead of the two fighting over it.
+        scope.launch {
+            ListenTogether.state
+                .map { ListenTogether.partyOwnsPlayer() }
+                .distinctUntilChanged()
+                .collect { owns -> if (owns && deviceSpeaker.active) deviceSpeaker.endLocally(resumeHere = false) }
         }
         loadAutoplayForCurrentTrack()
 

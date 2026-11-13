@@ -5,6 +5,7 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import com.music.bitchord.data.listentogether.ListenTogether
 import com.music.bitchord.data.listentogether.PartyTrack
 import com.music.bitchord.data.listentogether.account.AccountDevice
 import com.music.bitchord.data.listentogether.account.AccountDevices
@@ -138,6 +139,16 @@ internal class DeviceSpeaker(
         val target = account.state.value.devices.firstOrNull { it.deviceId == deviceId }
         if (target == null || !target.connected) {
             say("That device is not available.")
+            return
+        }
+        // A party and a hand-over would fight over the same player: the party puts it back where
+        // it says within a second. One or the other, until the person chooses.
+        if (ListenTogether.partyOwnsPlayer()) {
+            say("This phone is playing a party. Leave it, or turn off “Play on this device”, first.")
+            return
+        }
+        if (target.partyCode != null) {
+            say("${target.name} is in a party. Leave it there first.")
             return
         }
         val player = localPlayer()
@@ -510,6 +521,8 @@ internal class DeviceTarget(
 
     private fun handle(command: DeviceCommand) {
         val p = player() ?: return
+        // The party owns this player; a command from another device would be undone by it at once.
+        if (ListenTogether.partyOwnsPlayer()) return
         val payload = command.payload
         when (command.action) {
             DeviceActions.PLAY -> p.play()

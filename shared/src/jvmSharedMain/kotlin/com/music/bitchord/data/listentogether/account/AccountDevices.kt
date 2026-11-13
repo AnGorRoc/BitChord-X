@@ -10,7 +10,7 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
-import io.ktor.websocket.DefaultWebSocketSession
+import kotlinx.coroutines.channels.Channel
 import io.ktor.websocket.Frame
 import io.ktor.websocket.readText
 import kotlinx.coroutines.CancellationException
@@ -73,8 +73,8 @@ class AccountDevices(
     private val scope: CoroutineScope,
     /** The server's https base, or null when none is set. Read on every attempt. */
     private val serverBase: suspend () -> String?,
-    /** The account proof (see DeviceGroup.groupId), or null when it cannot be had. */
-    private val proof: suspend () -> String?,
+    /** The account proof for that server (see DeviceGroup.proofFor), or null when it cannot be had. */
+    private val proof: suspend (serverBase: String) -> String?,
     private val self: () -> DeviceSelf,
 ) {
     private val json = Json { ignoreUnknownKeys = true; coerceInputValues = true; isLenient = true }
@@ -93,7 +93,14 @@ class AccountDevices(
     val errors: SharedFlow<String> = _errors.asSharedFlow()
 
     private var job: Job? = null
-    @Volatile private var session: DefaultWebSocketSession? = null
+    /**
+     * What is waiting to go out on the current socket, in the order it was asked. One writer drains
+     * it, so "attach" can never overtake the "snapshot" that depends on it: a coroutine per frame
+     * does not keep order on a multi-threaded dispatcher, and the server refuses a command from a
+     * device that is not yet linked. It belongs to one socket, so nothing queued while offline is
+     * replayed later as if it were current.
+     */
+    @Volatile private var outbox: Channel<String>? = null
     private var lastPublished: AccountNowPlaying? = null
 
     fun start() {
@@ -104,7 +111,8 @@ class AccountDevices(
     fun stop() {
         job?.cancel()
         job = null
-        session = null
+        outbox?.close()
+        outbox = null
         lastPublished = null
         _state.value = AccountState()
     }
@@ -173,8 +181,8 @@ class AccountDevices(
     }
 
     private fun sendFrame(frame: JsonObject) {
-        val s = session ?: return
-        scope.launch { runCatching { s.send(Frame.Text(frame.toString())) } }
+        // Not offline, and not a flood: a full queue drops rather than grows without end.
+        outbox?.trySend(frame.toString())
     }
 
     // ---- the socket -------------------------------------------------------------------------
@@ -183,7 +191,7 @@ class AccountDevices(
         var backoffMs = 1_000L
         while (scope.isActive) {
             val base = serverBase()?.trimEnd('/')
-            val account = if (base.isNullOrBlank()) null else proof()
+            val account = if (base.isNullOrBlank()) null else proof(base)
             if (base.isNullOrBlank() || account == null) {
                 _state.update { it.copy(connection = AccountConnection.IDLE) }
                 delay(IDLE_RETRY_MS)
@@ -208,7 +216,11 @@ class AccountDevices(
                     urlString = base.replaceFirst("http", "ws") + "/ws/account",
                     request = { header("Authorization", "Bearer $token") },
                 ) {
-                    session = this
+                    val box = Channel<String>(OUTBOX_CAPACITY)
+                    outbox = box
+                    val writer = launch {
+                        for (text in box) runCatching { send(Frame.Text(text)) }
+                    }
                     backoffMs = 1_000L
                     if (partyCode != null) sendParty()
                     // What this device is playing is not known to the server on a new socket.
@@ -228,6 +240,9 @@ class AccountDevices(
                         }
                     } finally {
                         ping.cancel()
+                        if (outbox === box) outbox = null
+                        box.close()
+                        writer.cancel()
                     }
                 }
             } catch (cancelled: CancellationException) {
@@ -235,8 +250,6 @@ class AccountDevices(
             } catch (failure: Exception) {
                 // A socket drops for ordinary reasons all day; the reason is kept for diagnostics.
                 _state.update { it.copy(failure = "${failure::class.simpleName}: ${failure.message}") }
-            } finally {
-                session = null
             }
             if (!scope.isActive) return
             _state.update { it.copy(connection = AccountConnection.CONNECTING) }
@@ -263,6 +276,7 @@ class AccountDevices(
         const val IDLE_RETRY_MS = 15_000L
         const val UNSUPPORTED_RETRY_MS = 10 * 60_000L
         const val MAX_BACKOFF_MS = 30_000L
+        const val OUTBOX_CAPACITY = 256
 
         /** A playhead that has only moved with the clock is not news. */
         const val POSITION_JITTER_MS = 4_000L

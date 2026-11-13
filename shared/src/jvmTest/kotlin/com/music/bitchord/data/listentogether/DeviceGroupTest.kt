@@ -63,6 +63,33 @@ class DeviceGroupTest {
     }
 
     @Test
+    fun `a proof is good for one server and one purpose only`() {
+        val account = DeviceGroup.ProofUse.ACCOUNT
+        val party = DeviceGroup.ProofUse.PARTY
+        val mine = DeviceGroup.proofFor(a, account, "https://party.example.com")
+        assertEquals(64, mine.length)
+        assertTrue(mine.all { it in "0123456789abcdef" })
+        assertTrue(a !in mine)
+        // Another server, another purpose and another secret each give something else, so what one
+        // server learns opens nothing on another.
+        assertNotEquals(mine, DeviceGroup.proofFor(a, account, "https://friend.example.net"))
+        assertNotEquals(mine, DeviceGroup.proofFor(a, party, "https://party.example.com"))
+        assertNotEquals(mine, DeviceGroup.proofFor(b, account, "https://party.example.com"))
+        // And it is not the old key that every server used to be shown.
+        @Suppress("DEPRECATION")
+        assertNotEquals(DeviceGroup.groupId(a), mine)
+    }
+
+    @Test
+    fun `the same server is the same however its address is written`() {
+        val use = DeviceGroup.ProofUse.PARTY
+        val plain = DeviceGroup.proofFor(a, use, "party.example.com")
+        assertEquals(plain, DeviceGroup.proofFor(a, use, "https://Party.Example.com/"))
+        assertEquals(plain, DeviceGroup.proofFor(a, use, "http://party.example.com/api?x=1"))
+        assertNotEquals(plain, DeviceGroup.proofFor(a, use, "party.example.com:8443"))
+    }
+
+    @Test
     fun `isDeviceGroupPlaylist filters out account device playlists`() {
         assertTrue(DeviceGroup.isDeviceGroupPlaylist("BitChord devices · $a"))
         assertTrue(DeviceGroup.isDeviceGroupPlaylist("bitchord devices · $a"))

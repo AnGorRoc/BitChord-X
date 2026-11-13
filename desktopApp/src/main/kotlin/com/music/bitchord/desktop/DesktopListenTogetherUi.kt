@@ -146,14 +146,6 @@ internal fun DesktopListenTogetherDialog(autoplayEnabled: Boolean, onDismiss: ()
                     error = localError ?: state.error,
                     onBack = { preview = null; localError = null },
                     onJoin = {
-                        // Already playing on one of this person's devices: Connect takes it there
-                        // instead of a second seat for the same person.
-                        val own = DesktopListenTogether.siblingInParty(preview!!.code)
-                        if (own != null) {
-                            DesktopPlayerHost.onPickDevice(own.deviceId, null)
-                            preview = null
-                            return@JoinConfirmation
-                        }
                         busy = true
                         localError = null
                         scope.launch {

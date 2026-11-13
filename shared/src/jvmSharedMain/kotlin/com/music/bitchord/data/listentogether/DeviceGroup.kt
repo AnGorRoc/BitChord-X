@@ -4,6 +4,8 @@ import com.music.bitchord.data.YtMusicRepository
 import com.music.bitchord.data.model.PlaylistPrivacy
 import java.security.MessageDigest
 import java.security.SecureRandom
+import javax.crypto.Mac
+import javax.crypto.spec.SecretKeySpec
 
 /**
  * How one person's devices prove they are the same person, without the server ever being able to
@@ -46,10 +48,46 @@ object DeviceGroup {
         .filter { TOKEN.matches(it) }
         .minOrNull()
 
-    /** The key the server knows this group by: a hash, so the token itself stays on the devices. */
+    /**
+     * The same key for every server and every purpose, which is exactly the problem: a server that
+     * is shown it can act as this person on any other. Kept only so old callers compile; use
+     * [proofFor].
+     */
+    @Deprecated("Sent to every server alike. Use proofFor.")
     fun groupId(secret: String): String = MessageDigest.getInstance("SHA-256")
         .digest("bitchord-devices-v1:$secret".toByteArray())
         .joinToString("") { "%02x".format(it) }
+
+    /** What a proof is for. The two are never interchangeable: one cannot stand in for the other. */
+    enum class ProofUse(internal val label: String) {
+        /** The account channel: seeing the person's devices and commanding them. */
+        ACCOUNT("account"),
+
+        /** Being the same person in a party. */
+        PARTY("party"),
+    }
+
+    /**
+     * The proof a device shows one server, for one purpose.
+     *
+     * Derived from the secret with a message made of the purpose and the server's own address, so
+     * a proof that reaches a server (a friend's, or one named by an invite link) is worthless on
+     * any other server and for any other purpose: it cannot open the person's devices elsewhere
+     * nor stand in for them in a party. The secret itself never leaves the device. Both platforms
+     * must agree on the address, so only the host and port count, in lower case.
+     */
+    fun proofFor(secret: String, use: ProofUse, serverBase: String): String {
+        val mac = Mac.getInstance("HmacSHA256")
+        mac.init(SecretKeySpec(secret.toByteArray(), "HmacSHA256"))
+        val message = "bitchord-proof-v2:${use.label}:${originOf(serverBase)}"
+        return mac.doFinal(message.toByteArray()).joinToString("") { "%02x".format(it) }
+    }
+
+    /** `https://Party.Example.com/x` and `party.example.com` name the same server. */
+    internal fun originOf(serverBase: String): String =
+        serverBase.trim().lowercase()
+            .removePrefix("https://").removePrefix("http://").removePrefix("wss://").removePrefix("ws://")
+            .substringBefore('/').substringBefore('?').trimEnd('.')
 
     /**
      * The group's token, made if this is the first device to ask. Listing again after creating is

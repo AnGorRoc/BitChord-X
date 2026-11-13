@@ -3,7 +3,6 @@ package com.music.bitchord.data.listentogether
 import android.content.Context
 import android.os.SystemClock
 import android.content.SharedPreferences
-import com.music.bitchord.data.listentogether.account.AccountDevice
 import com.music.bitchord.data.listentogether.account.AccountDevices
 import com.music.bitchord.data.listentogether.account.DeviceSelf
 import android.net.ConnectivityManager
@@ -846,7 +845,7 @@ object ListenTogether {
             JoinRequest(
                 who.userId, who.deviceId, who.name, who.avatar, maxMembers,
                 autoplayEnabled = AppSettings.autoplay.value,
-                accountProof = proofForJoin(),
+                accountProof = proofForJoin(serverBase),
                 deviceName = deviceName(),
             ),
         )
@@ -908,7 +907,7 @@ object ListenTogether {
             "$serverBase/api/parties/$cleaned/join",
             JoinRequest(
                 who.userId, who.deviceId, who.name, who.avatar,
-                accountProof = proofForJoin(), deviceName = deviceName(),
+                accountProof = proofForJoin(serverBase), deviceName = deviceName(),
             ),
         )
 
@@ -1018,7 +1017,7 @@ object ListenTogether {
                     "$targetBase/api/parties/$cleanedTargetCode/join",
                     JoinRequest(
                         who.userId, who.deviceId, who.name, who.avatar,
-                        accountProof = proofForJoin(), deviceName = deviceName(),
+                        accountProof = proofForJoin(targetBase), deviceName = deviceName(),
                     ),
                 )
             }
@@ -1170,6 +1169,13 @@ object ListenTogether {
      */
     val listenHere: StateFlow<Boolean> = _listenHere.asStateFlow()
 
+    /**
+     * Whether a party is what this device's player follows right now. While it is, the party
+     * reconciles the player against its own state many times a second, so another of the person's
+     * devices handing it music or taking its sound would be undone at once.
+     */
+    fun partyOwnsPlayer(): Boolean = _state.value.inParty && _listenHere.value
+
     private val featureCache = java.util.concurrent.ConcurrentHashMap<String, Set<String>>()
 
     /** What the server holding the current party supports; empty for the original server. */
@@ -1208,7 +1214,8 @@ object ListenTogether {
     }
 
     /** What to tell the server so this device's devices are one person; null when it cannot be had. */
-    private suspend fun proofForJoin(): String? = runCatching { accountProof() }.getOrNull()
+    private suspend fun proofForJoin(serverBase: String): String? =
+        runCatching { accountProof(DeviceGroup.ProofUse.PARTY, serverBase) }.getOrNull()
 
     /**
      * Chooses whether sound plays on this device. The choice always applies here; it is only
@@ -1715,7 +1722,7 @@ object ListenTogether {
             http = http,
             scope = scope,
             serverBase = { effectiveIdleServerBase().takeIf { it.isNotBlank() }?.let(::resolveHttpBase) },
-            proof = { accountProof() },
+            proof = { base -> accountProof(DeviceGroup.ProofUse.ACCOUNT, base) },
             self = { DeviceSelf(deviceId(), deviceName(), deviceType()) },
         )
     }
@@ -1724,10 +1731,6 @@ object ListenTogether {
     fun mirrorPartyToAccount() {
         scope.launch { _state.collect { account.setParty(it.code) } }
     }
-
-    /** Another of the person's devices that is in [code] right now, if any. */
-    fun siblingInParty(code: String): AccountDevice? =
-        account.state.value.others.firstOrNull { it.connected && it.partyCode == code }
 
     /** What this device is called in the person's Connect list. Their choice, else the model. */
     fun deviceName(): String =
@@ -1764,20 +1767,26 @@ object ListenTogether {
      * The proof this account's devices share, or null when it cannot be had right now (signed out,
      * offline). Made on first use and remembered, so the library is only asked once per account.
      */
-    private suspend fun accountProof(): String? {
+    private suspend fun accountSecret(): String? {
         // A test seam for the dev build only: lets a device that is not signed in to Google be put in
-        // an account by writing a proof into its private preferences (adb run-as), so two devices can
+        // an account by writing a secret into its private preferences (adb run-as), so two devices can
         // be exercised without the real library. Release builds never read it.
         if (BuildConfig.FLAVOR == "dev") {
             prefs.getString(KEY_DEBUG_PROOF, null)?.takeIf { it.length == 64 }?.let { return it }
         }
         val who = identity() ?: return null
         val key = KEY_ACCOUNT_SECRET + who.userId
-        val secret = prefs.getString(key, null)?.takeIf { it.isNotBlank() }
+        return prefs.getString(key, null)?.takeIf { it.isNotBlank() }
             ?: DeviceGroup.ensureSecret().getOrNull()?.also { prefs.edit().putString(key, it).apply() }
-            ?: return null
-        return DeviceGroup.groupId(secret)
     }
+
+    /**
+     * What this device shows [serverBase] to be recognised as the same person, for one [use]. The
+     * secret is never sent: each server and each purpose gets its own derived value, so one that
+     * leaks (a server somebody else runs, an invite pointing at it) opens nothing anywhere else.
+     */
+    private suspend fun accountProof(use: DeviceGroup.ProofUse, serverBase: String): String? =
+        accountSecret()?.let { DeviceGroup.proofFor(it, use, serverBase) }
 
     private fun deviceId(): String {
         prefs.getString(KEY_DEVICE, null)?.let { return it }

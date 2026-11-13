@@ -2,7 +2,6 @@ package com.music.bitchord.desktop
 
 import com.music.bitchord.data.listentogether.ApiError
 import com.music.bitchord.data.listentogether.DeviceGroup
-import com.music.bitchord.data.listentogether.account.AccountDevice
 import com.music.bitchord.data.listentogether.account.AccountDevices
 import com.music.bitchord.data.listentogether.account.DeviceSelf
 import com.music.bitchord.data.listentogether.JoinRequest
@@ -474,6 +473,13 @@ internal object DesktopListenTogether {
      */
     val listenHere: StateFlow<Boolean> = _listenHere.asStateFlow()
 
+    /**
+     * Whether a party is what this computer's player follows right now. While it is, the party
+     * keeps the player where it says, so another of the person's devices handing it music or
+     * taking its sound would be undone at once.
+     */
+    fun partyOwnsPlayer(): Boolean = _state.value.inParty && _listenHere.value
+
     private val featureCache = java.util.concurrent.ConcurrentHashMap<String, Set<String>>()
 
     /** What the server holding the current party supports; empty for the original server. */
@@ -521,16 +527,12 @@ internal object DesktopListenTogether {
         scope.launch { _state.collect { account.setParty(it.code) } }
     }
 
-    /** Another of the person's devices that is in [code] right now, if any. */
-    fun siblingInParty(code: String): AccountDevice? =
-        account.state.value.others.firstOrNull { it.connected && it.partyCode == code }
-
     val account: AccountDevices by lazy {
         AccountDevices(
             http = http,
             scope = scope,
             serverBase = { resolveIdleServer().takeIf { it.isNotBlank() }?.let(::httpBaseOf) },
-            proof = { accountProof() },
+            proof = { base -> accountProof(DeviceGroup.ProofUse.ACCOUNT, base) },
             self = { DeviceSelf(deviceId(), deviceName(), "computer") },
         )
     }
@@ -557,16 +559,16 @@ internal object DesktopListenTogether {
      * The proof this account's devices share, or null when it cannot be had now. Made on first use
      * and remembered, so the library is asked once per account.
      */
-    private suspend fun accountProof(): String? {
+    private suspend fun accountProof(use: DeviceGroup.ProofUse, serverBase: String): String? {
         // A test seam: a development run can be put in an account by environment, without a Google
         // sign-in. An ordinary run never has it set.
-        System.getenv("BITCHORD_DEBUG_ACCOUNT_PROOF")?.takeIf { it.length == 64 }?.let { return it }
+        System.getenv("BITCHORD_DEBUG_ACCOUNT_PROOF")?.takeIf { it.length == 64 }?.let { return DeviceGroup.proofFor(it, use, serverBase) }
         val who = identity() ?: return null
         val key = KEY_ACCOUNT_SECRET + who.userId
         val secret = persistence.string(key).takeIf { it.isNotBlank() }
             ?: DeviceGroup.ensureSecret().getOrNull()?.also { persistence.saveString(key, it) }
             ?: return null
-        return DeviceGroup.groupId(secret)
+        return DeviceGroup.proofFor(secret, use, serverBase)
     }
 
     /**
