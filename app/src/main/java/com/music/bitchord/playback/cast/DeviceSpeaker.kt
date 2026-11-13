@@ -208,7 +208,7 @@ internal class DeviceSpeaker(
         confirmJob?.cancel()
         confirmJob = scope.launch {
             var waited = 0L
-            while (awaitingConfirm != null && waited < CONFIRM_TIMEOUT_MS) {
+            while (awaitingConfirm != null && waited < HANDOVER_TIMEOUT_MS) {
                 delay(CONFIRM_POLL_MS)
                 waited += CONFIRM_POLL_MS
                 val target = account.state.value.devices.firstOrNull { it.deviceId == targetId }
@@ -224,6 +224,8 @@ internal class DeviceSpeaker(
                 // The target never took it up. Nothing was silenced, so nobody is left in silence.
                 awaitingConfirm = null
                 say("The other device did not start playing.")
+                // It may still start late; left alone it would play on with nobody holding its remote.
+                command(DeviceActions.PAUSE)
                 endLocally(resumeHere = false)
             }
         }
@@ -411,6 +413,9 @@ internal class DeviceSpeaker(
     private companion object {
         const val SEEK_GRACE_MS = 1_500L
         const val CONFIRM_TIMEOUT_MS = 8_000L
+
+        /** A computer has to find the song's stream before it can play it, which takes longer than an answer. */
+        const val HANDOVER_TIMEOUT_MS = 20_000L
         const val CONFIRM_POLL_MS = 250L
 
         /** How long after loading the remote's queue the player's own reports are not the person's. */

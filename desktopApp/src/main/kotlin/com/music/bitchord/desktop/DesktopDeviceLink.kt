@@ -260,7 +260,7 @@ internal class DesktopDeviceLink(
         confirmJob?.cancel()
         confirmJob = scope.launch {
             var waited = 0L
-            while (awaitingConfirm != null && waited < CONFIRM_TIMEOUT_MS) {
+            while (awaitingConfirm != null && waited < HANDOVER_TIMEOUT_MS) {
                 delay(CONFIRM_POLL_MS)
                 waited += CONFIRM_POLL_MS
                 val target = account.state.value.devices.firstOrNull { it.deviceId == targetId }
@@ -275,6 +275,7 @@ internal class DesktopDeviceLink(
                 // The target never took it up. Nothing was silenced, so nobody is left in silence.
                 awaitingConfirm = null
                 say("The other device did not start playing.")
+                command(DeviceActions.PAUSE)
                 endLocally(false)
             }
         }
@@ -459,6 +460,7 @@ internal class DesktopDeviceLink(
         const val PUBLISH_MS = 1_000L
         const val OVERLAY_MS = 250L
         const val CONFIRM_TIMEOUT_MS = 8_000L
+        const val HANDOVER_TIMEOUT_MS = 20_000L
         const val CONFIRM_POLL_MS = 250L
         const val SEEK_GRACE_NANOS = 1_500_000_000L
 
