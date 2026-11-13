@@ -32,6 +32,12 @@ import kotlin.math.roundToInt
 import org.jetbrains.compose.resources.painterResource
 
 fun main() {
+    // Ensure only one instance of BitChord runs at a time.
+    // If an instance is already running, notify it to restore/focus its window and exit immediately.
+    if (!DesktopSingleInstance.acquireOrNotify()) {
+        return
+    }
+
     // Before any WebView exists, so the sign-in window can start over with an empty jar.
     DesktopWebCookies.install()
     DesktopWindowVisibility.install()
@@ -73,8 +79,8 @@ fun main() {
 
 private fun desktopMain() = application {
     val persistence = remember { DesktopPersistence() }
-    val savedWidth = remember { persistence.int("window_width", 1_220).coerceAtLeast(MIN_WINDOW_WIDTH_DP.toInt()).dp }
-    val savedHeight = remember { persistence.int("window_height", 780).coerceAtLeast(MIN_WINDOW_HEIGHT_DP.toInt()).dp }
+    val savedWidth = remember { persistence.int("window_width", MIN_WINDOW_WIDTH_DP.toInt()).coerceAtLeast(MIN_WINDOW_WIDTH_DP.toInt()).dp }
+    val savedHeight = remember { persistence.int("window_height", MIN_WINDOW_HEIGHT_DP.toInt()).coerceAtLeast(MIN_WINDOW_HEIGHT_DP.toInt()).dp }
     val savedX = remember { persistence.int("window_x", -1) }
     val savedY = remember { persistence.int("window_y", -1) }
     val savedPlacement = remember {

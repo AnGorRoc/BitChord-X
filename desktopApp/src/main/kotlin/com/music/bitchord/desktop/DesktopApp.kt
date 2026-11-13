@@ -667,7 +667,6 @@ fun BitChordDesktopApp() {
     var exploreReloads by remember { mutableStateOf(0) }
     var moodGenreReloads by remember { mutableStateOf(0) }
     var moodGenreShelves by remember { mutableStateOf<UiState<List<HomeShelf>>>(UiState.Loading) }
-    var selectedSong by remember { mutableStateOf<Song?>(null) }
     // The live queue: what is playing, what played before it, what is next.
     var liveQueue by remember {
         mutableStateOf(
@@ -677,6 +676,8 @@ fun BitChordDesktopApp() {
             ),
         )
     }
+    // Starts on the restored current track, so the player shows what was playing last session.
+    var selectedSong by remember { mutableStateOf(liveQueue.current) }
     // The order the queue was in before shuffle rearranged it, so the toggle can be undone.
     var preShuffleOrder by remember { mutableStateOf<List<String>>(emptyList()) }
     // One party AutoPlay top-up at a time; see topUpPartyAutoplay.
@@ -2162,6 +2163,11 @@ fun BitChordDesktopApp() {
             autoplaySeed = null
             loadAutoplaySongs()
         }
+    }
+    // Loads the restored track paused, once, so pressing play resumes it instead of doing nothing.
+    LaunchedEffect(Unit) {
+        val restored = liveQueue.current ?: return@LaunchedEffect
+        if (!DesktopListenTogether.state.value.inParty) playbackEngine.load(restored, playWhenReady = false)
     }
     LaunchedEffect(liveQueue.songs.size, liveQueue.index, partyState.queue.seq) {
         val currentId = selectedSong?.videoId
