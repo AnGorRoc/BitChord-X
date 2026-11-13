@@ -87,6 +87,7 @@ internal class DesktopDeviceLink(
             while (true) {
                 delay(PUBLISH_MS)
                 publish()
+                mirrorEdits()
             }
         }
         scope.launch {
@@ -120,6 +121,21 @@ internal class DesktopDeviceLink(
         )
     }
 
+    /** The songs in this computer's queue as the controller last knew them. */
+    private var queueSig = ""
+
+    private fun signature() = queue().songs.joinToString(",") { it.videoId }
+
+    /** An edit made on this computer while another device is its remote: the remote's copy follows. */
+    private fun mirrorEdits() {
+        if (active) return
+        val now = signature()
+        if (now == queueSig) return
+        queueSig = now
+        val controller = account.state.value.controller ?: return
+        answer(controller.deviceId, pullIt = false)
+    }
+
     private fun handle(command: DeviceCommand) {
         val payload = command.payload
         when (command.action) {
@@ -137,6 +153,7 @@ internal class DesktopDeviceLink(
             DeviceActions.SNAPSHOT -> answer(command.from, pullIt = false)
             DeviceActions.RELEASE -> answer(command.from, pullIt = true)
         }
+        if (command.action == DeviceActions.PLAY_QUEUE || command.action == DeviceActions.ENQUEUE) queueSig = signature()
         publish()
     }
 

@@ -459,12 +459,28 @@ internal class DeviceTarget(
 ) {
     private var last: AccountNowPlaying? = null
 
+    /** The songs in this phone's queue as the controller last knew them, to notice an edit made here. */
+    private var queueSig = ""
+
+    private fun signature(p: Player) = (0 until p.mediaItemCount).joinToString(",") { p.getMediaItemAt(it).mediaId }
+
+    /** An edit made on this phone while another device is its remote: the remote's copy follows. */
+    private fun mirrorEdits() {
+        val p = player() ?: return
+        val now = signature(p)
+        if (now == queueSig) return
+        queueSig = now
+        val controller = account.state.value.controller ?: return
+        answer(p, controller.deviceId, pullIt = false)
+    }
+
     fun start() {
         scope.launch { account.commands.collect { handle(it) } }
         scope.launch {
             while (true) {
                 delay(PUBLISH_MS)
                 publish()
+                mirrorEdits()
             }
         }
     }
@@ -507,6 +523,8 @@ internal class DeviceTarget(
             DeviceActions.SNAPSHOT -> answer(p, command.from, pullIt = false)
             DeviceActions.RELEASE -> answer(p, command.from, pullIt = true)
         }
+        // What the controller sent is already its own copy; only edits made here are sent back.
+        if (command.action == DeviceActions.PLAY_QUEUE || command.action == DeviceActions.ENQUEUE) queueSig = signature(p)
         // Report at once rather than at the next tick, so the other device's controls feel immediate.
         publish()
     }
