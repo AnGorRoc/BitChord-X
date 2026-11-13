@@ -565,10 +565,32 @@ internal object DesktopListenTogether {
         System.getenv("BITCHORD_DEBUG_ACCOUNT_PROOF")?.takeIf { it.length == 64 }?.let { return DeviceGroup.proofFor(it, use, serverBase) }
         val who = identity() ?: return null
         val key = KEY_ACCOUNT_SECRET + who.userId
-        val secret = persistence.string(key).takeIf { it.isNotBlank() }
-            ?: DeviceGroup.ensureSecret().getOrNull()?.also { persistence.saveString(key, it) }
-            ?: return null
+        persistence.string(key).takeIf { it.isNotBlank() }?.let { cached ->
+            // Remembered, but a secret from the first start can be the loser of a race with another
+            // device that made its own at the same moment; the library settles that (the smallest
+            // token wins), so it is looked at once per run and followed if it differs.
+            if (secretsChecked.add(key)) scope.launch { recheckSecret(key, cached) }
+            return DeviceGroup.proofFor(cached, use, serverBase)
+        }
+        val secret = DeviceGroup.ensureSecret().getOrNull()?.also {
+            persistence.saveString(key, it)
+            secretsChecked.add(key)
+        } ?: return null
         return DeviceGroup.proofFor(secret, use, serverBase)
+    }
+
+    private val secretsChecked = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+
+    private suspend fun recheckSecret(key: String, cached: String) {
+        val settled = DeviceGroup.ensureSecret().getOrNull()
+        if (settled == null) {
+            secretsChecked.remove(key) // not reachable now; look again next time
+            return
+        }
+        if (settled != cached) {
+            persistence.saveString(key, settled)
+            account.restart()
+        }
     }
 
     /**

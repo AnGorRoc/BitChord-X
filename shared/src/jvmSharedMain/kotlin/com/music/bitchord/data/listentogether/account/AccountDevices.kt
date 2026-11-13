@@ -11,7 +11,9 @@ import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
 import kotlinx.coroutines.channels.Channel
+import io.ktor.websocket.CloseReason
 import io.ktor.websocket.Frame
+import io.ktor.websocket.close
 import io.ktor.websocket.readText
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -102,6 +104,16 @@ class AccountDevices(
      */
     @Volatile private var outbox: Channel<String>? = null
     private var lastPublished: AccountNowPlaying? = null
+    private var lastPublishedAtNanos = 0L
+
+    /**
+     * Where the playhead of what was last published should be by [nowNanos] if nothing happened to
+     * it. Viewers run it on themselves from the published anchor, so a report only has to be sent
+     * when the real position leaves this line: comparing with the old position instead, as this did,
+     * made a song that was simply playing look like a seek every few seconds.
+     */
+    private fun expectedPosition(last: AccountNowPlaying, nowNanos: Long): Long =
+        if (last.isPlaying) last.positionMs + (nowNanos - lastPublishedAtNanos) / 1_000_000L else last.positionMs
 
     fun start() {
         if (job?.isActive == true) return
@@ -133,11 +145,13 @@ class AccountDevices(
     fun publish(np: AccountNowPlaying?) {
         val previous = lastPublished
         if (np == previous) return
+        val now = System.nanoTime()
         if (np != null && previous != null && np.videoId == previous.videoId &&
             np.isPlaying == previous.isPlaying && np.volume == previous.volume &&
-            kotlin.math.abs(np.positionMs - previous.positionMs) < POSITION_JITTER_MS
+            kotlin.math.abs(np.positionMs - expectedPosition(previous, now)) < POSITION_JITTER_MS
         ) return
         lastPublished = np
+        lastPublishedAtNanos = now
         sendFrame(
             buildJsonObject {
                 put("type", "nowPlaying")
@@ -228,6 +242,18 @@ class AccountDevices(
                         lastPublished = null
                         publish(last)
                     }
+                    // The server this socket is on can stop being the one wanted (the person's own
+                    // went down and the default took over, or came back). A socket left on the old
+                    // one would keep this device apart from the others, which moved.
+                    val watch = launch {
+                        while (true) {
+                            delay(SERVER_CHECK_MS)
+                            if (serverBase()?.trimEnd('/') != base) {
+                                close(CloseReason(CloseReason.Codes.NORMAL, "server changed"))
+                                break
+                            }
+                        }
+                    }
                     val ping = launch {
                         while (true) {
                             delay(PING_MS)
@@ -240,6 +266,7 @@ class AccountDevices(
                         }
                     } finally {
                         ping.cancel()
+                        watch.cancel()
                         if (outbox === box) outbox = null
                         box.close()
                         writer.cancel()
@@ -277,6 +304,7 @@ class AccountDevices(
         const val UNSUPPORTED_RETRY_MS = 10 * 60_000L
         const val MAX_BACKOFF_MS = 30_000L
         const val OUTBOX_CAPACITY = 256
+        const val SERVER_CHECK_MS = 30_000L
 
         /** A playhead that has only moved with the clock is not news. */
         const val POSITION_JITTER_MS = 4_000L

@@ -9,6 +9,7 @@ import com.music.bitchord.data.listentogether.account.DeviceCommand
 import com.music.bitchord.data.listentogether.account.Handoff
 import com.music.bitchord.data.listentogether.account.HandoffForce
 import com.music.bitchord.data.listentogether.account.HandoffRules
+import com.music.bitchord.data.listentogether.account.HandoffWindow
 import com.music.bitchord.data.model.Song
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -207,14 +208,13 @@ internal class DesktopDeviceLink(
      */
     private fun answer(to: String, pullIt: Boolean) {
         val local = queue()
-        val tracks = local.songs.drop(local.index.coerceAtLeast(0)).take(MAX_HANDOVER).map { it.toPartyTrack(0L) }
-        if (tracks.isEmpty()) return
+        val (tracks, index) = window(local.songs, local.index.coerceAtLeast(0)) ?: return
         val state = engine.state.value
         account.command(
             to, DeviceActions.PLAY_QUEUE,
             buildJsonObject {
                 put("tracks", tracksJson(tracks))
-                put("index", 0)
+                put("index", index)
                 put("positionMs", state.positionMs)
                 put("isPlaying", pullIt && state.isPlaying)
                 put("link", false)
@@ -242,6 +242,11 @@ internal class DesktopDeviceLink(
             say("${target.name} is in a party. Leave it there first.")
             return
         }
+        // A remote is not a speaker: what it plays comes from the device it controls.
+        if (target.controlling != null) {
+            say("${target.name} is controlling another device.")
+            return
+        }
         when (HandoffRules.onPick(target, queue().songs.isNotEmpty(), force)) {
             Handoff.CONTROL_ONLY -> controlOnly(target)
             Handoff.SEND_MY_MUSIC -> sendMine(target)
@@ -266,12 +271,17 @@ internal class DesktopDeviceLink(
     private fun sendMine(target: AccountDevice) {
         val local = queue()
         val current = local.current ?: return
+        if (window(local.songs, local.index.coerceAtLeast(0)) == null) {
+            // A file that lives on this computer alone: the other device has nothing to play.
+            say("This song is a file on this computer, so it can't be played on another device.")
+            return
+        }
         begin(target.deviceId)
         val state = engine.state.value
         wantsPlay = state.isPlaying
         requestedPositionMs = state.positionMs
         requestedAtNanos = System.nanoTime()
-        sendQueue(local.songs.drop(local.index.coerceAtLeast(0)), wantsPlay, requestedPositionMs)
+        sendQueue(local.songs, local.index.coerceAtLeast(0), wantsPlay, requestedPositionMs)
         awaitingConfirm = current.videoId
         armConfirmation(current.videoId, wantsPlay)
     }
@@ -394,7 +404,7 @@ internal class DesktopDeviceLink(
         wantsPlay = true
         requestedPositionMs = 0L
         requestedAtNanos = System.nanoTime()
-        sendQueue(songs, true, 0L)
+        sendQueue(songs, 0, true, 0L)
     }
 
     /** Adds to the queue of the device that is playing. */
@@ -412,15 +422,20 @@ internal class DesktopDeviceLink(
         targetId?.let { account.command(it, action, payload) }
     }
 
-    private fun sendQueue(songs: List<Song>, play: Boolean, positionMs: Long) {
+    /** The songs that go with a hand-over and where the current one is among them; see [HandoffWindow]. */
+    private fun window(songs: List<Song>, current: Int): Pair<List<PartyTrack>, Int>? {
+        val slice = HandoffWindow.slice(songs.map { it.videoId }, current) { !HandoffWindow.isDeviceFile(it) } ?: return null
+        return slice.indices.map { songs[it].toPartyTrack(0L) } to slice.index
+    }
+
+    private fun sendQueue(songs: List<Song>, current: Int, play: Boolean, positionMs: Long) {
         val id = targetId ?: return
-        val tracks = songs.take(MAX_HANDOVER).map { it.toPartyTrack(0L) }
-        if (tracks.isEmpty()) return
+        val (tracks, index) = window(songs, current) ?: return
         account.command(
             id, DeviceActions.PLAY_QUEUE,
             buildJsonObject {
                 put("tracks", tracksJson(tracks))
-                put("index", 0)
+                put("index", index)
                 put("positionMs", positionMs)
                 put("isPlaying", play)
             },
@@ -532,6 +547,5 @@ internal class DesktopDeviceLink(
         const val SEEK_GRACE_NANOS = 1_500_000_000L
 
         /** How much of the queue one hand-over carries; the server allows 500. */
-        const val MAX_HANDOVER = 200
     }
 }

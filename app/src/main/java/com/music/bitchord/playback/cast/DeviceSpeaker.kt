@@ -15,6 +15,7 @@ import com.music.bitchord.data.listentogether.account.DeviceCommand
 import com.music.bitchord.data.listentogether.account.Handoff
 import com.music.bitchord.data.listentogether.account.HandoffForce
 import com.music.bitchord.data.listentogether.account.HandoffRules
+import com.music.bitchord.data.listentogether.account.HandoffWindow
 import com.music.bitchord.playback.toMediaItem
 import com.music.bitchord.playback.toPartyTrack
 import com.music.bitchord.playback.toSong
@@ -154,6 +155,11 @@ internal class DeviceSpeaker(
             say("${target.name} is in a party. Leave it there first.")
             return
         }
+        // A remote is not a speaker: what it plays comes from the device it controls.
+        if (target.controlling != null) {
+            say("${target.name} is controlling another device.")
+            return
+        }
         val player = localPlayer()
         val hasMusic = player != null && player.mediaItemCount > 0
         when (HandoffRules.onPick(target, hasMusic, force)) {
@@ -182,6 +188,11 @@ internal class DeviceSpeaker(
     private fun sendMine(target: AccountDevice) {
         val player = localPlayer() ?: return
         val item = player.currentMediaItem ?: return
+        if (player.handoffWindow() == null) {
+            // A file that lives on this phone alone: the other device has nothing to play.
+            say("This song is a file on this phone, so it can't be played on another device.")
+            return
+        }
         beginAs(target.deviceId)
         wantsPlay = player.playWhenReady && player.playbackState != Player.STATE_ENDED
         requestedPositionMs = player.currentPosition.coerceAtLeast(0L)
@@ -423,15 +434,12 @@ internal class DeviceSpeaker(
 
     private fun sendQueue(player: Player, play: Boolean, positionMs: Long, keepPlaying: Boolean = false) {
         val id = targetId ?: return
-        val index = player.currentMediaItemIndex.coerceAtLeast(0)
-        val tracks = (index until minOf(player.mediaItemCount, index + MAX_HANDOVER))
-            .map { player.getMediaItemAt(it).toSong().toPartyTrack(0L) }
-        if (tracks.isEmpty()) return
+        val (tracks, index) = player.handoffWindow() ?: return
         account.command(
             id, DeviceActions.PLAY_QUEUE,
             buildJsonObject {
                 put("tracks", DeviceWire.tracks(tracks))
-                put("index", 0)
+                put("index", index)
                 put("positionMs", positionMs)
                 put("isPlaying", play)
                 if (keepPlaying) put("keepPlaying", true)
@@ -459,8 +467,6 @@ internal class DeviceSpeaker(
         /** How long after loading the remote's queue the player's own reports are not the person's. */
         const val MIRROR_SETTLE_MS = 2_500L
 
-        /** How much of the queue one hand-over carries; the server allows 500. */
-        const val MAX_HANDOVER = 200
     }
 }
 
@@ -622,15 +628,13 @@ internal class DeviceTarget(
      * stops and the copy arrives playing. Otherwise it is only so the sender can show it.
      */
     private fun answer(p: ExoPlayer, to: String, pullIt: Boolean) {
-        val index = p.currentMediaItemIndex.coerceAtLeast(0)
-        val tracks = (index until minOf(p.mediaItemCount, index + 200)).map { p.getMediaItemAt(it).toSong().toPartyTrack(0L) }
-        if (tracks.isEmpty()) return
+        val (tracks, index) = p.handoffWindow() ?: return
         val playing = p.playWhenReady && p.playbackState != Player.STATE_ENDED
         account.command(
             to, DeviceActions.PLAY_QUEUE,
             buildJsonObject {
                 put("tracks", DeviceWire.tracks(tracks))
-                put("index", 0)
+                put("index", index)
                 put("positionMs", p.currentPosition.coerceAtLeast(0L))
                 put("isPlaying", if (pullIt) playing else false)
                 put("link", false)
@@ -646,4 +650,15 @@ internal class DeviceTarget(
     private companion object {
         const val PUBLISH_MS = 1_000L
     }
+}
+
+/**
+ * The songs of this player that go with a hand-over, and where the current one is among them (see
+ * [HandoffWindow]); null when the current song cannot be played on another device.
+ */
+internal fun Player.handoffWindow(): Pair<List<PartyTrack>, Int>? {
+    val ids = (0 until mediaItemCount).map { getMediaItemAt(it).mediaId }
+    val slice = HandoffWindow.slice(ids, currentMediaItemIndex.coerceAtLeast(0)) { !HandoffWindow.isDeviceFile(it) }
+        ?: return null
+    return slice.indices.map { getMediaItemAt(it).toSong().toPartyTrack(0L) } to slice.index
 }

@@ -1776,8 +1776,32 @@ object ListenTogether {
         }
         val who = identity() ?: return null
         val key = KEY_ACCOUNT_SECRET + who.userId
-        return prefs.getString(key, null)?.takeIf { it.isNotBlank() }
-            ?: DeviceGroup.ensureSecret().getOrNull()?.also { prefs.edit().putString(key, it).apply() }
+        prefs.getString(key, null)?.takeIf { it.isNotBlank() }?.let { cached ->
+            // Remembered, so the library is not asked on every connect. But a secret remembered
+            // from the first start can be the loser of a race with another device that made its own
+            // at the same moment; the library settles that (the smallest token wins), so it is
+            // looked at once per run, and this device follows it if it differs.
+            if (secretsChecked.add(key)) scope.launch { recheckSecret(key, cached) }
+            return cached
+        }
+        return DeviceGroup.ensureSecret().getOrNull()?.also {
+            prefs.edit().putString(key, it).apply()
+            secretsChecked.add(key)
+        }
+    }
+
+    private val secretsChecked = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+
+    private suspend fun recheckSecret(key: String, cached: String) {
+        val settled = DeviceGroup.ensureSecret().getOrNull()
+        if (settled == null) {
+            secretsChecked.remove(key) // not reachable now; look again next time it is asked for
+            return
+        }
+        if (settled != cached) {
+            prefs.edit().putString(key, settled).apply()
+            account.restart()
+        }
     }
 
     /**
