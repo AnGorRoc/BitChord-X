@@ -516,9 +516,28 @@ func handleJoinParty(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p.Lock()
+	// A device that comes back signed in as somebody else leaves its old seat (see JoinAs). Its
+	// old socket must not stay behind as a member that no longer exists.
+	var before []string
+	for id, existing := range p.Members {
+		if existing.DeviceId == req.DeviceId {
+			before = append(before, id)
+		}
+	}
 	m, err := p.JoinAs(req.UserId, req.DeviceId, req.DisplayName, req.AvatarUrl, req.AccountProof, req.DeviceName)
+	var replaced []string
+	for _, id := range before {
+		if _, still := p.Members[id]; !still {
+			replaced = append(replaced, id)
+		}
+	}
+	var replacedMembers map[string]interface{}
+	if len(replaced) > 0 {
+		replacedMembers = membersFrame(p)
+	}
 	if err != nil {
 		p.Unlock()
+		dropReplacedSockets(p.Code, replaced, replacedMembers)
 		if pe, ok := err.(*party.PartyError); ok {
 			jsonError(w, pe.Status, pe.Code, pe.Message)
 			return
@@ -530,7 +549,11 @@ func handleJoinParty(w http.ResponseWriter, r *http.Request) {
 	youWire := m.ToWire()
 	token := m.Token
 	pCode := p.Code
+	if len(replaced) > 0 {
+		replacedMembers = membersFrame(p)
+	}
 	p.Unlock()
+	dropReplacedSockets(pCode, replaced, replacedMembers)
 
 	jsonResponse(w, http.StatusOK, map[string]interface{}{
 		"code":  pCode,
@@ -580,7 +603,13 @@ func handlePreviewParty(w http.ResponseWriter, r *http.Request) {
 	})
 	members := make([]map[string]interface{}, 0, len(ordered))
 	hostName := ""
+	seen := make(map[string]bool, len(ordered))
 	for _, m := range ordered {
+		// A person on two devices is one face and one seat, as the size limit counts them.
+		if seen[m.PersonId] {
+			continue
+		}
+		seen[m.PersonId] = true
 		members = append(members, map[string]interface{}{
 			"displayName": m.DisplayName,
 			"avatarUrl":   m.AvatarUrl,
@@ -593,9 +622,9 @@ func handlePreviewParty(w http.ResponseWriter, r *http.Request) {
 	preview := map[string]interface{}{
 		"code":        p.Code,
 		"hostName":    hostName,
-		"memberCount": len(p.Members),
+		"memberCount": p.PersonCount(),
 		"maxMembers":  p.MaxMembers,
-		"isFull":      len(p.Members) >= p.MaxMembers,
+		"isFull":      p.PersonCount() >= p.MaxMembers,
 		"members":     members,
 	}
 	p.Unlock()
@@ -935,7 +964,7 @@ func handleInviteLanding(w http.ResponseWriter, r *http.Request) {
 		currentSongTitle = p.Playback.Track.Title
 		currentSongArtist = p.Playback.Track.Artist
 	}
-	memberCount := len(p.Members)
+	memberCount := p.PersonCount()
 	p.Unlock()
 
 	w.WriteHeader(http.StatusOK)
@@ -1454,5 +1483,22 @@ func dropOrphanRooms() {
 		if !live[code] {
 			hubInst.DropParty(code)
 		}
+	}
+}
+
+// dropReplacedSockets closes the sockets of members that were replaced by a join (a device that
+// came back as another account) and tells the rest of the party who is left.
+func dropReplacedSockets(code string, replaced []string, members map[string]interface{}) {
+	if len(replaced) == 0 {
+		return
+	}
+	for _, id := range replaced {
+		hubInst.Send(code, id, map[string]interface{}{
+			"type": protocol.FrameBye, "reason": "replaced", "message": "This device joined as someone else.",
+		})
+		hubInst.CloseMember(code, id)
+	}
+	if members != nil {
+		hubInst.Broadcast(code, members, "")
 	}
 }

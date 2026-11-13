@@ -309,3 +309,28 @@ func TestALinkSurvivesABlipButNotAnAbsence(t *testing.T) {
 		t.Fatalf("both ends are freed: %q %q", phone.Controlling, pc.ControlledBy)
 	}
 }
+
+func TestARemoteIsNotASpeaker(t *testing.T) {
+	s := NewStore()
+	acc, phone, _ := connect(t, s, proofAna, "phone", "Pixel", "phone")
+	_, pc, _ := connect(t, s, proofAna, "pc", "IOP", "computer")
+	_, tablet, _ := connect(t, s, proofAna, "tab", "Tab", "tablet")
+	acc.Lock()
+	defer acc.Unlock()
+	if err := acc.Attach(phone, "pc"); err != nil {
+		t.Fatal(err)
+	}
+	// The phone now plays on the PC. Nobody can pick the phone as a speaker or hand it music, or
+	// it would pass them on to the PC instead of playing them.
+	if acc.Attach(tablet, "phone") == nil {
+		t.Fatalf("a device that is somebody's remote cannot be picked")
+	}
+	if _, err := acc.Route(tablet, "phone", "playQueue", 1); err == nil {
+		t.Fatalf("music cannot be handed to a remote")
+	}
+	// What its own target says back to it is how a snapshot or a pull arrives, and must pass.
+	if _, err := acc.Route(pc, "phone", "playQueue", 1); err != nil {
+		t.Fatalf("the controlled device answers its remote: %v", err)
+	}
+	_ = tablet
+}

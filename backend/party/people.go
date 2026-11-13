@@ -25,13 +25,14 @@ import (
 // MaxDevicesPerPerson bounds how many devices one person can bring into a party.
 const MaxDevicesPerPerson = 5
 
-// personIDFor gives the id members see for a person. Without a proof a device is its own
+// personIDFor gives the id members see for a person, different in every party: the same person
+// is not recognisable from one party to the next by it. Without a proof a device is its own
 // person, which is what every client that predates this behaves like.
-func personIDFor(proof, memberID string) string {
+func personIDFor(code, proof, memberID string) string {
 	if proof == "" {
 		return memberID
 	}
-	sum := sha256.Sum256([]byte("bitchord-person-v1:" + proof))
+	sum := sha256.Sum256([]byte("bitchord-person-v1:" + code + ":" + proof))
 	return hex.EncodeToString(sum[:])[:16]
 }
 
@@ -100,21 +101,26 @@ func (p *Party) JoinAs(
 
 	// A device coming back keeps its place.
 	for _, m := range p.Members {
-		if m.DeviceId == deviceId {
-			m.DisplayName = displayName
-			m.AvatarUrl = avatarUrl
-			m.UserId = userId
-			m.DeviceName = deviceName
-			m.LastSeenMs = now
-			m.Token = randomToken(24)
-			if accountProof != "" {
-				m.AccountKey = accountProof
-				m.PersonId = personIDFor(accountProof, m.MemberId)
-			}
-			p.syncPerson(m)
-			p.Touch()
-			return m, nil
+		if m.DeviceId != deviceId {
+			continue
 		}
+		if accountProof != "" && m.AccountKey != accountProof {
+			// The device is now signed in as somebody else (or has only now got a proof): it is
+			// not the same person coming back. It leaves as who it was and joins afresh below, so
+			// the seat limit, the removed list and the host role apply to who it is now. Renaming
+			// it in place used to skip all three and left a person half-host, half-guest.
+			p.Remove(m.MemberId)
+			break
+		}
+		m.DisplayName = displayName
+		m.AvatarUrl = avatarUrl
+		m.UserId = userId
+		m.DeviceName = deviceName
+		m.LastSeenMs = now
+		m.Token = randomToken(24)
+		p.syncPerson(m)
+		p.Touch()
+		return m, nil
 	}
 
 	sibling := p.siblingOf(accountProof)
@@ -146,7 +152,7 @@ func (p *Party) JoinAs(
 		FrameBudget:       config.FrameRatePerSecond,
 		FrameBudgetAtMs:   now,
 	}
-	m.PersonId = personIDFor(accountProof, m.MemberId)
+	m.PersonId = personIDFor(p.Code, accountProof, m.MemberId)
 	if sibling != nil {
 		m.PersonId = sibling.PersonId
 		m.IsHost = sibling.IsHost
@@ -263,7 +269,7 @@ func (p *Party) IsBanned(userID, deviceID, accountProof string) bool {
 		return false
 	}
 	if accountProof != "" {
-		if _, ok := p.banned["p:"+personIDFor(accountProof, "")]; ok {
+		if _, ok := p.banned["p:"+personIDFor(p.Code, accountProof, "")]; ok {
 			return true
 		}
 	}

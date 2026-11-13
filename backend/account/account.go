@@ -289,6 +289,11 @@ func (a *Account) Attach(controller *Device, targetID string) error {
 	if target.DeviceID == controller.DeviceID {
 		return errors.New("a device cannot control itself")
 	}
+	// A remote is not a speaker: what it plays comes from the device it controls. Picking it would
+	// make it hand your music on to that device, or tangle two links into a chain.
+	if target.Controlling != "" && target.Controlling != controller.DeviceID {
+		return errors.New("that device is controlling another one")
+	}
 	// Whoever controlled the target loses it; whatever the controller controlled is let go.
 	if target.ControlledBy != "" && target.ControlledBy != controller.DeviceID {
 		if old := a.devices[target.ControlledBy]; old != nil {
@@ -341,6 +346,11 @@ func (a *Account) Route(from *Device, to, action string, itemCount int) (*Device
 	case action == "playQueue" || action == "enqueue":
 		// A device may hand its own music to another without being linked first: that is how
 		// "play on this other device" starts. The caller links them right after.
+		// Not to a device that is itself somebody's remote (apart from the one it controls, which is
+		// answering): it would pass the music on instead of playing it.
+		if target.Controlling != "" && target.Controlling != from.DeviceID {
+			return nil, errors.New("that device is controlling another one")
+		}
 	default:
 		return nil, errors.New("not controlling that device")
 	}
