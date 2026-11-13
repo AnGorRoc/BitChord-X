@@ -1604,6 +1604,7 @@
     <string name="listen_together_play_here_on">คุณได้ยินที่นี่ และคนอื่นได้ยินบนอุปกรณ์ของตน</string>
     <string name="listen_together_play_here_off">เสียงมาจากโฮสต์เท่านั้น คุณยังเห็นและควบคุมปาร์ตี้ได้</string>
     <string name="listen_together_play_remote">เฉพาะบนอุปกรณ์อื่น</string>
+    <string name="listen_together_play_remote_named">เล่นบนอุปกรณ์ของ %1$s</string>
     <string name="listen_together_silent_member">ฟังผ่านโฮสต์</string>
     <string name="device_notice_unavailable">อุปกรณ์นั้นใช้งานไม่ได้</string>
     <string name="device_notice_party_here">คุณอยู่ในปาร์ตี้บนอุปกรณ์นี้ ออกจากปาร์ตี้หรือปิด “เล่นบนอุปกรณ์นี้” ก่อน</string>

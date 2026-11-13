@@ -958,8 +958,9 @@
     <string name="listen_together_nickname_hint">Nickname for this party</string>
     <string name="listen_together_play_here">Play on this device</string>
     <string name="listen_together_play_here_on">You hear it here and everyone else hears it on theirs.</string>
-    <string name="listen_together_play_here_off">Sound comes only from the host. You still see and control the party.</string>
+    <string name="listen_together_play_here_off">Sound comes only from the host.</string>
     <string name="listen_together_play_remote">Only on the other device</string>
+    <string name="listen_together_play_remote_named">Play on %1$s’s device</string>
     <string name="listen_together_silent_member">Listening through the host</string>
     <string name="listen_together_party_size">Party size</string>
     <string name="listen_together_party_size_subtitle">Choose 2–10 listeners</string>

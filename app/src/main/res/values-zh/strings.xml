@@ -1598,6 +1598,7 @@
     <string name="listen_together_play_here_on">你在这里听到，其他人在各自的设备上听到。</string>
     <string name="listen_together_play_here_off">声音只来自主持人。你仍可查看并控制派对。</string>
     <string name="listen_together_play_remote">仅在另一台设备上播放</string>
+    <string name="listen_together_play_remote_named">在 %1$s 的设备上播放</string>
     <string name="listen_together_silent_member">通过主持人收听</string>
     <string name="device_notice_unavailable">该设备不可用。</string>
     <string name="device_notice_party_here">你正在此设备上参加派对。请先退出派对，或关闭“在此设备上播放”。</string>

@@ -1618,6 +1618,7 @@
     <string name="listen_together_play_here_on">Du hörst es hier und alle anderen auf ihrem Gerät.</string>
     <string name="listen_together_play_here_off">Der Ton kommt nur vom Host. Du siehst die Party weiterhin und steuerst sie.</string>
     <string name="listen_together_play_remote">Nur auf dem anderen Gerät</string>
+    <string name="listen_together_play_remote_named">Auf dem Gerät von %1$s abspielen</string>
     <string name="listen_together_silent_member">Hört über den Host</string>
     <string name="device_notice_unavailable">Dieses Gerät ist nicht verfügbar.</string>
     <string name="device_notice_party_here">Auf diesem Gerät läuft eine Party. Verlasse sie oder schalte „Auf diesem Gerät abspielen“ zuerst aus.</string>

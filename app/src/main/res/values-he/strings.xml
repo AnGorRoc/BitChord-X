@@ -1623,6 +1623,7 @@
     <string name="listen_together_play_here_on">אתה שומע את זה כאן וכולם שומעים בשלהם.</string>
     <string name="listen_together_play_here_off">הצליל מגיע רק מהמארח. אתה עדיין רואה ושולט בפארטי.</string>
     <string name="listen_together_play_remote">רק במכשיר השני</string>
+    <string name="listen_together_play_remote_named">הפעלה במכשיר של %1$s</string>
     <string name="listen_together_silent_member">מאזין דרך המארח</string>
     <string name="device_notice_unavailable">המכשיר הזה אינו זמין.</string>
     <string name="device_notice_party_here">אתה בפארטי במכשיר הזה. עזוב אותו או כבה את “נגן במכשיר הזה” קודם.</string>

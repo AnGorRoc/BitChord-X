@@ -721,6 +721,7 @@
     <string name="listen_together_play_here_on">Lo escuchas aquí y cada quien lo escucha en el suyo.</string>
     <string name="listen_together_play_here_off">El sonido sale solo del anfitrión. Sigues viendo y controlando la sesión.</string>
     <string name="listen_together_play_remote">Solo en el otro dispositivo</string>
+    <string name="listen_together_play_remote_named">Reproducir en el dispositivo de %1$s</string>
     <string name="listen_together_silent_member">Escucha desde el anfitrión</string>
     <string name="listen_together_party_size">Tamaño de la fiesta</string>
     <string name="listen_together_party_size_subtitle">Elige de 2 a 10 oyentes</string>

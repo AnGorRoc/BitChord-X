@@ -109,7 +109,6 @@ import com.music.bitchord.R
 import com.music.bitchord.ui.copyText
 import com.music.bitchord.data.listentogether.JamInviteLink
 import com.music.bitchord.data.listentogether.PartyInvites
-import com.music.bitchord.data.listentogether.PartyServers
 import com.music.bitchord.data.listentogether.ListenTogether
 import com.music.bitchord.data.listentogether.PartyActivity
 import com.music.bitchord.data.listentogether.PartyMember
@@ -185,10 +184,6 @@ private fun NameDialog(
 @Composable
 fun ListenTogetherScreen(
     signedIn: Boolean,
-    inviteCode: String? = null,
-    inviteServer: String? = null,
-    inviteSpotifyToken: String? = null,
-    onInviteHandled: () -> Unit = {},
     onSignIn: () -> Unit,
     contentPadding: PaddingValues,
     /**
@@ -209,9 +204,9 @@ fun ListenTogetherScreen(
     val activity by ListenTogether.activity.collectAsStateWithLifecycle()
     val spotifySession by SpotifyJamBridge.session.collectAsStateWithLifecycle()
 
-    var codeInput by remember(inviteCode) { mutableStateOf(inviteCode.orEmpty()) }
+    var codeInput by remember { mutableStateOf("") }
     // The server a pasted link named, kept beside the code it came with.
-    var codeInputServer by remember(inviteCode) { mutableStateOf<String?>(null) }
+    var codeInputServer by remember { mutableStateOf<String?>(null) }
     var busy by remember { mutableStateOf(false) }
     var failure by remember { mutableStateOf<String?>(null) }
     var nickname by remember { mutableStateOf(ListenTogether.nickname()) }
@@ -219,35 +214,56 @@ fun ListenTogetherScreen(
     // never want fewer than everyone they invite.
     val maxMembers = DEFAULT_PARTY_SIZE
     var joinPlayHere by remember { mutableStateOf(true) }
-    var pendingServerSwitchInvite by remember { mutableStateOf<Pair<String, String>?>(null) }
     var sharingApk by remember { mutableStateOf(false) }
     var editingName by remember { mutableStateOf<NameEdit?>(null) }
     var deviceName by remember { mutableStateOf(ListenTogether.deviceName()) }
     var sheet by remember { mutableStateOf<PartySheet?>(null) }
     var showQrScanner by remember { mutableStateOf(false) }
-    var spotifyTier by remember { mutableStateOf(SpotifyAccountTier.UNKNOWN) }
-    var spotifyJamEnabled by remember { mutableStateOf(false) }
 
-    LaunchedEffect(Unit) {
-        spotifyTier = runCatching { SpotifyToken.accountTier() }.getOrDefault(SpotifyAccountTier.UNKNOWN)
-        if (spotifyTier.canHostJam) {
-            spotifyJamEnabled = true
+    /**
+     * Starts a party with what the screen already knows - the name from
+     * settings, the room size nobody has asked to change - and leaves the
+     * party's own page in view once it exists. There is no preparatory sheet:
+     * the name is configured elsewhere and the size is a host setting.
+     */
+    val createPartyNow: () -> Unit = {
+        if (!busy) {
+            busy = true
+            failure = null
+            scope.launch {
+                val result = ListenTogether.createParty(nickname, maxMembers)
+                if (result.isSuccess) {
+                    // The old create sheet defaulted this on when the account could host a Jam.
+                    val tier = runCatching { SpotifyToken.accountTier() }
+                        .getOrDefault(SpotifyAccountTier.UNKNOWN)
+                    if (tier.canHostJam) {
+                        SpotifyJamBridge.createJam().onFailure { err ->
+                            Log.w("ListenTogether", "Spotify Jam creation failed: ${err.message}")
+                        }
+                    }
+                }
+                failure = result.exceptionOrNull()?.message
+                busy = false
+            }
         }
     }
 
-    // Hoisted so a sheet can be *animated* away rather than dropped out of the
-    // composition, which is the only way one sheet can hand over to another:
-    // see the invite that follows a create.
-    val sheetState = rememberModalBottomSheetState()
+    // Always fully open: a half-height drawer hides the choices this sheet
+    // exists to show.
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-    // Picked up from the Connect sheet: land on the sheet the person asked for.
+    // Picked up from the Connect sheet: start a party straight away, or open
+    // the code sheet to join somebody else's.
     val launch by PartyLaunch.pending.collectAsStateWithLifecycle()
     LaunchedEffect(launch, state.inParty) {
         val action = launch ?: return@LaunchedEffect
         PartyLaunch.pending.value = null
         if (!state.inParty) {
             failure = null
-            sheet = if (action == PartyLaunch.Action.START) PartySheet.Create else PartySheet.JoinCode
+            when (action) {
+                PartyLaunch.Action.START -> createPartyNow()
+                PartyLaunch.Action.JOIN -> sheet = PartySheet.JoinCode
+            }
         }
     }
 
@@ -270,29 +286,6 @@ fun ListenTogetherScreen(
             },
             onDismiss = { editingName = null },
         )
-    }
-
-    /**
-     * Hands the create sheet over to the invite sheet, with the party page
-     * visible in between.
-     *
-     * Three separate things, and the order is the whole point. The create sheet
-     * is *animated* down rather than dropped out of the composition, because
-     * swapping one sheet's contents for another's under a drawer that never
-     * moved is a swap, and a swap is the one thing that does not read as a new
-     * sheet arriving. Then a beat with nothing over the page at all: what is
-     * underneath has just become a different page — a code, a member list — and
-     * an invite that rises immediately means nobody ever sees that it did. Only
-     * then the invite, from a fresh mount, so it slides.
-     */
-    val showInviteAfterCreate: suspend () -> Unit = {
-        runCatching { sheetState.hide() }
-        sheet = null
-        delay(INVITE_SHEET_DELAY_MS)
-        // A second is long enough to have gone and opened something else in,
-        // and being interrupted by a drawer nobody asked for is worse than not
-        // being offered the link.
-        if (sheet == null) sheet = PartySheet.Invite
     }
 
     /** The invite URL for a code, pointing at whichever server holds the party. */
@@ -349,120 +342,6 @@ fun ListenTogetherScreen(
         }
     }
 
-    // A link tap is already an explicit request to join. Signed-out users keep
-    // the populated code while the sign-in page is open.
-    LaunchedEffect(inviteCode, inviteServer, inviteSpotifyToken, signedIn) {
-        if (!inviteSpotifyToken.isNullOrBlank()) {
-            val token = inviteSpotifyToken
-            busy = true
-            failure = null
-            scope.launch {
-                SpotifyJamBridge.joinJam(token)
-                    .onFailure { failure = it.message }
-                busy = false
-            }
-            onInviteHandled()
-            return@LaunchedEffect
-        }
-
-        val code = inviteCode ?: return@LaunchedEffect
-        if (!signedIn || busy) return@LaunchedEffect
-
-        val activeServer = (ListenTogether.activePartyServerBase() ?: ListenTogether.effectiveIdleServerBase()).trim().trimEnd('/')
-        val targetServer = inviteServer?.trim()?.trimEnd('/')
-
-        // Only a server this build does not already know needs consent to be talked to at all;
-        // the built-in ones (this build's own and the original official one) go straight to the
-        // confirm sheet like any other invite.
-        val knownServer = targetServer.isNullOrBlank() ||
-            targetServer.equals(activeServer, ignoreCase = true) ||
-            targetServer.equals(ListenTogether.defaultServer, ignoreCase = true) ||
-            PartyServers.isOriginalOfficial(targetServer)
-        if (!knownServer) {
-            pendingServerSwitchInvite = code to targetServer.orEmpty()
-            return@LaunchedEffect
-        }
-
-        if (state.code.equals(code, ignoreCase = true)) {
-            onInviteHandled()
-            return@LaunchedEffect
-        }
-
-        // A link says which party, not that this device has agreed to join it.
-        // The confirm sheet is what actually joins — the same one a typed
-        // code goes through, whether or not this device is already in a
-        // party.
-        openPartyPreview(code, targetServer)
-        onInviteHandled()
-    }
-
-    pendingServerSwitchInvite?.let { (codeToJoin, serverToSet) ->
-        val isSwitchToOfficial = serverToSet.isBlank() || PartyServers.isOriginalOfficial(serverToSet)
-        AlertDialog(
-            onDismissRequest = {
-                pendingServerSwitchInvite = null
-                onInviteHandled()
-            },
-            title = {
-                Text(
-                    stringResource(
-                        if (isSwitchToOfficial) {
-                            R.string.listen_together_official_server_dialog_title
-                        } else {
-                            R.string.listen_together_custom_server_dialog_title
-                        }
-                    ),
-                    style = MaterialTheme.typography.titleLarge,
-                )
-            },
-            text = {
-                Text(
-                    if (isSwitchToOfficial) {
-                        stringResource(R.string.listen_together_official_server_dialog_message, codeToJoin)
-                    } else {
-                        stringResource(
-                            R.string.listen_together_custom_server_dialog_message,
-                            serverToSet,
-                            codeToJoin,
-                        )
-                    },
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
-                        val toJoin = codeToJoin
-                        val toSet = serverToSet
-                        pendingServerSwitchInvite = null
-                        // Same next step as any other invite: the confirm
-                        // sheet, not an immediate join. This dialog is only
-                        // consent to talk to a different server at all.
-                        openPartyPreview(toJoin, toSet.ifBlank { null })
-                        onInviteHandled()
-                    },
-                ) {
-                    Text(
-                        stringResource(R.string.listen_together_custom_server_switch_and_join),
-                        color = MaterialTheme.colorScheme.primary,
-                        fontWeight = FontWeight.Bold,
-                    )
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = {
-                        pendingServerSwitchInvite = null
-                        onInviteHandled()
-                    },
-                ) {
-                    Text(stringResource(R.string.cancel))
-                }
-            },
-            containerColor = MaterialTheme.colorScheme.surface,
-        )
-    }
-
     sheet?.let { open ->
         ModalBottomSheet(
             onDismissRequest = {
@@ -476,32 +355,6 @@ fun ListenTogetherScreen(
             containerColor = MaterialTheme.colorScheme.background,
         ) {
             when (open) {
-                PartySheet.Create -> CreatePartySheet(
-                    avatarUrl = ListenTogether.myAvatarUrl(),
-                    nickname = nickname,
-                    busy = busy,
-                    enabled = signedIn && ListenTogether.hasServer,
-                    error = failure,
-                    spotifyTier = spotifyTier,
-                    spotifyJamEnabled = spotifyJamEnabled,
-                    onSpotifyJamEnabledChange = { spotifyJamEnabled = it },
-                    onCreate = {
-                        busy = true
-                        failure = null
-                        scope.launch {
-                            val res = ListenTogether.createParty(nickname, maxMembers)
-                            failure = res.exceptionOrNull()?.message
-                            if (failure == null && spotifyJamEnabled && spotifyTier.canHostJam) {
-                                SpotifyJamBridge.createJam().onFailure { err ->
-                                    Log.w("ListenTogether", "Spotify Jam creation failed: ${err.message}")
-                                }
-                            }
-                            busy = false
-                            if (failure == null) showInviteAfterCreate()
-                        }
-                    },
-                )
-
                 PartySheet.JoinCode -> JoinPartySheet(
                     code = codeInput,
                     onCodeChange = { typed ->
@@ -534,8 +387,6 @@ fun ListenTogetherScreen(
                         failure = null
                     },
                     onJoin = {
-                        // A second device of the same person joins as that person: the server gives
-                        // it no extra seat, and the play-here choice says whether it sounds.
                         busy = true
                         failure = null
                         scope.launch {
@@ -576,40 +427,6 @@ fun ListenTogetherScreen(
                                 sheet = null
                             }
                         }
-                    },
-                )
-
-                PartySheet.Invite -> InviteSheet(
-                    code = state.code.orEmpty(),
-                    link = inviteLinkFor(state.code.orEmpty()),
-                    spotifyJamUrl = spotifySession?.joinSessionUrl,
-                    onShareLink = {
-                        sheet = null
-                        shareInvite()
-                    },
-                    onShareSpotifyJam = {
-                        sheet = null
-                        spotifySession?.joinSessionUrl?.let { jamUrl ->
-                            val message = jamUrl + System.lineSeparator() + System.lineSeparator() +
-                                context.getString(R.string.listen_together_share_spotify_jam_text)
-                            context.startActivity(
-                                Intent.createChooser(
-                                    Intent(Intent.ACTION_SEND).apply {
-                                        type = "text/plain"
-                                        putExtra(Intent.EXTRA_TEXT, message)
-                                    },
-                                    null,
-                                ),
-                            )
-                        }
-                    },
-                    onCopyCode = {
-                        scope.launch { clipboard.copyText(state.code.orEmpty()) }
-                        Toast.makeText(
-                            context,
-                            context.getString(R.string.copy_code),
-                            Toast.LENGTH_SHORT,
-                        ).show()
                     },
                 )
             }
@@ -680,30 +497,18 @@ fun ListenTogetherScreen(
                 avatarUrl = ListenTogether.myAvatarUrl(),
                 enabled = signedIn && ListenTogether.hasServer && !busy,
                 // The last attempt's message does not belong on the next one.
-                onCreate = {
-                    failure = null
-                    sheet = PartySheet.Create
-                },
+                onCreate = createPartyNow,
                 onJoin = {
                     failure = null
                     sheet = PartySheet.JoinCode
                 },
             )
-            failure?.let { message ->
-                Text(
-                    text = message,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.padding(horizontal = ROW_INSET, vertical = 8.dp),
-                )
-            }
         } else {
             InAParty(
                 state = state,
                 inviteLink = inviteLinkFor(state.code.orEmpty()),
                 spotifySession = spotifySession,
                 onCopy = { scope.launch { clipboard.copyText(state.code.orEmpty()) } },
-                onShare = { sheet = PartySheet.Invite },
                 onShareLink = shareInvite,
                 onShareSpotifyJam = {
                     spotifySession?.joinSessionUrl?.let { jamUrl ->
@@ -972,14 +777,6 @@ private fun ServerConnectionLine(connection: ServerConnectionState) {
     }
 }
 
-/**
- * How long the newly made party sits on screen before the invite rises over it.
- *
- * Long enough to be a page that was arrived at rather than a frame that flashed
- * past, short enough that nobody has started reading the member list yet.
- */
-private const val INVITE_SHEET_DELAY_MS = 1_000L
-
 /** What a new party holds. Small parties are a setting for the host, not a decision at the door. */
 private const val DEFAULT_PARTY_SIZE = 10
 
@@ -1131,7 +928,6 @@ private fun InAParty(
     inviteLink: String,
     spotifySession: SpotifyJamSession? = null,
     onCopy: () -> Unit,
-    onShare: () -> Unit,
     onShareLink: () -> Unit,
     onShareSpotifyJam: () -> Unit = {},
     onCopySpotifyJam: () -> Unit = {},
@@ -1264,7 +1060,7 @@ private fun InAParty(
             SettingsRow(
                 icon = SfIcons.Share,
                 title = stringResource(R.string.share),
-                onClick = onShare,
+                onClick = onShareLink,
             )
         }
     }

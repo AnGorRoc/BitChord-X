@@ -1623,6 +1623,7 @@
     <string name="listen_together_play_here_on">Você ouve aqui e as outras pessoas ouvem nos seus.</string>
     <string name="listen_together_play_here_off">O som vem apenas do anfitrião. Você continua a ver e a controlar a party.</string>
     <string name="listen_together_play_remote">Só no outro dispositivo</string>
+    <string name="listen_together_play_remote_named">Reproduzir no dispositivo de %1$s</string>
     <string name="listen_together_silent_member">Ouvindo pelo anfitrião</string>
     <string name="device_notice_unavailable">Esse dispositivo não está disponível.</string>
     <string name="device_notice_party_here">Você está numa party neste dispositivo. Saia dela ou desative “Reproduzir neste dispositivo” primeiro.</string>

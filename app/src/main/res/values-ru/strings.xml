@@ -1645,6 +1645,7 @@
     <string name="listen_together_play_here_on">Вы слышите это здесь, а остальные — на своих устройствах.</string>
     <string name="listen_together_play_here_off">Звук идёт только от хоста. Вы по-прежнему видите пати и управляете ею.</string>
     <string name="listen_together_play_remote">Только на другом устройстве</string>
+    <string name="listen_together_play_remote_named">Воспроизводить на устройстве %1$s</string>
     <string name="listen_together_silent_member">Слушает через хоста</string>
     <string name="device_notice_unavailable">Это устройство недоступно.</string>
     <string name="device_notice_party_here">Вы в вечеринке на этом устройстве. Сначала выйдите из неё или отключите «Играть на этом устройстве».</string>

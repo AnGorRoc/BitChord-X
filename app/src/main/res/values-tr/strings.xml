@@ -1575,6 +1575,7 @@
     <string name="listen_together_play_here_on">Burada sen duyarsın, diğer herkes kendi cihazında duyar.</string>
     <string name="listen_together_play_here_off">Ses yalnızca ev sahibinden gelir. Partiyi yine de görür ve yönetirsin.</string>
     <string name="listen_together_play_remote">Yalnızca diğer cihazda</string>
+    <string name="listen_together_play_remote_named">%1$s cihazında çal</string>
     <string name="listen_together_silent_member">Ev sahibi üzerinden dinliyor</string>
     <string name="device_notice_unavailable">O cihaz kullanılamıyor.</string>
     <string name="device_notice_party_here">Bu cihazda bir partidesin. Önce partiden çık ya da “Bu cihazda çal” seçeneğini kapat.</string>

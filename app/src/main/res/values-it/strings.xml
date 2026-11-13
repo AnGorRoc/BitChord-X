@@ -1557,6 +1557,7 @@
     <string name="listen_together_play_here_on">Lo senti qui e tutti gli altri sul proprio.</string>
     <string name="listen_together_play_here_off">L’audio arriva solo dall’host. Vedi e controlli comunque la party.</string>
     <string name="listen_together_play_remote">Solo su un altro dispositivo</string>
+    <string name="listen_together_play_remote_named">Riproduci sul dispositivo di %1$s</string>
     <string name="listen_together_silent_member">Ascolta tramite l’host</string>
     <string name="device_notice_unavailable">Quel dispositivo non è disponibile.</string>
     <string name="device_notice_party_here">Sei in una party su questo dispositivo. Esci o disattiva “Riproduci su questo dispositivo” prima.</string>

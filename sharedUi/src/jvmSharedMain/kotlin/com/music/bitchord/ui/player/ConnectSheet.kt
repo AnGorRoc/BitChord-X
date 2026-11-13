@@ -24,7 +24,6 @@ import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Computer
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PhoneAndroid
-import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Speaker
 import androidx.compose.material.icons.rounded.TabletAndroid
 import androidx.compose.material.icons.rounded.Tv
@@ -77,7 +76,6 @@ internal fun ConnectSheet(
     hazeState: HazeState,
     onDismiss: () -> Unit,
     onOpenParty: () -> Unit,
-    onOpenSettings: () -> Unit,
     onStartParty: () -> Unit = onOpenParty,
     onJoinParty: () -> Unit = onOpenParty,
     modifier: Modifier = Modifier,
@@ -171,14 +169,6 @@ internal fun ConnectSheet(
                     ) { onDismiss(); onJoinParty() }
                 }
             }
-
-            Spacer(Modifier.height(2.dp))
-            ActionRow(
-                title = stringResource(Res.string.connect_settings),
-                subtitle = null,
-                leading = Icons.Rounded.Settings,
-                onClick = { onDismiss(); onOpenSettings() },
-            )
         }
     }
 }

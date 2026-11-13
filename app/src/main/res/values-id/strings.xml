@@ -1598,6 +1598,7 @@
     <string name="listen_together_play_here_on">Anda mendengarnya di sini dan yang lain di perangkat masing-masing.</string>
     <string name="listen_together_play_here_off">Suara hanya berasal dari host. Anda tetap melihat dan mengendalikan party.</string>
     <string name="listen_together_play_remote">Hanya di perangkat lain</string>
+    <string name="listen_together_play_remote_named">Putar di perangkat %1$s</string>
     <string name="listen_together_silent_member">Mendengarkan lewat host</string>
     <string name="device_notice_unavailable">Perangkat itu tidak tersedia.</string>
     <string name="device_notice_party_here">Anda sedang dalam party di perangkat ini. Keluar dari party atau matikan “Putar di perangkat ini” dulu.</string>
