@@ -660,6 +660,7 @@ internal class DeviceSpeaker(
             if (expected != null && np.videoId == expected) navExpected = null
             val before = status
             status = statusOf(target.playhead() ?: np)
+            android.util.Log.i("DeviceSpeaker", "status <- ${np.videoId} pos=${status?.positionMs} dur=${status?.durationMs} playing=${np.isPlaying}")
             requestedAt = 0L
             // A song change that comes with "not playing" is the target loading it, not pausing.
             val changedSong = before != null && before.mediaId != np.videoId
@@ -981,7 +982,8 @@ internal class DeviceTarget(
 
     private companion object {
         const val PUBLISH_MS = 1_000L
-        val WAKING = setOf(DeviceActions.PLAY, DeviceActions.SEEK, DeviceActions.NEXT, DeviceActions.PREVIOUS)
+        /** What brings a queue restored at start to life: it is prepared so its length is known, which a viewer needs to draw the bar. */
+        val WAKING = setOf(DeviceActions.PLAY, DeviceActions.SEEK, DeviceActions.NEXT, DeviceActions.PREVIOUS, DeviceActions.SNAPSHOT)
     }
 }
 
