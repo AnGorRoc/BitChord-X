@@ -115,6 +115,10 @@ func handleAccountSocket(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad token", http.StatusUnauthorized)
 		return
 	}
+	if hubInst.Count() >= config.MaxSockets {
+		http.Error(w, "server is full", http.StatusServiceUnavailable)
+		return
+	}
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("account websocket upgrade failed: %v", err)

@@ -96,6 +96,9 @@ var (
 	// Accounts live in memory for a day after their last device; this bounds what an address-hopper
 	// can make the server hold. Devices of accounts already known are never refused by it.
 	MaxAccounts          = getInt("JAM_MAX_ACCOUNTS", 20000)
+	// Open sockets across parties and account channels. A person can hold up to five devices in
+	// a party and twelve on their account, so the party ceiling alone does not bound this.
+	MaxSockets           = getInt("JAM_MAX_SOCKETS", 3000)
 	RateLimitMaxEntries  = getInt("JAM_RATE_LIMIT_MAX_ENTRIES", 10000)
 	RequestMaxBytes      = int64(getInt("JAM_REQUEST_MAX_BYTES", 16*1024))
 	// A whole 500-song queue arrives in one frame, around 200 KB.

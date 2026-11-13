@@ -977,6 +977,10 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 	p.Unlock()
 
+	if hubInst.Count() >= config.MaxSockets {
+		http.Error(w, "server is full", http.StatusServiceUnavailable)
+		return
+	}
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("WebSocket upgrade failed: %v", err)
