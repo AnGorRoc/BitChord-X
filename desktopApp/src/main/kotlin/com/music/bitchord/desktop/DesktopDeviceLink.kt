@@ -75,6 +75,9 @@ internal class DesktopDeviceLink(
     private var requestedAtNanos = 0L
     private var awaitingConfirm: String? = null
     private var confirmJob: Job? = null
+
+    /** Waiting to see whether the target that dropped off comes back. See [onAccountState]. */
+    private var awayJob: Job? = null
     private var pulling = false
 
     private val _overlay = MutableStateFlow<DesktopPlaybackState?>(null)
@@ -270,7 +273,7 @@ internal class DesktopDeviceLink(
         requestedAtNanos = System.nanoTime()
         sendQueue(local.songs.drop(local.index.coerceAtLeast(0)), wantsPlay, requestedPositionMs)
         awaitingConfirm = current.videoId
-        armConfirmation(current.videoId)
+        armConfirmation(current.videoId, wantsPlay)
     }
 
     private fun pull(target: AccountDevice) {
@@ -297,7 +300,7 @@ internal class DesktopDeviceLink(
     }
 
     /** Keeps this computer audible until the target says it is playing, then quiets it. */
-    private fun armConfirmation(handedVideoId: String?) {
+    private fun armConfirmation(handedVideoId: String?, handedPlaying: Boolean = true) {
         confirmJob?.cancel()
         confirmJob = scope.launch {
             var waited = 0L
@@ -305,7 +308,7 @@ internal class DesktopDeviceLink(
                 delay(CONFIRM_POLL_MS)
                 waited += CONFIRM_POLL_MS
                 val target = account.state.value.devices.firstOrNull { it.deviceId == targetId }
-                if (HandoffRules.shouldSilenceLocal(target, handedVideoId)) {
+                if (HandoffRules.shouldSilenceLocal(target, handedVideoId, handedPlaying)) {
                     awaitingConfirm = null
                     engine.pause()
                     refreshOverlay()
@@ -329,6 +332,8 @@ internal class DesktopDeviceLink(
         val wasPlaying = wantsPlay
         val position = positionNow()
         confirmJob?.cancel()
+        awayJob?.cancel()
+        awayJob = null
         awaitingConfirm = null
         pulling = false
         active = false
@@ -427,10 +432,28 @@ internal class DesktopDeviceLink(
     private fun onAccountState(target: AccountDevice?) {
         if (!active) return
         if (target == null || !target.connected) {
-            say("${target?.name ?: "The other device"} disconnected.")
+            // Only away may mean back in a moment (the server keeps the link for that long); give it
+            // the time before handing the sound back, so a network blip does not end the link.
+            if (target != null) {
+                if (awayJob == null) {
+                    awayJob = scope.launch {
+                        delay(AWAY_GRACE_MS)
+                        awayJob = null
+                        val now = account.state.value.devices.firstOrNull { it.deviceId == targetId }
+                        if (active && (now == null || !now.connected)) {
+                            say("${now?.name ?: "The other device"} disconnected.")
+                            endLocally(false)
+                        }
+                    }
+                }
+                return
+            }
+            say("The other device disconnected.")
             endLocally(false)
             return
         }
+        awayJob?.cancel()
+        awayJob = null
         val np = target.nowPlaying
         if (np != null && np.updatedAtMs != status?.stamp) {
             status = statusOf(np)
@@ -501,6 +524,9 @@ internal class DesktopDeviceLink(
         const val PUBLISH_MS = 1_000L
         const val OVERLAY_MS = 250L
         const val CONFIRM_TIMEOUT_MS = 8_000L
+
+        /** A little longer than the server's own grace for a dropped socket. */
+        const val AWAY_GRACE_MS = 15_000L
         const val HANDOVER_TIMEOUT_MS = 20_000L
         const val CONFIRM_POLL_MS = 250L
         const val SEEK_GRACE_NANOS = 1_500_000_000L

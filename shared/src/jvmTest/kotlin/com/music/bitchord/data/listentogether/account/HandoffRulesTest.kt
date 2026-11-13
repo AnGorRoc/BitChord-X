@@ -69,6 +69,24 @@ class HandoffRulesTest {
     }
 
     @Test
+    fun `a paused song handed over is confirmed by the target showing it, not playing it`() {
+        // Handing over a paused song never makes the target play, so waiting for that was a
+        // failure after twenty seconds every time.
+        assertTrue(HandoffRules.shouldSilenceLocal(device(playing = false, videoId = "v1"), "v1", handedPlaying = false))
+        // But it still has to be that song, and the target still has to have something at all.
+        assertFalse(HandoffRules.shouldSilenceLocal(device(playing = false, videoId = "other"), "v1", handedPlaying = false))
+        assertFalse(HandoffRules.shouldSilenceLocal(device(playing = null), "v1", handedPlaying = false))
+        // A song meant to play is still not confirmed by being merely shown.
+        assertFalse(HandoffRules.shouldSilenceLocal(device(playing = false, videoId = "v1"), "v1", handedPlaying = true))
+    }
+
+    @Test
+    fun `controlling an idle or paused device is confirmed by the link alone`() {
+        assertTrue(HandoffRules.shouldSilenceLocal(device(playing = null), null))
+        assertTrue(HandoffRules.shouldSilenceLocal(device(playing = false, videoId = "v1"), null))
+    }
+
+    @Test
     fun `a target that went away does not count`() {
         assertFalse(HandoffRules.shouldSilenceLocal(device(connected = false, playing = true), null))
     }

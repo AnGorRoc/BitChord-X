@@ -39,14 +39,23 @@ object HandoffRules {
     }
 
     /**
-     * Whether this device should stop its own sound now. It waits until the target confirms it is
-     * playing the song that was handed over, so a hand-over that fails never leaves anybody
-     * listening to silence.
+     * Whether this device should stop its own sound now. It waits until the target confirms it has
+     * taken what was handed over, so a hand-over that fails never leaves anybody listening to
+     * silence.
+     *
+     * What counts as taking it depends on what was asked. A song handed over to play is confirmed
+     * by the target *playing* it; one handed over paused ([handedPlaying] false) is confirmed by the
+     * target *showing* it, since a target that is told to hold still never reports playing and
+     * waiting for that was a failure after twenty seconds every time. With nothing handed over
+     * ([handedVideoId] null) the person only asked to control a device, and the link is all that
+     * was wanted: a device that is idle or paused is just as good a thing to control.
      */
-    fun shouldSilenceLocal(target: AccountDevice?, handedVideoId: String?): Boolean {
-        val np = target?.nowPlaying ?: return false
-        if (!target.connected || !np.isPlaying) return false
-        return handedVideoId == null || np.videoId == handedVideoId
+    fun shouldSilenceLocal(target: AccountDevice?, handedVideoId: String?, handedPlaying: Boolean = true): Boolean {
+        if (target == null || !target.connected) return false
+        if (handedVideoId == null) return true
+        val np = target.nowPlaying ?: return false
+        if (np.videoId != handedVideoId) return false
+        return np.isPlaying || !handedPlaying
     }
 
     /**

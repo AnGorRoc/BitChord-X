@@ -85,6 +85,9 @@ internal class DeviceSpeaker(
     private var awaitingConfirm: String? = null
     private var confirmJob: Job? = null
 
+    /** Waiting to see whether the target that dropped off comes back. See [onAccountState]. */
+    private var awayJob: Job? = null
+
     /** The remote's queue is being loaded into the quiet local player; its moves are not the person's. */
     var applyingMirror = false
 
@@ -185,7 +188,7 @@ internal class DeviceSpeaker(
         requestedAt = SystemClock.elapsedRealtime()
         sendQueue(player, wantsPlay, requestedPositionMs)
         awaitingConfirm = item.mediaId
-        armConfirmation(handedVideoId = item.mediaId)
+        armConfirmation(handedVideoId = item.mediaId, handedPlaying = wantsPlay)
     }
 
     private fun pull(target: AccountDevice) {
@@ -215,7 +218,7 @@ internal class DeviceSpeaker(
     }
 
     /** Keeps this phone audible until the target says it is playing, then quiets it. */
-    private fun armConfirmation(handedVideoId: String?) {
+    private fun armConfirmation(handedVideoId: String?, handedPlaying: Boolean = true) {
         confirmJob?.cancel()
         confirmJob = scope.launch {
             var waited = 0L
@@ -223,7 +226,7 @@ internal class DeviceSpeaker(
                 delay(CONFIRM_POLL_MS)
                 waited += CONFIRM_POLL_MS
                 val target = account.state.value.devices.firstOrNull { it.deviceId == targetId }
-                if (HandoffRules.shouldSilenceLocal(target, handedVideoId)) {
+                if (HandoffRules.shouldSilenceLocal(target, handedVideoId, handedPlaying)) {
                     awaitingConfirm = null
                     quietLocalPlayer()
                     sink?.onRemotePlaybackChanged()
@@ -262,6 +265,8 @@ internal class DeviceSpeaker(
         val position = positionMs
         val old = targetId
         confirmJob?.cancel()
+        awayJob?.cancel()
+        awayJob = null
         awaitingConfirm = null
         pulling = false
         active = false
@@ -360,11 +365,30 @@ internal class DeviceSpeaker(
     private fun onAccountState(target: AccountDevice?) {
         if (!active) return
         if (target == null || !target.connected) {
-            // The remote went away: the person gets their own sound back, paused where it was.
-            say("${target?.name ?: "The other device"} disconnected.")
+            // A device that is only away may be back in a moment (a mobile network blip; the
+            // server keeps the link for that long). One that is gone for good is not. Waiting
+            // before giving the sound back means a blip does not drop the whole link.
+            if (target != null) {
+                if (awayJob == null) {
+                    awayJob = scope.launch {
+                        delay(AWAY_GRACE_MS)
+                        awayJob = null
+                        val now = account.state.value.devices.firstOrNull { it.deviceId == targetId }
+                        if (active && (now == null || !now.connected)) {
+                            say("${now?.name ?: "The other device"} disconnected.")
+                            endLocally(resumeHere = false)
+                        }
+                    }
+                }
+                return
+            }
+            // Forgotten by the server: it is not coming back.
+            say("The other device disconnected.")
             endLocally(resumeHere = false)
             return
         }
+        awayJob?.cancel()
+        awayJob = null
         val np = target.nowPlaying
         if (np != null && np.updatedAtMs != status?.stamp) {
             val before = status
@@ -424,6 +448,9 @@ internal class DeviceSpeaker(
     private companion object {
         const val SEEK_GRACE_MS = 1_500L
         const val CONFIRM_TIMEOUT_MS = 8_000L
+
+        /** A little longer than the server's own grace for a dropped socket. */
+        const val AWAY_GRACE_MS = 15_000L
 
         /** A computer has to find the song's stream before it can play it, which takes longer than an answer. */
         const val HANDOVER_TIMEOUT_MS = 20_000L
