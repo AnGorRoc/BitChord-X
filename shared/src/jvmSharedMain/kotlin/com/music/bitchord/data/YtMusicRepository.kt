@@ -3,6 +3,7 @@ package com.music.bitchord.data
 import com.music.bitchord.data.DebugLog as Log
 import com.music.bitchord.data.innertube.Innertube
 import com.music.bitchord.data.innertube.InnertubeParser
+import com.music.bitchord.data.listentogether.DeviceGroup
 import com.music.bitchord.data.model.Account
 import com.music.bitchord.data.model.AccountChannel
 import com.music.bitchord.data.model.isExactArtistMatch
@@ -687,7 +688,13 @@ object YtMusicRepository {
             val shelves = LIBRARY_FEEDS
                 .map { (title, browseId) ->
                     async {
-                        HomeShelf(title, runCatching { libraryItemsPaged(browseId) }.getOrDefault(emptyList()))
+                        val items = runCatching { libraryItemsPaged(browseId) }.getOrDefault(emptyList())
+                        val filteredItems = if (browseId == LIBRARY_PLAYLISTS || title == PLAYLISTS_SHELF) {
+                            items.filterNot { DeviceGroup.isDeviceGroupPlaylist(it.title) }
+                        } else {
+                            items
+                        }
+                        HomeShelf(title, filteredItems)
                     }
                 }
                 .awaitAll()
@@ -1143,8 +1150,9 @@ object YtMusicRepository {
      * playlist collections otherwise lose everything past YouTube's first
      * library-feed response.
      */
-    suspend fun userPlaylists(): Result<List<UserPlaylist>> = call("playlists") {
-        InnertubeParser.parseUserPlaylists(libraryItemsPaged(LIBRARY_PLAYLISTS))
+    suspend fun userPlaylists(includeDeviceGroup: Boolean = false): Result<List<UserPlaylist>> = call("playlists:$includeDeviceGroup") {
+        val all = InnertubeParser.parseUserPlaylists(libraryItemsPaged(LIBRARY_PLAYLISTS))
+        if (includeDeviceGroup) all else all.filterNot { DeviceGroup.isDeviceGroupPlaylist(it.title) }
     }
 
     /**
@@ -1152,6 +1160,7 @@ object YtMusicRepository {
      */
     suspend fun libraryPlaylists(): Result<List<ShelfItem>> = call("libraryPlaylists") {
         InnertubeParser.parseLibraryItems(Innertube.browse(LIBRARY_PLAYLISTS))
+            .filterNot { DeviceGroup.isDeviceGroupPlaylist(it.title) }
     }
 
     /** Creates a playlist, optionally seeded with [videoIds]; returns its id. */

@@ -339,7 +339,7 @@ internal class DeviceSpeaker(
     override fun onLocalRepeatChanged(repeatMode: Int) = Unit
 
     override fun onLocalStartedPlaying(player: Player) {
-        if (!active || awaitingConfirm != null) return
+        if (!active || awaitingConfirm != null || pulling) return
         player.pause()
         play()
     }
@@ -528,6 +528,10 @@ internal class DeviceTarget(
             p.addMediaItems(items.drop(index + 1))
             return
         }
+        // The sound was handed back to this phone: it stops being the other device's remote *before*
+        // its player starts, or the player's own start is taken for the person asking the other
+        // device to play, and the device that just gave the sound up starts it again.
+        if (!mirror) speaker.onPulled()
         speaker.applyingMirror = mirror
         if (mirror) speaker.markMirrorApplied()
         try {
@@ -542,7 +546,6 @@ internal class DeviceTarget(
         } finally {
             speaker.applyingMirror = false
         }
-        if (!mirror) speaker.onPulled()
     }
 
     private fun enqueue(p: ExoPlayer, payload: JsonObject) {

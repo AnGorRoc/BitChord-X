@@ -31,6 +31,13 @@ object DeviceGroup {
 
     fun titleFor(secret: String): String = TITLE_PREFIX + secret
 
+    /** Whether the given title belongs to an internal device group playlist used by the account system. */
+    fun isDeviceGroupPlaylist(title: String?): Boolean {
+        if (title == null) return false
+        val trimmed = title.trim()
+        return trimmed.startsWith("BitChord devices", ignoreCase = true)
+    }
+
     /** The token the library already holds, or null. The smallest if there are several. */
     fun secretFrom(titles: List<String>): String? = titles.asSequence()
         .map(String::trim)
@@ -61,7 +68,7 @@ object DeviceGroup {
     /** [resolveSecret] against the signed-in account's own library. */
     suspend fun ensureSecret(): Result<String> = runCatching {
         resolveSecret(
-            listTitles = { YtMusicRepository.userPlaylists().getOrThrow().map { it.title } },
+            listTitles = { YtMusicRepository.userPlaylists(includeDeviceGroup = true).getOrThrow().map { it.title } },
             create = { title -> YtMusicRepository.createPlaylist(title, PlaylistPrivacy.PRIVATE).getOrThrow() },
         )
     }

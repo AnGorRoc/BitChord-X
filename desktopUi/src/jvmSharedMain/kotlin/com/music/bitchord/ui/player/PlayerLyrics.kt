@@ -1711,18 +1711,21 @@ private fun LyricsSkeleton(modifier: Modifier = Modifier) {
 @Composable
 internal fun rememberPlayerControlsOnScroll(
     enabled: Boolean = true,
+    onUserScroll: () -> Unit = {},
     onReveal: () -> Unit,
     onHide: () -> Unit,
 ): NestedScrollConnection {
     val controlsSlopPx = with(LocalDensity.current) { CONTROLS_SCROLL_SLOP.toPx() }
     val revealControls by rememberUpdatedState(onReveal)
     val hideControls by rememberUpdatedState(onHide)
+    val notifyUserScroll by rememberUpdatedState(onUserScroll)
     return remember(enabled, controlsSlopPx) {
         object : NestedScrollConnection {
             private var travel = 0f
 
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 if (enabled && source == NestedScrollSource.UserInput && available.y != 0f) {
+                    notifyUserScroll()
                     if (travel != 0f && (travel > 0f) != (available.y > 0f)) travel = 0f
                     travel += available.y
                     // Finger travelling up is the list going forward.
@@ -1787,7 +1790,7 @@ internal fun LyricsPanel(
      * For the wide layouts — TV, landscape, tablet — where a column of lyrics
      * read from its top edge leaves most of the screen below the words.
      */
-    centerFocus: Boolean = false,
+    centerFocus: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val panelPlaying = isPlaying && active
@@ -1856,8 +1859,8 @@ internal fun LyricsPanel(
     val lyricsBlur by PlayerSettings.lyricsBlur.collectAsStateWithLifecycle()
     val reduceAnimation by PlayerSettings.reduceAnimation.collectAsStateWithLifecycle()
 
-    val glowing = !reduceAnimation && !reduceDynamicBlur && lyricsBlur &&
-        renderEffectBlurSupported
+    // Syllable glowing/halo runs independently of background line blur
+    val glowing = !reduceAnimation && !reduceDynamicBlur && renderEffectBlurSupported
 
     LaunchedEffect(listState) {
         listState.interactionSource.interactions.collect { interaction ->
@@ -1885,6 +1888,7 @@ internal fun LyricsPanel(
     // hiding the controls by itself: this list scrolls on its own every time a
     // line lands, and that is not somebody reading on.
     val controlsOnScroll = rememberPlayerControlsOnScroll(
+        onUserScroll = { browsingByDrag = true },
         onReveal = { if (!picking) onRevealControls() },
         onHide = onHideControls,
     )
@@ -1896,16 +1900,18 @@ internal fun LyricsPanel(
                 ?: return@derivedStateOf false
             val viewportCenter = (listState.layoutInfo.viewportStartOffset + listState.layoutInfo.viewportEndOffset) / 2
             val itemCenter = visible.offset + visible.size / 2
-            val tolerance = (listState.layoutInfo.viewportSize.height * 0.28f).toInt().coerceAtLeast(visible.size)
+            val tolerance = (visible.size * 1.1f).toInt().coerceAtLeast(40)
             abs(itemCenter - viewportCenter) <= tolerance
         }
     }
-    // Spotify-style reconnection: reconnects when the active lyric passes near the viewport center.
-    // If the user scrolled far away, auto-scroll remains disconnected until the song reaches the visible area/center.
+    // Spotify reconnection: reconnects when the active lyric passes near the viewport center.
+    // If the user scrolled far away, auto-scroll remains disconnected until the song reaches the visible center.
     LaunchedEffect(browsingByDrag, activeNearCenter, listState.isScrollInProgress, panelPlaying) {
         if (panelPlaying && browsingByDrag && activeNearCenter && !listState.isScrollInProgress) {
-            delay(250)
-            browsingByDrag = false
+            delay(150)
+            if (panelPlaying && browsingByDrag && activeNearCenter && !listState.isScrollInProgress) {
+                browsingByDrag = false
+            }
         }
     }
 
@@ -2030,6 +2036,13 @@ internal fun LyricsPanel(
         return
     }
 
+    val firstVisibleIndex by remember(listState) {
+        derivedStateOf { listState.firstVisibleItemIndex }
+    }
+    val lastVisibleIndex by remember(listState) {
+        derivedStateOf { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1 }
+    }
+
     LazyColumn(
         state = listState,
         modifier = modifier
@@ -2107,26 +2120,27 @@ internal fun LyricsPanel(
             // the same floor rather than fading to nothing.
             val falloff = if (centerFocus) LINE_FALLOFF_ALPHA else LINE_FALLOFF_ALPHA_PHONE
             val step = distance.coerceAtMost(falloff.lastIndex)
+            val isEdgeItem = index <= firstVisibleIndex || (lastVisibleIndex >= 0 && index >= lastVisibleIndex)
+            val targetBlur = when {
+                !isSynced || reduceDynamicBlur || !lyricsBlur -> 0.dp
+                browsing -> if (isEdgeItem) 1.2.dp else 0.dp
+                isActive -> 0.dp
+                else -> LINE_FALLOFF_BLUR[step.coerceAtMost(LINE_FALLOFF_BLUR.lastIndex)]
+            }
             val blur by animateDpAsState(
-                targetValue = when {
-                    !isSynced || reduceDynamicBlur || !lyricsBlur || browsing || isActive -> 0.dp
-                    else -> LINE_FALLOFF_BLUR[step.coerceAtMost(LINE_FALLOFF_BLUR.lastIndex)]
-                },
-                animationSpec = tween(LYRIC_SETTLE_MS, easing = LYRIC_EASING),
+                targetValue = targetBlur,
+                animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing),
                 label = "lyricBlur",
             )
             val lineAlpha by animateFloatAsState(
                 targetValue = when {
                     !isSynced -> 0.95f
                     isActive -> 1f
-                    // Reading by hand is not following along: the stack flattens
-                    // to one brightness so no row is being pointed at.
-                    browsing -> BROWSING_ALPHA
-                    // Lines that have already been sung remain legible rather than fading away.
-                    offset < 0 -> (falloff[step] * 1.15f).coerceIn(0.68f, 0.92f)
+                    browsing -> if (isEdgeItem) 0.65f else 0.95f
+                    offset < 0 -> 0.92f
                     else -> falloff[step]
                 },
-                animationSpec = tween(LYRIC_SETTLE_MS, easing = LYRIC_EASING),
+                animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing),
                 label = "lyricAlpha",
             )
             if (line.isGap) {
@@ -2576,8 +2590,14 @@ private fun PanelVoice(
     // (see [LocalPlayerTint]). Faded across the handover rather than cut, so a
     // line warms to white as it is reached and cools as it is left. Lyrics
     // with no timing have no line being sung, and stay white throughout.
+    val targetColor = when {
+        isActive || !synced -> Color.White
+        sung -> Color(0xFF8E8E93)
+        else -> LocalPlayerTint.current
+    }
     val color by animateColorAsState(
-        targetValue = if (isActive || !synced) Color.White else LocalPlayerTint.current,
+        targetValue = targetColor,
+        animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing),
         label = "lyricLineColor",
     )
     if (line.isWordSynced && !browsing) {

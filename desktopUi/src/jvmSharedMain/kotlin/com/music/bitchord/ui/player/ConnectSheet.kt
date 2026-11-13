@@ -1,5 +1,6 @@
 package com.music.bitchord.ui.player
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -259,13 +260,19 @@ private fun DeviceRow(
                     tint = Color.White.copy(alpha = 0.6f),
                     modifier = Modifier.size(22.dp).clickable { menu = true },
                 )
-                DropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                DropdownMenu(
+                    expanded = menu,
+                    onDismissRequest = { menu = false },
+                    shape = RoundedCornerShape(12.dp),
+                    containerColor = Color(0xFA1A1A1D),
+                    border = BorderStroke(0.5.dp, Color(0x1FFFFFFF)),
+                ) {
                     DropdownMenuItem(
-                        text = { Text(stringResource(Res.string.connect_send_mine)) },
+                        text = { Text(stringResource(Res.string.connect_send_mine), color = Color.White) },
                         onClick = { menu = false; onForce(HandoffForce.SEND) },
                     )
                     DropdownMenuItem(
-                        text = { Text(stringResource(Res.string.connect_bring_theirs)) },
+                        text = { Text(stringResource(Res.string.connect_bring_theirs), color = Color.White) },
                         onClick = { menu = false; onForce(HandoffForce.PULL) },
                     )
                 }

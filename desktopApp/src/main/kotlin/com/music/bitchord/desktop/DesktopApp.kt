@@ -190,6 +190,7 @@ import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.Sort
 import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.automirrored.rounded.VolumeOff
 import androidx.compose.material.icons.automirrored.rounded.VolumeDown
@@ -815,7 +816,7 @@ fun BitChordDesktopApp() {
         (libraryState as? UiState.Success)?.data?.shelves
             ?.firstOrNull { it.title == PLAYLISTS_SHELF }
             ?.items
-            ?.filter { it.browseId != null }
+            ?.filter { it.browseId != null && !com.music.bitchord.data.listentogether.DeviceGroup.isDeviceGroupPlaylist(it.title) }
             .orEmpty()
     }
 
@@ -830,12 +831,12 @@ fun BitChordDesktopApp() {
         val index = page.shelves.indexOfFirst { it.title == PLAYLISTS_SHELF }
         val shelves = if (index >= 0) {
             page.shelves.toMutableList().apply {
-                this[index] = this[index].copy(items = edit(this[index].items))
+                this[index] = this[index].copy(items = edit(this[index].items).filterNot { com.music.bitchord.data.listentogether.DeviceGroup.isDeviceGroupPlaylist(it.title) })
             }
         } else {
             // A fresh account has no Playlists shelf at all, and it is exactly the account most
             // likely to be making its first one.
-            val items = edit(emptyList())
+            val items = edit(emptyList()).filterNot { com.music.bitchord.data.listentogether.DeviceGroup.isDeviceGroupPlaylist(it.title) }
             if (items.isEmpty()) return
             listOf(HomeShelf(PLAYLISTS_SHELF, items)) + page.shelves
         }
@@ -6104,9 +6105,17 @@ private fun DesktopSidebarItem(
             )
         }
         if (onHide != null) {
-            DropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
-                DropdownMenuItem(
+            DesktopDropdownMenu(expanded = menuOpen, onDismissRequest = { menuOpen = false }) {
+                DesktopDropdownMenuItem(
                     text = { Text(DesktopStrings["hide_from_sidebar", "Hide from sidebar"]) },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Rounded.VisibilityOff,
+                            contentDescription = null,
+                            tint = DesktopSecondary,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    },
                     onClick = {
                         menuOpen = false
                         onHide()
@@ -6155,10 +6164,18 @@ private fun DesktopSidebarRestoreRow(hidden: Map<String, String>) {
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+        DesktopDropdownMenu(expanded = open, onDismissRequest = { open = false }) {
             hidden.forEach { (key, label) ->
-                DropdownMenuItem(
+                DesktopDropdownMenuItem(
                     text = { Text(label, maxLines = 1, overflow = TextOverflow.Ellipsis) },
+                    leadingIcon = {
+                        Icon(
+                            Icons.AutoMirrored.Rounded.PlaylistPlay,
+                            contentDescription = null,
+                            tint = DesktopSecondary,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    },
                     onClick = {
                         DesktopSidebarVisibility.show(key)
                         if (DesktopSidebarVisibility.hidden.value.isEmpty()) open = false
@@ -6166,8 +6183,17 @@ private fun DesktopSidebarRestoreRow(hidden: Map<String, String>) {
                 )
             }
             if (hidden.size > 1) {
-                DropdownMenuItem(
+                DesktopDropdownMenuDivider()
+                DesktopDropdownMenuItem(
                     text = { Text(DesktopStrings["show_all", "Show all"]) },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Rounded.RemoveCircleOutline,
+                            contentDescription = null,
+                            tint = DesktopSecondary,
+                            modifier = Modifier.size(16.dp),
+                        )
+                    },
                     onClick = {
                         DesktopSidebarVisibility.showAll()
                         open = false
@@ -8395,12 +8421,14 @@ private fun DesktopSettingsScreen(
                                 DesktopStrings["app_language", "App language"],
                                 DesktopStrings.languageLabel(),
                             ) { languageMenuOpen = true }
-                            DropdownMenu(languageMenuOpen, onDismissRequest = { languageMenuOpen = false }) {
+                            DesktopDropdownMenu(expanded = languageMenuOpen, onDismissRequest = { languageMenuOpen = false }) {
                                 DesktopStrings.available.forEach { language ->
-                                    DropdownMenuItem(
+                                    val isChosen = language.tag == chosen
+                                    DesktopDropdownMenuItem(
                                         text = { Text(language.label) },
-                                        trailingIcon = if (language.tag == chosen) {
-                                            { Icon(BitChordIcons.Check, contentDescription = null) }
+                                        selected = isChosen,
+                                        trailingIcon = if (isChosen) {
+                                            { Icon(BitChordIcons.Check, contentDescription = null, tint = DesktopAccent, modifier = Modifier.size(15.dp)) }
                                         } else {
                                             null
                                         },
@@ -8945,10 +8973,17 @@ private fun DesktopCollectionPage(
                                         DesktopStrings["sort_playlist", "Sort playlist"],
                                         onClick = { sortOpen = true },
                                     )
-                                    DropdownMenu(expanded = sortOpen, onDismissRequest = { sortOpen = false }) {
+                                    DesktopDropdownMenu(expanded = sortOpen, onDismissRequest = { sortOpen = false }) {
                                         DesktopCollectionSort.entries.forEach { option ->
-                                            DropdownMenuItem(
+                                            val isSelected = option == sortOrder
+                                            DesktopDropdownMenuItem(
                                                 text = { Text(option.label) },
+                                                selected = isSelected,
+                                                trailingIcon = if (isSelected) {
+                                                    { Icon(BitChordIcons.Check, contentDescription = null, tint = DesktopAccent, modifier = Modifier.size(15.dp)) }
+                                                } else {
+                                                    null
+                                                },
                                                 onClick = {
                                                     sortOrder = option
                                                     sortOpen = false
@@ -8960,10 +8995,10 @@ private fun DesktopCollectionPage(
                             }
                             Box {
                                 DesktopCircleButton(Icons.Rounded.MoreHoriz, DesktopStrings["more", "More"], onClick = { moreOpen = true })
-                                DropdownMenu(expanded = moreOpen, onDismissRequest = { moreOpen = false }) {
-                                    DropdownMenuItem(
+                                DesktopDropdownMenu(expanded = moreOpen, onDismissRequest = { moreOpen = false }) {
+                                    DesktopDropdownMenuItem(
                                         text = { Text(DesktopStrings["download_all", "Download all"]) },
-                                        leadingIcon = { Icon(BitChordIcons.Download, null) },
+                                        leadingIcon = { Icon(BitChordIcons.Download, null, tint = DesktopSecondary, modifier = Modifier.size(16.dp)) },
                                         onClick = {
                                             moreOpen = false
                                             onDownloadAll(songs)
@@ -8971,9 +9006,9 @@ private fun DesktopCollectionPage(
                                     )
                                     val coverUrl = collection.thumbnailUrl ?: songs.firstOrNull()?.thumbnailUrl
                                     if (!coverUrl.isNullOrBlank()) {
-                                        DropdownMenuItem(
+                                        DesktopDropdownMenuItem(
                                             text = { Text(DesktopStrings["save_artwork", "Save artwork"]) },
-                                            leadingIcon = { Icon(Icons.Rounded.Palette, null) },
+                                            leadingIcon = { Icon(Icons.Rounded.Palette, null, tint = DesktopSecondary, modifier = Modifier.size(16.dp)) },
                                             onClick = {
                                                 moreOpen = false
                                                 scope.launch {
@@ -8994,7 +9029,7 @@ private fun DesktopCollectionPage(
                                         )
                                     }
                                     onTogglePin?.let { togglePin ->
-                                        DropdownMenuItem(
+                                        DesktopDropdownMenuItem(
                                             text = {
                                                 Text(
                                                     if (isPinned) {
@@ -9004,7 +9039,7 @@ private fun DesktopCollectionPage(
                                                     },
                                                 )
                                             },
-                                            leadingIcon = { Icon(BitChordIcons.Pin, null) },
+                                            leadingIcon = { Icon(BitChordIcons.Pin, null, tint = DesktopSecondary, modifier = Modifier.size(16.dp)) },
                                             onClick = {
                                                 moreOpen = false
                                                 togglePin()
@@ -9012,9 +9047,9 @@ private fun DesktopCollectionPage(
                                         )
                                     }
                                     onExportToYouTube?.let { export ->
-                                        DropdownMenuItem(
+                                        DesktopDropdownMenuItem(
                                             text = { Text(DesktopStrings["export_to_youtube_music", "Export to YouTube Music"]) },
-                                            leadingIcon = { Icon(Icons.Rounded.Cloud, null) },
+                                            leadingIcon = { Icon(Icons.Rounded.Cloud, null, tint = DesktopSecondary, modifier = Modifier.size(16.dp)) },
                                             onClick = {
                                                 moreOpen = false
                                                 export()
@@ -9022,9 +9057,9 @@ private fun DesktopCollectionPage(
                                         )
                                     }
                                     onShare?.let { share ->
-                                        DropdownMenuItem(
+                                        DesktopDropdownMenuItem(
                                             text = { Text(DesktopStrings["share", "Share"]) },
-                                            leadingIcon = { Icon(Icons.Rounded.Share, null) },
+                                            leadingIcon = { Icon(Icons.Rounded.Share, null, tint = DesktopSecondary, modifier = Modifier.size(16.dp)) },
                                             onClick = {
                                                 moreOpen = false
                                                 share()
@@ -9032,9 +9067,9 @@ private fun DesktopCollectionPage(
                                         )
                                     }
                                     onRename?.let { rename ->
-                                        DropdownMenuItem(
+                                        DesktopDropdownMenuItem(
                                             text = { Text(DesktopStrings["rename", "Rename"]) },
-                                            leadingIcon = { Icon(Icons.Rounded.Edit, null) },
+                                            leadingIcon = { Icon(Icons.Rounded.Edit, null, tint = DesktopSecondary, modifier = Modifier.size(16.dp)) },
                                             onClick = {
                                                 moreOpen = false
                                                 rename()
@@ -9042,9 +9077,9 @@ private fun DesktopCollectionPage(
                                         )
                                     }
                                     onReorder?.let { reorder ->
-                                        DropdownMenuItem(
+                                        DesktopDropdownMenuItem(
                                             text = { Text(DesktopStrings["reorder_playlist", "Edit order"]) },
-                                            leadingIcon = { Icon(Icons.Rounded.DragHandle, null) },
+                                            leadingIcon = { Icon(Icons.Rounded.DragHandle, null, tint = DesktopSecondary, modifier = Modifier.size(16.dp)) },
                                             onClick = {
                                                 moreOpen = false
                                                 reorder()
@@ -9052,9 +9087,11 @@ private fun DesktopCollectionPage(
                                         )
                                     }
                                     onDelete?.let { delete ->
-                                        DropdownMenuItem(
+                                        DesktopDropdownMenuDivider()
+                                        DesktopDropdownMenuItem(
                                             text = { Text(DesktopStrings["delete", "Delete"]) },
-                                            leadingIcon = { Icon(Icons.Rounded.Delete, null) },
+                                            leadingIcon = { Icon(Icons.Rounded.Delete, null, tint = Color(0xFFFF453A), modifier = Modifier.size(16.dp)) },
+                                            contentColor = Color(0xFFFF453A),
                                             onClick = {
                                                 moreOpen = false
                                                 delete()

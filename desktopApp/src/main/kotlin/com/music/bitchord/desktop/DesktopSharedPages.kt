@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.foundation.layout.Spacer
@@ -300,9 +301,10 @@ internal fun DesktopLibrarySortMenu() {
             DesktopToolbarButton(onClick = { open = true }) {
                 Icon(Icons.AutoMirrored.Rounded.Sort, DesktopStrings["sort_library", "Sort library"], tint = Color.White)
             }
-            DropdownMenu(expanded = open, onDismissRequest = { open = false }) {
+            DesktopDropdownMenu(expanded = open, onDismissRequest = { open = false }) {
                 LibrarySort.entries.forEach { option ->
-                    DropdownMenuItem(
+                    val isSelected = option == sort
+                    DesktopDropdownMenuItem(
                         text = {
                             Text(
                                 when (option) {
@@ -312,8 +314,9 @@ internal fun DesktopLibrarySortMenu() {
                                 },
                             )
                         },
-                        trailingIcon = if (option == sort) {
-                            { Icon(Icons.Rounded.Check, contentDescription = null) }
+                        selected = isSelected,
+                        trailingIcon = if (isSelected) {
+                            { Icon(Icons.Rounded.Check, contentDescription = null, tint = DesktopAccent, modifier = Modifier.size(15.dp)) }
                         } else {
                             null
                         },

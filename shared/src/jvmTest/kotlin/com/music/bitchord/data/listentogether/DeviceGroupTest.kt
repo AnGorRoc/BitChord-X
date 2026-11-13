@@ -6,6 +6,7 @@ import kotlin.test.assertEquals
 import kotlin.test.assertNotEquals
 import kotlin.test.assertNull
 import kotlin.test.assertTrue
+import kotlin.test.assertFalse
 
 class DeviceGroupTest {
 
@@ -59,5 +60,18 @@ class DeviceGroupTest {
         assertTrue(a !in id)
         assertNotEquals(id, DeviceGroup.groupId(b))
         assertEquals(id, DeviceGroup.groupId(a))
+    }
+
+    @Test
+    fun `isDeviceGroupPlaylist filters out account device playlists`() {
+        assertTrue(DeviceGroup.isDeviceGroupPlaylist("BitChord devices · $a"))
+        assertTrue(DeviceGroup.isDeviceGroupPlaylist("bitchord devices · $a"))
+        assertTrue(DeviceGroup.isDeviceGroupPlaylist("BitChord devices"))
+        assertTrue(DeviceGroup.isDeviceGroupPlaylist("bitchord devices"))
+        assertTrue(DeviceGroup.isDeviceGroupPlaylist("  BitChord devices · $a  "))
+        assertFalse(DeviceGroup.isDeviceGroupPlaylist("My Playlist"))
+        assertFalse(DeviceGroup.isDeviceGroupPlaylist("BitChord Hits"))
+        assertFalse(DeviceGroup.isDeviceGroupPlaylist(null))
+        assertFalse(DeviceGroup.isDeviceGroupPlaylist(""))
     }
 }
