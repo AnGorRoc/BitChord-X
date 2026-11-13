@@ -1486,4 +1486,28 @@
     <string name="device_accepts_control">Allow my other devices to control this one</string>
     <string name="device_accepts_control_subtitle">Your other devices can play, pause and send music to this one</string>
     <string name="mini_player_playing_on">Playing on %1$s</string>
+    <string name="device_notice_playing_on">Now playing on %1$s</string>
+    <string name="device_notice_playing_on_generic">Now playing on the other device</string>
+    <string name="device_notice_controlling">Controlling %1$s</string>
+    <string name="device_notice_controlling_generic">Controlling the other device</string>
+    <string name="device_notice_brought_here">Brought %1$s’s music here</string>
+    <string name="device_notice_brought_here_generic">Brought the music here</string>
+    <string name="device_notice_back_here">Back on this device</string>
+    <string name="device_notice_party_on">The party now plays on %1$s</string>
+    <string name="device_notice_party_on_generic">The party now plays on the other device</string>
+    <string name="device_notice_party_here_again">The party plays on this device again</string>
+    <string name="listen_together_msg_created">Party started · code %1$s</string>
+    <string name="listen_together_msg_joined">You joined the party</string>
+    <string name="listen_together_msg_joined_host">You joined %1$s’s party</string>
+    <string name="listen_together_msg_left">You left the party</string>
+    <string name="listen_together_people">People</string>
+    <string name="listen_together_room_settings">Room settings</string>
+    <string name="listen_together_code_hint_short">Tell people this code, or share the link</string>
+    <string name="listen_together_show_qr">Show QR code</string>
+    <string name="listen_together_hide_qr">Hide QR code</string>
+    <string name="listen_together_copy_link">Copy link</string>
+    <plurals name="listen_together_people_count">
+        <item quantity="one">%1$d person listening</item>
+        <item quantity="other">%1$d people listening</item>
+    </plurals>
 </resources>

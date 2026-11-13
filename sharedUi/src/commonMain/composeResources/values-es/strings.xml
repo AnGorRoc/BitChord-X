@@ -335,4 +335,6 @@
     <string name="browse_all_title">Explorar todo</string>
     <string name="browse_all_subtitle">Géneros, estados de ánimo y más</string>
     <string name="nothing_to_explore">No hay canciones disponibles para esta región</string>
+    <string name="connect_join_with_code">Unirme con código</string>
+    <string name="connect_sounding_label">Sonando en</string>
 </resources>

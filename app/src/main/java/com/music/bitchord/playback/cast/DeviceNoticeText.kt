@@ -24,6 +24,20 @@ internal fun DeviceNotice.text(context: Context): String = when (this) {
     is DeviceNotice.Disconnected ->
         if (name != null) context.getString(R.string.device_notice_disconnected, name)
         else context.getString(R.string.device_notice_disconnected_generic)
+    is DeviceNotice.PlayingOn ->
+        if (name != null) context.getString(R.string.device_notice_playing_on, name)
+        else context.getString(R.string.device_notice_playing_on_generic)
+    is DeviceNotice.Controlling ->
+        if (name != null) context.getString(R.string.device_notice_controlling, name)
+        else context.getString(R.string.device_notice_controlling_generic)
+    is DeviceNotice.BroughtHere ->
+        if (name != null) context.getString(R.string.device_notice_brought_here, name)
+        else context.getString(R.string.device_notice_brought_here_generic)
+    DeviceNotice.BackHere -> context.getString(R.string.device_notice_back_here)
+    is DeviceNotice.PartyOn ->
+        if (name != null) context.getString(R.string.device_notice_party_on, name)
+        else context.getString(R.string.device_notice_party_on_generic)
+    DeviceNotice.PartyHere -> context.getString(R.string.device_notice_party_here_again)
     DeviceNotice.TooManySongs -> context.getString(R.string.device_notice_too_many)
     DeviceNotice.NotLinked -> context.getString(R.string.device_notice_not_linked)
     // A refusal this build has no wording for: the server's own words beat saying nothing.

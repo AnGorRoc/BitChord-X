@@ -2,6 +2,7 @@ package com.music.bitchord.ui.player
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -23,6 +24,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.Computer
 import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.Speaker
 import androidx.compose.material.icons.rounded.TabletAndroid
@@ -49,6 +51,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
 import com.music.bitchord.data.listentogether.account.AccountConnection
@@ -119,7 +122,7 @@ internal fun ConnectSheet(
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             account.soundingDevice?.let { SoundingCard(it, isSelf = it.deviceId == account.selfId) }
 
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(6.dp))
             SectionLabel(stringResource(Res.string.connect_your_devices))
 
             val thisDevice = account.self
@@ -172,7 +175,7 @@ internal fun ConnectSheet(
                 )
             }
 
-            Spacer(Modifier.height(4.dp))
+            Spacer(Modifier.height(10.dp))
             SectionLabel(stringResource(Res.string.connect_party))
             if (party.inParty) {
                 ActionRow(
@@ -182,21 +185,23 @@ internal fun ConnectSheet(
                     onClick = { onDismiss(); onOpenParty() },
                 )
             } else {
-                // Starting a party is the way in, so it takes the room; joining one
-                // is the short way into somebody else's, so it is only the circle.
+                // Starting a party is the way in, so it is the filled one; joining is for somebody who
+                // already has a code, and says so in words instead of an unlabelled circle.
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    modifier = Modifier.fillMaxWidth().height(IntrinsicSize.Min),
+                    modifier = Modifier.fillMaxWidth(),
                 ) {
-                    PillButton(
+                    ActionPill(
                         text = stringResource(Res.string.connect_start_party),
                         icon = BitChordIcons.PartyStart,
+                        filled = true,
                         modifier = Modifier.weight(1f),
                     ) { onDismiss(); onStartParty() }
-                    JoinCircle(
-                        label = stringResource(Res.string.connect_join_party),
-                        modifier = Modifier.fillMaxHeight().aspectRatio(1f, matchHeightConstraintsFirst = true),
+                    ActionPill(
+                        text = stringResource(Res.string.connect_join_with_code),
+                        icon = BitChordIcons.PartyJoin,
+                        filled = false,
+                        modifier = Modifier.weight(1f),
                     ) { onDismiss(); onJoinParty() }
                 }
             }
@@ -208,48 +213,78 @@ internal fun ConnectSheet(
 @Composable
 private fun SoundingCard(device: AccountDevice, isSelf: Boolean) {
     val accent = MaterialTheme.colorScheme.primary
+    val np = device.nowPlaying
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .clip(CARD_SHAPE)
-            .background(Color.White.copy(alpha = 0.10f))
-            .padding(16.dp),
+            .background(accent.copy(alpha = 0.14f))
+            .border(1.dp, accent.copy(alpha = 0.35f), CARD_SHAPE)
+            .padding(14.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
+            Icon(iconFor(device.type), null, tint = accent, modifier = Modifier.size(16.dp))
+            Spacer(Modifier.width(6.dp))
+            Text(
+                text = stringResource(Res.string.connect_sounding_label).uppercase(),
+                style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.2.sp),
+                color = accent,
+            )
+        }
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = if (isSelf) stringResource(Res.string.connect_this_device) else device.name,
+            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+            color = Color.White,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (isSelf) {
+            Text(
+                text = device.name,
+                style = MaterialTheme.typography.labelMedium,
+                color = Color.White.copy(alpha = 0.55f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier.size(48.dp).clip(RoundedCornerShape(10.dp)).background(Color.White.copy(alpha = 0.08f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (np?.thumbnailUrl != null) {
+                    AsyncImage(
+                        model = np.thumbnailUrl,
+                        contentDescription = null,
+                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                        modifier = Modifier.size(48.dp),
+                    )
+                } else {
+                    Icon(Icons.Rounded.MusicNote, null, tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(22.dp))
+                }
+            }
+            Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(
-                    text = if (isSelf) stringResource(Res.string.connect_this_device) else device.name,
-                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.SemiBold),
-                    color = Color.White,
+                    text = np?.title ?: stringResource(Res.string.connect_nothing_playing),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color.White.copy(alpha = if (np != null) 0.95f else 0.55f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                if (isSelf) {
+                if (np != null && np.artist.isNotBlank()) {
                     Text(
-                        text = device.name,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = Color.White.copy(alpha = 0.55f),
+                        text = np.artist,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = Color.White.copy(alpha = 0.6f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
-            Icon(
-                imageVector = iconFor(device.type),
-                contentDescription = null,
-                tint = accent,
-                modifier = Modifier.size(34.dp),
-            )
         }
-        val np = device.nowPlaying
-        Spacer(Modifier.height(6.dp))
-        Text(
-            text = if (np != null) "${np.title} — ${np.artist}" else stringResource(Res.string.connect_nothing_playing),
-            style = MaterialTheme.typography.bodyMedium,
-            color = if (np != null) accent else Color.White.copy(alpha = 0.55f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
     }
 }
 
@@ -292,7 +327,7 @@ private fun DeviceRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(ROW_SHAPE)
-            .background(Color.White.copy(alpha = 0.05f))
+            .background(Color.White.copy(alpha = 0.07f))
             .clickable(
                 enabled = enabled,
                 interactionSource = remember { MutableInteractionSource() },
@@ -301,7 +336,7 @@ private fun DeviceRow(
                 haptics.play(Haptic.Select)
                 onClick()
             }
-            .padding(horizontal = 14.dp, vertical = 12.dp),
+            .padding(horizontal = 14.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         val alpha = if (enabled) 1f else 0.4f
@@ -315,8 +350,8 @@ private fun DeviceRow(
         Column(Modifier.weight(1f)) {
             Text(
                 text = if (isSelf) stringResource(Res.string.connect_this_device) else device.name,
-                style = MaterialTheme.typography.bodyLarge,
-                color = Color.White.copy(alpha = 0.9f * alpha),
+                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                color = Color.White.copy(alpha = 0.95f * alpha),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -325,7 +360,13 @@ private fun DeviceRow(
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.labelMedium,
-                    color = Color.White.copy(alpha = 0.55f * alpha),
+                    color = if (device.unreachable || device.noControl) {
+                        Color(0xFFFFB454).copy(alpha = alpha)
+                    } else if (device.controlledBy != null || device.controlling != null) {
+                        MaterialTheme.colorScheme.primary.copy(alpha = alpha)
+                    } else {
+                        Color.White.copy(alpha = 0.6f * alpha)
+                    },
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -399,52 +440,33 @@ private fun ActionRow(title: String, subtitle: String?, leading: ImageVector? = 
     }
 }
 
+/** A labelled pill under the party heading. Filled is the main way in; the outlined one is the shortcut. */
 @Composable
-private fun PillButton(text: String, icon: ImageVector, modifier: Modifier, onClick: () -> Unit) {
+private fun ActionPill(text: String, icon: ImageVector, filled: Boolean, modifier: Modifier, onClick: () -> Unit) {
     val haptics = rememberHaptics()
-    Column(
+    val shape = RoundedCornerShape(50)
+    Row(
         modifier = modifier
-            .clip(RoundedCornerShape(50))
-            .background(Color.White.copy(alpha = 0.10f))
+            .height(48.dp)
+            .clip(shape)
+            .background(if (filled) Color.White.copy(alpha = 0.92f) else Color.White.copy(alpha = 0.08f))
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
                 haptics.play(Haptic.Select)
                 onClick()
             }
-            .padding(vertical = 11.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
+            .padding(horizontal = 12.dp),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, null, tint = Color.White.copy(alpha = 0.9f), modifier = Modifier.size(22.dp))
-        Spacer(Modifier.height(4.dp))
+        val ink = if (filled) Color(0xFF111114) else Color.White.copy(alpha = 0.9f)
+        Icon(icon, null, tint = ink, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(8.dp))
         Text(
             text,
-            style = MaterialTheme.typography.labelLarge,
-            color = Color.White.copy(alpha = 0.9f),
+            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+            color = ink,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-        )
-    }
-}
-
-/** Joining asks for a code on the next sheet, so the circle says only that much. */
-@Composable
-private fun JoinCircle(label: String, modifier: Modifier, onClick: () -> Unit) {
-    val haptics = rememberHaptics()
-    Box(
-        modifier = modifier
-            .clip(CircleShape)
-            .background(Color.White.copy(alpha = 0.10f))
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                haptics.play(Haptic.Select)
-                onClick()
-            },
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            BitChordIcons.PartyJoin,
-            contentDescription = label,
-            tint = Color.White.copy(alpha = 0.9f),
-            modifier = Modifier.size(22.dp),
         )
     }
 }
@@ -453,9 +475,9 @@ private fun JoinCircle(label: String, modifier: Modifier, onClick: () -> Unit) {
 private fun SectionLabel(text: String) {
     Text(
         text = text,
-        style = MaterialTheme.typography.labelLarge,
-        color = Color.White.copy(alpha = 0.55f),
-        modifier = Modifier.padding(start = 4.dp, top = 2.dp),
+        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+        color = Color.White.copy(alpha = 0.6f),
+        modifier = Modifier.padding(start = 4.dp, top = 6.dp),
     )
 }
 

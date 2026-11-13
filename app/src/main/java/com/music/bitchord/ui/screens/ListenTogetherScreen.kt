@@ -50,6 +50,9 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.SkipNext
 import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material3.Button
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -244,6 +247,13 @@ fun ListenTogetherScreen(
                 }
                 failure = result.exceptionOrNull()?.message
                 busy = false
+                if (result.isSuccess) {
+                    Toast.makeText(
+                        context,
+                        context.getString(R.string.listen_together_msg_created, ListenTogether.state.value.code.orEmpty()),
+                        Toast.LENGTH_SHORT,
+                    ).show()
+                }
             }
         }
     }
@@ -425,6 +435,13 @@ fun ListenTogetherScreen(
                             if (problem == null) {
                                 codeInput = ""
                                 sheet = null
+                                val host = open.preview.hostName.trim()
+                                Toast.makeText(
+                                    context,
+                                    if (host.isEmpty()) context.getString(R.string.listen_together_msg_joined)
+                                    else context.getString(R.string.listen_together_msg_joined_host, host),
+                                    Toast.LENGTH_SHORT,
+                                ).show()
                             }
                         }
                     },
@@ -528,6 +545,7 @@ fun ListenTogetherScreen(
                     scope.launch {
                         SpotifyJamBridge.leaveJam()
                         ListenTogether.leaveParty()
+                        Toast.makeText(context, context.getString(R.string.listen_together_msg_left), Toast.LENGTH_SHORT).show()
                     }
                 },
                 onSetCapacity = ListenTogether::setMaxMembers,
@@ -911,6 +929,41 @@ private fun CodeCell(
     }
 }
 
+private val CARD_SHAPE_LG = RoundedCornerShape(24.dp)
+
+/** One soft card: the container every block of the party page sits in, so the page reads as a few clear pieces. */
+@Composable
+private fun PartyCard(modifier: Modifier = Modifier, content: @Composable androidx.compose.foundation.layout.ColumnScope.() -> Unit) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = GROUP_INSET, vertical = 6.dp)
+            .clip(CARD_SHAPE_LG)
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+    ) {
+        Column(Modifier.fillMaxWidth(), content = content)
+    }
+}
+
+@Composable
+private fun PartySectionTitle(text: String, trailing: String? = null) {
+    Row(
+        modifier = Modifier.fillMaxWidth().padding(start = GROUP_INSET + 10.dp, end = GROUP_INSET + 10.dp, top = 20.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = text,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        if (trailing != null) {
+            Text(trailing, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
 @Composable
 private fun InAParty(
     state: ListenTogether.State,
@@ -925,192 +978,64 @@ private fun InAParty(
     onSetHostOnlyControl: (Boolean) -> Unit,
     onKick: (String) -> Unit,
 ) {
-    var activeQrTab by remember { mutableIntStateOf(0) }
-
-    SettingsGroup(
-        header = stringResource(R.string.listen_together_code),
-        footer = if (activeQrTab == 1) {
-            stringResource(R.string.listen_together_scan_spotify_jam_subtitle)
-        } else {
-            stringResource(R.string.listen_together_code_footer)
-        },
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            if (spotifySession != null && spotifySession.joinSessionUrl.isNotBlank()) {
-                Row(
-                    modifier = Modifier
-                        .padding(bottom = 16.dp)
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(12.dp))
-                        .padding(4.dp),
-                    horizontalArrangement = Arrangement.Center,
-                ) {
-                    Surface(
-                        modifier = Modifier.clickable { activeQrTab = 0 },
-                        shape = RoundedCornerShape(8.dp),
-                        color = if (activeQrTab == 0) MaterialTheme.colorScheme.surface else Color.Transparent,
-                        shadowElevation = if (activeQrTab == 0) 2.dp else 0.dp,
-                    ) {
-                        Text(
-                            text = "BitChord",
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                            color = if (activeQrTab == 0) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                    Surface(
-                        modifier = Modifier.clickable { activeQrTab = 1 },
-                        shape = RoundedCornerShape(8.dp),
-                        color = if (activeQrTab == 1) MaterialTheme.colorScheme.surface else Color.Transparent,
-                        shadowElevation = if (activeQrTab == 1) 2.dp else 0.dp,
-                    ) {
-                        Text(
-                            text = "Spotify Jam",
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
-                            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
-                            color = if (activeQrTab == 1) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
-                        )
-                    }
-                }
-            }
-
-            if (activeQrTab == 1 && spotifySession != null && spotifySession.joinSessionUrl.isNotBlank()) {
-                QrCode(
-                    content = spotifySession.joinSessionUrl,
-                    size = 160.dp,
-                    codeText = "Spotify Jam",
-                    modifier = Modifier.border(
-                        1.dp,
-                        Color(0xFF1DB954).copy(alpha = 0.35f),
-                        RoundedCornerShape(16.dp),
-                    ),
-                )
-                Spacer(Modifier.height(16.dp))
-                Text(
-                    text = "SPOTIFY JAM",
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 4.sp,
-                    ),
-                    color = Color(0xFF1DB954),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            } else {
-                if (inviteLink.isNotBlank()) {
-                    QrCode(
-                        content = inviteLink,
-                        size = 160.dp,
-                        codeText = state.code,
-                        modifier = Modifier.border(
-                            1.dp,
-                            Color.Black.copy(alpha = 0.08f),
-                            RoundedCornerShape(16.dp),
-                        ),
-                    )
-                    Spacer(Modifier.height(16.dp))
-                }
-                Text(
-                    text = state.code.orEmpty(),
-                    style = MaterialTheme.typography.displaySmall.copy(
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 8.sp,
-                    ),
-                    color = MaterialTheme.colorScheme.onBackground,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        }
-        RowDivider()
-        if (activeQrTab == 1 && spotifySession != null) {
-            SettingsRow(
-                icon = SfIcons.ContentCopy,
-                title = stringResource(R.string.listen_together_share_spotify_jam),
-                onClick = onCopySpotifyJam,
-            )
-            RowDivider()
-            SettingsRow(
-                icon = SfIcons.Share,
-                title = stringResource(R.string.share),
-                onClick = onShareSpotifyJam,
-            )
-        } else {
-            SettingsRow(
-                icon = SfIcons.ContentCopy,
-                title = stringResource(R.string.copy_code),
-                onClick = onCopy,
-            )
-            RowDivider()
-            SettingsRow(
-                icon = SfIcons.Share,
-                title = stringResource(R.string.share),
-                onClick = onShareLink,
-            )
-        }
-    }
+    PartyHero(
+        state = state,
+        inviteLink = inviteLink,
+        spotifySession = spotifySession,
+        onCopy = onCopy,
+        onShareLink = onShareLink,
+        onShareSpotifyJam = onShareSpotifyJam,
+        onCopySpotifyJam = onCopySpotifyJam,
+    )
 
     NowPlayingInTheParty(state)
 
     val playHere by ListenTogether.listenHere.collectAsStateWithLifecycle()
-    SettingsGroup(
-        footer = stringResource(
-            if (playHere) R.string.listen_together_play_here_on else R.string.listen_together_play_here_off,
-        ),
-    ) {
-        SettingsRow(
-            icon = if (playHere) SfIcons.VolumeUp else Icons.AutoMirrored.Rounded.VolumeOff,
-            title = stringResource(R.string.listen_together_play_here),
-            trailing = { IosSwitch(checked = playHere, onCheckedChange = { ListenTogether.setListenHere(it) }) },
-            onClick = { ListenTogether.setListenHere(!playHere) },
-        )
+    Spacer(Modifier.height(8.dp))
+    PartyCard {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { ListenTogether.setListenHere(!playHere) }
+                .padding(horizontal = 18.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                if (playHere) SfIcons.VolumeUp else Icons.AutoMirrored.Rounded.VolumeOff,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(ICON_SIZE),
+            )
+            Spacer(Modifier.width(14.dp))
+            Column(Modifier.weight(1f)) {
+                Text(
+                    stringResource(R.string.listen_together_play_here),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+                Text(
+                    stringResource(
+                        if (playHere) R.string.listen_together_play_here_on else R.string.listen_together_play_here_off,
+                    ),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+            Spacer(Modifier.width(12.dp))
+            IosSwitch(checked = playHere, onCheckedChange = { ListenTogether.setListenHere(it) })
+        }
     }
 
-    SettingsGroup(
-        header = stringResource(
-            R.string.listen_together_listening,
-            state.members.byPerson().size + (spotifySession?.members?.size ?: 0),
-            state.maxMembers + (spotifySession?.members?.size ?: 0),
-        ),
-        footer = stringResource(R.string.listen_together_members_footer, state.maxMembers),
-    ) {
-        if (state.you?.isHost == true) {
-            SettingsRow(
-                icon = SfIcons.Lock,
-                title = stringResource(R.string.listen_together_host_only),
-                subtitle = stringResource(R.string.listen_together_host_only_subtitle),
-                trailing = {
-                    IosSwitch(
-                        checked = state.hostOnlyControl,
-                        onCheckedChange = onSetHostOnlyControl,
-                    )
-                },
-                onClick = { onSetHostOnlyControl(!state.hostOnlyControl) },
-            )
-            RowDivider()
-            // Last and small: a limit almost nobody needs to touch.
-            Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = ROW_INSET, vertical = 2.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    stringResource(R.string.listen_together_party_size),
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.weight(1f),
-                )
-                TextButton(onClick = { onSetCapacity(state.maxMembers - 1) }, enabled = state.maxMembers > maxOf(2, state.members.size)) { Text("−", color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                Text("${state.maxMembers}", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.width(24.dp), textAlign = TextAlign.Center)
-                TextButton(onClick = { onSetCapacity(state.maxMembers + 1) }, enabled = state.maxMembers < 10) { Text("+", color = MaterialTheme.colorScheme.onSurfaceVariant) }
-            }
-            RowDivider()
-        }
+    val people = state.members.byPerson()
+    val spotifyCount = spotifySession?.members?.size ?: 0
+    PartySectionTitle(
+        text = stringResource(R.string.listen_together_people),
+        trailing = "${people.size + spotifyCount} / ${state.maxMembers + spotifyCount}",
+    )
+    PartyCard {
         // People, not devices: one row per person, with their devices under the name.
-        state.members.byPerson().forEachIndexed { index, person ->
+        people.forEachIndexed { index, person ->
             if (index > 0) RowDivider()
             MemberRow(
                 member = person.asMember,
@@ -1120,22 +1045,249 @@ private fun InAParty(
                 devices = person.devices,
             )
         }
-        if (spotifySession != null && spotifySession.members.isNotEmpty()) {
+        spotifySession?.members?.forEach { spotifyMember ->
             RowDivider()
-            spotifySession.members.forEach { spotifyMember ->
-                SpotifyMemberRow(member = spotifyMember)
-                RowDivider()
+            SpotifyMemberRow(member = spotifyMember)
+        }
+    }
+
+    if (state.you?.isHost == true) {
+        PartySectionTitle(text = stringResource(R.string.listen_together_room_settings))
+        PartyCard {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { onSetHostOnlyControl(!state.hostOnlyControl) }
+                    .padding(horizontal = 18.dp, vertical = 14.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Icon(SfIcons.Lock, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(ICON_SIZE))
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.listen_together_host_only),
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
+                    Text(
+                        stringResource(R.string.listen_together_host_only_subtitle),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Spacer(Modifier.width(12.dp))
+                IosSwitch(checked = state.hostOnlyControl, onCheckedChange = onSetHostOnlyControl)
+            }
+            RowDivider()
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    stringResource(R.string.listen_together_party_size),
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.weight(1f),
+                )
+                SizeStepButton("−", enabled = state.maxMembers > maxOf(2, state.members.size)) { onSetCapacity(state.maxMembers - 1) }
+                Text(
+                    "${state.maxMembers}",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onBackground,
+                    modifier = Modifier.width(36.dp),
+                    textAlign = TextAlign.Center,
+                )
+                SizeStepButton("+", enabled = state.maxMembers < 10) { onSetCapacity(state.maxMembers + 1) }
             }
         }
     }
 
-    SettingsGroup {
-        SettingsRow(
-            icon = SfIcons.Logout,
-            title = stringResource(R.string.listen_together_leave),
-            subtitle = stringResource(R.string.listen_together_leave_subtitle),
-            onClick = onLeave,
+    Spacer(Modifier.height(24.dp))
+    // Leaving is the one thing on this page that is set apart, drawn as what it is instead of
+    // looking like one more setting.
+    OutlinedButton(
+        onClick = onLeave,
+        shape = RoundedCornerShape(percent = 50),
+        border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.error.copy(alpha = 0.6f)),
+        modifier = Modifier.fillMaxWidth().padding(horizontal = GROUP_INSET + 4.dp).height(52.dp),
+    ) {
+        Icon(SfIcons.Logout, null, tint = MaterialTheme.colorScheme.error, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Text(
+            stringResource(R.string.listen_together_leave),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.error,
         )
+    }
+    Text(
+        text = stringResource(R.string.listen_together_leave_subtitle),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        textAlign = TextAlign.Center,
+        modifier = Modifier.fillMaxWidth().padding(horizontal = GROUP_INSET + 4.dp, vertical = 8.dp),
+    )
+}
+
+@Composable
+private fun SizeStepButton(label: String, enabled: Boolean, onClick: () -> Unit) {
+    Box(
+        modifier = Modifier
+            .size(36.dp)
+            .clip(CircleShape)
+            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = if (enabled) 0.10f else 0.04f))
+            .clickable(enabled = enabled, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            label,
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onSurface.copy(alpha = if (enabled) 1f else 0.3f),
+        )
+    }
+}
+
+/**
+ * The first thing on the page and the thing people come here for: who is in, the code, and the ways
+ * to hand it to somebody. The QR is behind a button because most of the time the link is enough.
+ */
+@Composable
+private fun PartyHero(
+    state: ListenTogether.State,
+    inviteLink: String,
+    spotifySession: SpotifyJamSession?,
+    onCopy: () -> Unit,
+    onShareLink: () -> Unit,
+    onShareSpotifyJam: () -> Unit,
+    onCopySpotifyJam: () -> Unit,
+) {
+    var tab by remember { mutableIntStateOf(0) }
+    var showQr by remember { mutableStateOf(false) }
+    val hasJam = spotifySession != null && spotifySession.joinSessionUrl.isNotBlank()
+    val onJam = hasJam && tab == 1
+    val people = state.members.byPerson()
+    val jamGreen = Color(0xFF1DB954)
+
+    PartyCard {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 20.dp, vertical = 22.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            if (hasJam) {
+                Row(
+                    modifier = Modifier
+                        .padding(bottom = 16.dp)
+                        .background(MaterialTheme.colorScheme.surfaceVariant, RoundedCornerShape(12.dp))
+                        .padding(4.dp),
+                ) {
+                    listOf("BitChord", "Spotify Jam").forEachIndexed { index, label ->
+                        Surface(
+                            modifier = Modifier.clickable { tab = index },
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (tab == index) MaterialTheme.colorScheme.surface else Color.Transparent,
+                        ) {
+                            Text(
+                                text = label,
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 6.dp),
+                                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Bold),
+                                color = if (tab == index) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (!onJam) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    MemberAvatarStack(
+                        members = people.map { it.asMember.displayName to it.asMember.avatarUrl },
+                        total = people.size,
+                        faceSize = 30.dp,
+                        shown = 4,
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Text(
+                        text = pluralStringResource(R.plurals.listen_together_people_count, people.size, people.size),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+                Spacer(Modifier.height(18.dp))
+            }
+
+            Text(
+                text = stringResource(R.string.listen_together_code).uppercase(),
+                style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.5.sp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            Spacer(Modifier.height(4.dp))
+            Text(
+                text = if (onJam) "SPOTIFY JAM" else state.code.orEmpty(),
+                style = MaterialTheme.typography.displaySmall.copy(
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = if (onJam) 3.sp else 8.sp,
+                ),
+                color = if (onJam) jamGreen else MaterialTheme.colorScheme.onBackground,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Text(
+                text = stringResource(
+                    if (onJam) R.string.listen_together_scan_spotify_jam_subtitle else R.string.listen_together_code_hint_short,
+                ),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 4.dp),
+            )
+
+            androidx.compose.animation.AnimatedVisibility(visible = showQr) {
+                Column(Modifier.fillMaxWidth().padding(top = 18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                    val content = if (onJam) spotifySession?.joinSessionUrl.orEmpty() else inviteLink
+                    if (content.isNotBlank()) {
+                        QrCode(
+                            content = content,
+                            size = 168.dp,
+                            codeText = if (onJam) "Spotify Jam" else state.code,
+                            modifier = Modifier.border(
+                                1.dp,
+                                if (onJam) jamGreen.copy(alpha = 0.35f) else Color.Black.copy(alpha = 0.08f),
+                                RoundedCornerShape(16.dp),
+                            ),
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(20.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Button(
+                    onClick = if (onJam) onShareSpotifyJam else onShareLink,
+                    shape = RoundedCornerShape(percent = 50),
+                    modifier = Modifier.weight(1f).height(48.dp),
+                ) {
+                    Icon(SfIcons.Share, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(R.string.share), fontWeight = FontWeight.SemiBold)
+                }
+                OutlinedButton(
+                    onClick = if (onJam) onCopySpotifyJam else onCopy,
+                    shape = RoundedCornerShape(percent = 50),
+                    modifier = Modifier.weight(1f).height(48.dp),
+                ) {
+                    Icon(SfIcons.ContentCopy, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(stringResource(if (onJam) R.string.listen_together_copy_link else R.string.copy_code), maxLines = 1)
+                }
+            }
+            TextButton(onClick = { showQr = !showQr }, modifier = Modifier.padding(top = 4.dp)) {
+                Text(
+                    stringResource(if (showQr) R.string.listen_together_hide_qr else R.string.listen_together_show_qr),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     }
 }
 
@@ -1154,34 +1306,84 @@ private fun NowPlayingInTheParty(state: ListenTogether.State) {
         }
     }
 
-    // Both read before the row is built: they are [stringResource] lookups, and
-    // a composable call belongs at a composable call site rather than buried
-    // inside the string building below it.
     val connection = connectionLine(state)
-    val nothingPlaying = stringResource(R.string.listen_together_nothing_playing)
+    val healthy = state.connection == ListenTogether.Connection.LIVE && state.clockSynced
+    val duration = track?.durationMs?.takeIf { it > 0 }
 
-    SettingsGroup(header = stringResource(R.string.listen_together_now_playing)) {
-        SettingsRow(
-            icon = SfIcons.MusicNote,
-            title = track?.title?.takeIf { it.isNotBlank() } ?: nothingPlaying,
-            subtitle = if (track == null) {
-                connection
-            } else {
-                buildString {
-                    if (track.artist.isNotBlank()) {
-                        append(track.artist)
-                        append(" · ")
+    PartySectionTitle(text = stringResource(R.string.listen_together_now_playing))
+    PartyCard {
+        Column(Modifier.fillMaxWidth().padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    modifier = Modifier
+                        .size(56.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surface),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (track?.thumbnailUrl != null) {
+                        AsyncImage(
+                            model = track.thumbnailUrl,
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.size(56.dp),
+                        )
+                    } else {
+                        Icon(SfIcons.MusicNote, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
                     }
-                    append(elapsed(positionMs))
-                    track.durationMs?.let {
-                        append(" / ")
-                        append(elapsed(it))
-                    }
-                    append("\n")
-                    append(connection)
                 }
-            },
-        )
+                Spacer(Modifier.width(14.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = track?.title?.takeIf { it.isNotBlank() } ?: stringResource(R.string.listen_together_nothing_playing),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onBackground,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    if (track != null && track.artist.isNotBlank()) {
+                        Text(
+                            text = track.artist,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+            if (track != null && duration != null) {
+                Spacer(Modifier.height(14.dp))
+                androidx.compose.material3.LinearProgressIndicator(
+                    progress = { (positionMs.toFloat() / duration).coerceIn(0f, 1f) },
+                    modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
+                )
+                Spacer(Modifier.height(6.dp))
+                Row(Modifier.fillMaxWidth()) {
+                    Text(elapsed(positionMs), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Spacer(Modifier.weight(1f))
+                    Text(elapsed(duration), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+            }
+            Spacer(Modifier.height(12.dp))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Box(
+                    Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(if (healthy) Color(0xFF34C759) else Color(0xFFFF9F0A)),
+                )
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = connection,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
     }
 }
 
@@ -1241,7 +1443,7 @@ private fun MemberRow(
             modifier = Modifier
                 .size(32.dp)
                 .clip(CircleShape)
-                .background(MaterialTheme.colorScheme.surface),
+                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f)),
             contentAlignment = Alignment.Center,
         ) {
             if (member.avatarUrl != null) {

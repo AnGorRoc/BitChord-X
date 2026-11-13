@@ -38,6 +38,26 @@ sealed interface DeviceNotice {
 
     data object TooManySongs : DeviceNotice
 
+    // ---- good news: said so a tap is answered even when nothing on screen changes --------------
+
+    /** The sound now comes out of [name], which was handed this device's music. */
+    data class PlayingOn(val name: String?) : DeviceNotice
+
+    /** This device is now the remote of [name], which keeps playing what it was. */
+    data class Controlling(val name: String?) : DeviceNotice
+
+    /** [name]'s music was brought here and the link is over. */
+    data class BroughtHere(val name: String?) : DeviceNotice
+
+    /** This device let go of its target; the sound is here again. */
+    data object BackHere : DeviceNotice
+
+    /** A party was handed to [name], which now plays it. */
+    data class PartyOn(val name: String?) : DeviceNotice
+
+    /** The party's sound came back to this device. */
+    data object PartyHere : DeviceNotice
+
     /** The link to that device is no longer there. */
     data object NotLinked : DeviceNotice
 

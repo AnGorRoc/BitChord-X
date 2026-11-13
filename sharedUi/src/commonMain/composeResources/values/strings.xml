@@ -334,4 +334,6 @@
     <string name="browse_all_title">Browse all</string>
     <string name="browse_all_subtitle">Genres, moods and more</string>
     <string name="nothing_to_explore">No trending tracks available for this region</string>
+    <string name="connect_join_with_code">Join with a code</string>
+    <string name="connect_sounding_label">Playing on</string>
 </resources>

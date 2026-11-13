@@ -286,6 +286,7 @@ internal class DeviceSpeaker(
                     ListenTogether.setListenHere(false)
                     partyHandover = null
                     refreshConnecting()
+                    say(DeviceNotice.PartyOn(now?.name))
                     return@launch
                 }
             }
@@ -299,6 +300,7 @@ internal class DeviceSpeaker(
     private fun movePartySound(target: AccountDevice) {
         account.command(target.deviceId, DeviceActions.PARTY_LISTEN, buildJsonObject { put("on", true) })
         ListenTogether.setListenHere(false)
+        say(DeviceNotice.PartyOn(target.name))
     }
 
     /** The person tapped "This phone" while another device is the speaker: bring the sound back. */
@@ -310,12 +312,13 @@ internal class DeviceSpeaker(
             account.state.value.others
                 .filter { it.connected && it.partyCode.equals(code, ignoreCase = true) }
                 .forEach { account.command(it.deviceId, DeviceActions.PARTY_LISTEN, buildJsonObject { put("on", false) }) }
+            say(DeviceNotice.PartyHere)
             return
         }
         val target = account.state.value.devices.firstOrNull { it.deviceId == targetId } ?: return endLocally(resumeHere = false)
         // Only a remote that gave its music away has anything to come back for. One that was only
         // controlling lets go and leaves the other device playing, exactly as it was.
-        if (gaveMusic) pull(target) else endLocally(resumeHere = false)
+        if (gaveMusic) pull(target) else { endLocally(resumeHere = false); say(DeviceNotice.BackHere) }
     }
 
     private fun controlOnly(target: AccountDevice) {
@@ -414,6 +417,7 @@ internal class DeviceSpeaker(
                     quietLocalPlayer()
                     sink?.onRemotePlaybackChanged()
                     onChanged()
+                    say(if (gaveMusic) DeviceNotice.PlayingOn(target?.name) else DeviceNotice.Controlling(target?.name))
                     return@launch
                 }
             }
@@ -490,6 +494,7 @@ internal class DeviceSpeaker(
     fun onPulled() {
         if (!pulling) return
         pulling = false
+        val from = account.state.value.devices.firstOrNull { it.deviceId == targetId }?.name
         // The other device's music is what the person asked for here; nothing is given back.
         stash = null
         navExpected = null
@@ -503,6 +508,7 @@ internal class DeviceSpeaker(
         account.detach()
         sink?.onRemoteRouteChanged()
         reanchor()
+        say(DeviceNotice.BroughtHere(from))
     }
 
     // ---- transport --------------------------------------------------------------------------
