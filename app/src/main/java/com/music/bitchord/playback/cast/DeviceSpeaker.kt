@@ -124,7 +124,9 @@ internal class DeviceSpeaker(
 
     /** What the Connect sheet shows as "Connecting…": the target, from the tap until it answers. */
     private fun refreshConnecting() {
-        DeviceLink.setConnecting(if (active && (awaitingConfirm != null || pulling)) targetId else null)
+        DeviceLink.setConnecting(
+            partyHandover ?: if (active && (awaitingConfirm != null || pulling)) targetId else null,
+        )
     }
 
     init {
@@ -200,19 +202,74 @@ internal class DeviceSpeaker(
     fun pick(deviceId: String, force: HandoffForce?) {
         val target = account.state.value.devices.firstOrNull { it.deviceId == deviceId }
         // One rule for both the sheet (which stays open on a refusal) and this (which says why).
-        HandoffRules.blockedBy(target, ListenTogether.partyOwnsPlayer())?.let { say(it); return }
+        val myParty = ListenTogether.state.value.code?.takeIf { ListenTogether.state.value.inParty }
+        HandoffRules.blockedBy(target, myParty)?.let { say(it); return }
         if (target == null) return
         val player = localPlayer()
         val hasMusic = player != null && player.mediaItemCount > 0
-        when (HandoffRules.onPick(target, hasMusic, force)) {
+        when (HandoffRules.onPick(target, hasMusic, force, myParty)) {
             Handoff.CONTROL_ONLY -> controlOnly(target)
+            Handoff.SEND_PARTY -> sendParty(target, myParty ?: return)
+            Handoff.MOVE_PARTY_SOUND -> movePartySound(target)
             Handoff.SEND_MY_MUSIC -> sendMine(target)
             Handoff.PULL_THEIR_MUSIC -> pull(target)
         }
     }
 
+    /** The device a party is on its way to; shown as "Connecting…" until it is in. */
+    private var partyHandover: String? = null
+    private var partyHandoverJob: Job? = null
+
+    /**
+     * This device is in a party and the person picked one that is not: it joins as the same person
+     * and sounds, and this one stays in the party as its control. Nothing here goes quiet until the
+     * other is in, so a join that fails leaves the music where it was.
+     */
+    private fun sendParty(target: AccountDevice, code: String) {
+        val server = ListenTogether.activePartyServerBase() ?: run { say(DeviceNotice.NoStart); return }
+        partyHandoverJob?.cancel()
+        partyHandover = target.deviceId
+        refreshConnecting()
+        account.command(
+            target.deviceId, DeviceActions.JOIN_PARTY,
+            buildJsonObject { put("code", code); put("server", server) },
+        )
+        partyHandoverJob = scope.launch {
+            var waited = 0L
+            while (waited < HANDOVER_TIMEOUT_MS) {
+                delay(CONFIRM_POLL_MS)
+                waited += CONFIRM_POLL_MS
+                val now = account.state.value.devices.firstOrNull { it.deviceId == target.deviceId }
+                if (now?.partyCode.equals(code, ignoreCase = true)) {
+                    ListenTogether.setListenHere(false)
+                    partyHandover = null
+                    refreshConnecting()
+                    return@launch
+                }
+            }
+            partyHandover = null
+            refreshConnecting()
+            say(DeviceNotice.NoAnswer)
+        }
+    }
+
+    /** Both devices are in the party: the sound moves to [target], and this one follows it. */
+    private fun movePartySound(target: AccountDevice) {
+        account.command(target.deviceId, DeviceActions.PARTY_LISTEN, buildJsonObject { put("on", true) })
+        ListenTogether.setListenHere(false)
+    }
+
     /** The person tapped "This phone" while another device is the speaker: bring the sound back. */
     fun comeBack() {
+        val code = ListenTogether.state.value.code?.takeIf { ListenTogether.state.value.inParty }
+        if (code != null && !ListenTogether.listenHere.value) {
+            // The party sounds on another of the person's devices: take it here, and quiet that one.
+            ListenTogether.setListenHere(true)
+            account.state.value.others
+                .filter { it.connected && it.partyCode.equals(code, ignoreCase = true) }
+                .forEach { account.command(it.deviceId, DeviceActions.PARTY_LISTEN, buildJsonObject { put("on", false) }) }
+            return
+        }
         val target = account.state.value.devices.firstOrNull { it.deviceId == targetId } ?: return endLocally(resumeHere = false)
         pull(target)
     }
@@ -544,6 +601,11 @@ internal class DeviceTarget(
     private val player: () -> ExoPlayer?,
     private val account: AccountDevices,
     private val speaker: DeviceSpeaker,
+    /**
+     * The door every external surface knocks on (the session's player), which is where a party tells
+     * the person's play, pause and skip from its own corrections. Null before the session exists.
+     */
+    private val partyDoor: () -> Player? = { null },
 ) {
     private var last: AccountNowPlaying? = null
 
@@ -598,9 +660,24 @@ internal class DeviceTarget(
 
     private fun handle(command: DeviceCommand) {
         val p = player() ?: return
-        // The party owns this player; a command from another device would be undone by it at once.
-        if (ListenTogether.partyOwnsPlayer()) return
         val payload = command.payload
+        // Moving a party between the person's own devices: it needs no link and says nothing about
+        // this player, so it is handled before anything that depends on who owns it.
+        when (command.action) {
+            DeviceActions.JOIN_PARTY -> { joinParty(payload); return }
+            DeviceActions.PARTY_LISTEN -> {
+                if (ListenTogether.state.value.inParty) ListenTogether.setListenHere(DeviceWire.bool(payload, "on") == true)
+                return
+            }
+        }
+        // The party owns this player and reconciles it many times a second, so a queue or a song put
+        // into it would be undone at once. What a remote can still do is what any listener in the
+        // party can: play, pause, seek and skip, through the same door the notification uses, so
+        // the party's own rules (a locked transport, say) decide.
+        if (ListenTogether.partyOwnsPlayer()) {
+            handleInParty(p, command)
+            return
+        }
         when (command.action) {
             DeviceActions.PLAY -> p.play()
             DeviceActions.PAUSE -> p.pause()
@@ -617,6 +694,32 @@ internal class DeviceTarget(
         if (command.action == DeviceActions.PLAY_QUEUE || command.action == DeviceActions.ENQUEUE) queueSig = signature(p)
         // Report at once rather than at the next tick, so the other device's controls feel immediate.
         publish()
+    }
+
+    private fun handleInParty(p: ExoPlayer, command: DeviceCommand) {
+        val door = partyDoor() ?: return
+        val payload = command.payload
+        when (command.action) {
+            DeviceActions.PLAY -> door.play()
+            DeviceActions.PAUSE -> door.pause()
+            DeviceActions.SEEK -> DeviceWire.long(payload, "positionMs")?.let { door.seekTo(it) }
+            DeviceActions.NEXT -> door.seekToNextMediaItem()
+            DeviceActions.PREVIOUS -> door.seekToPreviousMediaItem()
+            DeviceActions.SET_VOLUME -> DeviceWire.double(payload, "volume")?.let { p.volume = it.toFloat().coerceIn(0f, 1f) }
+            // The party's own queue, shown on the remote; nothing is linked back to it.
+            DeviceActions.SNAPSHOT -> answer(p, command.from, pullIt = false)
+            else -> Unit
+        }
+        publish()
+    }
+
+    /** Another of the person's devices has a party and asked this one to take it. */
+    private fun joinParty(payload: JsonObject) {
+        val code = payload["code"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() } ?: return
+        val server = payload["server"]?.jsonPrimitive?.contentOrNull
+        // A party owns the player: being somebody's remote at the same time would pull two ways.
+        if (speaker.active) speaker.endLocally(resumeHere = false)
+        scope.launch { ListenTogether.joinFromOwnDevice(code, server) }
     }
 
     private fun playQueue(p: ExoPlayer, command: DeviceCommand, payload: JsonObject) {

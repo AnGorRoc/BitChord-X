@@ -1925,7 +1925,7 @@ class PlaybackService : MediaLibraryService() {
         partySync = PartySync(scope) { player }.also { it.start() }
         // This phone among its owner's other devices: it reports what it plays, applies what they
         // ask of it, and can be their speaker. See [DeviceTarget] and [DeviceLink].
-        DeviceTarget(scope, { player }, ListenTogether.account, deviceSpeaker).start()
+        DeviceTarget(scope, { player }, ListenTogether.account, deviceSpeaker, { mediaSession?.player }).start()
         // What the server refused, so a command that goes nowhere is not silent until a timeout.
         scope.launch {
             ListenTogether.account.errors.collect { notice ->

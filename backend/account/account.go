@@ -48,6 +48,10 @@ var Commands = map[string]bool{
 	// snapshot asks the target to send its queue back (as a playQueue that links nobody), which is
 	// how a remote that picked a device already playing comes to show what that device plays.
 	"snapshot": true,
+	// joinParty tells the target to join the sender's party as the same person, and partyListen
+	// moves which of the person's devices in a party is the one that sounds. Neither needs a link:
+	// both are the person moving their own party between their own devices.
+	"joinParty": true, "partyListen": true,
 }
 
 // NowPlaying is what a device says it is playing. The device is the only source of it.
@@ -374,7 +378,7 @@ func (a *Account) Route(from *Device, to, action string, itemCount int) (*Device
 	case linked:
 	case action == "release" && from.ControlledBy == target.DeviceID && target.Controlling == from.DeviceID:
 		// The device being controlled asks its remote to hand the sound back.
-	case action == "playQueue" || action == "enqueue":
+	case action == "playQueue" || action == "enqueue" || action == "joinParty" || action == "partyListen":
 		// A device may hand its own music to another without being linked first: that is how
 		// "play on this other device" starts. The caller links them right after.
 		// Not to a device that is itself somebody's remote (apart from the one it controls, which is

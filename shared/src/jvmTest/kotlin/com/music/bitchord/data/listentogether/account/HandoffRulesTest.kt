@@ -170,36 +170,54 @@ class HandoffRulesTest {
 
     @Test
     fun `an ordinary connected device can be picked`() {
-        assertNull(HandoffRules.blockedBy(device(playing = true), partyOwnsPlayer = false))
-        assertNull(HandoffRules.blockedBy(device(playing = null), partyOwnsPlayer = false))
+        assertNull(HandoffRules.blockedBy(device(playing = true), myPartyCode = null))
+        assertNull(HandoffRules.blockedBy(device(playing = null), myPartyCode = null))
     }
 
     @Test
     fun `a device that is gone or unknown cannot`() {
-        assertEquals(DeviceNotice.Unavailable, HandoffRules.blockedBy(null, partyOwnsPlayer = false))
-        assertEquals(DeviceNotice.Unavailable, HandoffRules.blockedBy(device(connected = false), partyOwnsPlayer = false))
+        assertEquals(DeviceNotice.Unavailable, HandoffRules.blockedBy(null, myPartyCode = null))
+        assertEquals(DeviceNotice.Unavailable, HandoffRules.blockedBy(device(connected = false), myPartyCode = null))
     }
 
     @Test
-    fun `a party on this device wins over everything about the target`() {
-        assertEquals(DeviceNotice.PartyOnThisDevice, HandoffRules.blockedBy(device(playing = true), partyOwnsPlayer = true))
-    }
-
-    @Test
-    fun `a target in a party or controlling another device is refused, naming it`() {
+    fun `a target in another party than mine, or controlling another device, is refused, naming it`() {
         val inParty = device(id = "tv").copy(partyCode = "ABC123")
-        assertEquals(DeviceNotice.TargetInParty("tv"), HandoffRules.blockedBy(inParty, partyOwnsPlayer = false))
+        assertEquals(DeviceNotice.TargetInParty("tv"), HandoffRules.blockedBy(inParty, myPartyCode = "ZZZ999"))
         val remote = device(id = "tab").copy(controlling = "pc")
-        assertEquals(DeviceNotice.TargetIsRemote("tab"), HandoffRules.blockedBy(remote, partyOwnsPlayer = false))
+        assertEquals(DeviceNotice.TargetIsRemote("tab"), HandoffRules.blockedBy(remote, myPartyCode = null))
+    }
+
+    @Test
+    fun `a device in a party can be controlled from one that is in none, and from one in the same party`() {
+        val inParty = device(id = "tv", playing = true).copy(partyCode = "ABC123")
+        assertNull(HandoffRules.blockedBy(inParty, myPartyCode = null))
+        assertNull(HandoffRules.blockedBy(inParty, myPartyCode = "abc123"))
+    }
+
+    @Test
+    fun `picking a device in a party only controls it, whatever else is asked`() {
+        val inParty = device(id = "tv").copy(partyCode = "ABC123")
+        assertEquals(Handoff.CONTROL_ONLY, HandoffRules.onPick(inParty, localHasMusic = true))
+        assertEquals(Handoff.CONTROL_ONLY, HandoffRules.onPick(inParty, localHasMusic = true, force = HandoffForce.SEND))
+    }
+
+    @Test
+    fun `from a device in a party the party moves, never a queue`() {
+        val quiet = device(id = "pc")
+        assertEquals(Handoff.SEND_PARTY, HandoffRules.onPick(quiet, localHasMusic = true, myPartyCode = "ABC123"))
+        assertEquals(Handoff.SEND_PARTY, HandoffRules.onPick(quiet, localHasMusic = false, force = HandoffForce.PULL, myPartyCode = "ABC123"))
+        val sameParty = device(id = "tab").copy(partyCode = "ABC123")
+        assertEquals(Handoff.MOVE_PARTY_SOUND, HandoffRules.onPick(sameParty, localHasMusic = true, myPartyCode = "ABC123"))
     }
 
     @Test
     fun `a target that refuses control or has to be opened is refused, naming it`() {
         val locked = device(id = "tv").copy(noControl = true)
-        assertEquals(DeviceNotice.TargetNotAllowed("tv"), HandoffRules.blockedBy(locked, partyOwnsPlayer = false))
+        assertEquals(DeviceNotice.TargetNotAllowed("tv"), HandoffRules.blockedBy(locked, myPartyCode = null))
         val asleep = device(id = "tab").copy(unreachable = true)
-        assertEquals(DeviceNotice.TargetNotReachable("tab"), HandoffRules.blockedBy(asleep, partyOwnsPlayer = false))
+        assertEquals(DeviceNotice.TargetNotReachable("tab"), HandoffRules.blockedBy(asleep, myPartyCode = null))
         // Hidden is a request about the list, not about being driven.
-        assertNull(HandoffRules.blockedBy(device(id = "pc").copy(hidden = true), partyOwnsPlayer = false))
+        assertNull(HandoffRules.blockedBy(device(id = "pc").copy(hidden = true), myPartyCode = null))
     }
 }

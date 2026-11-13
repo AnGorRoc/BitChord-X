@@ -77,6 +77,12 @@ object DeviceActions {
 
     /** Asks the target to send its queue back, for display; see the server's `snapshot`. */
     const val SNAPSHOT = "snapshot"
+
+    /** Asks the target to join the sender's party (payload: code, server) as the same person. */
+    const val JOIN_PARTY = "joinParty"
+
+    /** Asks the target, already in the sender's party, to be (or stop being) the one that sounds. */
+    const val PARTY_LISTEN = "partyListen"
 }
 
 enum class AccountConnection {
@@ -109,7 +115,20 @@ data class AccountState(
      * The device the sound is coming out of for this person right now, as the Connect card shows:
      * the one being controlled, otherwise this one.
      */
-    val soundingDevice: AccountDevice? get() = controlled ?: self
+    val soundingDevice: AccountDevice? get() = controlled ?: partySibling ?: self
+
+    /**
+     * In a party whose sound is on another of the person's devices: this one follows and controls it
+     * while that one plays. The mark is that this device reports nothing playing and a device in
+     * the same party does.
+     */
+    private val partySibling: AccountDevice?
+        get() {
+            val me = self ?: return null
+            val code = me.partyCode ?: return null
+            if (me.nowPlaying != null) return null
+            return others.firstOrNull { it.connected && it.partyCode == code && it.nowPlaying != null }
+        }
 }
 
 /** Reads the frames of the account socket. Kept apart from the socket so it can be tested. */

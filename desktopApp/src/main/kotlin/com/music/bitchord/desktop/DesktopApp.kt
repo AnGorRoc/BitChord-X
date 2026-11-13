@@ -1941,6 +1941,28 @@ fun BitChordDesktopApp() {
             previous = { playPrevious() },
             enqueue = { song, next -> enqueue(song, next) },
             say = { DesktopPlayerHost.showMessage(it.english()) },
+            userPlay = {
+                if (DesktopListenTogether.state.value.controlsLocked) {
+                    if (!playbackEngine.state.value.isPlaying) partySync.handleLockedPlayPause()
+                } else {
+                    playbackEngine.play()
+                    partySync.onLocalIntent()
+                }
+            },
+            userPause = {
+                if (DesktopListenTogether.state.value.controlsLocked) {
+                    if (playbackEngine.state.value.isPlaying) partySync.handleLockedPlayPause()
+                } else {
+                    playbackEngine.pause()
+                    partySync.onLocalIntent()
+                }
+            },
+            userSeek = { positionMs ->
+                if (!DesktopListenTogether.state.value.controlsLocked) {
+                    playbackEngine.seekTo(positionMs)
+                    partySync.onLocalIntent()
+                }
+            },
         )
     }
     // Set before the window first draws, since the player reads its overlay straight away.

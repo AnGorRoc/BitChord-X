@@ -386,3 +386,25 @@ func TestReleaseStillWorksWhenControlIsOff(t *testing.T) {
 		t.Fatalf("release must not be refused by settings: %v", err)
 	}
 }
+
+func TestMovingAPartyBetweenOwnDevicesNeedsNoLink(t *testing.T) {
+	s := NewStore()
+	acc, phone, _ := connect(t, s, proofAna, "phone", "Pixel", "phone")
+	_, pc, _ := connect(t, s, proofAna, "pc", "IOP", "computer")
+	acc.Lock()
+	defer acc.Unlock()
+	for _, action := range []string{"joinParty", "partyListen"} {
+		if _, err := acc.Route(phone, "pc", action, 0); err != nil {
+			t.Fatalf("%s should not need a link: %v", action, err)
+		}
+	}
+	// Still not a way round the rest: a command that drives the player needs the link.
+	if _, err := acc.Route(phone, "pc", "play", 0); err != ErrNotLinked {
+		t.Fatalf("play without a link: %v", err)
+	}
+	// And the target's own settings still apply.
+	acc.SetPrefs(pc, false, true, false)
+	if _, err := acc.Route(phone, "pc", "joinParty", 0); err != ErrNotAllowed {
+		t.Fatalf("a device that refuses control refuses this too: %v", err)
+	}
+}

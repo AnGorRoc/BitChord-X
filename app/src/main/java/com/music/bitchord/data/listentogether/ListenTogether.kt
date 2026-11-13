@@ -904,6 +904,7 @@ object ListenTogether {
             throw PartyException("bad_code", "A party code is six letters or digits.")
         }
         refuseIfRecentlyKicked(cleaned)
+        refuseIfOnMyOtherDevice(cleaned)
         val membership = post(
             "$serverBase/api/parties/$cleaned/join",
             JoinRequest(
@@ -1691,7 +1692,21 @@ object ListenTogether {
                 "Couldn’t let you in — you’ve recently been kicked out of this party.",
             )
         }
-        refuseIfOnMyOtherDevice(code)
+    }
+
+    /**
+     * Joins the party another of the person's devices is in, because that device asked: the party
+     * moves between their own devices, so it is the one way in that the refusal below does not
+     * apply to. The same person again, sounding here.
+     */
+    suspend fun joinFromOwnDevice(code: String, server: String?): Result<String> {
+        setListenHere(true)
+        val target = resolveSwitchTarget(server, _customServer.value)
+        return when (val switched = switchPartyWithRecovery(target, code, nickname())) {
+            is SwitchPartyResult.Success -> Result.success(switched.partyCode)
+            is SwitchPartyResult.TargetFailedRecovered -> Result.failure(PartyException("join_failed", switched.targetError))
+            is SwitchPartyResult.TargetFailedNoParty -> Result.failure(PartyException("join_failed", switched.targetError))
+        }
     }
 
     /**
@@ -1867,6 +1882,7 @@ object ListenTogether {
         }
         return runCatching {
             refuseIfRecentlyKicked(cleaned)
+            refuseIfOnMyOtherDevice(cleaned)
             val base = resolveHttpBase(server ?: effectiveIdleServerBase())
             if (base.isBlank()) throw PartyException("no_server", "Set the party server address first.")
             val response = http.get("$base/api/parties/$cleaned/preview")

@@ -10,6 +10,12 @@ enum class Handoff {
 
     /** Bring what the target is playing here, and leave the target quiet. */
     PULL_THEIR_MUSIC,
+
+    /** This device is in a party and the target is not: it joins it as the same person and sounds. */
+    SEND_PARTY,
+
+    /** Both are in the same party: the sound moves to the target, which was following. */
+    MOVE_PARTY_SOUND,
 }
 
 /** A choice the person made explicitly, from a device's menu. */
@@ -30,7 +36,18 @@ object HandoffRules {
      * @param localHasMusic whether this device has a song (playing or paused, with its queue) to
      *   hand over.
      */
-    fun onPick(target: AccountDevice, localHasMusic: Boolean, force: HandoffForce? = null): Handoff = when {
+    fun onPick(
+        target: AccountDevice,
+        localHasMusic: Boolean,
+        force: HandoffForce? = null,
+        /** The party this device is in, if any. */
+        myPartyCode: String? = null,
+    ): Handoff = when {
+        // A party owns its player, so a device in one is never handed a queue or made to give one up:
+        // what moves is the party itself. Picking a device that is in a party only controls it.
+        target.partyCode != null && myPartyCode != null -> Handoff.MOVE_PARTY_SOUND
+        target.partyCode != null -> Handoff.CONTROL_ONLY
+        myPartyCode != null -> Handoff.SEND_PARTY
         force == HandoffForce.SEND -> Handoff.SEND_MY_MUSIC
         force == HandoffForce.PULL -> Handoff.PULL_THEIR_MUSIC
         target.isPlaying -> Handoff.CONTROL_ONLY
@@ -70,17 +87,19 @@ object HandoffRules {
      * person's tap with nothing but a passing message, and both players ask it before they start
      * anything.
      *
-     * @param partyOwnsPlayer this device is playing a party, which keeps its player where the
-     *   party says (see PartySync); a hand-over would be undone within a second.
+     * @param myPartyCode the party this device is in, if any.
      */
-    fun blockedBy(target: AccountDevice?, partyOwnsPlayer: Boolean): DeviceNotice? = when {
+    fun blockedBy(target: AccountDevice?, myPartyCode: String?): DeviceNotice? = when {
         target == null || !target.connected -> DeviceNotice.Unavailable
-        partyOwnsPlayer -> DeviceNotice.PartyOnThisDevice
         target.noControl -> DeviceNotice.TargetNotAllowed(target.name)
         target.unreachable -> DeviceNotice.TargetNotReachable(target.name)
-        target.partyCode != null -> DeviceNotice.TargetInParty(target.name)
         // A remote is not a speaker: what it plays comes from the device it controls.
         target.controlling != null -> DeviceNotice.TargetIsRemote(target.name)
+        // Another party than the one this device is in cannot be moved onto or controlled from here.
+        // The same party can (the sound moves between the person's own devices), and so can a
+        // party picked from a device that is in none (it is controlled).
+        myPartyCode != null && target.partyCode != null && !target.partyCode.equals(myPartyCode, ignoreCase = true) ->
+            DeviceNotice.TargetInParty(target.name)
         else -> null
     }
 }

@@ -308,13 +308,18 @@ internal object DesktopListenTogether {
         code: String,
         nickname: String = nickname(),
         server: String? = null,
+        /** The party was handed over by another of the person's devices, which is the one way in that the same-account refusal does not apply to. */
+        fromOwnDevice: Boolean = false,
     ): Result<String> {
         val trimmed = cleanCode(code)
         if (trimmed.length != CODE_LENGTH) {
             return Result.failure(PartyException("bad_code", "A party code is six letters or digits."))
         }
         val target = server?.let(PartyServers::normalize)?.ifBlank { null }
-        return runCatching { refuseIfRecentlyKicked(trimmed) }.fold(
+        return runCatching {
+            refuseIfRecentlyKicked(trimmed)
+            if (!fromOwnDevice) refuseIfOnMyOtherDevice(trimmed)
+        }.fold(
             onSuccess = {
                 enter(nickname, target) { who, server ->
                     post(
@@ -500,6 +505,9 @@ internal object DesktopListenTogether {
      * Chooses whether sound plays on this computer. The choice always applies here; it is only
      * *announced* to the party (the speaker icon beside the name) on a server that understands it.
      */
+    /** The party server this computer's party is on, or null when it is in none. */
+    fun activeServer(): String? = activePartyServerBase
+
     fun setListenHere(enabled: Boolean) {
         _listenHere.value = enabled
         announceListening()
@@ -914,6 +922,7 @@ internal object DesktopListenTogether {
         }
         runCatching {
             refuseIfRecentlyKicked(cleaned)
+            refuseIfOnMyOtherDevice(cleaned)
             val base = server?.let(PartyServers::normalize)?.ifBlank { null } ?: resolveIdleServer()
             if (base.isBlank()) throw PartyException("no_server", "Set the party server address first.")
             val response = http.get("$base/api/parties/$cleaned/preview")
@@ -1062,7 +1071,6 @@ internal object DesktopListenTogether {
                 "Couldn't let you in — you've recently been removed from this party.",
             )
         }
-        refuseIfOnMyOtherDevice(code)
     }
 
     /** See the phone's twin: one of the person's own devices already in the party is their seat. */

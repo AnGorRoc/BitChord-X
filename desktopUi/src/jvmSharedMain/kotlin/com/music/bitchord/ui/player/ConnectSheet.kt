@@ -123,7 +123,9 @@ internal fun ConnectSheet(
             SectionLabel(stringResource(Res.string.connect_your_devices))
 
             val thisDevice = account.self
-            if (account.controlled != null && thisDevice != null) {
+            // The party sounds on another of the person's devices: this one is how it comes back.
+            val partyElsewhere = party.inParty && !party.ownsPlayer
+            if ((account.controlled != null || partyElsewhere) && thisDevice != null) {
                 // Another device is the speaker: this one is how the person takes the sound back.
                 DeviceRow(
                     device = thisDevice,
@@ -142,7 +144,7 @@ internal fun ConnectSheet(
                 (!it.hidden || it.controlledBy != null || it.controlling != null)
             }
             val nameOf = { id: String -> account.devices.firstOrNull { it.deviceId == id }?.name.orEmpty() }
-            val blocked = { d: AccountDevice -> HandoffRules.blockedBy(d, party.ownsPlayer) != null }
+            val blocked = { d: AccountDevice -> HandoffRules.blockedBy(d, party.code?.takeIf { party.inParty }) != null }
             others.forEach { device ->
                 DeviceRow(
                     device = device,

@@ -28,6 +28,7 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.intOrNull
@@ -57,6 +58,13 @@ internal class DesktopDeviceLink(
     private val previous: () -> Unit,
     private val enqueue: (Song, Boolean) -> Unit,
     private val say: (DeviceNotice) -> Unit,
+    /**
+     * The person's own play, pause and seek, which in a party go through the party's rules (a locked
+     * transport, say) rather than straight to the engine.
+     */
+    private val userPlay: () -> Unit = { engine.play() },
+    private val userPause: () -> Unit = { engine.pause() },
+    private val userSeek: (Long) -> Unit = { engine.seekTo(it) },
 ) {
     private class Status(
         val mediaId: String,
@@ -99,7 +107,7 @@ internal class DesktopDeviceLink(
     val connecting: StateFlow<String?> = _connecting.asStateFlow()
 
     private fun refreshConnecting() {
-        _connecting.value = if (active && (awaitingConfirm != null || pulling)) targetId else null
+        _connecting.value = partyHandover ?: if (active && (awaitingConfirm != null || pulling)) targetId else null
     }
 
     private val linkWatch = LinkWatch()
@@ -208,9 +216,31 @@ internal class DesktopDeviceLink(
     }
 
     private fun handle(command: DeviceCommand) {
-        // The party owns this player; a command from another device would be undone by it at once.
-        if (DesktopListenTogether.partyOwnsPlayer()) return
         val payload = command.payload
+        // Moving a party between the person's own devices needs no link and says nothing about the
+        // engine, so it comes before anything that depends on who owns it.
+        when (command.action) {
+            DeviceActions.JOIN_PARTY -> { joinParty(payload); return }
+            DeviceActions.PARTY_LISTEN -> {
+                if (DesktopListenTogether.state.value.inParty) DesktopListenTogether.setListenHere(bool(payload, "on") == true)
+                return
+            }
+        }
+        // The party owns this player and a queue or song put into it would be undone at once; a remote
+        // can still do what any listener can, through the same doors the person's own controls use.
+        if (DesktopListenTogether.partyOwnsPlayer()) {
+            when (command.action) {
+                DeviceActions.PLAY -> userPlay()
+                DeviceActions.PAUSE -> userPause()
+                DeviceActions.SEEK -> long(payload, "positionMs")?.let(userSeek)
+                DeviceActions.NEXT -> next()
+                DeviceActions.PREVIOUS -> previous()
+                DeviceActions.SET_VOLUME -> double(payload, "volume")?.let { engine.setVolume(it.toFloat().coerceIn(0f, 1f)) }
+                DeviceActions.SNAPSHOT -> answer(command.from, pullIt = false)
+            }
+            publish()
+            return
+        }
         when (command.action) {
             DeviceActions.PLAY -> engine.play()
             DeviceActions.PAUSE -> engine.pause()
@@ -228,6 +258,15 @@ internal class DesktopDeviceLink(
         }
         if (command.action == DeviceActions.PLAY_QUEUE || command.action == DeviceActions.ENQUEUE) queueSig = signature()
         publish()
+    }
+
+    /** Another of the person's devices has a party and asked this computer to take it. */
+    private fun joinParty(payload: JsonObject) {
+        val code = payload["code"]?.jsonPrimitive?.contentOrNull?.takeIf { it.isNotBlank() } ?: return
+        val server = payload["server"]?.jsonPrimitive?.contentOrNull
+        if (active) endLocally(false)
+        DesktopListenTogether.setListenHere(true)
+        scope.launch { DesktopListenTogether.joinParty(code, server = server, fromOwnDevice = true) }
     }
 
     private fun playQueue(payload: JsonObject) {
@@ -284,17 +323,66 @@ internal class DesktopDeviceLink(
     fun pick(deviceId: String, force: HandoffForce?) {
         val target = account.state.value.devices.firstOrNull { it.deviceId == deviceId }
         // One rule for both the sheet (which stays open on a refusal) and this (which says why).
-        HandoffRules.blockedBy(target, DesktopListenTogether.partyOwnsPlayer())?.let { say(it); return }
+        val myParty = DesktopListenTogether.state.value.code?.takeIf { DesktopListenTogether.state.value.inParty }
+        HandoffRules.blockedBy(target, myParty)?.let { say(it); return }
         if (target == null) return
-        when (HandoffRules.onPick(target, queue().songs.isNotEmpty(), force)) {
+        when (HandoffRules.onPick(target, queue().songs.isNotEmpty(), force, myParty)) {
             Handoff.CONTROL_ONLY -> controlOnly(target)
+            Handoff.SEND_PARTY -> sendParty(target, myParty ?: return)
+            Handoff.MOVE_PARTY_SOUND -> movePartySound(target)
             Handoff.SEND_MY_MUSIC -> sendMine(target)
             Handoff.PULL_THEIR_MUSIC -> pull(target)
         }
     }
 
+    private var partyHandover: String? = null
+    private var partyHandoverJob: Job? = null
+
+    /** This computer is in a party and the person picked a device that is not: it joins and sounds. */
+    private fun sendParty(target: AccountDevice, code: String) {
+        val server = DesktopListenTogether.activeServer() ?: run { say(DeviceNotice.NoStart); return }
+        partyHandoverJob?.cancel()
+        partyHandover = target.deviceId
+        refreshConnecting()
+        account.command(
+            target.deviceId, DeviceActions.JOIN_PARTY,
+            buildJsonObject { put("code", code); put("server", server) },
+        )
+        partyHandoverJob = scope.launch {
+            var waited = 0L
+            while (waited < HANDOVER_TIMEOUT_MS) {
+                delay(CONFIRM_POLL_MS)
+                waited += CONFIRM_POLL_MS
+                val now = account.state.value.devices.firstOrNull { it.deviceId == target.deviceId }
+                if (now?.partyCode.equals(code, ignoreCase = true)) {
+                    DesktopListenTogether.setListenHere(false)
+                    partyHandover = null
+                    refreshConnecting()
+                    return@launch
+                }
+            }
+            partyHandover = null
+            refreshConnecting()
+            say(DeviceNotice.NoAnswer)
+        }
+    }
+
+    /** Both are in the party: the sound moves to [target], and this computer follows it. */
+    private fun movePartySound(target: AccountDevice) {
+        account.command(target.deviceId, DeviceActions.PARTY_LISTEN, buildJsonObject { put("on", true) })
+        DesktopListenTogether.setListenHere(false)
+    }
+
     /** The person tapped "This device" while another is the speaker: bring the sound back. */
     fun comeBack() {
+        val code = DesktopListenTogether.state.value.code?.takeIf { DesktopListenTogether.state.value.inParty }
+        if (code != null && !DesktopListenTogether.listenHere.value) {
+            DesktopListenTogether.setListenHere(true)
+            account.state.value.others
+                .filter { it.connected && it.partyCode.equals(code, ignoreCase = true) }
+                .forEach { account.command(it.deviceId, DeviceActions.PARTY_LISTEN, buildJsonObject { put("on", false) }) }
+            return
+        }
         val target = account.state.value.devices.firstOrNull { it.deviceId == targetId } ?: return endLocally(false)
         pull(target)
     }
