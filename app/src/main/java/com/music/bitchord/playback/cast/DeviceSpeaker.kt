@@ -187,9 +187,18 @@ internal class DeviceSpeaker(
         intentAt = SystemClock.elapsedRealtime()
         scope.launch {
             delay(INTENT_GRACE_MS + 50)
-            sink?.onRemotePlaybackChanged()
-            onChanged()
+            if (active) reanchor()
         }
+    }
+
+    /**
+     * Tells the session what it shows now, at once. A controller runs the playhead on from the last
+     * thing it was told, so anything that changes what is true here (a press, a skip, a seek, the end of
+     * the link) has to say so, or the bar waits for the target's next report to find out.
+     */
+    private fun reanchor() {
+        sink?.onRemotePlaybackChanged()
+        onChanged()
     }
 
     private fun recentIntent() = SystemClock.elapsedRealtime() - intentAt < INTENT_GRACE_MS
@@ -218,7 +227,7 @@ internal class DeviceSpeaker(
         get() {
             val s = status
             if (s == null || SystemClock.elapsedRealtime() - requestedAt < SEEK_GRACE_MS) return requestedPositionMs
-            if (!s.isPlaying) return s.positionMs
+            if (!effectivePlaying()) return s.positionMs
             val ran = SystemClock.elapsedRealtime() - s.at
             return (s.positionMs + ran).let { if (s.durationMs > 0) it.coerceAtMost(s.durationMs) else it }
         }
@@ -302,11 +311,14 @@ internal class DeviceSpeaker(
             return
         }
         val target = account.state.value.devices.firstOrNull { it.deviceId == targetId } ?: return endLocally(resumeHere = false)
-        pull(target)
+        // Only a remote that gave its music away has anything to come back for. One that was only
+        // controlling lets go and leaves the other device playing, exactly as it was.
+        if (gaveMusic) pull(target) else endLocally(resumeHere = false)
     }
 
     private fun controlOnly(target: AccountDevice) {
         beginAs(target.deviceId)
+        gaveMusic = false
         // Show what the target plays: ask for its queue, which arrives as a mirror (see DeviceTarget).
         account.attach(target.deviceId)
         account.command(target.deviceId, DeviceActions.SNAPSHOT)
@@ -324,6 +336,7 @@ internal class DeviceSpeaker(
             return
         }
         beginAs(target.deviceId)
+        gaveMusic = true
         wantsPlay = player.playWhenReady && player.playbackState != Player.STATE_ENDED
         requestedPositionMs = player.currentPosition.coerceAtLeast(0L)
         requestedAt = SystemClock.elapsedRealtime()
@@ -351,6 +364,12 @@ internal class DeviceSpeaker(
     private class Stash(val items: List<MediaItem>, val index: Int, val positionMs: Long)
 
     private var stash: Stash? = null
+
+    /**
+     * This phone gave its own music to the target ([sendMine]), so leaving brings it back. When it only
+     * controlled what the target was playing, leaving leaves that music where it is.
+     */
+    private var gaveMusic = false
 
     private fun beginAs(deviceId: String) {
         confirmJob?.cancel()
@@ -438,6 +457,7 @@ internal class DeviceSpeaker(
         wantsPlay = false
         holdPlayingUntil = NEVER
         navExpected = null
+        gaveMusic = false
         if (old != null) account.detach()
         val kept = stash
         stash = null
@@ -459,7 +479,7 @@ internal class DeviceSpeaker(
             }
         }
         sink?.onRemoteRouteChanged()
-        onChanged()
+        reanchor()
     }
 
     /** The other device handed its music back (a pull): it is loaded here, and the link is over. */
@@ -475,9 +495,10 @@ internal class DeviceSpeaker(
         status = null
         wantsPlay = false
         confirmJob?.cancel()
+        gaveMusic = false
         account.detach()
         sink?.onRemoteRouteChanged()
-        onChanged()
+        reanchor()
     }
 
     // ---- transport --------------------------------------------------------------------------
@@ -487,7 +508,7 @@ internal class DeviceSpeaker(
         wantsPlay = true
         noteIntent()
         command(DeviceActions.PLAY)
-        onChanged()
+        reanchor()
     }
 
     override fun pause() {
@@ -495,7 +516,7 @@ internal class DeviceSpeaker(
         wantsPlay = false
         noteIntent()
         command(DeviceActions.PAUSE)
-        onChanged()
+        reanchor()
     }
 
     override fun seekTo(positionMs: Long) {
@@ -503,7 +524,7 @@ internal class DeviceSpeaker(
         requestedPositionMs = positionMs.coerceAtLeast(0L)
         requestedAt = SystemClock.elapsedRealtime()
         command(DeviceActions.SEEK, buildJsonObject { put("positionMs", requestedPositionMs) })
-        onChanged()
+        reanchor()
     }
 
     /**
@@ -541,7 +562,7 @@ internal class DeviceSpeaker(
         try { player.seekTo(to, 0L) } finally { applyingMirror = false }
         requestedPositionMs = 0L
         requestedAt = SystemClock.elapsedRealtime()
-        onChanged()
+        reanchor()
         // A report held back meanwhile is looked at again when the window closes.
         scope.launch {
             delay(NAV_WINDOW_MS + 50)

@@ -29,9 +29,13 @@ class HandoffRulesTest {
     }
 
     @Test
-    fun `picking a quiet device sends it what this one was playing`() {
+    fun `picking a device with nothing sends it what this one was playing`() {
         assertEquals(Handoff.SEND_MY_MUSIC, HandoffRules.onPick(device(playing = null), localHasMusic = true))
-        assertEquals(Handoff.SEND_MY_MUSIC, HandoffRules.onPick(device(playing = false), localHasMusic = true))
+    }
+
+    @Test
+    fun `a paused device keeps its music and is controlled, not overwritten`() {
+        assertEquals(Handoff.CONTROL_ONLY, HandoffRules.onPick(device(playing = false), localHasMusic = true))
     }
 
     @Test

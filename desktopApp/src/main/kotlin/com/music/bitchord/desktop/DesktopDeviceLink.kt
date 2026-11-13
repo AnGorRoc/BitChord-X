@@ -410,11 +410,17 @@ internal class DesktopDeviceLink(
             return
         }
         val target = account.state.value.devices.firstOrNull { it.deviceId == targetId } ?: return endLocally(false)
-        pull(target)
+        // Only a remote that gave its music away has anything to come back for. One that was only
+        // controlling lets go and leaves the other device playing, exactly as it was.
+        if (gaveMusic) pull(target) else endLocally(false)
     }
+
+    /** This computer gave its own music to the target ([sendMine]), so leaving brings it back. */
+    private var gaveMusic = false
 
     private fun controlOnly(target: AccountDevice) {
         begin(target.deviceId)
+        gaveMusic = false
         account.attach(target.deviceId)
         account.command(target.deviceId, DeviceActions.SNAPSHOT)
         awaitingConfirm = ""
@@ -430,6 +436,7 @@ internal class DesktopDeviceLink(
             return
         }
         begin(target.deviceId)
+        gaveMusic = true
         val state = engine.state.value
         wantsPlay = state.isPlaying
         requestedPositionMs = state.positionMs
@@ -515,6 +522,7 @@ internal class DesktopDeviceLink(
         status = null
         wantsPlay = false
         holdPlayingUntilNanos = NEVER
+        gaveMusic = false
         account.detach()
         val kept = stash
         stash = null
@@ -540,6 +548,7 @@ internal class DesktopDeviceLink(
         // The other device's music is what the person asked for here; nothing is given back.
         stash = null
         holdPlayingUntilNanos = NEVER
+        gaveMusic = false
         active = false
         targetId = null
         status = null
@@ -681,7 +690,7 @@ internal class DesktopDeviceLink(
     private fun positionNow(): Long {
         val s = status
         if (s == null || System.nanoTime() - requestedAtNanos < SEEK_GRACE_NANOS) return requestedPositionMs
-        if (!s.isPlaying) return s.positionMs
+        if (!effectivePlaying()) return s.positionMs
         val ran = (System.nanoTime() - s.atNanos) / 1_000_000L
         return (s.positionMs + ran).let { if (s.durationMs > 0) it.coerceAtMost(s.durationMs) else it }
     }

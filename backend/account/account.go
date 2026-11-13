@@ -366,9 +366,10 @@ func (a *Account) Route(from *Device, to, action string, itemCount int) (*Device
 	if target.DeviceID == from.DeviceID {
 		return nil, ErrSelf
 	}
-	// "release" is the target answering its own remote: it is about to give the sound back, which
-	// must work whatever the person's settings say.
-	if action != "release" {
+	// A device answering its own remote (handing the sound back, showing its queue) must be heard
+	// whatever the remote's settings say: the remote asked it something first.
+	answering := from.ControlledBy == target.DeviceID && target.Controlling == from.DeviceID
+	if action != "release" && !answering {
 		if err := target.refuses(); err != nil {
 			return nil, err
 		}

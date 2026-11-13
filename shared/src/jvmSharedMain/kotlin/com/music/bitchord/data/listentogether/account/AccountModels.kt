@@ -46,6 +46,9 @@ data class AccountDevice(
     val unreachable: Boolean = false,
 ) {
     val isPlaying: Boolean get() = connected && nowPlaying?.isPlaying == true
+
+    /** A song in its player, playing or paused: devices publish nothing when they have none. */
+    val hasMusic: Boolean get() = connected && nowPlaying != null
 }
 
 /** How this device asks to be treated by the person's others. The default is today's behaviour. */

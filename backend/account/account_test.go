@@ -387,6 +387,28 @@ func TestReleaseStillWorksWhenControlIsOff(t *testing.T) {
 	}
 }
 
+func TestADeviceIsAlwaysHeardByItsOwnRemote(t *testing.T) {
+	s := NewStore()
+	acc, phone, _ := connect(t, s, proofAna, "phone", "Pixel", "phone")
+	_, tv, _ := connect(t, s, proofAna, "tv", "TV", "tv")
+	_, other, _ := connect(t, s, proofAna, "tab", "Tab", "tablet")
+	acc.Lock()
+	defer acc.Unlock()
+	_ = acc.Attach(phone, "tv")
+	// Whatever the remote's own settings say, what the device it drives answers it must arrive.
+	phone.NoControl = true
+	phone.Unreachable = true
+	for _, action := range []string{"playQueue", "enqueue"} {
+		if _, err := acc.Route(tv, "phone", action, 1); err != nil {
+			t.Fatalf("%s from the device being controlled to its remote: %v", action, err)
+		}
+	}
+	// Anybody else is still refused.
+	if _, err := acc.Route(other, "phone", "playQueue", 1); err != ErrNotAllowed {
+		t.Fatalf("a stranger to the link must still be refused: %v", err)
+	}
+}
+
 func TestMovingAPartyBetweenOwnDevicesNeedsNoLink(t *testing.T) {
 	s := NewStore()
 	acc, phone, _ := connect(t, s, proofAna, "phone", "Pixel", "phone")

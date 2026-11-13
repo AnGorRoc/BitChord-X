@@ -24,9 +24,8 @@ enum class HandoffForce { SEND, PULL }
 /**
  * The rules of handing the sound around, with no network and no player in them.
  *
- * One principle: **whoever is already sounding keeps priority.** Picking a device that is playing
- * never replaces what it plays with what this device was playing; only a device that is quiet is
- * handed music. Both directions can still be forced from the device's menu.
+ * One principle: **whoever already has music keeps it.** Picking a device that has a song, playing or
+ * paused, never replaces it with what this device had; only a device with nothing is handed music. Both directions can still be forced from the device's menu.
  */
 object HandoffRules {
 
@@ -50,7 +49,8 @@ object HandoffRules {
         myPartyCode != null -> Handoff.SEND_PARTY
         force == HandoffForce.SEND -> Handoff.SEND_MY_MUSIC
         force == HandoffForce.PULL -> Handoff.PULL_THEIR_MUSIC
-        target.isPlaying -> Handoff.CONTROL_ONLY
+        // What a device has queued is its own even while paused: it is controlled, never overwritten.
+        target.hasMusic -> Handoff.CONTROL_ONLY
         localHasMusic -> Handoff.SEND_MY_MUSIC
         else -> Handoff.CONTROL_ONLY
     }
