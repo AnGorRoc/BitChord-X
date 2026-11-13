@@ -21,6 +21,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 )
 
 const (
@@ -81,6 +82,8 @@ type Device struct {
 	PartyCode string `json:"partyCode,omitempty"`
 
 	token string
+	// awaySeq counts this device's drops, so a grace timer can tell its own drop from a later one.
+	awaySeq uint64
 }
 
 // Account is one person's set of devices.
@@ -378,3 +381,31 @@ func (a *Account) DeviceIDs() []string {
 
 // Get returns a device by id. The caller holds the account lock.
 func (a *Account) Get(id string) *Device { return a.devices[id] }
+
+// LinkGrace is how long a remote link survives one of its two devices dropping off. A phone on a
+// mobile network loses its socket for a few seconds all day; ending the link at once made every
+// such blip hand the sound back and forget who controlled whom. Past this the link really is over.
+var LinkGrace = 12 * time.Second
+
+// MarkAway records a device losing its socket without ending its remote links yet: they wait out
+// [LinkGrace] for it to come back (see ReleaseIfAway). The caller holds the account lock.
+func (a *Account) MarkAway(d *Device, nowMs int64) uint64 {
+	d.Connected = false
+	d.LastSeenMs = nowMs
+	d.awaySeq++
+	return d.awaySeq
+}
+
+// ReleaseIfAway ends the links of a device that is still away since the drop [ticket] (from
+// MarkAway), and says whether there were any.
+// A device that reconnected meanwhile keeps them. The caller holds the account lock.
+func (a *Account) ReleaseIfAway(d *Device, ticket uint64) bool {
+	// Only the drop this ticket belongs to may end the links: an older timer firing in the middle
+	// of a newer blip would cut that blip's grace short.
+	if d.Connected || d.awaySeq != ticket {
+		return false
+	}
+	had := d.ControlledBy != "" || d.Controlling != ""
+	a.releaseLinks(d)
+	return had
+}

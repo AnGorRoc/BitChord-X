@@ -275,3 +275,37 @@ func TestNewAccountsAreRefusedAtTheLimitButKnownOnesAreNot(t *testing.T) {
 		t.Fatalf("a known account must still get new devices in: %v", err)
 	}
 }
+
+func TestALinkSurvivesABlipButNotAnAbsence(t *testing.T) {
+	s := NewStore()
+	acc, phone, _ := connect(t, s, proofAna, "phone", "Pixel", "phone")
+	_, pc, _ := connect(t, s, proofAna, "pc", "IOP", "computer")
+	acc.Lock()
+	defer acc.Unlock()
+	_ = acc.Attach(phone, "pc")
+
+	// The remote's socket drops and comes back inside the grace: nothing was lost.
+	blip := acc.MarkAway(phone, now+1)
+	if phone.Controlling != "pc" || pc.ControlledBy != "phone" {
+		t.Fatalf("a dropped socket must not end the link at once")
+	}
+	acc.SetConnected(phone, true, now+2)
+	if acc.ReleaseIfAway(phone, blip) || phone.Controlling != "pc" {
+		t.Fatalf("a device that came back keeps its link")
+	}
+
+	// The target stays away past the grace: now it is over, for both sides.
+	stale := acc.MarkAway(pc, now+3)
+	acc.SetConnected(pc, true, now+3)
+	acc.MarkAway(pc, now+4) // a newer drop: the older ticket is no longer the one that counts
+	if acc.ReleaseIfAway(pc, stale) {
+		t.Fatalf("an older drop's timer must not end a newer blip's grace")
+	}
+	absence := acc.MarkAway(pc, now+5)
+	if !acc.ReleaseIfAway(pc, absence) {
+		t.Fatalf("a device still away when the grace ends releases its links")
+	}
+	if phone.Controlling != "" || pc.ControlledBy != "" {
+		t.Fatalf("both ends are freed: %q %q", phone.Controlling, pc.ControlledBy)
+	}
+}

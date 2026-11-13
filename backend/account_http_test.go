@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+
+	"github.com/KabirSinghBhatia/BitChord/backend/account"
 )
 
 var (
@@ -18,7 +20,17 @@ var (
 	testProofBeto = strings.Repeat("b", 64)
 )
 
+func init() {
+	// Seconds instead of twelve, and room for every device these tests connect from one
+	// address.
+	account.LinkGrace = 1500 * time.Millisecond
+	accountConnectLimiter = newIPRateLimiter(time.Minute, 100000, 100)
+}
+
 func newAccountServer() *httptest.Server {
+	// Every test gets accounts of its own: links now outlive a dropped socket for a moment, so what
+	// one test leaves behind would otherwise still be linked in the next.
+	accounts = account.NewStore()
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST /api/account/connect", handleAccountConnect)
 	mux.HandleFunc("GET /ws/account", handleAccountSocket)
@@ -290,11 +302,52 @@ func TestTheRemoteLeavingFreesTheTarget(t *testing.T) {
 	pc.devicesWhere(func(l []map[string]interface{}) bool { return find(l, "pc")["controlledBy"] == "phone" })
 
 	_ = phone.ws.Close()
+	// Gone, but not yet given up on: the link waits out the grace for a socket that comes back.
 	list := pc.devicesWhere(func(l []map[string]interface{}) bool {
 		return find(l, "phone")["connected"] == false
 	})
-	if find(list, "pc")["controlledBy"] != nil && find(list, "pc")["controlledBy"] != "" {
-		t.Fatalf("the PC is free again: %v", list)
+	if find(list, "pc")["controlledBy"] != "phone" {
+		t.Fatalf("a dropped socket must not end the link at once: %v", list)
+	}
+	// Still gone when the grace ends: the PC is free again.
+	list = pc.devicesWhere(func(l []map[string]interface{}) bool {
+		c := find(l, "pc")["controlledBy"]
+		return c == nil || c == ""
+	})
+	if find(list, "phone")["connected"] != false {
+		t.Fatalf("the remote is still away: %v", list)
+	}
+}
+
+func TestARemoteThatComesBackInTimeKeepsItsTarget(t *testing.T) {
+	ts := newAccountServer()
+	defer ts.Close()
+	phone := openDevice(t, ts, testProofAna, "phone", "Pixel", "phone")
+	pc := openDevice(t, ts, testProofAna, "pc", "IOP", "computer")
+	defer pc.ws.Close()
+
+	phone.send(map[string]interface{}{"type": "command", "to": "pc", "action": "playQueue",
+		"payload": map[string]interface{}{"tracks": []interface{}{map[string]interface{}{"videoId": "v"}}}})
+	pc.devicesWhere(func(l []map[string]interface{}) bool { return find(l, "pc")["controlledBy"] == "phone" })
+
+	_ = phone.ws.Close()
+	pc.devicesWhere(func(l []map[string]interface{}) bool { return find(l, "phone")["connected"] == false })
+	back := openDevice(t, ts, testProofAna, "phone", "Pixel", "phone")
+	defer back.ws.Close()
+
+	list := back.devicesWhere(func(l []map[string]interface{}) bool { return find(l, "phone")["connected"] == true })
+	if find(list, "phone")["controlling"] != "pc" || find(list, "pc")["controlledBy"] != "phone" {
+		t.Fatalf("back inside the grace, it is still the remote of the PC: %v", list)
+	}
+	// And the grace running out afterwards finds it connected, so it frees nothing.
+	time.Sleep(account.LinkGrace + 200*time.Millisecond)
+	// Nothing is broadcast when a grace ends without effect, so ask for a fresh list.
+	back.send(map[string]interface{}{"type": "rename", "name": "Pixel"})
+	list = back.devicesWhere(func(l []map[string]interface{}) bool {
+		return len(l) == 2 && find(l, "pc")["connected"] == true && find(l, "phone")["connected"] == true
+	})
+	if find(list, "pc")["controlledBy"] != "phone" {
+		t.Fatalf("the grace ending must not free a device that came back: %v", list)
 	}
 }
 

@@ -154,11 +154,24 @@ func handleAccountSocket(w http.ResponseWriter, r *http.Request) {
 				stillThere = true
 			}
 		}
+		var ticket uint64
 		if !stillThere {
-			acc.SetConnected(d, false, clock.NowMs())
+			// Its remote links are kept for a moment: a dropped socket is usually a blip and
+			// the device is back before anyone notices. See account.LinkGrace.
+			ticket = acc.MarkAway(d, clock.NowMs())
 		}
 		acc.Unlock()
 		broadcastDevices(acc)
+		if !stillThere {
+			time.AfterFunc(account.LinkGrace, func() {
+				acc.Lock()
+				ended := acc.ReleaseIfAway(d, ticket)
+				acc.Unlock()
+				if ended {
+					broadcastDevices(acc)
+				}
+			})
+		}
 	}()
 
 	var budget accountFrameBudget
