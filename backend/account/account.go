@@ -284,15 +284,15 @@ func (a *Account) Rename(d *Device, name string) error {
 func (a *Account) Attach(controller *Device, targetID string) error {
 	target := a.devices[targetID]
 	if target == nil || !target.Connected {
-		return errors.New("that device is not available")
+		return ErrNotAvailable
 	}
 	if target.DeviceID == controller.DeviceID {
-		return errors.New("a device cannot control itself")
+		return ErrSelf
 	}
 	// A remote is not a speaker: what it plays comes from the device it controls. Picking it would
 	// make it hand your music on to that device, or tangle two links into a chain.
 	if target.Controlling != "" && target.Controlling != controller.DeviceID {
-		return errors.New("that device is controlling another one")
+		return ErrControllingOther
 	}
 	// Whoever controlled the target loses it; whatever the controller controlled is let go.
 	if target.ControlledBy != "" && target.ControlledBy != controller.DeviceID {
@@ -326,17 +326,17 @@ func (a *Account) Detach(controller *Device) {
 // sound back. The caller holds the account lock.
 func (a *Account) Route(from *Device, to, action string, itemCount int) (*Device, error) {
 	if !Commands[action] {
-		return nil, errors.New("unknown command")
+		return nil, ErrUnknownCommand
 	}
 	if itemCount > MaxPayloadItems {
-		return nil, errors.New("too many songs in one hand-over")
+		return nil, ErrTooMany
 	}
 	target := a.devices[to]
 	if target == nil || !target.Connected {
-		return nil, errors.New("that device is not available")
+		return nil, ErrNotAvailable
 	}
 	if target.DeviceID == from.DeviceID {
-		return nil, errors.New("a device cannot command itself")
+		return nil, ErrSelf
 	}
 	linked := from.Controlling == target.DeviceID && target.ControlledBy == from.DeviceID
 	switch {
@@ -349,10 +349,10 @@ func (a *Account) Route(from *Device, to, action string, itemCount int) (*Device
 		// Not to a device that is itself somebody's remote (apart from the one it controls, which is
 		// answering): it would pass the music on instead of playing it.
 		if target.Controlling != "" && target.Controlling != from.DeviceID {
-			return nil, errors.New("that device is controlling another one")
+			return nil, ErrControllingOther
 		}
 	default:
-		return nil, errors.New("not controlling that device")
+		return nil, ErrNotLinked
 	}
 	return target, nil
 }
@@ -418,4 +418,35 @@ func (a *Account) ReleaseIfAway(d *Device, ticket uint64) bool {
 	had := d.ControlledBy != "" || d.Controlling != ""
 	a.releaseLinks(d)
 	return had
+}
+
+// What can be refused on the account channel. Each has a stable reason (see Reason) that clients
+// translate into the person's language; the English message is for logs and for clients that do
+// not know the reason.
+var (
+	ErrNotAvailable     = errors.New("that device is not available")
+	ErrSelf             = errors.New("a device cannot control itself")
+	ErrControllingOther = errors.New("that device is controlling another one")
+	ErrUnknownCommand   = errors.New("unknown command")
+	ErrTooMany          = errors.New("too many songs in one hand-over")
+	ErrNotLinked        = errors.New("not controlling that device")
+)
+
+// Reason is the stable name of a refusal, or "" for one that has none.
+func Reason(err error) string {
+	switch {
+	case errors.Is(err, ErrNotAvailable):
+		return "not_available"
+	case errors.Is(err, ErrSelf):
+		return "self"
+	case errors.Is(err, ErrControllingOther):
+		return "controlling_other"
+	case errors.Is(err, ErrUnknownCommand):
+		return "unknown_command"
+	case errors.Is(err, ErrTooMany):
+		return "too_many_songs"
+	case errors.Is(err, ErrNotLinked):
+		return "not_linked"
+	}
+	return ""
 }

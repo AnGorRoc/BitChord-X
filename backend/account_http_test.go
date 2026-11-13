@@ -376,3 +376,22 @@ func TestConnectRejectsABadProof(t *testing.T) {
 		t.Fatalf("status %d", res.StatusCode)
 	}
 }
+
+func TestARefusalNamesItsReason(t *testing.T) {
+	ts := newAccountServer()
+	defer ts.Close()
+	phone := openDevice(t, ts, testProofAna, "phone", "Pixel", "phone")
+	defer phone.ws.Close()
+	pc := openDevice(t, ts, testProofAna, "pc", "IOP", "computer")
+	defer pc.ws.Close()
+
+	// The English message is for logs; the reason is what a client puts in the person's language.
+	phone.send(map[string]interface{}{"type": "command", "to": "pc", "action": "pause"})
+	if got := phone.next("error"); got["reason"] != "not_linked" {
+		t.Fatalf("an unlinked command is refused as not_linked: %v", got)
+	}
+	phone.send(map[string]interface{}{"type": "attach", "to": "ghost"})
+	if got := phone.next("error"); got["reason"] != "not_available" {
+		t.Fatalf("an unknown device is not_available: %v", got)
+	}
+}

@@ -76,6 +76,16 @@ func devicesFrame(acc *account.Account) map[string]interface{} {
 	}
 }
 
+// errorFor is the frame for a refusal: the code says what kind, the reason (when there is one) says
+// exactly which, for a client to put in the person's own language.
+func errorFor(code string, err error) map[string]interface{} {
+	frame := errorFrame(code, err.Error())
+	if reason := account.Reason(err); reason != "" {
+		frame["reason"] = reason
+	}
+	return frame
+}
+
 func errorFrame(code, message string) map[string]interface{} {
 	return map[string]interface{}{"type": "error", "error": code, "message": message}
 }
@@ -243,7 +253,7 @@ func handleAccountFrame(acc *account.Account, d *account.Device, sc *hub.SafeCon
 		err := acc.Attach(d, to)
 		acc.Unlock()
 		if err != nil {
-			_ = sc.WriteJSON(errorFrame("not_available", err.Error()))
+			_ = sc.WriteJSON(errorFor("not_available", err))
 			return
 		}
 		broadcastDevices(acc)
@@ -286,7 +296,7 @@ func handleAccountFrame(acc *account.Account, d *account.Device, sc *hub.SafeCon
 		}
 		acc.Unlock()
 		if err != nil {
-			_ = sc.WriteJSON(errorFrame("not_allowed", err.Error()))
+			_ = sc.WriteJSON(errorFor("not_allowed", err))
 			return
 		}
 		hubInst.Send(accountRoom(acc.ID), targetID, map[string]interface{}{
