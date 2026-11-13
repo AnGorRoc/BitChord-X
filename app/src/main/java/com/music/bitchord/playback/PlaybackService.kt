@@ -9510,6 +9510,12 @@ class PlaybackService : MediaLibraryService() {
                 .setMaxVolume(100)
                 .build()
 
+            val REMOTE_SEEK_COMMANDS = intArrayOf(
+                Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM,
+                Player.COMMAND_SEEK_BACK,
+                Player.COMMAND_SEEK_FORWARD,
+            )
+
             val DEVICE_VOLUME_COMMANDS = intArrayOf(
                 Player.COMMAND_GET_DEVICE_VOLUME,
                 Player.COMMAND_SET_DEVICE_VOLUME,
@@ -9524,12 +9530,25 @@ class PlaybackService : MediaLibraryService() {
 
         private fun dacVolume(): Int = ((DacVolume.level.value ?: 0f) * 100).roundToInt()
 
-        override fun getAvailableCommands(): Player.Commands =
-            if (dac) super.getAvailableCommands().buildUpon().addAll(*DEVICE_VOLUME_COMMANDS).build()
-            else super.getAvailableCommands()
+        /**
+         * A speaker that is not this phone seeks on its own clock, so the phone's quiet player has no
+         * say in whether the bar may be dragged. That player is stopped, and a stopped player says
+         * its song cannot be sought: without this the scrubber of a remote's own app and
+         * notification did nothing while another device was the speaker.
+         */
+        private val remoteSeek: Boolean get() = cast.active
+
+        override fun getAvailableCommands(): Player.Commands {
+            var commands = super.getAvailableCommands()
+            if (dac) commands = commands.buildUpon().addAll(*DEVICE_VOLUME_COMMANDS).build()
+            if (remoteSeek) commands = commands.buildUpon().addAll(*REMOTE_SEEK_COMMANDS).build()
+            return commands
+        }
 
         override fun isCommandAvailable(command: Int): Boolean =
-            (dac && command in DEVICE_VOLUME_COMMANDS) || super.isCommandAvailable(command)
+            (dac && command in DEVICE_VOLUME_COMMANDS) ||
+                (remoteSeek && command in REMOTE_SEEK_COMMANDS) ||
+                super.isCommandAvailable(command)
 
         /**
          * The DAC volume came or went ([routeChanged]), or moved. Told by the
@@ -9746,6 +9765,11 @@ class PlaybackService : MediaLibraryService() {
             listeners.forEach { it.onDeviceInfoChanged(info) }
             val events = Player.Events(FlagSet.Builder().add(Player.EVENT_DEVICE_INFO_CHANGED).build())
             listeners.forEach { it.onEvents(this, events) }
+            // Which commands are open depends on the route (see [remoteSeek]).
+            val commands = getAvailableCommands()
+            listeners.forEach { it.onAvailableCommandsChanged(commands) }
+            val commandEvents = Player.Events(FlagSet.Builder().add(Player.EVENT_AVAILABLE_COMMANDS_CHANGED).build())
+            listeners.forEach { it.onEvents(this, commandEvents) }
             onRemoteVolumeChanged()
         }
 
