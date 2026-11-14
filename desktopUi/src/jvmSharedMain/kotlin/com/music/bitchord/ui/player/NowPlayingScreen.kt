@@ -1326,6 +1326,8 @@ fun NowPlayingScreen(
     // never fires again. Keyed on the cover there is nothing to reset: the
     // bitmap really is still loaded, so the state stays true.
     val art = rememberPlayerArtwork(remoteArt)
+    // The next track's cover, warmed while this one plays so the skip finds it.
+    PreloadArtwork(rememberRemoteArtworkUrl(queue.getOrNull(queueIndex + 1)))
     // Sticky, unlike [PlayerArtwork.loaded]: the banner is the shape of the player rather
     // than a property of the track in it. Waiting on each new cover would
     // collapse the banner into a card and blow it back out on every skip —
