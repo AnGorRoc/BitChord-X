@@ -98,7 +98,11 @@ internal fun DesktopPlayerSheet(
                     },
                 ),
         ) {
-            content(windowWidth, windowHeight)
+            // Panels opened from the player sit over its moving artwork and lyrics, which the page's
+            // blur does not sample: they need a backing of their own (see desktopPlayerGlass).
+            androidx.compose.runtime.CompositionLocalProvider(LocalOverPlayer provides true) {
+                content(windowWidth, windowHeight)
+            }
             // The handle the landscape player draws at its top edge, made to do
             // on a click what it promises for a drag.
             Box(

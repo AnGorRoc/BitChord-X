@@ -9392,8 +9392,20 @@ internal fun Modifier.desktopBarGlass(
  * it (menus, Connect, the account switcher, modals) is made of this, so they read as one family.
  */
 @Composable
-internal fun Modifier.desktopPlayerGlass(shape: Shape): Modifier =
-    desktopBarGlass(shape = shape, tintAlpha = 0.25f, opaque = Color(0x5216161C), borderAlpha = 0.10f)
+internal fun Modifier.desktopPlayerGlass(shape: Shape): Modifier {
+    // Over the full player the page's blur samples nothing of what is actually behind (the player's artwork
+    // and lyrics are not in it), so the glass alone would show that UI through the panel.
+    if (LocalOverPlayer.current) {
+        // The blur would paint the page's colours over any backing, so here it is a solid pane with the
+        // same edge instead.
+        return background(Color(0xFF16161C).copy(alpha = 0.96f))
+            .border(0.75.dp, Color.White.copy(alpha = 0.10f), shape)
+    }
+    return desktopBarGlass(shape = shape, tintAlpha = 0.25f, opaque = Color(0x5216161C), borderAlpha = 0.10f)
+}
+
+/** Whether the composition is inside the full player, whose panels need a backing under the glass. */
+internal val LocalOverPlayer = androidx.compose.runtime.compositionLocalOf { false }
 
 /** [desktopPlayerGlass] in the shape every floating panel has, for the places that only take a modifier recipe. */
 internal val DesktopFloatingGlass: @Composable Modifier.() -> Modifier = {
