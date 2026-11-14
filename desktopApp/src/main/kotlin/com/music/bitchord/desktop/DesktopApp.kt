@@ -2214,14 +2214,18 @@ fun BitChordDesktopApp() {
     // The shared player reads the playhead off this one object, and only where it
     // draws it — see PlaybackPosition — so a tick never recomposes the player.
     val playerPosition = remember { PlaybackPosition() }
-    LaunchedEffect(playbackEngine) {
-        playbackEngine.state.collect {
-            // The audio thread's own timestamp, not this collector's: it runs on the UI thread and
-            // gets to a reading as late as the UI is busy.
-            playerPosition.report(it.positionMs, it.positionSampledAtNanos)
-            playerPosition.seeks = it.seeks
-            playerPosition.advancing = !it.awaitingAudio
-        }
+    LaunchedEffect(playbackEngine, deviceLink) {
+        // While another device is the speaker the bar follows its clock, not this computer's own
+        // (which is paused at wherever the hand-over left it).
+        kotlinx.coroutines.flow.combine(playbackEngine.state, deviceLink.overlay) { own, remote -> own to remote }
+            .collect { (own, remote) ->
+                // The audio thread's own timestamp, not this collector's: it runs on the UI thread and
+                // gets to a reading as late as the UI is busy.
+                val shown = remote ?: own
+                playerPosition.report(shown.positionMs, shown.positionSampledAtNanos)
+                playerPosition.seeks = shown.seeks
+                playerPosition.advancing = if (remote != null) remote.isPlaying && !remote.isLoading else !own.awaitingAudio
+            }
     }
 
     // Lyrics and motion artwork follow whatever is *playing*, not whatever page happens to be open.

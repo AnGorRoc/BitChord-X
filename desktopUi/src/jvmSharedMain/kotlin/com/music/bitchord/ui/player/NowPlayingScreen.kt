@@ -2055,6 +2055,18 @@ fun NowPlayingScreen(
                         }
                     },
                     actions = playerActions,
+                    outputCaption = {
+                        Box(
+                            modifier = Modifier.fillMaxWidth().height(20.dp),
+                            contentAlignment = Alignment.TopCenter,
+                        ) {
+                            OutputCaption(
+                                accountName = accountName,
+                                onOpenOutput = openAudioOutput,
+                                onOpenMembers = openListenTogetherMembers,
+                            )
+                        }
+                    },
                     controls = { compact ->
                         LandscapeMainPane(
                             compact = compact,
