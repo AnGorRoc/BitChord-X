@@ -37,6 +37,13 @@ import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material.icons.rounded.Logout
 import kotlinx.coroutines.delay
@@ -73,6 +80,7 @@ import com.music.bitchord.data.listentogether.byPerson
 import com.music.bitchord.data.listentogether.PartyActivity
 import com.music.bitchord.data.listentogether.PartyMember
 import com.music.bitchord.data.listentogether.PartyPreview
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -101,6 +109,44 @@ internal fun DesktopListenTogetherDialog(autoplayEnabled: Boolean, onDismiss: ()
 
     LaunchedEffect(server) {
         if (serverDraft == server || serverDraft.isBlank()) serverDraft = server
+    }
+
+    val codeFocus = remember { FocusRequester() }
+    var codeFocused by remember { mutableStateOf(false) }
+    val startParty: () -> Unit = {
+        if (!busy) {
+            busy = true
+            localError = null
+            scope.launch {
+                DesktopListenTogether.createParty(nickname, maxMembers, autoplayEnabled)
+                    .onSuccess { DesktopPlayerHost.showMessage("Party started · code ${DesktopListenTogether.state.value.code.orEmpty()}") }
+                    .onFailure { localError = it.message }
+                busy = false
+            }
+        }
+    }
+    // Picked up from the Connect sheet: start a party straight away, or put the cursor where a
+    // code goes. Taken once, so reopening this page later does not repeat it.
+    // A collector rather than an effect keyed on the request: clearing the request would restart a keyed
+    // effect and cancel the retry below before it got to run.
+    LaunchedEffect(Unit) {
+        DesktopPlayerHost.pendingPartyAction.filterNotNull().collect { action ->
+            DesktopPlayerHost.pendingPartyAction.value = null
+            if (DesktopListenTogether.state.value.inParty) return@collect
+            when (action) {
+                com.music.bitchord.ui.player.PartyAction.START ->
+                    if (DesktopListenTogether.canJoin() && DesktopListenTogether.hasServer) startParty()
+                com.music.bitchord.ui.player.PartyAction.JOIN -> {
+                    // The page is only just composing when this arrives, and a field that is not on screen
+                    // yet cannot take focus: try again for a moment rather than once.
+                    repeat(30) {
+                        delay(120)
+                        if (codeFocused) return@collect
+                        runCatching { codeFocus.requestFocus() }
+                    }
+                }
+            }
+        }
     }
 
     DesktopDialogPanel(onDismiss = onDismiss, maxWidth = 920) {
@@ -207,16 +253,9 @@ internal fun DesktopListenTogetherDialog(autoplayEnabled: Boolean, onDismiss: ()
                     onRefreshServer = DesktopListenTogether::refreshServerHealth,
                     busy = busy,
                     error = localError ?: state.error,
-                    onCreate = {
-                        busy = true
-                        localError = null
-                        scope.launch {
-                            DesktopListenTogether.createParty(nickname, maxMembers, autoplayEnabled)
-                                .onSuccess { DesktopPlayerHost.showMessage("Party started · code ${DesktopListenTogether.state.value.code.orEmpty()}") }
-                                .onFailure { localError = it.message }
-                            busy = false
-                        }
-                    },
+                    codeFocus = codeFocus,
+                    onCodeFocusChange = { codeFocused = it },
+                    onCreate = startParty,
                     onPreview = {
                         busy = true
                         localError = null
@@ -252,6 +291,8 @@ private fun PartyLanding(
     onRefreshServer: () -> Unit,
     busy: Boolean,
     error: String?,
+    codeFocus: FocusRequester,
+    onCodeFocusChange: (Boolean) -> Unit,
     onCreate: () -> Unit,
     onPreview: () -> Unit,
 ) {
@@ -275,6 +316,7 @@ private fun PartyLanding(
                             onValueChange = onNicknameChange,
                             label = { Text("Nickname") },
                             singleLine = true,
+                            colors = fieldColors(),
                             modifier = Modifier.weight(1f),
                         )
                     }
@@ -294,7 +336,10 @@ private fun PartyLanding(
                         placeholder = { Text("ABC123") },
                         singleLine = true,
                         textStyle = MaterialTheme.typography.headlineSmall.copy(letterSpacing = 5.sp),
-                        modifier = Modifier.fillMaxWidth(),
+                        colors = fieldColors(),
+                        keyboardActions = KeyboardActions(onDone = { if (enabled && code.length == DesktopListenTogether.CODE_LENGTH) onPreview() }),
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                        modifier = Modifier.fillMaxWidth().focusRequester(codeFocus).onFocusChanged { onCodeFocusChange(it.isFocused) },
                     )
                     Spacer(Modifier.height(18.dp))
                     PrimaryButton(
@@ -346,6 +391,13 @@ private fun PartyLanding(
         }
     }
 }
+
+/** Field outlines bright enough to find the field by; the theme's own are close to invisible here. */
+@Composable
+private fun fieldColors() = OutlinedTextFieldDefaults.colors(
+    unfocusedBorderColor = Color.White.copy(alpha = 0.28f),
+    focusedBorderColor = DesktopAccent,
+)
 
 @Composable
 private fun PartyChoiceCard(title: String, subtitle: String, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
@@ -509,6 +561,7 @@ private fun RoomHero(state: DesktopListenTogether.State) {
             OutlinedButton(
                 onClick = { DesktopExternalLinks.copy(state.code.orEmpty()); DesktopPlayerHost.showMessage("Code copied") },
                 shape = RoundedCornerShape(50),
+                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)),
                 modifier = Modifier.weight(1f).height(44.dp),
             ) {
                 Icon(Icons.Rounded.ContentCopy, null, modifier = Modifier.size(16.dp))
@@ -704,7 +757,8 @@ private fun ActivityCard(entries: List<PartyActivity>) {
     val clock = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
     Column(Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(24.dp)).padding(18.dp)) {
         CardTitle("Activity")
-        entries.take(8).forEach { entry ->
+        // The same thing said twice in a row (two reports of one song change) is one line.
+        entries.distinctBy { "${it.by}|${it.detail.ifBlank { it.action }}|${it.atMs / 60_000}" }.take(8).forEach { entry ->
             Text(
                 "${clock.format(Date(entry.atMs))}  ${entry.by}: ${entry.detail.ifBlank { entry.action }}",
                 style = MaterialTheme.typography.bodySmall,
