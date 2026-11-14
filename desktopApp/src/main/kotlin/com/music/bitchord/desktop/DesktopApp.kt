@@ -9395,13 +9395,9 @@ internal fun Modifier.desktopBarGlass(
 internal fun Modifier.desktopPlayerGlass(shape: Shape): Modifier {
     // Over the full player the page's blur samples nothing of what is actually behind (the player's artwork
     // and lyrics are not in it), so the glass alone would show that UI through the panel.
-    if (LocalOverPlayer.current) {
-        // The blur would paint the page's colours over any backing, so here it is a solid pane with the
-        // same edge instead.
-        return background(Color(0xFF16161C).copy(alpha = 0.96f))
-            .border(0.75.dp, Color.White.copy(alpha = 0.10f), shape)
-    }
-    return desktopBarGlass(shape = shape, tintAlpha = 0.25f, opaque = Color(0x5216161C), borderAlpha = 0.10f)
+    // The same glass as everywhere, with a backing under it so the player's UI cannot be seen through.
+    val base = if (LocalOverPlayer.current) background(Color(0xFF16161C).copy(alpha = 0.94f)) else this
+    return base.desktopBarGlass(shape = shape, tintAlpha = 0.25f, opaque = Color(0x5216161C), borderAlpha = 0.10f)
 }
 
 /** Whether the composition is inside the full player, whose panels need a backing under the glass. */
