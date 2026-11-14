@@ -105,7 +105,6 @@ internal fun DesktopConnectButton(modifier: Modifier = Modifier) {
                 properties = PopupProperties(focusable = true),
             ) {
                 ConnectPopover(
-                    surface = Modifier.desktopBarGlass(RoundedCornerShape(20.dp), tintAlpha = FLOATING_GLASS_TINT),
                     onDismiss = { open = false },
                     onOpenParty = { open = false; DesktopPlayerHost.openListenTogether() },
                     onStartParty = {
@@ -145,5 +144,3 @@ private class UnderAnchor(private val gap: Dp) : PopupPositionProvider {
     }
 }
 
-/** How much of the app's glass tint floating panels keep: over a busy page (the player) the mini bar's lighter tint lets the page read through the text. */
-internal const val FLOATING_GLASS_TINT = 0.9f

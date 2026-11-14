@@ -260,8 +260,6 @@ private fun desktopMain() = application {
         CompositionLocalProvider(
             LocalDesktopWindowActions provides actions,
             LocalDesktopWindowScope provides this,
-            com.music.bitchord.ui.player.LocalFloatingPanelSurface provides
-                Modifier.desktopBarGlass(androidx.compose.foundation.shape.RoundedCornerShape(20.dp), tintAlpha = FLOATING_GLASS_TINT),
         ) {
             BitChordDesktopApp()
         }

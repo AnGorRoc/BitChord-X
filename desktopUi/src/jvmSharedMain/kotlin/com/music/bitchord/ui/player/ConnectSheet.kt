@@ -68,6 +68,7 @@ import com.music.bitchord.sharedui.resources.*
 import com.music.bitchord.ui.haptics.Haptic
 import com.music.bitchord.ui.haptics.rememberHaptics
 import com.music.bitchord.ui.icons.BitChordIcons
+import com.music.bitchord.ui.components.liveMenuFrost
 import dev.chrisbanes.haze.HazeState
 import org.jetbrains.compose.resources.stringResource
 
@@ -97,7 +98,7 @@ internal fun ConnectSheet(
     Box(
         modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.28f))
+            .background(SCRIM_COLOR)
             .clickable(interactionSource = none, indication = null, onClick = onDismiss),
         contentAlignment = Alignment.BottomCenter,
     ) {
@@ -107,9 +108,7 @@ internal fun ConnectSheet(
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = {}),
         ) {
             ConnectPopover(
-                // Over the player's moving lyrics the glass alone lets the words read through the panel, so it
-                // sits on a dense backing.
-                surface = Modifier.background(Color(0xFF141417).copy(alpha = 0.92f)).then(LocalFloatingPanelSurface.current),
+                surface = Modifier.background(FloatingPanelFill),
                 onDismiss = onDismiss,
                 onOpenParty = onOpenParty,
                 onStartParty = onStartParty,
@@ -119,10 +118,15 @@ internal fun ConnectSheet(
     }
 }
 
-/** The material the desktop's floating panels (menus, Connect) are made of; the window supplies the glass. */
-val LocalFloatingPanelSurface = androidx.compose.runtime.compositionLocalOf<Modifier> {
-    Modifier.background(Color(0xFF1C1C20)).border(1.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(20.dp))
-}
+/**
+ * The one material every floating panel on the desktop is made of: the phone drawer's charcoal with no
+ * edge or shadow. The phone blurs what is behind it and so can let 20% through; a pop-up window cannot
+ * blur, and the same 20% would let the page's text read through, so the fill is nearly solid.
+ */
+val FloatingPanelFill = com.music.bitchord.ui.components.MenuFrostDark.copy(alpha = 0.985f)
+
+/** The corner radius shared by every floating panel. */
+val FloatingPanelShape = RoundedCornerShape(20.dp)
 
 /** Air between a floating panel and the window edge, the same as around the mini player. */
 val FLOATING_PANEL_GAP = 20.dp
@@ -135,13 +139,13 @@ val FLOATING_PANEL_GAP = 20.dp
 @Composable
 fun ConnectPopover(
     /** The panel's own material (fill and edge); the caller supplies the app's glass. */
-    surface: Modifier = Modifier.background(Color(0xFF1C1C20)).border(1.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(20.dp)),
+    surface: Modifier = Modifier.background(FloatingPanelFill),
     onDismiss: () -> Unit,
     onOpenParty: () -> Unit,
     onStartParty: () -> Unit = onOpenParty,
     onJoinParty: () -> Unit = onOpenParty,
 ) {
-    val shape = RoundedCornerShape(20.dp)
+    val shape = FloatingPanelShape
     Column(
         Modifier
             .width(400.dp)
