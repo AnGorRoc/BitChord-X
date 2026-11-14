@@ -2259,6 +2259,28 @@ private fun BitChordApp(
     }
 
     /**
+     * A song tapped on a shelf — Recents, Quick picks, a chart — queues the
+     * shelf around it, the way an album does: the rest of the list follows the
+     * tapped song, behind whatever the listener queued by hand, and AutoPlay
+     * only comes in once that list runs out. A shelf with nothing else to play
+     * still gets the station [playRadio] starts.
+     */
+    val playFromShelf: (ShelfItem, List<ShelfItem>?, QueueSource) -> Unit = { item, siblings, source ->
+        val songs = siblings.orEmpty().mapNotNull(shelfSong)
+        val index = songs.indexOfFirst { it.videoId == item.videoId }
+        if (index >= 0 && songs.size > 1) {
+            playFrom(songs, index, source)
+        } else {
+            shelfSong(item)?.let { playRadio(it, source) }
+        }
+    }
+
+    /** The shelf of [shelves] that holds [item], so a tap can queue its neighbours. */
+    val shelfOf: (ShelfItem, UiState<List<HomeShelf>>) -> List<ShelfItem>? = { item, shelves ->
+        (shelves as? UiState.Success)?.data?.firstOrNull { shelf -> item in shelf.items }?.items
+    }
+
+    /**
      * Holding a card on a feed whose shelves mix tracks with collections —
      * Quick picks and Recently played are songs, Listen again is either.
      *
@@ -3709,8 +3731,9 @@ private fun BitChordApp(
                                     // property declared in another module.
                                     val browseId = item.browseId
                                     when {
-                                        song != null -> playRadio(
-                                            song,
+                                        song != null -> playFromShelf(
+                                            item,
+                                            shelfOf(item, visibleHomeState),
                                             QueueSource(shelfTitle, PlaybackSourceType.HOME),
                                         )
                                         browseId != null -> viewModel.openDetail(
@@ -3759,15 +3782,10 @@ private fun BitChordApp(
                                     state = moodGenreShelves,
                                     listState = moodGenreListState,
                                     onItemClick = { item ->
-                                        item.videoId?.let { videoId ->
-                                            playRadio(
-                                                Song(
-                                                    videoId = videoId,
-                                                    title = item.title,
-                                                    artist = InnertubeParser.artistFromSubtitle(item.subtitle),
-                                                    thumbnailUrl = item.thumbnailUrl,
-                                                    isVideo = item.isVideo,
-                                                ),
+                                        item.videoId?.let {
+                                            playFromShelf(
+                                                item,
+                                                shelfOf(item, moodGenreShelves),
                                                 QueueSource(
                                                     category.title,
                                                     PlaybackSourceType.EXPLORE,
@@ -3800,27 +3818,21 @@ private fun BitChordApp(
                                 chartsRegion = chartsRegion,
                                 onRegionChange = viewModel::setChartsRegion,
                                 onRefreshCharts = viewModel::refreshCharts,
-                                onSongClick = { item ->
-                                    item.videoId?.let { videoId ->
-                                        playRadio(
-                                            Song(
-                                                videoId = videoId,
-                                                title = item.title,
-                                                artist = InnertubeParser.artistFromSubtitle(item.subtitle),
-                                                thumbnailUrl = item.thumbnailUrl,
-                                                isVideo = item.isVideo,
-                                            ),
-                                            QueueSource("Charts", PlaybackSourceType.BROWSE, "FEmusic_charts"),
-                                        )
-                                    }
+                                onSongClick = { item, chart ->
+                                    playFromShelf(
+                                        item,
+                                        chart,
+                                        QueueSource("Charts", PlaybackSourceType.BROWSE, "FEmusic_charts"),
+                                    )
                                 },
                                 onSongOptionsClick = onShelfLongPress,
                                 onItemClick = { item ->
                                     val song = shelfSong(item)
                                     val browseId = item.browseId
                                     when {
-                                        song != null -> playRadio(
-                                            song,
+                                        song != null -> playFromShelf(
+                                            item,
+                                            shelfOf(item, newReleasesState),
                                             QueueSource("Explore", PlaybackSourceType.EXPLORE),
                                         )
                                         browseId != null -> viewModel.openDetail(

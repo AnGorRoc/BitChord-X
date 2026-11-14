@@ -2548,13 +2548,25 @@ fun BitChordDesktopApp() {
         }
     }
 
-    fun openShelfItem(item: ShelfItem, shelfTitle: String? = null) {
+    /** The shelf of [shelves] that holds [item], so a tap can queue its neighbours. */
+    fun shelfOf(item: ShelfItem, shelves: UiState<List<HomeShelf>>): List<ShelfItem>? =
+        (shelves as? UiState.Success)?.data?.firstOrNull { shelf -> item in shelf.items }?.items
+
+    fun openShelfItem(item: ShelfItem, shelfTitle: String? = null, siblings: List<ShelfItem>? = null) {
         val videoId = item.videoId
         val browseId = item.browseId
         when {
             videoId != null -> {
                 val source = shelfTitle?.let { DesktopQueueSource(it, PlaybackSourceType.HOME) }
-                playSong(item.toSong(), source = source)
+                // The shelf around the song queues behind it, the way an album does; AutoPlay
+                // only comes in once it runs out. A shelf with nothing else to play stays a lone song.
+                val songs = siblings.orEmpty().filter { it.videoId != null }.map { it.toSong() }
+                val at = songs.indexOfFirst { it.videoId == videoId }
+                if (at >= 0 && songs.size > 1) {
+                    playSongs(songs, at, source)
+                } else {
+                    playSong(item.toSong(), source = source)
+                }
             }
             // An artist is a page of its own, not a list of tracks with a photograph on top.
             browseTypeOf(browseId.orEmpty()) == BrowseType.ARTIST ->
@@ -4890,7 +4902,7 @@ fun BitChordDesktopApp() {
                         destination == DesktopDestination.LISTEN_NOW -> HomeScreen(
                             state = homeState,
                             listState = homeListState,
-                            onItemClick = { item, shelfTitle -> openShelfItem(item, shelfTitle) },
+                            onItemClick = { item, shelfTitle -> openShelfItem(item, shelfTitle, shelfOf(item, homeState)) },
                             onRetry = ::loadHome,
                             refreshing = false,
                             onRefresh = ::loadHome,
@@ -4925,7 +4937,7 @@ fun BitChordDesktopApp() {
                                 title = selectedMoodGenre!!.title,
                                 state = moodGenreShelves,
                                 listState = moodGenreListState,
-                                onItemClick = { item -> openShelfItem(item, selectedMoodGenre?.title) },
+                                onItemClick = { item -> openShelfItem(item, selectedMoodGenre?.title, shelfOf(item, moodGenreShelves)) },
                                 onRetry = {
                                     moodGenreShelves = UiState.Loading
                                     moodGenreReloads++
