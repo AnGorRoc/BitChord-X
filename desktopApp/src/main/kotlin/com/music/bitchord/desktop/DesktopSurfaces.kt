@@ -167,7 +167,7 @@ internal fun DesktopDialogPanel(
                 .widthIn(max = maxWidth.dp)
                 .fillMaxWidth()
                 .clip(shape)
-                .background(com.music.bitchord.ui.player.FloatingPanelFill),
+                .desktopPlayerGlass(shape),
         ) {
             // Behind the content rather than around it, so it swallows clicks on the panel's own
             // background without eating the rows' own.

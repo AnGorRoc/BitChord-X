@@ -639,13 +639,13 @@ private fun DesktopMenuSurface(onDismiss: () -> Unit, content: @Composable () ->
         onDismissRequest = onDismiss,
         properties = PopupProperties(focusable = true),
     ) {
-        // The same material as Connect and the phone's drawers: one fill for every floating panel.
+        // The mini player's own glass and edge, like every other panel that opens from it.
         val shape = com.music.bitchord.ui.player.FloatingPanelShape
         Column(
             Modifier
                 .widthIn(min = 232.dp, max = 300.dp)
                 .clip(shape)
-                .background(com.music.bitchord.ui.player.FloatingPanelFill)
+                .desktopPlayerGlass(shape)
                 .padding(vertical = 6.dp)
                 // A menu with every optional row on it is taller than a small window; capped and
                 // scrolled rather than run off the screen.
@@ -691,7 +691,7 @@ private class DesktopMenuPosition : PopupPositionProvider {
 }
 
 /** Air kept between a menu and the window's edges. */
-private const val MENU_MARGIN = 12
+private const val MENU_MARGIN = FLOATING_PANEL_GAP_PX
 
 /** A submenu's title, and the way back out of it. */
 @Composable

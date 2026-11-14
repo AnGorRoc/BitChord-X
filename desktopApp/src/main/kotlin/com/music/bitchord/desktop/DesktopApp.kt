@@ -5558,12 +5558,7 @@ private fun DesktopPlayerCapsule(
                 .fillMaxWidth()
                 .height(52.dp)
                 .clip(shape)
-                .desktopBarGlass(
-                    shape = shape,
-                    tintAlpha = 0.25f,
-                    opaque = Color(0x5216161C),
-                    borderAlpha = 0.10f,
-                )
+                .desktopPlayerGlass(shape)
                 .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -9379,6 +9374,22 @@ internal fun Modifier.desktopBarGlass(
     borderAlpha: Float = 0.10f,
 ): Modifier = desktopFrosted(opaque, tintAlpha = tintAlpha)
     .border(0.75.dp, Color.White.copy(alpha = borderAlpha), shape)
+
+/**
+ * The mini player's own glass, to the letter: its tint, its fill and its edge. Every panel that opens from
+ * it (menus, Connect, the account switcher, modals) is made of this, so they read as one family.
+ */
+@Composable
+internal fun Modifier.desktopPlayerGlass(shape: Shape): Modifier =
+    desktopBarGlass(shape = shape, tintAlpha = 0.25f, opaque = Color(0x5216161C), borderAlpha = 0.10f)
+
+/** [desktopPlayerGlass] in the shape every floating panel has, for the places that only take a modifier recipe. */
+internal val DesktopFloatingGlass: @Composable Modifier.() -> Modifier = {
+    desktopPlayerGlass(androidx.compose.foundation.shape.RoundedCornerShape(20.dp))
+}
+
+/** Air between a floating panel and what it hangs from or the window edge: the mini player's own margin. */
+internal const val FLOATING_PANEL_GAP_PX = 20
 
 /** The edge of a chrome pane that meets the page, and so has to dissolve into it. */
 internal enum class DesktopChromeEdge { NONE, BOTTOM, END }

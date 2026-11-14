@@ -260,6 +260,7 @@ private fun desktopMain() = application {
         CompositionLocalProvider(
             LocalDesktopWindowActions provides actions,
             LocalDesktopWindowScope provides this,
+            com.music.bitchord.ui.player.LocalFloatingPanelSurface provides DesktopFloatingGlass,
         ) {
             BitChordDesktopApp()
         }

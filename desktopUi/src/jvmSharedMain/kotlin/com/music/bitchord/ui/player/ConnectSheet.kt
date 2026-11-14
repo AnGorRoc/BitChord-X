@@ -108,7 +108,6 @@ internal fun ConnectSheet(
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = {}),
         ) {
             ConnectPopover(
-                surface = Modifier.background(FloatingPanelFill),
                 onDismiss = onDismiss,
                 onOpenParty = onOpenParty,
                 onStartParty = onStartParty,
@@ -125,11 +124,16 @@ internal fun ConnectSheet(
  */
 val FloatingPanelFill = com.music.bitchord.ui.components.MenuFrostDark.copy(alpha = 0.985f)
 
+/** The material floating panels are made of; the window provides the mini player's glass, this is the fallback. */
+val LocalFloatingPanelSurface = androidx.compose.runtime.compositionLocalOf<@Composable Modifier.() -> Modifier> {
+    { background(FloatingPanelFill) }
+}
+
 /** The corner radius shared by every floating panel. */
 val FloatingPanelShape = RoundedCornerShape(20.dp)
 
 /** Air between a floating panel and the window edge, the same as around the mini player. */
-val FLOATING_PANEL_GAP = 20.dp
+val FLOATING_PANEL_GAP = 16.dp
 
 /**
  * The same Connect, as a panel hung under a button in the desktop's top bar instead of a drawer
@@ -138,20 +142,17 @@ val FLOATING_PANEL_GAP = 20.dp
  */
 @Composable
 fun ConnectPopover(
-    /** The panel's own material (fill and edge); the caller supplies the app's glass. */
-    surface: Modifier = Modifier.background(FloatingPanelFill),
     onDismiss: () -> Unit,
     onOpenParty: () -> Unit,
     onStartParty: () -> Unit = onOpenParty,
     onJoinParty: () -> Unit = onOpenParty,
 ) {
     val shape = FloatingPanelShape
+    // Made where the panel is drawn, so the glass samples the page behind this very panel.
+    val glass = LocalFloatingPanelSurface.current
+    val frame = Modifier.width(400.dp).heightIn(max = 620.dp).clip(shape)
     Column(
-        Modifier
-            .width(400.dp)
-            .heightIn(max = 620.dp)
-            .clip(shape)
-            .then(surface)
+        frame.glass()
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
     ) {

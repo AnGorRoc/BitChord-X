@@ -655,7 +655,7 @@ private fun DesktopDialogFrame(onDismiss: () -> Unit, content: @Composable () ->
                 .widthIn(max = 480.dp)
                 .fillMaxWidth()
                 .clip(shape)
-                .background(com.music.bitchord.ui.player.FloatingPanelFill),
+                .desktopPlayerGlass(shape),
         ) {
             // Swallows clicks that land on the panel's own background so they do not reach the
             // scrim behind it and dismiss what was just clicked.

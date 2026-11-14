@@ -150,8 +150,7 @@ internal fun DesktopAccountSelector(
                     .widthIn(max = if (compact) 380.dp else 340.dp)
                     .fillMaxWidth()
                     .clip(shape)
-                    // The material every floating panel shares (see FloatingPanelFill).
-                    .background(com.music.bitchord.ui.player.FloatingPanelFill),
+                    .desktopPlayerGlass(shape),
             ) {
                 Row(
                     Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 8.dp),
@@ -332,7 +331,7 @@ internal fun DesktopSignInDialog(
                 .widthIn(max = 520.dp)
                 .fillMaxWidth()
                 .clip(shape)
-                .background(com.music.bitchord.ui.player.FloatingPanelFill)
+                .desktopPlayerGlass(shape)
                 .padding(bottom = 8.dp),
         ) {
             Row(

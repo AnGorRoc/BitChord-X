@@ -100,7 +100,7 @@ internal fun DesktopConnectButton(modifier: Modifier = Modifier) {
         }
         if (open) {
             Popup(
-                popupPositionProvider = remember { UnderAnchor(gap = 12.dp) },
+                popupPositionProvider = remember { UnderAnchor(gap = 16.dp) },
                 onDismissRequest = { open = false },
                 properties = PopupProperties(focusable = true),
             ) {
@@ -131,16 +131,20 @@ private class UnderAnchor(private val gap: Dp) : PopupPositionProvider {
         layoutDirection: LayoutDirection,
         popupContentSize: IntSize,
     ): IntOffset {
-        val g = gap.value.toInt()
+        val g = FLOATING_PANEL_GAP_PX
         val x = (anchorBounds.right - popupContentSize.width).coerceIn(8, (windowSize.width - popupContentSize.width - 8).coerceAtLeast(8))
         // Below the button when it fits (the bar at the top), above it otherwise (the bar at the bottom).
         val below = anchorBounds.bottom + g
         val y = if (below + popupContentSize.height + 8 <= windowSize.height) {
             below
         } else {
-            (anchorBounds.top - g - popupContentSize.height).coerceAtLeast(8)
+            // The button sits inside the bar (52dp tall, the button 32dp), so the gap is kept from the bar's own edge.
+            (anchorBounds.top - BAR_OVERHANG_PX - g - popupContentSize.height).coerceAtLeast(8)
         }
         return IntOffset(x, y)
     }
 }
 
+
+/** How far the player bar extends above the Connect button inside it, in pixels. */
+private const val BAR_OVERHANG_PX = 14
