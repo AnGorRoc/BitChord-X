@@ -83,13 +83,18 @@ private fun desktopMain() = application {
     val savedX = remember { persistence.int("window_x", -1) }
     val savedY = remember { persistence.int("window_y", -1) }
     val hasSavedPosition = savedX >= 0 && savedY >= 0
+    // What the screen can show, so a size saved on a bigger monitor (or a scale that has since
+    // changed) never opens a window whose bottom and right edges sit off the display.
+    val workArea = remember { primaryWorkAreaDp() }
     val savedWidth = remember {
         (if (hasSavedPosition) persistence.int("window_width", MIN_WINDOW_WIDTH_DP.toInt()) else MIN_WINDOW_WIDTH_DP.toInt())
-            .coerceAtLeast(MIN_WINDOW_WIDTH_DP.toInt()).dp
+            .coerceAtLeast(MIN_WINDOW_WIDTH_DP.toInt())
+            .coerceAtMost(workArea?.first?.coerceAtLeast(MIN_WINDOW_WIDTH_DP.toInt()) ?: Int.MAX_VALUE).dp
     }
     val savedHeight = remember {
         (if (hasSavedPosition) persistence.int("window_height", MIN_WINDOW_HEIGHT_DP.toInt()) else MIN_WINDOW_HEIGHT_DP.toInt())
-            .coerceAtLeast(MIN_WINDOW_HEIGHT_DP.toInt()).dp
+            .coerceAtLeast(MIN_WINDOW_HEIGHT_DP.toInt())
+            .coerceAtMost(workArea?.second?.coerceAtLeast(MIN_WINDOW_HEIGHT_DP.toInt()) ?: Int.MAX_VALUE).dp
     }
     val savedPlacement = remember {
         if (persistence.boolean("window_maximized", false)) {
@@ -100,7 +105,10 @@ private fun desktopMain() = application {
     }
     val initialPosition = remember {
         if (hasSavedPosition) {
-            WindowPosition(savedX.dp, savedY.dp)
+            // Pulled back inside the work area when the size had to shrink or the monitor changed.
+            val maxX = ((workArea?.first ?: Int.MAX_VALUE) - savedWidth.value.toInt()).coerceAtLeast(0)
+            val maxY = ((workArea?.second ?: Int.MAX_VALUE) - savedHeight.value.toInt()).coerceAtLeast(0)
+            WindowPosition(savedX.coerceAtMost(maxX).dp, savedY.coerceAtMost(maxY).dp)
         } else {
             WindowPosition(Alignment.Center)
         }
@@ -256,6 +264,17 @@ private fun desktopMain() = application {
         }
     }
 }
+
+/** The primary screen's usable size (taskbar excluded) in the same units the window state uses. */
+private fun primaryWorkAreaDp(): Pair<Int, Int>? = runCatching {
+    val config = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment().defaultScreenDevice.defaultConfiguration
+    val insets = Toolkit.getDefaultToolkit().getScreenInsets(config)
+    val bounds = config.bounds
+    // AWT reports pixels; the window state is in dp.
+    val scale = config.defaultTransform
+    ((bounds.width - insets.left - insets.right) / scale.scaleX).toInt() to
+        ((bounds.height - insets.top - insets.bottom) / scale.scaleY).toInt()
+}.getOrNull()
 
 private const val MIN_WINDOW_WIDTH_DP = 900.0
 private const val MIN_WINDOW_HEIGHT_DP = 600.0
