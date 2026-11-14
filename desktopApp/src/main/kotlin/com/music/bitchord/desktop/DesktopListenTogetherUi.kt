@@ -69,6 +69,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.music.bitchord.data.listentogether.PartyInvites
+import com.music.bitchord.data.listentogether.byPerson
 import com.music.bitchord.data.listentogether.PartyActivity
 import com.music.bitchord.data.listentogether.PartyMember
 import com.music.bitchord.data.listentogether.PartyPreview
@@ -538,8 +539,7 @@ private fun NowPlayingCard(state: DesktopListenTogether.State) {
     val healthy = state.connection == DesktopListenTogether.Connection.LIVE && state.clockSynced
     fun clock(ms: Long) = (ms / 1000).coerceAtLeast(0).let { "%d:%02d".format(it / 60, it % 60) }
     Column(Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(24.dp)).padding(18.dp)) {
-        Text("NOW PLAYING", color = DesktopSecondary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
-        Spacer(Modifier.height(10.dp))
+        CardTitle("Now playing")
         if (track == null) {
             Text("Nothing playing yet", color = DesktopSecondary)
             if (state.you?.isHost == true) Text("Play a song and it will appear for everyone.", color = DesktopSecondary, style = MaterialTheme.typography.bodySmall)
@@ -577,11 +577,37 @@ private fun NowPlayingCard(state: DesktopListenTogether.State) {
     }
 }
 
+/** The heading over a card: the same weight as on the phone, not a tiny caps label. */
+@Composable
+private fun CardTitle(text: String, trailing: String? = null) {
+    Row(Modifier.fillMaxWidth().padding(bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            color = DesktopSecondary,
+            modifier = Modifier.weight(1f),
+        )
+        if (trailing != null) Text(trailing, color = DesktopSecondary, style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+/** A small filled tag next to a name: who is you, who is the host. */
+@Composable
+private fun Tag(text: String) {
+    Text(
+        text,
+        color = DesktopSecondary,
+        style = MaterialTheme.typography.labelSmall,
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.10f)).padding(horizontal = 8.dp, vertical = 2.dp),
+    )
+}
+
 @Composable
 private fun QueueCard(state: DesktopListenTogether.State) {
     Column(Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(24.dp)).padding(18.dp)) {
-        Text("UP NEXT", color = DesktopSecondary, style = MaterialTheme.typography.labelSmall)
-        Spacer(Modifier.height(8.dp))
+        CardTitle("Up next")
         val upcoming = state.queue.items.drop((state.queue.index + 1).coerceAtLeast(0)).take(5)
         if (upcoming.isEmpty()) Text("The shared queue is empty", color = DesktopSecondary)
         upcoming.forEachIndexed { index, track ->
@@ -599,17 +625,17 @@ private fun QueueCard(state: DesktopListenTogether.State) {
 
 @Composable
 private fun MembersCard(state: DesktopListenTogether.State) {
+    val people = state.members.byPerson()
     Column(Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(24.dp)).padding(18.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text("PEOPLE", color = DesktopSecondary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-            Text("${state.members.size}/${state.maxMembers}", color = DesktopSecondary, style = MaterialTheme.typography.labelSmall)
-        }
-        Spacer(Modifier.height(8.dp))
-        state.members.forEachIndexed { index, member ->
+        CardTitle("People", "${people.size} / ${state.maxMembers}")
+        people.forEachIndexed { index, person ->
             if (index > 0 && !LocalDesktopPanelIsPage.current) HorizontalDivider(color = DesktopCardEdge)
-            MemberRow(member, member.memberId == state.you?.memberId, state.you?.isHost == true && !member.isHost) {
-                DesktopListenTogether.kick(member.memberId)
-            }
+            MemberRow(
+                member = person.asMember,
+                devices = person.devices,
+                isYou = person.includes(state.you?.memberId),
+                canKick = state.you?.isHost == true && !person.isHost,
+            ) { DesktopListenTogether.kick(person.lead.memberId) }
         }
     }
 }
@@ -618,10 +644,10 @@ private fun MembersCard(state: DesktopListenTogether.State) {
 @Composable
 private fun PlayHereRow(playHere: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Icon(if (playHere) Icons.Rounded.VolumeUp else Icons.Rounded.VolumeOff, null, modifier = Modifier.size(20.dp))
-        Spacer(Modifier.width(10.dp))
+        Icon(if (playHere) Icons.Rounded.VolumeUp else Icons.Rounded.VolumeOff, null, tint = DesktopAccent, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text("Play on this computer")
+            Text("Play on this computer", fontWeight = FontWeight.SemiBold)
             Text(
                 if (playHere) "You hear it here, and everyone else on theirs."
                 else "Sound comes only from the host. You still see and control the party.",
@@ -647,13 +673,12 @@ private const val DEFAULT_PARTY_SIZE = 10
 @Composable
 private fun HostControls(state: DesktopListenTogether.State) {
     Column(Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(24.dp)).padding(18.dp)) {
-        Text("ROOM SETTINGS", color = DesktopSecondary, style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
-        Spacer(Modifier.height(10.dp))
+        CardTitle("Room settings")
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(if (state.hostOnlyControl) Icons.Rounded.Lock else Icons.Rounded.LockOpen, null, modifier = Modifier.size(20.dp))
-            Spacer(Modifier.width(10.dp))
+            Icon(if (state.hostOnlyControl) Icons.Rounded.Lock else Icons.Rounded.LockOpen, null, tint = DesktopAccent, modifier = Modifier.size(20.dp))
+            Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
-                Text("Only I can control playback")
+                Text("Only I can control playback", fontWeight = FontWeight.SemiBold)
                 Text("Guests can still pause on their own device.", color = DesktopSecondary, style = MaterialTheme.typography.bodySmall)
             }
             Switch(state.hostOnlyControl, onCheckedChange = DesktopListenTogether::setHostOnlyControl)
@@ -665,7 +690,7 @@ private fun HostControls(state: DesktopListenTogether.State) {
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("Party size", color = DesktopSecondary, style = MaterialTheme.typography.bodyMedium)
+                Text("Party size", fontWeight = FontWeight.SemiBold)
             }
             Stepper("−", state.maxMembers > maxOf(2, state.members.size)) { DesktopListenTogether.setMaxMembers(state.maxMembers - 1) }
             Text("${state.maxMembers}", modifier = Modifier.width(30.dp), textAlign = TextAlign.Center)
@@ -678,8 +703,7 @@ private fun HostControls(state: DesktopListenTogether.State) {
 private fun ActivityCard(entries: List<PartyActivity>) {
     val clock = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
     Column(Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(24.dp)).padding(18.dp)) {
-        Text("ACTIVITY", color = DesktopSecondary, style = MaterialTheme.typography.labelSmall)
-        Spacer(Modifier.height(8.dp))
+        CardTitle("Activity")
         entries.take(8).forEach { entry ->
             Text(
                 "${clock.format(Date(entry.atMs))}  ${entry.by}: ${entry.detail.ifBlank { entry.action }}",
@@ -693,25 +717,39 @@ private fun ActivityCard(entries: List<PartyActivity>) {
 }
 
 @Composable
-private fun MemberRow(member: PartyMember, isYou: Boolean, canKick: Boolean, onKick: () -> Unit) {
+private fun MemberRow(member: PartyMember, devices: List<PartyMember>, isYou: Boolean, canKick: Boolean, onKick: () -> Unit) {
     Row(Modifier.fillMaxWidth().padding(vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
         PartyAvatar(member.avatarUrl, 34, member.displayName)
-        Spacer(Modifier.width(10.dp))
+        Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text(member.displayName.ifBlank { "Someone" } + if (isYou) " · You" else "", maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(
-                when { member.isHost -> "Host"; !member.connected -> "Away"; else -> "Connected" } +
-                    if (member.playsAudio) "" else " · through the host",
-                color = DesktopSecondary,
-                style = MaterialTheme.typography.bodySmall,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    member.displayName.ifBlank { "Someone" },
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                if (isYou) { Spacer(Modifier.width(8.dp)); Tag("You") }
+                if (!member.playsAudio) {
+                    Spacer(Modifier.width(8.dp))
+                    Icon(Icons.Rounded.VolumeOff, "Not playing on this device", tint = DesktopSecondary, modifier = Modifier.size(16.dp))
+                }
+            }
+            // "Away" rather than offline: the seat is still theirs while a connection comes back.
+            val line = when {
+                !member.connected -> "Away"
+                devices.size > 1 -> devices.joinToString(" · ") { it.deviceName.ifBlank { it.displayName } }
+                else -> null
+            }
+            if (line != null) {
+                Text(line, color = DesktopSecondary, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
         }
-        if (!member.playsAudio) {
-            Icon(Icons.Rounded.VolumeOff, "Not playing on this device", tint = DesktopSecondary, modifier = Modifier.size(16.dp))
-            Spacer(Modifier.width(8.dp))
-        }
-        if (canKick) IconButton(onClick = onKick, modifier = Modifier.size(30.dp)) {
-            Icon(Icons.Rounded.RemoveCircleOutline, "Remove", tint = DesktopDestructive, modifier = Modifier.size(18.dp))
+        if (member.isHost) {
+            Tag("Host")
+        } else if (canKick) {
+            TextButton(onClick = onKick) { Text("Remove", color = DesktopDestructive) }
         }
     }
 }
