@@ -8,6 +8,10 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -86,6 +90,57 @@ internal fun ConnectSheet(
     onJoinParty: () -> Unit = onOpenParty,
     modifier: Modifier = Modifier,
 ) {
+    PlayerDrawer(
+        hazeState = hazeState,
+        title = stringResource(Res.string.connect_title),
+        onDismiss = onDismiss,
+        modifier = modifier,
+    ) {
+        ConnectContent(onDismiss, onOpenParty, onStartParty, onJoinParty)
+    }
+}
+
+/**
+ * The same Connect, as a panel hung under a button in the desktop's top bar instead of a drawer
+ * rising over the player: a computer has a pointer and room, so the devices are one click from
+ * wherever the person is, without opening the player first.
+ */
+@Composable
+fun ConnectPopover(
+    onDismiss: () -> Unit,
+    onOpenParty: () -> Unit,
+    onStartParty: () -> Unit = onOpenParty,
+    onJoinParty: () -> Unit = onOpenParty,
+) {
+    val shape = RoundedCornerShape(18.dp)
+    Column(
+        Modifier
+            .width(400.dp)
+            .heightIn(max = 620.dp)
+            .shadow(24.dp, shape)
+            .clip(shape)
+            .background(Color(0xFF1C1C20))
+            .border(1.dp, Color.White.copy(alpha = 0.10f), shape)
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+    ) {
+        Text(
+            text = stringResource(Res.string.connect_title),
+            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+            color = Color.White,
+        )
+        Spacer(Modifier.height(12.dp))
+        ConnectContent(onDismiss, onOpenParty, onStartParty, onJoinParty)
+    }
+}
+
+@Composable
+internal fun ConnectContent(
+    onDismiss: () -> Unit,
+    onOpenParty: () -> Unit,
+    onStartParty: () -> Unit,
+    onJoinParty: () -> Unit,
+) {
     val host = PlayerPlatform.host
     val account by host.devices.collectAsStateWithLifecycle()
     val party by host.party.collectAsStateWithLifecycle()
@@ -113,12 +168,7 @@ internal fun ConnectSheet(
         }
     }
 
-    PlayerDrawer(
-        hazeState = hazeState,
-        title = stringResource(Res.string.connect_title),
-        onDismiss = onDismiss,
-        modifier = modifier,
-    ) {
+    run {
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             account.soundingDevice?.let { SoundingCard(it, isSelf = it.deviceId == account.selfId) }
 

@@ -693,6 +693,8 @@ fun BitChordDesktopApp() {
     var likedSyncJob by remember { mutableStateOf<Job?>(null) }
     var dislikedIds by remember { mutableStateOf(persistence.dislikedIds()) }
     val overlays = remember { DesktopOverlays() }
+    // The top bar's Connect button opens the party page through this; the bar has no overlays of its own.
+    DesktopPlayerHost.openListenTogether = { overlays.nowPlaying = false; overlays.listenTogether = true }
     var downloads by remember { mutableStateOf(persistence.downloads()) }
     var localSongs by remember { mutableStateOf<List<Song>>(emptyList()) }
     val downloadQueue by DesktopDownloadQueue.active.collectAsState()
@@ -5422,6 +5424,7 @@ private fun DesktopTopBar(
                         modifier = Modifier.width(78.dp),
                     )
                     Spacer(Modifier.width(5.dp))
+                    DesktopConnectButton()
                     DesktopToolbarButton(onClick = onOpenAudioOutput, size = 32.dp) {
                         Icon(
                             Icons.Rounded.Headphones,
@@ -5819,6 +5822,7 @@ private fun DesktopPlayerCapsule(
                         modifier = Modifier.size(17.dp),
                     )
                 }
+                DesktopConnectButton()
 
                 // Volume control with expandable hover slider without gray wash
                 Row(

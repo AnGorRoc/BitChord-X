@@ -2062,7 +2062,9 @@ fun NowPlayingScreen(
                         ) {
                             OutputCaption(
                                 accountName = accountName,
-                                onOpenOutput = openAudioOutput,
+                                // Connect holds this device as well as the others, so it is where the
+                                // line under the controls leads, whoever the sound is coming from.
+                                onOpenOutput = openListenTogetherMembers,
                                 onOpenMembers = openListenTogetherMembers,
                             )
                         }
