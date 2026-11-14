@@ -189,4 +189,6 @@
     <string name="device_notice_party_on">La fiesta ahora suena en %1$s</string>
     <string name="device_notice_party_on_generic">La fiesta ahora suena en el otro dispositivo</string>
     <string name="device_notice_party_here_again">La fiesta vuelve a sonar en este dispositivo</string>
+    <string name="d_autoplay">Reproducción automática</string>
+    <string name="d_on">Activado</string>
 </resources>

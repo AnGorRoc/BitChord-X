@@ -65,6 +65,7 @@ import com.music.bitchord.ui.LyricsProviderState
 import com.music.bitchord.data.lyrics.LyricsSource
 import com.music.bitchord.ui.player.LyricsSidePanel
 import com.music.bitchord.ui.player.NowPlayingScreen
+import com.music.bitchord.ui.player.PlayerPanel
 import com.music.bitchord.ui.player.QueueSidePanel
 import com.music.bitchord.ui.player.PlayerBack
 import com.music.bitchord.ui.player.RepeatModes
@@ -3553,7 +3554,7 @@ fun BitChordDesktopApp() {
     // The player's own overflow (volume, the lyrics/output/queue row, the lyric
     // footer), raised from the song menu's "More…" and drawn by the shared
     // player. Held here so the desktop song menu can open it.
-    val playerOverflowOpen = remember(selectedSong?.videoId) { mutableStateOf(false) }
+    val playerPanelRequest = remember(selectedSong?.videoId) { mutableStateOf<PlayerPanel?>(null) }
     // Requests the song menu sends the player (switch lyrics/queue, translate),
     // flipped here and consumed by it, and the player's state mirrored back so the
     // menu's rows say what is on screen. Not keyed to the track: the player's own
@@ -4160,7 +4161,7 @@ fun BitChordDesktopApp() {
                             onDismissLyricsOffset = {},
                             windowWidth = windowWidth,
                             windowHeight = windowHeight,
-                            playerOverflowOpen = playerOverflowOpen,
+                            playerPanelRequest = playerPanelRequest,
                             playerQueueToggle = playerQueueToggle,
                             playerQueueShowing = playerQueueShowing,
                             playerMenuAnchor = playerMenuAnchor,
@@ -4215,9 +4216,18 @@ fun BitChordDesktopApp() {
                                         DesktopOriginalVersion.clear(current.videoId)
                                         playbackEngine.reloadCurrent(forceSourceRefresh = true)
                                     }.takeIf { DesktopOriginalVersion.isPinned(current.videoId) },
-                                    onMore = {
+                                    onAudioOutput = {
                                         playerMenuOpen = false
-                                        playerOverflowOpen.value = true
+                                        playerPanelRequest.value = PlayerPanel.OUTPUT
+                                    },
+                                    onConnect = {
+                                        playerMenuOpen = false
+                                        playerPanelRequest.value = PlayerPanel.CONNECT
+                                    },
+                                    autoplayEnabled = autoplay,
+                                    onToggleAutoplay = {
+                                        autoplay = !autoplay
+                                        persistence.saveBoolean("autoplay", autoplay)
                                     },
                                     onSwitchLyricsQueue = {
                                         playerMenuOpen = false

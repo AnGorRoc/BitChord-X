@@ -15,6 +15,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Window
@@ -259,6 +260,8 @@ private fun desktopMain() = application {
         CompositionLocalProvider(
             LocalDesktopWindowActions provides actions,
             LocalDesktopWindowScope provides this,
+            com.music.bitchord.ui.player.LocalFloatingPanelSurface provides
+                Modifier.desktopBarGlass(androidx.compose.foundation.shape.RoundedCornerShape(20.dp), tintAlpha = FLOATING_GLASS_TINT),
         ) {
             BitChordDesktopApp()
         }

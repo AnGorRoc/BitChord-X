@@ -8,6 +8,7 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -90,15 +91,41 @@ internal fun ConnectSheet(
     onJoinParty: () -> Unit = onOpenParty,
     modifier: Modifier = Modifier,
 ) {
-    PlayerDrawer(
-        hazeState = hazeState,
-        title = stringResource(Res.string.connect_title),
-        onDismiss = onDismiss,
-        modifier = modifier,
+    // Not the phone's drawer glued to the bottom edge: a floating card in the app's own glass, lifted
+    // off the edge by the same air the mini player keeps, over a light scrim that closes it.
+    val none = remember { MutableInteractionSource() }
+    Box(
+        modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = 0.28f))
+            .clickable(interactionSource = none, indication = null, onClick = onDismiss),
+        contentAlignment = Alignment.BottomCenter,
     ) {
-        ConnectContent(onDismiss, onOpenParty, onStartParty, onJoinParty)
+        Box(
+            Modifier
+                .padding(bottom = FLOATING_PANEL_GAP)
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = {}),
+        ) {
+            ConnectPopover(
+                // Over the player's moving lyrics the glass alone lets the words read through the panel, so it
+                // sits on a dense backing.
+                surface = Modifier.background(Color(0xFF141417).copy(alpha = 0.92f)).then(LocalFloatingPanelSurface.current),
+                onDismiss = onDismiss,
+                onOpenParty = onOpenParty,
+                onStartParty = onStartParty,
+                onJoinParty = onJoinParty,
+            )
+        }
     }
 }
+
+/** The material the desktop's floating panels (menus, Connect) are made of; the window supplies the glass. */
+val LocalFloatingPanelSurface = androidx.compose.runtime.compositionLocalOf<Modifier> {
+    Modifier.background(Color(0xFF1C1C20)).border(1.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(20.dp))
+}
+
+/** Air between a floating panel and the window edge, the same as around the mini player. */
+val FLOATING_PANEL_GAP = 20.dp
 
 /**
  * The same Connect, as a panel hung under a button in the desktop's top bar instead of a drawer
@@ -107,20 +134,20 @@ internal fun ConnectSheet(
  */
 @Composable
 fun ConnectPopover(
+    /** The panel's own material (fill and edge); the caller supplies the app's glass. */
+    surface: Modifier = Modifier.background(Color(0xFF1C1C20)).border(1.dp, Color.White.copy(alpha = 0.10f), RoundedCornerShape(20.dp)),
     onDismiss: () -> Unit,
     onOpenParty: () -> Unit,
     onStartParty: () -> Unit = onOpenParty,
     onJoinParty: () -> Unit = onOpenParty,
 ) {
-    val shape = RoundedCornerShape(18.dp)
+    val shape = RoundedCornerShape(20.dp)
     Column(
         Modifier
             .width(400.dp)
             .heightIn(max = 620.dp)
-            .shadow(24.dp, shape)
             .clip(shape)
-            .background(Color(0xFF1C1C20))
-            .border(1.dp, Color.White.copy(alpha = 0.10f), shape)
+            .then(surface)
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
     ) {

@@ -758,7 +758,8 @@ fun NowPlayingScreen(
      * menu's "More…" — is open. Handed in so a host whose song menu lives
      * outside this screen can raise it; left null the player owns the state.
      */
-    playerOverflowOpen: MutableState<Boolean>? = null,
+    /** The song menu asks the player for one of its panels; taken (and cleared) here. */
+    playerPanelRequest: MutableState<PlayerPanel?>? = null,
     /**
      * Set true by a host whose song menu switches the content column between the
      * lyric sheet and the queue. Read, acted on and cleared here. Whether the queue
@@ -822,7 +823,7 @@ fun NowPlayingScreen(
     // On a desktop window the volume bar, the lyrics/output/queue action row
     // and the lyric sheet's footer are folded behind a single overflow glyph,
     // so the sleeve, the transport and the words are all the player shows.
-    val playerOverflow = playerOverflowOpen ?: remember { mutableStateOf(false) }
+    val panelRequest = playerPanelRequest ?: remember { mutableStateOf<PlayerPanel?>(null) }
     // Gated on the Bluetooth permission the first time — see [rememberOutputPicker].
     val openAudioOutput = rememberOutputPicker { showAudioOutput = true }
     // Listening in a party whose host has taken the controls: the transport
@@ -834,6 +835,15 @@ fun NowPlayingScreen(
     // to show, so the pill and the caption fall back to [onListenTogether]
     // itself (create/join) when there isn't one.
     val openListenTogetherMembers: () -> Unit = { showListenTogetherMembers = true }
+    // The song menu's "Audio output" and "Connect" rows.
+    LaunchedEffect(panelRequest.value) {
+        when (panelRequest.value) {
+            PlayerPanel.OUTPUT -> openAudioOutput()
+            PlayerPanel.CONNECT -> openListenTogetherMembers()
+            null -> return@LaunchedEffect
+        }
+        panelRequest.value = null
+    }
 
     val syncedLyricsEnabled by PlayerSettings.syncedLyrics.collectAsStateWithLifecycle()
     val lyricAboveScrubber by PlayerSettings.lyricAboveScrubber.collectAsStateWithLifecycle()
@@ -1664,91 +1674,6 @@ fun NowPlayingScreen(
             )
         }
         MixViewOverlay(hazeState = playerHaze)
-        if (playerOverflow.value) {
-            PlayerDrawer(
-                hazeState = playerHaze,
-                title = stringResource(Res.string.more),
-                onDismiss = { playerOverflow.value = false },
-            ) {
-                PlayerActionRow(
-                    lyricsOpen = lyricsOpen,
-                    queueOpen = queueOpen,
-                    shuffleEnabled = shuffleEnabled,
-                    repeatMode = repeatMode,
-                    autoplayEnabled = autoplayEnabled,
-                    onToggleLyrics = { toggleLyrics(); playerOverflow.value = false },
-                    onToggleQueue = { toggleQueue(); playerOverflow.value = false },
-                    onToggleShuffle = onToggleShuffle,
-                    onCycleRepeat = onCycleRepeat,
-                    onToggleAutoplay = onToggleAutoplay,
-                    // Each of these leaves the drawer: the party page closes the
-                    // player, and the host holds this flag, so a drawer left up
-                    // would greet the next opening of the player.
-                    onOpenOutput = { playerOverflow.value = false; openAudioOutput() },
-                    onListenTogether = { playerOverflow.value = false; onListenTogether() },
-                    onOpenListenTogetherMembers = {
-                        playerOverflow.value = false
-                        openListenTogetherMembers()
-                    },
-                    // Lyrics and queue are one row on the song menu now, not
-                    // glyphs here; this drawer keeps the two capsules.
-                    showLyricsAndQueue = false,
-                )
-                if (!hideVolumeBar) {
-                    Spacer(Modifier.height(20.dp))
-                    VolumeRow(
-                        value = { volume.level.value },
-                        onValueChange = onVolumeChange,
-                        onValueChangeFinished = onVolumeChangeFinished,
-                    )
-                }
-                Spacer(Modifier.height(20.dp))
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    val hasLyrics = lyricsTranslation.displayedLyrics.isNotEmpty()
-                    Box(Modifier.size(34.dp)) {
-                        if (hasLyrics) {
-                            RomanizationToggleButton(
-                                state = lyricsTranslation.romanizationState,
-                                showingRomanization = lyricsTranslation.showingRomanization,
-                                enabled = !lyrics.isNullOrEmpty(),
-                                onClick = lyricsTranslation.toggleRomanization,
-                            )
-                        }
-                    }
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(horizontal = 12.dp),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        LyricsStatusWithChange(
-                            status = lyricsTranslation.status,
-                            onStatusClick = {
-                                playerOverflow.value = false
-                                showLyricsProviders = true
-                            },
-                        )
-                    }
-                    Box(Modifier.size(34.dp)) {
-                        // The desktop player shows this toggle as a row on its own
-                        // song menu now, so it drops out of this overflow there; a
-                        // host that raised our overflow (playerOverflowOpen != null)
-                        // is that player. The phone path, which has no such row, keeps it.
-                        if (hasLyrics && playerOverflowOpen == null) {
-                            TranslationToggleButton(
-                                state = lyricsTranslation.translationState,
-                                showingTranslation = lyricsTranslation.showingTranslation,
-                                enabled = !lyrics.isNullOrEmpty(),
-                                onClick = lyricsTranslation.toggleTranslation,
-                            )
-                        }
-                    }
-                }
-            }
-        }
     }
 
     // A landscape window — a tablet, or a phone on its side — takes an entirely
