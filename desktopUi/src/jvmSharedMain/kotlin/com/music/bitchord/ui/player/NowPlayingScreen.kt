@@ -760,6 +760,8 @@ fun NowPlayingScreen(
      */
     /** The song menu asks the player for one of its panels; taken (and cleared) here. */
     playerPanelRequest: MutableState<PlayerPanel?>? = null,
+    /** The player's blur source, when the host needs panels outside this screen to blur the same backdrop. */
+    playerHazeState: HazeState? = null,
     /**
      * Set true by a host whose song menu switches the content column between the
      * lyric sheet and the queue. Read, acted on and cleared here. Whether the queue
@@ -815,7 +817,7 @@ fun NowPlayingScreen(
     // Kept local to the player: a modal player is not in the page's Haze
     // source tree, so it needs its own source for the same frosted material as
     // the bottom navigation pill.
-    val playerHaze = remember { HazeState() }
+    val playerHaze = playerHazeState ?: remember { HazeState() }
     var showAudioPipeline by remember { mutableStateOf(false) }
     var showCast by remember { mutableStateOf(false) }
     var showAudioOutput by remember { mutableStateOf(false) }

@@ -400,7 +400,10 @@ internal val DesktopGlassStrong = Color(0xCC0D0D0F)
 private val DesktopBarGlass = Color(0xB324242A)
 
 /** The backdrop the floating bars blur. */
-private val LocalDesktopHaze = staticCompositionLocalOf<HazeState?> { null }
+internal val LocalDesktopHaze = staticCompositionLocalOf<HazeState?> { null }
+
+/** The full player's own blur source (its blurred cover and lyrics); panels opened from it blur that, not the page. */
+internal val DesktopPlayerHaze = HazeState()
 
 /** How much a page's scrollable should keep clear of the floating bars. */
 private val LocalDesktopBottomInset = staticCompositionLocalOf { 0.dp }
@@ -4174,6 +4177,7 @@ fun BitChordDesktopApp() {
                             windowWidth = windowWidth,
                             windowHeight = windowHeight,
                             playerPanelRequest = playerPanelRequest,
+                            playerHazeState = DesktopPlayerHaze,
                             playerQueueToggle = playerQueueToggle,
                             playerQueueShowing = playerQueueShowing,
                             playerMenuAnchor = playerMenuAnchor,
@@ -9393,11 +9397,7 @@ internal fun Modifier.desktopBarGlass(
  */
 @Composable
 internal fun Modifier.desktopPlayerGlass(shape: Shape): Modifier {
-    // Over the full player the page's blur samples nothing of what is actually behind (the player's artwork
-    // and lyrics are not in it), so the glass alone would show that UI through the panel.
-    // The same glass as everywhere, with a backing under it so the player's UI cannot be seen through.
-    val base = if (LocalOverPlayer.current) background(Color(0xFF16161C).copy(alpha = 0.94f)) else this
-    return base.desktopBarGlass(shape = shape, tintAlpha = 0.25f, opaque = Color(0x5216161C), borderAlpha = 0.10f)
+    return desktopBarGlass(shape = shape, tintAlpha = 0.25f, opaque = Color(0x5216161C), borderAlpha = 0.10f)
 }
 
 /** Whether the composition is inside the full player, whose panels need a backing under the glass. */
