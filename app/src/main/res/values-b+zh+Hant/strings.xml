@@ -1627,4 +1627,27 @@
     <string name="device_accepts_control">允許我的其他裝置控制此裝置</string>
     <string name="device_accepts_control_subtitle">你的其他裝置可以在此播放、暫停並傳送音樂</string>
     <string name="mini_player_playing_on">正在 %1$s 上播放</string>
+    <string name="device_notice_playing_on">正在 %1$s 上播放</string>
+    <string name="device_notice_playing_on_generic">正在另一台裝置上播放</string>
+    <string name="device_notice_controlling">正在控制 %1$s</string>
+    <string name="device_notice_controlling_generic">正在控制另一台裝置</string>
+    <string name="device_notice_brought_here">已將 %1$s 的音樂移到這裡</string>
+    <string name="device_notice_brought_here_generic">已將音樂移到這裡</string>
+    <string name="device_notice_back_here">已回到此裝置</string>
+    <string name="device_notice_party_on">派對現在在 %1$s 上播放</string>
+    <string name="device_notice_party_on_generic">派對現在在另一台裝置上播放</string>
+    <string name="device_notice_party_here_again">派對重新在此裝置上播放</string>
+    <string name="listen_together_msg_created">派對已開始 · 代碼 %1$s</string>
+    <string name="listen_together_msg_joined">你已加入派對</string>
+    <string name="listen_together_msg_joined_host">你已加入 %1$s 的派對</string>
+    <string name="listen_together_msg_left">你已離開派對</string>
+    <string name="listen_together_people">成員</string>
+    <string name="listen_together_room_settings">房間設定</string>
+    <string name="listen_together_code_hint_short">告訴大家這組代碼，或分享連結</string>
+    <string name="listen_together_show_qr">顯示 QR 碼</string>
+    <string name="listen_together_hide_qr">隱藏 QR 碼</string>
+    <string name="listen_together_copy_link">複製連結</string>
+    <plurals name="listen_together_people_count">
+        <item quantity="other">%1$d 人正在收聽</item>
+    </plurals>
 </resources>

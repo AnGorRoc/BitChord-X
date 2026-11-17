@@ -1647,4 +1647,28 @@
     <string name="device_accepts_control">Meinen anderen Geräten erlauben, dieses zu steuern</string>
     <string name="device_accepts_control_subtitle">Deine anderen Geräte können abspielen, pausieren und Musik hierher senden</string>
     <string name="mini_player_playing_on">Wiedergabe auf %1$s</string>
+    <string name="device_notice_playing_on">Läuft jetzt auf %1$s</string>
+    <string name="device_notice_playing_on_generic">Läuft jetzt auf dem anderen Gerät</string>
+    <string name="device_notice_controlling">Steuert %1$s</string>
+    <string name="device_notice_controlling_generic">Steuert das andere Gerät</string>
+    <string name="device_notice_brought_here">Die Musik von %1$s läuft jetzt hier</string>
+    <string name="device_notice_brought_here_generic">Die Musik läuft jetzt hier</string>
+    <string name="device_notice_back_here">Wieder auf diesem Gerät</string>
+    <string name="device_notice_party_on">Die Party läuft jetzt auf %1$s</string>
+    <string name="device_notice_party_on_generic">Die Party läuft jetzt auf dem anderen Gerät</string>
+    <string name="device_notice_party_here_again">Die Party läuft wieder auf diesem Gerät</string>
+    <string name="listen_together_msg_created">Party gestartet · Code %1$s</string>
+    <string name="listen_together_msg_joined">Du bist der Party beigetreten</string>
+    <string name="listen_together_msg_joined_host">Du bist der Party von %1$s beigetreten</string>
+    <string name="listen_together_msg_left">Du hast die Party verlassen</string>
+    <string name="listen_together_people">Personen</string>
+    <string name="listen_together_room_settings">Raumeinstellungen</string>
+    <string name="listen_together_code_hint_short">Sag den Leuten diesen Code oder teile den Link</string>
+    <string name="listen_together_show_qr">QR-Code anzeigen</string>
+    <string name="listen_together_hide_qr">QR-Code ausblenden</string>
+    <string name="listen_together_copy_link">Link kopieren</string>
+    <plurals name="listen_together_people_count">
+        <item quantity="one">%1$d Person hört zu</item>
+        <item quantity="other">%1$d Personen hören zu</item>
+    </plurals>
 </resources>

@@ -1647,4 +1647,28 @@
     <string name="device_accepts_control">मेरे दूसरे डिवाइस को इसे कंट्रोल करने दें</string>
     <string name="device_accepts_control_subtitle">आपके दूसरे डिवाइस यहाँ संगीत चला सकते हैं, रोक सकते हैं और भेज सकते हैं</string>
     <string name="mini_player_playing_on">%1$s पर चल रहा है</string>
+    <string name="device_notice_playing_on">अब %1$s पर चल रहा है</string>
+    <string name="device_notice_playing_on_generic">अब दूसरे डिवाइस पर चल रहा है</string>
+    <string name="device_notice_controlling">%1$s को नियंत्रित कर रहे हैं</string>
+    <string name="device_notice_controlling_generic">दूसरे डिवाइस को नियंत्रित कर रहे हैं</string>
+    <string name="device_notice_brought_here">%1$s का संगीत अब यहाँ चल रहा है</string>
+    <string name="device_notice_brought_here_generic">संगीत अब यहाँ चल रहा है</string>
+    <string name="device_notice_back_here">वापस इस डिवाइस पर</string>
+    <string name="device_notice_party_on">पार्टी अब %1$s पर चल रही है</string>
+    <string name="device_notice_party_on_generic">पार्टी अब दूसरे डिवाइस पर चल रही है</string>
+    <string name="device_notice_party_here_again">पार्टी फिर से इस डिवाइस पर चल रही है</string>
+    <string name="listen_together_msg_created">पार्टी शुरू हुई · कोड %1$s</string>
+    <string name="listen_together_msg_joined">आप पार्टी में शामिल हो गए</string>
+    <string name="listen_together_msg_joined_host">आप %1$s की पार्टी में शामिल हो गए</string>
+    <string name="listen_together_msg_left">आपने पार्टी छोड़ दी</string>
+    <string name="listen_together_people">लोग</string>
+    <string name="listen_together_room_settings">रूम सेटिंग्स</string>
+    <string name="listen_together_code_hint_short">लोगों को यह कोड बताएँ, या लिंक शेयर करें</string>
+    <string name="listen_together_show_qr">QR कोड दिखाएँ</string>
+    <string name="listen_together_hide_qr">QR कोड छिपाएँ</string>
+    <string name="listen_together_copy_link">लिंक कॉपी करें</string>
+    <plurals name="listen_together_people_count">
+        <item quantity="one">%1$d व्यक्ति सुन रहा है</item>
+        <item quantity="other">%1$d लोग सुन रहे हैं</item>
+    </plurals>
 </resources>
