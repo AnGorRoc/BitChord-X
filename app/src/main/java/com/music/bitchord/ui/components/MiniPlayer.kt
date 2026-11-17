@@ -1,6 +1,7 @@
 package com.music.bitchord.ui.components
 
 import com.music.bitchord.R
+import com.music.bitchord.data.listentogether.ListenTogether
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -461,8 +462,14 @@ fun MiniPlayer(
                     badgeColor = MaterialTheme.colorScheme.onSurfaceVariant,
                     fadeOverflow = true,
                 )
+                // While another of the person's devices is the speaker, the bar says so first.
+                val remoteName = ListenTogether.account.state.collectAsStateWithLifecycle().value.controlled?.name
                 FadingLine(
-                    text = song.artist,
+                    text = if (remoteName != null) {
+                        stringResource(R.string.mini_player_playing_on, remoteName) + " · " + song.artist
+                    } else {
+                        song.artist
+                    },
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )

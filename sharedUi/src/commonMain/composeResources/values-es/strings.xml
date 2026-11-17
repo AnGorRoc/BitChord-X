@@ -47,6 +47,19 @@
     <string name="connect_nothing_playing">Nada sonando</string>
     <string name="connect_away">Visto fuera de línea</string>
     <string name="connect_controlling">Controlando este dispositivo</string>
+    <string name="connect_controlled_by">Controlado por %1$s</string>
+    <string name="connect_controlling_device">Controlando %1$s</string>
+    <string name="connect_in_party">En una party</string>
+    <string name="connect_paused">En pausa · %1$s</string>
+    <string name="connect_away_now">Visto hace un momento</string>
+    <string name="connect_away_minutes">Visto hace %1$d min</string>
+    <string name="connect_away_hours">Visto hace %1$d h</string>
+    <string name="connect_connecting">Conectando con tus dispositivos…</string>
+    <string name="connect_connecting_to">Conectando…</string>
+    <string name="connect_not_reachable">Abre BitChord ahí primero</string>
+    <string name="connect_no_control">No permite que lo controlen</string>
+    <string name="connect_signed_out">Inicia sesión y conéctate para ver aquí tus otros dispositivos.</string>
+    <string name="connect_playing_on">Reproduciendo en %1$s</string>
     <string name="connect_no_devices">Abre BitChord con tu cuenta en otro dispositivo y aparecerá aquí.</string>
     <string name="connect_unsupported">Este servidor de parties no conecta tus dispositivos.</string>
     <string name="connect_send_mine">Enviar mi música aquí</string>
@@ -56,7 +69,7 @@
     <string name="connect_start_party">Iniciar party</string>
     <string name="connect_join_party">Unirse</string>
     <string name="connect_view_party">Ver party</string>
-    <string name="connect_settings">Ajustes de Listen Together</string>
+    <string name="connect_in_party_of">En la party de %1$s</string>
     <string name="listen_together_open">Escuchar juntos</string>
     <string name="listen_together_open_count">Escuchando juntos · %1$d</string>
     <string name="listen_together_you">Tú</string>
@@ -322,4 +335,6 @@
     <string name="browse_all_title">Explorar todo</string>
     <string name="browse_all_subtitle">Géneros, estados de ánimo y más</string>
     <string name="nothing_to_explore">No hay canciones disponibles para esta región</string>
+    <string name="connect_join_with_code">Unirme con código</string>
+    <string name="connect_sounding_label">Sonando en</string>
 </resources>

@@ -308,13 +308,18 @@ internal object DesktopListenTogether {
         code: String,
         nickname: String = nickname(),
         server: String? = null,
+        /** The party was handed over by another of the person's devices, which is the one way in that the same-account refusal does not apply to. */
+        fromOwnDevice: Boolean = false,
     ): Result<String> {
         val trimmed = cleanCode(code)
         if (trimmed.length != CODE_LENGTH) {
             return Result.failure(PartyException("bad_code", "A party code is six letters or digits."))
         }
         val target = server?.let(PartyServers::normalize)?.ifBlank { null }
-        return runCatching { refuseIfRecentlyKicked(trimmed) }.fold(
+        return runCatching {
+            refuseIfRecentlyKicked(trimmed)
+            if (!fromOwnDevice) refuseIfOnMyOtherDevice(trimmed)
+        }.fold(
             onSuccess = {
                 enter(nickname, target) { who, server ->
                     post(
@@ -473,6 +478,13 @@ internal object DesktopListenTogether {
      */
     val listenHere: StateFlow<Boolean> = _listenHere.asStateFlow()
 
+    /**
+     * Whether a party is what this computer's player follows right now. While it is, the party
+     * keeps the player where it says, so another of the person's devices handing it music or
+     * taking its sound would be undone at once.
+     */
+    fun partyOwnsPlayer(): Boolean = _state.value.inParty && _listenHere.value
+
     private val featureCache = java.util.concurrent.ConcurrentHashMap<String, Set<String>>()
 
     /** What the server holding the current party supports; empty for the original server. */
@@ -493,6 +505,9 @@ internal object DesktopListenTogether {
      * Chooses whether sound plays on this computer. The choice always applies here; it is only
      * *announced* to the party (the speaker icon beside the name) on a server that understands it.
      */
+    /** The party server this computer's party is on, or null when it is in none. */
+    fun activeServer(): String? = activePartyServerBase
+
     fun setListenHere(enabled: Boolean) {
         _listenHere.value = enabled
         announceListening()
@@ -515,12 +530,17 @@ internal object DesktopListenTogether {
      * handing the sound around. Runs for as long as the app does; a server without the channel
      * makes it settle into UNSUPPORTED by itself. See [AccountDevices].
      */
+    /** Tells the person's other devices which party this computer is in. Started once, with the account. */
+    fun mirrorPartyToAccount() {
+        scope.launch { _state.collect { account.setParty(it.code) } }
+    }
+
     val account: AccountDevices by lazy {
         AccountDevices(
             http = http,
             scope = scope,
             serverBase = { resolveIdleServer().takeIf { it.isNotBlank() }?.let(::httpBaseOf) },
-            proof = { accountProof() },
+            proof = { base -> accountProof(DeviceGroup.ProofUse.ACCOUNT, base) },
             self = { DeviceSelf(deviceId(), deviceName(), "computer") },
         )
     }
@@ -547,16 +567,38 @@ internal object DesktopListenTogether {
      * The proof this account's devices share, or null when it cannot be had now. Made on first use
      * and remembered, so the library is asked once per account.
      */
-    private suspend fun accountProof(): String? {
+    private suspend fun accountProof(use: DeviceGroup.ProofUse, serverBase: String): String? {
         // A test seam: a development run can be put in an account by environment, without a Google
         // sign-in. An ordinary run never has it set.
-        System.getenv("BITCHORD_DEBUG_ACCOUNT_PROOF")?.takeIf { it.length == 64 }?.let { return it }
-        val who = identity() ?: return null
+        System.getenv("BITCHORD_DEBUG_ACCOUNT_PROOF")?.takeIf { it.length == 64 }?.let { return DeviceGroup.proofFor(it, use, serverBase) }
+        val who = signedInIdentity() ?: return null
         val key = KEY_ACCOUNT_SECRET + who.userId
-        val secret = persistence.string(key).takeIf { it.isNotBlank() }
-            ?: DeviceGroup.ensureSecret().getOrNull()?.also { persistence.saveString(key, it) }
-            ?: return null
-        return DeviceGroup.groupId(secret)
+        persistence.string(key).takeIf { it.isNotBlank() }?.let { cached ->
+            // Remembered, but a secret from the first start can be the loser of a race with another
+            // device that made its own at the same moment; the library settles that (the smallest
+            // token wins), so it is looked at once per run and followed if it differs.
+            if (secretsChecked.add(key)) scope.launch { recheckSecret(key, cached) }
+            return DeviceGroup.proofFor(cached, use, serverBase)
+        }
+        val secret = DeviceGroup.ensureSecret().getOrNull()?.also {
+            persistence.saveString(key, it)
+            secretsChecked.add(key)
+        } ?: return null
+        return DeviceGroup.proofFor(secret, use, serverBase)
+    }
+
+    private val secretsChecked = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
+
+    private suspend fun recheckSecret(key: String, cached: String) {
+        val settled = DeviceGroup.ensureSecret().getOrNull()
+        if (settled == null) {
+            secretsChecked.remove(key) // not reachable now; look again next time
+            return
+        }
+        if (settled != cached) {
+            persistence.saveString(key, settled)
+            account.restart()
+        }
     }
 
     /**
@@ -836,7 +878,21 @@ internal object DesktopListenTogether {
      * A party is joined as an account: the id is derived from the signed-in account and profile so
      * the server never sees either, and a device with no session has nothing to identify itself by.
      */
-    private fun identity(nickname: String = nickname()): Identity? {
+    private fun identity(nickname: String = nickname()): Identity? =
+        signedInIdentity(nickname) ?: guestIdentity(nickname)
+
+    /** Somebody without an account is still somebody: an id from this install and the name they chose. */
+    private fun guestIdentity(nickname: String): Identity {
+        val device = deviceId()
+        return Identity(
+            userId = "guest-" + sha256("guest:$device").take(32),
+            deviceId = device,
+            name = nickname.trim().takeIf { it.isNotBlank() } ?: "Guest",
+            avatar = null,
+        )
+    }
+
+    private fun signedInIdentity(nickname: String = nickname()): Identity? {
         if (!DesktopYouTubeAuth.isSignedIn) return null
         val accountId = DesktopAccounts.activeAccountId() ?: return null
         val account = DesktopAccounts.accounts().firstOrNull { it.accountId == accountId } ?: return null
@@ -880,6 +936,7 @@ internal object DesktopListenTogether {
         }
         runCatching {
             refuseIfRecentlyKicked(cleaned)
+            refuseIfOnMyOtherDevice(cleaned)
             val base = server?.let(PartyServers::normalize)?.ifBlank { null } ?: resolveIdleServer()
             if (base.isBlank()) throw PartyException("no_server", "Set the party server address first.")
             val response = http.get("$base/api/parties/$cleaned/preview")
@@ -1028,6 +1085,18 @@ internal object DesktopListenTogether {
                 "Couldn't let you in — you've recently been removed from this party.",
             )
         }
+    }
+
+    /** See the phone's twin: one of the person's own devices already in the party is their seat. */
+    private fun refuseIfOnMyOtherDevice(code: String) {
+        val clean = cleanCode(code)
+        val own = account.state.value.others.firstOrNull {
+            it.connected && it.partyCode.equals(clean, ignoreCase = true)
+        } ?: return
+        throw PartyException(
+            "already_on_your_device",
+            "You're already in this party on “${own.name}”, one of your own devices.",
+        )
     }
 
     /**

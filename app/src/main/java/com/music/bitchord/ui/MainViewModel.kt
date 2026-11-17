@@ -15,6 +15,7 @@ import com.music.bitchord.data.AppUpdateChecker
 import com.music.bitchord.data.LocalMediaRepository
 import com.music.bitchord.data.LikeState
 import com.music.bitchord.data.YtMusicRepository
+import com.music.bitchord.data.listentogether.DeviceGroup
 import com.music.bitchord.data.TopPicks
 import com.music.bitchord.data.FeedCache
 import com.music.bitchord.data.AppleArtistPhotos
@@ -1028,7 +1029,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private fun editPlaylistShelf(edit: (List<ShelfItem>) -> List<ShelfItem>) {
         val page = (_library.value as? UiState.Success)?.data ?: return
         val existing = page.shelves.firstOrNull { it.title == YtMusicRepository.PLAYLISTS_SHELF }
-        val items = edit(existing?.items.orEmpty())
+        val items = edit(existing?.items.orEmpty()).filterNot { DeviceGroup.isDeviceGroupPlaylist(it.title) }
         if (items == existing?.items) return
         val shelves = when {
             existing == null && items.isEmpty() -> return
@@ -4331,7 +4332,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             _account.value = cached.account
             _library.value = cached.library
             _history.value = cached.history
-            _playlists.value = cached.playlists
+            _playlists.value = cached.playlists.filterNot { DeviceGroup.isDeviceGroupPlaylist(it.title) }
             _playlistOwned.value = cached.owned
         }
     }

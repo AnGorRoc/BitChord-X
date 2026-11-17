@@ -85,6 +85,7 @@ import com.music.bitchord.playback.cast.receiverCanOpen
 import com.music.bitchord.playback.cast.CastPlayback
 import com.music.bitchord.playback.cast.DeviceSpeaker
 import com.music.bitchord.playback.cast.DeviceTarget
+import com.music.bitchord.playback.cast.text
 import com.music.bitchord.playback.cast.CastSink
 import com.music.bitchord.playback.cast.RemoteSpeaker
 import com.music.bitchord.playback.cast.Speakers
@@ -823,7 +824,7 @@ class PlaybackService : MediaLibraryService() {
             localPlayer = { player },
             account = ListenTogether.account,
             onChanged = { publishWidgetState() },
-            say = { message -> Toast.makeText(applicationContext, message, Toast.LENGTH_SHORT).show() },
+            say = { notice -> Toast.makeText(applicationContext, notice.text(applicationContext), Toast.LENGTH_SHORT).show() },
         )
     }
 
@@ -1355,6 +1356,7 @@ class PlaybackService : MediaLibraryService() {
 
     override fun onCreate() {
         super.onCreate()
+        DeviceLink.setServiceRunning(true)
 
         if (com.music.bitchord.data.innertube.Innertube.cookie == null) {
             com.music.bitchord.data.innertube.Innertube.cookie = com.music.bitchord.auth.AuthStore(this).cookie
@@ -1923,13 +1925,19 @@ class PlaybackService : MediaLibraryService() {
         partySync = PartySync(scope) { player }.also { it.start() }
         // This phone among its owner's other devices: it reports what it plays, applies what they
         // ask of it, and can be their speaker. See [DeviceTarget] and [DeviceLink].
-        DeviceTarget(scope, { player }, ListenTogether.account, deviceSpeaker).start()
+        DeviceTarget(scope, { player }, ListenTogether.account, deviceSpeaker, { mediaSession?.player }).start()
+        // What the server refused, so a command that goes nowhere is not silent until a timeout.
+        scope.launch {
+            ListenTogether.account.errors.collect { notice ->
+                Toast.makeText(applicationContext, notice.text(applicationContext), Toast.LENGTH_SHORT).show()
+            }
+        }
         scope.launch {
             DeviceLink.requests.collect { request ->
                 when (request) {
                     is DeviceLink.Request.Pick -> {
                         if (castPlayback.active || watchSpeaker.active) {
-                            Toast.makeText(applicationContext, "Stop casting first.", Toast.LENGTH_SHORT).show()
+                            Toast.makeText(applicationContext, getString(R.string.device_notice_stop_casting), Toast.LENGTH_SHORT).show()
                         } else {
                             deviceSpeaker.pick(request.deviceId, request.force)
                         }
@@ -1964,6 +1972,14 @@ class PlaybackService : MediaLibraryService() {
                     if (wasInParty && !inParty) rebuildBoundedContextAfterParty()
                     wasInParty = inParty
                 }
+        }
+        // Entering a party while this phone is another device's remote: the party takes the
+        // player, so the remote link ends here instead of the two fighting over it.
+        scope.launch {
+            ListenTogether.state
+                .map { ListenTogether.partyOwnsPlayer() }
+                .distinctUntilChanged()
+                .collect { owns -> if (owns && deviceSpeaker.active) deviceSpeaker.endLocally(resumeHere = false) }
         }
         loadAutoplayForCurrentTrack()
 
@@ -3231,7 +3247,10 @@ class PlaybackService : MediaLibraryService() {
                     // hand the walk back to the detail page.
                     boundedContextRegistry.fail(request)
                     if (++failures > BOUNDED_CONTINUATION_RETRIES_MS.size) {
+                        // Given up: the context is settled, so AutoPlay may carry on from its last song.
+                        boundedContextRegistry.abandon(request)
                         boundedContextRequest?.handoffToken?.let(BoundedContextRequests::release)
+                        loadAutoplayForCurrentTrack()
                         return@launch
                     }
                     delay(BOUNDED_CONTINUATION_RETRIES_MS[failures - 1])
@@ -3251,7 +3270,15 @@ class PlaybackService : MediaLibraryService() {
                     request,
                     ContinuationPage(songs = songs, continuationToken = page.continuation),
                 )
-                if (result.status != ContinuationResultStatus.COMPLETED) return@launch
+                // AutoPlay only starts once the context is settled, and that happens here, in the
+                // background. When the last song is already playing no transition will ever ask
+                // again, so settling the context has to ask. A completed page grows the window and
+                // its top-up asks afterwards (see scheduleBoundedContextTopUp); a rejected page adds
+                // nothing, so nothing else would ask.
+                if (result.status != ContinuationResultStatus.COMPLETED) {
+                    loadAutoplayForCurrentTrack()
+                    return@launch
+                }
             }
         }
     }
@@ -3267,6 +3294,10 @@ class PlaybackService : MediaLibraryService() {
             }
             applyBoundedContextTopUp()
             boundedEditState = boundedEditState.copy(topUpPending = false)
+            // The window has just been extended, so AutoPlay now sees whether anything is left
+            // after the current song. Before this, a context that settled while its last song
+            // played could not tell, and nothing asked again.
+            loadAutoplayForCurrentTrack()
         }
     }
 
@@ -9217,6 +9248,7 @@ class PlaybackService : MediaLibraryService() {
 
 
     override fun onDestroy() {
+        DeviceLink.setServiceRunning(false)
         WearBridge.attachStreams(null)
         WearBridge.releaseSpeaker()
         // Let go of the receiver's player but leave its session alone: a
@@ -9493,6 +9525,12 @@ class PlaybackService : MediaLibraryService() {
                 .setMaxVolume(100)
                 .build()
 
+            val REMOTE_SEEK_COMMANDS = intArrayOf(
+                Player.COMMAND_SEEK_IN_CURRENT_MEDIA_ITEM,
+                Player.COMMAND_SEEK_BACK,
+                Player.COMMAND_SEEK_FORWARD,
+            )
+
             val DEVICE_VOLUME_COMMANDS = intArrayOf(
                 Player.COMMAND_GET_DEVICE_VOLUME,
                 Player.COMMAND_SET_DEVICE_VOLUME,
@@ -9507,12 +9545,25 @@ class PlaybackService : MediaLibraryService() {
 
         private fun dacVolume(): Int = ((DacVolume.level.value ?: 0f) * 100).roundToInt()
 
-        override fun getAvailableCommands(): Player.Commands =
-            if (dac) super.getAvailableCommands().buildUpon().addAll(*DEVICE_VOLUME_COMMANDS).build()
-            else super.getAvailableCommands()
+        /**
+         * A speaker that is not this phone seeks on its own clock, so the phone's quiet player has no
+         * say in whether the bar may be dragged. That player is stopped, and a stopped player says
+         * its song cannot be sought: without this the scrubber of a remote's own app and
+         * notification did nothing while another device was the speaker.
+         */
+        private val remoteSeek: Boolean get() = cast.active
+
+        override fun getAvailableCommands(): Player.Commands {
+            var commands = super.getAvailableCommands()
+            if (dac) commands = commands.buildUpon().addAll(*DEVICE_VOLUME_COMMANDS).build()
+            if (remoteSeek) commands = commands.buildUpon().addAll(*REMOTE_SEEK_COMMANDS).build()
+            return commands
+        }
 
         override fun isCommandAvailable(command: Int): Boolean =
-            (dac && command in DEVICE_VOLUME_COMMANDS) || super.isCommandAvailable(command)
+            (dac && command in DEVICE_VOLUME_COMMANDS) ||
+                (remoteSeek && command in REMOTE_SEEK_COMMANDS) ||
+                super.isCommandAvailable(command)
 
         /**
          * The DAC volume came or went ([routeChanged]), or moved. Told by the
@@ -9729,6 +9780,11 @@ class PlaybackService : MediaLibraryService() {
             listeners.forEach { it.onDeviceInfoChanged(info) }
             val events = Player.Events(FlagSet.Builder().add(Player.EVENT_DEVICE_INFO_CHANGED).build())
             listeners.forEach { it.onEvents(this, events) }
+            // Which commands are open depends on the route (see [remoteSeek]).
+            val commands = getAvailableCommands()
+            listeners.forEach { it.onAvailableCommandsChanged(commands) }
+            val commandEvents = Player.Events(FlagSet.Builder().add(Player.EVENT_AVAILABLE_COMMANDS_CHANGED).build())
+            listeners.forEach { it.onEvents(this, commandEvents) }
             onRemoteVolumeChanged()
         }
 
@@ -10008,6 +10064,7 @@ class PlaybackService : MediaLibraryService() {
             if (locked()) return
             onUserIntent()
             crossfade.onSkipRequested()
+            if (cast.active && cast.next()) return
             wrappedPlayer.seekToNextMediaItem()
         }
 
@@ -10015,6 +10072,7 @@ class PlaybackService : MediaLibraryService() {
             if (locked()) return
             onUserIntent()
             crossfade.onSkipRequested()
+            if (cast.active && cast.next()) return
             wrappedPlayer.seekToNext()
         }
     }

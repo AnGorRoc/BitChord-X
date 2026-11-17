@@ -1638,10 +1638,6 @@ fun NowPlayingScreen(
                     showListenTogetherMembers = false
                     onListenTogether()
                 },
-                onOpenSettings = {
-                    showListenTogetherMembers = false
-                    onListenTogether()
-                },
                 onStartParty = {
                     showListenTogetherMembers = false
                     PlayerPlatform.host.requestPartyAction(PartyAction.START)

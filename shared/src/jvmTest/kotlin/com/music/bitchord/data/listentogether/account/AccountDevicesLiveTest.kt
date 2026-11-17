@@ -71,7 +71,7 @@ class AccountDevicesLiveTest {
             try {
                 // Collected from the start: a command that arrives before somebody is listening is gone.
                 val inbox = java.util.Collections.synchronizedList(mutableListOf<DeviceCommand>())
-                val errors = java.util.Collections.synchronizedList(mutableListOf<String>())
+                val errors = java.util.Collections.synchronizedList(mutableListOf<DeviceNotice>())
                 scope.launch { pc.commands.collect { inbox += it } }
                 scope.launch { phone.errors.collect { errors += it } }
                 suspend fun commandOf(action: String): DeviceCommand = withTimeout(8_000) {
@@ -126,7 +126,8 @@ class AccountDevicesLiveTest {
                 // Naming a device that is not there is refused with a reason, not silently dropped.
                 phone.command("ghost", DeviceActions.PAUSE)
                 withTimeout(8_000) { while (errors.isEmpty()) delay(50) }
-                assertTrue(errors.first().isNotBlank())
+                // Refused by reason (the server says why it is not linked), not by its English.
+                assertEquals(DeviceNotice.NotLinked, errors.first())
             } finally {
                 phone.stop()
                 pc.stop()

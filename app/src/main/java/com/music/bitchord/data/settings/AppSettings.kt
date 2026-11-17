@@ -496,6 +496,12 @@ object AppSettings {
     /** Show the output / Listen Together pill under the player's transport. */
     val showListenTogetherButton = MutableStateFlow(true)
 
+    /** Offer this device in the Connect list of the person's other devices. */
+    val deviceVisible = MutableStateFlow(true)
+
+    /** Let the person's other devices play, pause and send music to this one. */
+    val deviceAcceptsControl = MutableStateFlow(true)
+
     /** Freezes the main player's mesh gradient instead of letting it drift/crossfade. */
     val reduceAnimation = MutableStateFlow(false)
 
@@ -1172,6 +1178,8 @@ object AppSettings {
         repeatMode.value = prefs.getInt(KEY_REPEAT_MODE, Player.REPEAT_MODE_OFF)
         showNerdStats.value = prefs.getBoolean(KEY_NERD_STATS, false)
         showListenTogetherButton.value = prefs.getBoolean(KEY_LISTEN_TOGETHER_BUTTON, true)
+        deviceVisible.value = prefs.getBoolean(KEY_DEVICE_VISIBLE, true)
+        deviceAcceptsControl.value = prefs.getBoolean(KEY_DEVICE_ACCEPTS_CONTROL, true)
         reduceAnimation.value = prefs.getBoolean(KEY_REDUCE_ANIMATION, false)
         showNavLabels.value = prefs.getBoolean(KEY_NAV_LABELS, true)
         onboardingComplete.value = prefs.getBoolean(KEY_ONBOARDING_COMPLETE, false)
@@ -1613,6 +1621,16 @@ object AppSettings {
     fun setShowListenTogetherButton(value: Boolean) {
         showListenTogetherButton.value = value
         prefs.edit().putBoolean(KEY_LISTEN_TOGETHER_BUTTON, value).apply()
+    }
+
+    fun setDeviceVisible(value: Boolean) {
+        deviceVisible.value = value
+        prefs.edit().putBoolean(KEY_DEVICE_VISIBLE, value).apply()
+    }
+
+    fun setDeviceAcceptsControl(value: Boolean) {
+        deviceAcceptsControl.value = value
+        prefs.edit().putBoolean(KEY_DEVICE_ACCEPTS_CONTROL, value).apply()
     }
 
     fun setThemeMode(value: ThemeMode) {
@@ -2595,6 +2613,8 @@ object AppSettings {
     private const val KEY_REPEAT_MODE = "repeat_mode"
     private const val KEY_NERD_STATS = "show_nerd_stats"
     private const val KEY_LISTEN_TOGETHER_BUTTON = "show_listen_together_button"
+    private const val KEY_DEVICE_VISIBLE = "device_visible"
+    private const val KEY_DEVICE_ACCEPTS_CONTROL = "device_accepts_control"
     private const val KEY_CACHE_LIMIT = "audio_cache_limit_bytes"
     private const val KEY_LOSSLESS_CACHE_LEVEL = "lossless_cache_level"
     private const val KEY_LOSSLESS_CACHE_LIMIT = "lossless_cache_limit_bytes"

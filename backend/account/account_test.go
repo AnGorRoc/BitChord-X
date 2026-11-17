@@ -261,3 +261,172 @@ func TestConnectedDevicesAreNeverForgotten(t *testing.T) {
 		t.Fatalf("a connected device stays")
 	}
 }
+
+func TestNewAccountsAreRefusedAtTheLimitButKnownOnesAreNot(t *testing.T) {
+	s := NewStore()
+	s.MaxAccounts = 1
+	connect(t, s, proofAna, "phone", "Pixel", "phone")
+
+	if _, _, _, err := s.Connect(proofBeto, "b1", "Beto", "phone", now); err != ErrServerBusy {
+		t.Fatalf("a second account must be refused at the limit, got %v", err)
+	}
+	// A device of an account already held is never turned away by it.
+	if _, _, _, err := s.Connect(proofAna, "pc", "IOP", "computer", now); err != nil {
+		t.Fatalf("a known account must still get new devices in: %v", err)
+	}
+}
+
+func TestALinkSurvivesABlipButNotAnAbsence(t *testing.T) {
+	s := NewStore()
+	acc, phone, _ := connect(t, s, proofAna, "phone", "Pixel", "phone")
+	_, pc, _ := connect(t, s, proofAna, "pc", "IOP", "computer")
+	acc.Lock()
+	defer acc.Unlock()
+	_ = acc.Attach(phone, "pc")
+
+	// The remote's socket drops and comes back inside the grace: nothing was lost.
+	blip := acc.MarkAway(phone, now+1)
+	if phone.Controlling != "pc" || pc.ControlledBy != "phone" {
+		t.Fatalf("a dropped socket must not end the link at once")
+	}
+	acc.SetConnected(phone, true, now+2)
+	if acc.ReleaseIfAway(phone, blip) || phone.Controlling != "pc" {
+		t.Fatalf("a device that came back keeps its link")
+	}
+
+	// The target stays away past the grace: now it is over, for both sides.
+	stale := acc.MarkAway(pc, now+3)
+	acc.SetConnected(pc, true, now+3)
+	acc.MarkAway(pc, now+4) // a newer drop: the older ticket is no longer the one that counts
+	if acc.ReleaseIfAway(pc, stale) {
+		t.Fatalf("an older drop's timer must not end a newer blip's grace")
+	}
+	absence := acc.MarkAway(pc, now+5)
+	if !acc.ReleaseIfAway(pc, absence) {
+		t.Fatalf("a device still away when the grace ends releases its links")
+	}
+	if phone.Controlling != "" || pc.ControlledBy != "" {
+		t.Fatalf("both ends are freed: %q %q", phone.Controlling, pc.ControlledBy)
+	}
+}
+
+func TestARemoteIsNotASpeaker(t *testing.T) {
+	s := NewStore()
+	acc, phone, _ := connect(t, s, proofAna, "phone", "Pixel", "phone")
+	_, pc, _ := connect(t, s, proofAna, "pc", "IOP", "computer")
+	_, tablet, _ := connect(t, s, proofAna, "tab", "Tab", "tablet")
+	acc.Lock()
+	defer acc.Unlock()
+	if err := acc.Attach(phone, "pc"); err != nil {
+		t.Fatal(err)
+	}
+	// The phone now plays on the PC. Nobody can pick the phone as a speaker or hand it music, or
+	// it would pass them on to the PC instead of playing them.
+	if acc.Attach(tablet, "phone") == nil {
+		t.Fatalf("a device that is somebody's remote cannot be picked")
+	}
+	if _, err := acc.Route(tablet, "phone", "playQueue", 1); err == nil {
+		t.Fatalf("music cannot be handed to a remote")
+	}
+	// What its own target says back to it is how a snapshot or a pull arrives, and must pass.
+	if _, err := acc.Route(pc, "phone", "playQueue", 1); err != nil {
+		t.Fatalf("the controlled device answers its remote: %v", err)
+	}
+	_ = tablet
+}
+
+func TestADeviceThatRefusesControlCannotBeAttachedOrCommanded(t *testing.T) {
+	s := NewStore()
+	acc, phone, _ := connect(t, s, proofAna, "phone", "Pixel", "phone")
+	_, tv, _ := connect(t, s, proofAna, "tv", "TV", "tv")
+	acc.Lock()
+	defer acc.Unlock()
+	acc.SetPrefs(tv, false, true, false)
+	if err := acc.Attach(phone, "tv"); err != ErrNotAllowed {
+		t.Fatalf("attach to a device that does not allow control: %v", err)
+	}
+	if _, err := acc.Route(phone, "tv", "playQueue", 1); err != ErrNotAllowed {
+		t.Fatalf("hand over to a device that does not allow control: %v", err)
+	}
+	acc.SetPrefs(tv, false, false, true)
+	if err := acc.Attach(phone, "tv"); err != ErrNotReachable {
+		t.Fatalf("attach to a device nobody is there to drive: %v", err)
+	}
+	acc.SetPrefs(tv, true, false, false)
+	if err := acc.Attach(phone, "tv"); err != nil {
+		t.Fatalf("hiding is only a request to the other devices' lists, not a refusal: %v", err)
+	}
+}
+
+func TestTurningControlOffEndsTheLinkAtOnce(t *testing.T) {
+	s := NewStore()
+	acc, phone, _ := connect(t, s, proofAna, "phone", "Pixel", "phone")
+	_, tv, _ := connect(t, s, proofAna, "tv", "TV", "tv")
+	acc.Lock()
+	defer acc.Unlock()
+	if err := acc.Attach(phone, "tv"); err != nil {
+		t.Fatal(err)
+	}
+	acc.SetPrefs(tv, false, true, false)
+	if phone.Controlling != "" || tv.ControlledBy != "" {
+		t.Fatalf("the link should be gone: %q %q", phone.Controlling, tv.ControlledBy)
+	}
+}
+
+func TestReleaseStillWorksWhenControlIsOff(t *testing.T) {
+	s := NewStore()
+	acc, phone, _ := connect(t, s, proofAna, "phone", "Pixel", "phone")
+	_, tv, _ := connect(t, s, proofAna, "tv", "TV", "tv")
+	acc.Lock()
+	defer acc.Unlock()
+	_ = acc.Attach(phone, "tv")
+	// The phone does not accept control but is the one being asked to hand the sound back.
+	phone.NoControl = true
+	if _, err := acc.Route(tv, "phone", "release", 0); err != nil {
+		t.Fatalf("release must not be refused by settings: %v", err)
+	}
+}
+
+func TestADeviceIsAlwaysHeardByItsOwnRemote(t *testing.T) {
+	s := NewStore()
+	acc, phone, _ := connect(t, s, proofAna, "phone", "Pixel", "phone")
+	_, tv, _ := connect(t, s, proofAna, "tv", "TV", "tv")
+	_, other, _ := connect(t, s, proofAna, "tab", "Tab", "tablet")
+	acc.Lock()
+	defer acc.Unlock()
+	_ = acc.Attach(phone, "tv")
+	// Whatever the remote's own settings say, what the device it drives answers it must arrive.
+	phone.NoControl = true
+	phone.Unreachable = true
+	for _, action := range []string{"playQueue", "enqueue"} {
+		if _, err := acc.Route(tv, "phone", action, 1); err != nil {
+			t.Fatalf("%s from the device being controlled to its remote: %v", action, err)
+		}
+	}
+	// Anybody else is still refused.
+	if _, err := acc.Route(other, "phone", "playQueue", 1); err != ErrNotAllowed {
+		t.Fatalf("a stranger to the link must still be refused: %v", err)
+	}
+}
+
+func TestMovingAPartyBetweenOwnDevicesNeedsNoLink(t *testing.T) {
+	s := NewStore()
+	acc, phone, _ := connect(t, s, proofAna, "phone", "Pixel", "phone")
+	_, pc, _ := connect(t, s, proofAna, "pc", "IOP", "computer")
+	acc.Lock()
+	defer acc.Unlock()
+	for _, action := range []string{"joinParty", "partyListen"} {
+		if _, err := acc.Route(phone, "pc", action, 0); err != nil {
+			t.Fatalf("%s should not need a link: %v", action, err)
+		}
+	}
+	// Still not a way round the rest: a command that drives the player needs the link.
+	if _, err := acc.Route(phone, "pc", "play", 0); err != ErrNotLinked {
+		t.Fatalf("play without a link: %v", err)
+	}
+	// And the target's own settings still apply.
+	acc.SetPrefs(pc, false, true, false)
+	if _, err := acc.Route(phone, "pc", "joinParty", 0); err != ErrNotAllowed {
+		t.Fatalf("a device that refuses control refuses this too: %v", err)
+	}
+}

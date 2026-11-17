@@ -145,6 +145,7 @@ object DesktopSearchClient {
     /** The account's own playlists among a library shelf's items — the ones an edit can target. */
     internal fun userPlaylists(items: List<com.music.bitchord.data.model.ShelfItem>) =
         com.music.bitchord.data.innertube.InnertubeParser.parseUserPlaylists(items)
+            .filterNot { com.music.bitchord.data.listentogether.DeviceGroup.isDeviceGroupPlaylist(it.title) }
 
     internal fun isVideoId(id: String): Boolean = VIDEO_ID.matches(id)
 

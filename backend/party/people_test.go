@@ -197,3 +197,82 @@ func TestAddedByStaysAfterThePersonLeaves(t *testing.T) {
 		t.Fatalf("the name must outlive the person")
 	}
 }
+
+func TestRemovedPersonCannotReturnOnAnotherDevice(t *testing.T) {
+	p := NewPartyWithMaxMembers("BANS", 5)
+	joinAs(t, p, "host", "h1", "Host", proofAna, "")
+	beto := joinAs(t, p, "beto", "b-phone", "Beto", proofBeto, "Pixel")
+
+	p.Ban(p.RemovePerson(beto.MemberId))
+
+	// The same person on a device the party never saw is still the same person.
+	if _, err := p.JoinAs("other-user", "b-pc", "Beto", nil, proofBeto, "IOP"); err == nil {
+		t.Fatalf("a second device of a removed person must be refused")
+	} else if pe, ok := err.(*PartyError); !ok || pe.Code != "removed" || pe.Status != 403 {
+		t.Fatalf("expected a 403 removed error, got %v", err)
+	}
+	// So is the device that was removed, and the account it signed in with, with no proof at all.
+	if _, err := p.JoinAs("x", "b-phone", "Beto", nil, "", ""); err == nil {
+		t.Fatalf("the removed device itself must be refused")
+	}
+	if _, err := p.JoinAs("beto", "new-device", "Beto", nil, "", ""); err == nil {
+		t.Fatalf("the removed user id must be refused")
+	}
+	// Somebody else is not caught by it.
+	if _, err := p.JoinAs("ceci", "c1", "Ceci", nil, strings.Repeat("c", 64), ""); err != nil {
+		t.Fatalf("an unrelated person must still be able to join: %v", err)
+	}
+}
+
+func TestNobodyIsBannedUntilRemoved(t *testing.T) {
+	p := NewPartyWithMaxMembers("NOBAN", 5)
+	if p.IsBanned("beto", "b1", proofBeto) {
+		t.Fatalf("a party that removed nobody bans nobody")
+	}
+}
+
+func TestADeviceReturningAsSomebodyElseIsAFreshJoin(t *testing.T) {
+	p := NewPartyWithMaxMembers("SWITCH", 2)
+	joinAs(t, p, "ana", "a1", "Ana", proofAna, "")
+	old := joinAs(t, p, "beto", "shared-device", "Beto", proofBeto, "Pixel")
+
+	// The same device signs in as Ana: it becomes Ana's second device, not Beto renamed.
+	back, err := p.JoinAs("ana", "shared-device", "Ana", nil, proofAna, "Pixel")
+	if err != nil {
+		t.Fatalf("rejoin as Ana: %v", err)
+	}
+	if _, stillThere := p.Members[old.MemberId]; stillThere {
+		t.Fatalf("Beto's seat on that device must be gone")
+	}
+	ana := p.DevicesOf(back.PersonId)
+	if len(ana) != 2 || !back.IsHost {
+		t.Fatalf("it joined Ana as a device of hers, host included: %d devices, host=%v", len(ana), back.IsHost)
+	}
+	if p.PersonCount() != 1 {
+		t.Fatalf("only Ana is left: %d people", p.PersonCount())
+	}
+}
+
+func TestAFullPartyTurnsAwayADeviceThatSwitchesAccounts(t *testing.T) {
+	p := NewPartyWithMaxMembers("FULLSW", 2)
+	joinAs(t, p, "ana", "a1", "Ana", proofAna, "")
+	joinAs(t, p, "beto", "b1", "Beto", proofBeto, "")
+	// Ceci cannot use Beto's device to get a seat the party does not have.
+	if _, err := p.JoinAs("ceci", "b1", "Ceci", nil, strings.Repeat("c", 64), ""); err != nil {
+		// Beto left that seat, so there is room for her: this must be allowed.
+		t.Fatalf("the seat Beto's device held is free for whoever it is now: %v", err)
+	}
+	if p.PersonCount() != 2 {
+		t.Fatalf("still two people: %d", p.PersonCount())
+	}
+}
+
+func TestPersonIdsDifferFromOnePartyToTheNext(t *testing.T) {
+	a := NewPartyWithMaxMembers("AAAAAA", 5)
+	b := NewPartyWithMaxMembers("BBBBBB", 5)
+	ma := joinAs(t, a, "ana", "a1", "Ana", proofAna, "")
+	mb := joinAs(t, b, "ana", "a1", "Ana", proofAna, "")
+	if ma.PersonId == mb.PersonId {
+		t.Fatalf("the same person must not carry one id through every party")
+	}
+}

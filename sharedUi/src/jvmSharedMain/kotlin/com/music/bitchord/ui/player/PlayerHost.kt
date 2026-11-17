@@ -129,6 +129,12 @@ interface PlayerHost {
      */
     val devices: StateFlow<AccountState> get() = NoDevices
 
+    /**
+     * The device a hand-over is still on its way to (picked, not yet answering), or null. The Connect
+     * sheet shows it as "Connecting…" and stays open until it settles.
+     */
+    val connectingDevice: StateFlow<String?> get() = NoConnecting
+
     /** The person tapped a device: send the sound there, or control it. See HandoffRules. */
     fun pickDevice(deviceId: String, force: HandoffForce? = null) {}
 
@@ -373,6 +379,13 @@ data class PartyUi(
     val members: List<PartyMember> = emptyList(),
     val you: PartyMember? = null,
     val code: String? = null,
+    /**
+     * This device is playing the party, so its player belongs to it. Handing the sound to or from
+     * another of the person's devices would be undone within a second, and is refused.
+     */
+    val ownsPlayer: Boolean = false,
+    /** Whose party this is, as the host is named in it. */
+    val hostName: String? = null,
     /**
      * Who queued each song, by video id, for the picture on its cover in the queue. Only songs
      * somebody queued appear: AutoPlay's suggestions, and anything an older server did not stamp,

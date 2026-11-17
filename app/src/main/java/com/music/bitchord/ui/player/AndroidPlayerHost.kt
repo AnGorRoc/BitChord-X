@@ -182,6 +182,9 @@ class AndroidPlayerHost(context: Context) : PlayerHost {
     override val devices: StateFlow<com.music.bitchord.data.listentogether.account.AccountState>
         get() = ListenTogether.account.state
 
+    override val connectingDevice: StateFlow<String?>
+        get() = com.music.bitchord.playback.DeviceLink.connecting
+
     override fun pickDevice(deviceId: String, force: com.music.bitchord.data.listentogether.account.HandoffForce?) =
         com.music.bitchord.playback.DeviceLink.pick(deviceId, force)
 
@@ -195,9 +198,8 @@ class AndroidPlayerHost(context: Context) : PlayerHost {
     }
 
     override val party: StateFlow<PartyUi> by lazy {
-        ListenTogether.state
-            .map { it.toPartyUi() }
-            .stateIn(scope, SharingStarted.Eagerly, ListenTogether.state.value.toPartyUi())
+        combine(ListenTogether.state, ListenTogether.listenHere) { state, here -> state.toPartyUi(here) }
+            .stateIn(scope, SharingStarted.Eagerly, ListenTogether.state.value.toPartyUi(ListenTogether.listenHere.value))
     }
 
     override suspend fun translateLyrics(
@@ -289,12 +291,14 @@ private fun AudioOutputStatus.Snapshot.toOutputFormat(bitPerfect: BitPerfectOutp
     )
 }
 
-private fun ListenTogether.State.toPartyUi() = PartyUi(
+private fun ListenTogether.State.toPartyUi(listenHere: Boolean) = PartyUi(
     inParty = inParty,
     controlsLocked = controlsLocked,
     members = members,
     you = you,
     code = code,
+    ownsPlayer = inParty && listenHere,
+    hostName = members.firstOrNull { it.isHost }?.displayName?.takeIf { it.isNotBlank() },
     addedBy = if (!inParty) emptyMap() else buildMap {
         queue.items.forEach { track ->
             val name = track.addedByName

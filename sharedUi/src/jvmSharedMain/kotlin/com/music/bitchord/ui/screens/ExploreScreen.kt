@@ -275,17 +275,19 @@ private fun isMainstreamCategory(title: String): Boolean {
     return mainstream.any { kw -> t == kw || t.contains(kw) }
 }
 
+private val WORD_SPLIT = Regex("[\\s,/&+\\-]+")
+
 private fun matchesAffinity(title: String, userKeywords: Set<String>): Boolean {
     if (userKeywords.isEmpty()) return false
     val t = title.lowercase().trim()
     if (userKeywords.contains(t)) return true
 
+    val titleWords = t.split(WORD_SPLIT).filter { it.length >= 3 }
     for (kw in userKeywords) {
         if (kw.length < 3) continue
         if (t == kw || t.contains(kw) || kw.contains(t)) return true
 
-        val titleWords = t.split(Regex("[\\s,/&+\\-]+")).filter { it.length >= 3 }
-        val kwWords = kw.split(Regex("[\\s,/&+\\-]+")).filter { it.length >= 3 }
+        val kwWords = kw.split(WORD_SPLIT).filter { it.length >= 3 }
         if (titleWords.any { tw -> kwWords.contains(tw) }) return true
     }
     return false

@@ -10,8 +10,10 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.ContentType
 import io.ktor.http.contentType
 import io.ktor.http.isSuccess
-import io.ktor.websocket.DefaultWebSocketSession
+import kotlinx.coroutines.channels.Channel
+import io.ktor.websocket.CloseReason
 import io.ktor.websocket.Frame
+import io.ktor.websocket.close
 import io.ktor.websocket.readText
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
@@ -73,8 +75,8 @@ class AccountDevices(
     private val scope: CoroutineScope,
     /** The server's https base, or null when none is set. Read on every attempt. */
     private val serverBase: suspend () -> String?,
-    /** The account proof (see DeviceGroup.groupId), or null when it cannot be had. */
-    private val proof: suspend () -> String?,
+    /** The account proof for that server (see DeviceGroup.proofFor), or null when it cannot be had. */
+    private val proof: suspend (serverBase: String) -> String?,
     private val self: () -> DeviceSelf,
 ) {
     private val json = Json { ignoreUnknownKeys = true; coerceInputValues = true; isLenient = true }
@@ -87,14 +89,34 @@ class AccountDevices(
     /** Commands addressed to this device by another of the person's devices. */
     val commands: SharedFlow<DeviceCommand> = _commands.asSharedFlow()
 
-    private val _errors = MutableSharedFlow<String>(extraBufferCapacity = 8)
+    private val _errors = MutableSharedFlow<DeviceNotice>(extraBufferCapacity = 8)
 
-    /** Short, user-facing reasons something was refused ("That device is not available."). */
-    val errors: SharedFlow<String> = _errors.asSharedFlow()
+    /** What the server refused, as something to tell the person ("That device is not available."). */
+    val errors: SharedFlow<DeviceNotice> = _errors.asSharedFlow()
 
     private var job: Job? = null
-    @Volatile private var session: DefaultWebSocketSession? = null
+
+    /** True until this process has had a socket; see the fresh flag in [run]. */
+    @Volatile private var freshProcess = true
+    /**
+     * What is waiting to go out on the current socket, in the order it was asked. One writer drains
+     * it, so "attach" can never overtake the "snapshot" that depends on it: a coroutine per frame
+     * does not keep order on a multi-threaded dispatcher, and the server refuses a command from a
+     * device that is not yet linked. It belongs to one socket, so nothing queued while offline is
+     * replayed later as if it were current.
+     */
+    @Volatile private var outbox: Channel<String>? = null
     private var lastPublished: AccountNowPlaying? = null
+    private var lastPublishedAtNanos = 0L
+
+    /**
+     * Where the playhead of what was last published should be by [nowNanos] if nothing happened to
+     * it. Viewers run it on themselves from the published anchor, so a report only has to be sent
+     * when the real position leaves this line: comparing with the old position instead, as this did,
+     * made a song that was simply playing look like a seek every few seconds.
+     */
+    private fun expectedPosition(last: AccountNowPlaying, nowNanos: Long): Long =
+        if (last.isPlaying) last.positionMs + (nowNanos - lastPublishedAtNanos) / 1_000_000L else last.positionMs
 
     fun start() {
         if (job?.isActive == true) return
@@ -104,7 +126,8 @@ class AccountDevices(
     fun stop() {
         job?.cancel()
         job = null
-        session = null
+        outbox?.close()
+        outbox = null
         lastPublished = null
         _state.value = AccountState()
     }
@@ -125,11 +148,17 @@ class AccountDevices(
     fun publish(np: AccountNowPlaying?) {
         val previous = lastPublished
         if (np == previous) return
+        val now = System.nanoTime()
+        // The length of the song is known a moment after it starts, and the title and cover can arrive late
+        // too: a report that only adds those is news for a device that is watching, never a repeat.
         if (np != null && previous != null && np.videoId == previous.videoId &&
             np.isPlaying == previous.isPlaying && np.volume == previous.volume &&
-            kotlin.math.abs(np.positionMs - previous.positionMs) < POSITION_JITTER_MS
+            np.durationMs == previous.durationMs && np.title == previous.title &&
+            np.artist == previous.artist && np.thumbnailUrl == previous.thumbnailUrl &&
+            kotlin.math.abs(np.positionMs - expectedPosition(previous, now)) < POSITION_JITTER_MS
         ) return
         lastPublished = np
+        lastPublishedAtNanos = now
         sendFrame(
             buildJsonObject {
                 put("type", "nowPlaying")
@@ -139,6 +168,42 @@ class AccountDevices(
     }
 
     /** Makes this device the remote of [deviceId]. */
+    /** The party this device is in now (null when none). Sent again on every new socket. */
+    @Volatile private var partyCode: String? = null
+
+    fun setParty(code: String?) {
+        if (partyCode == code) return
+        partyCode = code
+        sendParty()
+    }
+
+    private fun sendParty() {
+        sendFrame(buildJsonObject { put("type", "party"); put("code", partyCode.orEmpty()) })
+    }
+
+    @Volatile private var prefs = DevicePrefs()
+
+    /**
+     * How this device wants to be treated by the person's others (hidden, not controllable, not yet
+     * able to play). Sent again on every new socket; a server without it ignores the frame.
+     */
+    fun setPrefs(value: DevicePrefs) {
+        if (prefs == value) return
+        prefs = value
+        sendPrefs()
+    }
+
+    private fun sendPrefs() {
+        sendFrame(
+            buildJsonObject {
+                put("type", "prefs")
+                put("hidden", prefs.hidden)
+                put("noControl", prefs.noControl)
+                put("unreachable", prefs.unreachable)
+            },
+        )
+    }
+
     fun attach(deviceId: String) = sendFrame(buildJsonObject { put("type", "attach"); put("to", deviceId) })
 
     /** Stops being a remote. */
@@ -160,8 +225,8 @@ class AccountDevices(
     }
 
     private fun sendFrame(frame: JsonObject) {
-        val s = session ?: return
-        scope.launch { runCatching { s.send(Frame.Text(frame.toString())) } }
+        // Not offline, and not a flood: a full queue drops rather than grows without end.
+        outbox?.trySend(frame.toString())
     }
 
     // ---- the socket -------------------------------------------------------------------------
@@ -170,7 +235,7 @@ class AccountDevices(
         var backoffMs = 1_000L
         while (scope.isActive) {
             val base = serverBase()?.trimEnd('/')
-            val account = if (base.isNullOrBlank()) null else proof()
+            val account = if (base.isNullOrBlank()) null else proof(base)
             if (base.isNullOrBlank() || account == null) {
                 _state.update { it.copy(connection = AccountConnection.IDLE) }
                 delay(IDLE_RETRY_MS)
@@ -191,16 +256,38 @@ class AccountDevices(
                 }
                 if (!response.status.isSuccess()) error("connect failed: HTTP ${response.status.value}")
                 val token = json.decodeFromString(ConnectResponse.serializer(), response.bodyAsText()).token
+                // The first socket of this process says so: links left from a session this process
+                // never had (the app was closed, then opened) are over, and the server ends them.
+                val fresh = freshProcess
                 http.webSocket(
-                    urlString = base.replaceFirst("http", "ws") + "/ws/account",
+                    urlString = base.replaceFirst("http", "ws") + "/ws/account" + if (fresh) "?fresh=1" else "",
                     request = { header("Authorization", "Bearer $token") },
                 ) {
-                    session = this
+                    freshProcess = false
+                    val box = Channel<String>(OUTBOX_CAPACITY)
+                    outbox = box
+                    val writer = launch {
+                        for (text in box) runCatching { send(Frame.Text(text)) }
+                    }
                     backoffMs = 1_000L
+                    if (partyCode != null) sendParty()
+                    if (prefs != DevicePrefs()) sendPrefs()
                     // What this device is playing is not known to the server on a new socket.
                     lastPublished?.let { last ->
                         lastPublished = null
                         publish(last)
+                    }
+                    // The server this socket is on can stop being the one wanted (the person's own
+                    // went down and the default took over, or came back). A socket left on the old
+                    // one would keep this device apart from the others, which moved.
+                    val watch = launch {
+                        while (true) {
+                            delay(SERVER_CHECK_MS)
+                            if (serverBase()?.trimEnd('/') != base) {
+                                close(CloseReason(CloseReason.Codes.NORMAL, "server changed"))
+                                break
+                            }
+                        }
                     }
                     val ping = launch {
                         while (true) {
@@ -214,6 +301,10 @@ class AccountDevices(
                         }
                     } finally {
                         ping.cancel()
+                        watch.cancel()
+                        if (outbox === box) outbox = null
+                        box.close()
+                        writer.cancel()
                     }
                 }
             } catch (cancelled: CancellationException) {
@@ -221,8 +312,6 @@ class AccountDevices(
             } catch (failure: Exception) {
                 // A socket drops for ordinary reasons all day; the reason is kept for diagnostics.
                 _state.update { it.copy(failure = "${failure::class.simpleName}: ${failure.message}") }
-            } finally {
-                session = null
             }
             if (!scope.isActive) return
             _state.update { it.copy(connection = AccountConnection.CONNECTING) }
@@ -239,8 +328,14 @@ class AccountDevices(
         }
         AccountFrames.command(frame)?.let { _commands.emit(it); return }
         if (frame["type"]?.jsonPrimitive?.contentOrNull == "error") {
-            val reason = frame["message"]?.jsonPrimitive?.contentOrNull
-            if (!reason.isNullOrBlank()) _errors.emit(reason)
+            // A flood guard is not news to the person; the rest is.
+            if (frame["error"]?.jsonPrimitive?.contentOrNull == "rate_limited") return
+            _errors.emit(
+                DeviceNotice.fromServer(
+                    reason = frame["reason"]?.jsonPrimitive?.contentOrNull,
+                    message = frame["message"]?.jsonPrimitive?.contentOrNull,
+                ),
+            )
         }
     }
 
@@ -249,6 +344,8 @@ class AccountDevices(
         const val IDLE_RETRY_MS = 15_000L
         const val UNSUPPORTED_RETRY_MS = 10 * 60_000L
         const val MAX_BACKOFF_MS = 30_000L
+        const val OUTBOX_CAPACITY = 256
+        const val SERVER_CHECK_MS = 30_000L
 
         /** A playhead that has only moved with the clock is not news. */
         const val POSITION_JITTER_MS = 4_000L

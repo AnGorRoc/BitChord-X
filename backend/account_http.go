@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"log"
 	"net/http"
 	"time"
@@ -15,7 +16,11 @@ import (
 
 // One person's devices, see package account. Each account is a room in the same hub that
 // carries parties, under a prefix no party code can have (codes are letters and digits).
-var accounts = account.NewStore()
+var accounts = func() *account.Store {
+	s := account.NewStore()
+	s.MaxAccounts = config.MaxAccounts
+	return s
+}()
 
 const accountRoomPrefix = "acct:"
 
@@ -31,12 +36,20 @@ type accountConnectRequest struct {
 // handleAccountConnect registers a device with its owner's other devices and hands back the
 // token its socket will use. The proof is the whole credential and is never echoed.
 func handleAccountConnect(w http.ResponseWriter, r *http.Request) {
+	if !accountConnectLimiter.Allow(clientIP(r)) {
+		jsonError(w, http.StatusTooManyRequests, "connect_rate_limited", "Too many connection attempts. Please try again shortly.")
+		return
+	}
 	var req accountConnectRequest
 	if !decodeJSONBody(w, r, &req) {
 		return
 	}
 	now := clock.NowMs()
 	acc, d, token, err := accounts.Connect(req.AccountProof, req.DeviceId, req.DeviceName, req.DeviceType, now)
+	if errors.Is(err, account.ErrServerBusy) {
+		jsonError(w, http.StatusServiceUnavailable, "server_busy", err.Error())
+		return
+	}
 	if err != nil {
 		jsonError(w, http.StatusUnprocessableEntity, "validation_error", err.Error())
 		return
@@ -61,6 +74,16 @@ func devicesFrame(acc *account.Account) map[string]interface{} {
 		"devices":  acc.List(),
 		"serverMs": clock.NowMs(),
 	}
+}
+
+// errorFor is the frame for a refusal: the code says what kind, the reason (when there is one) says
+// exactly which, for a client to put in the person's own language.
+func errorFor(code string, err error) map[string]interface{} {
+	frame := errorFrame(code, err.Error())
+	if reason := account.Reason(err); reason != "" {
+		frame["reason"] = reason
+	}
+	return frame
 }
 
 func errorFrame(code, message string) map[string]interface{} {
@@ -102,6 +125,10 @@ func handleAccountSocket(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad token", http.StatusUnauthorized)
 		return
 	}
+	if hubInst.Count() >= config.MaxSockets {
+		http.Error(w, "server is full", http.StatusServiceUnavailable)
+		return
+	}
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("account websocket upgrade failed: %v", err)
@@ -114,6 +141,10 @@ func handleAccountSocket(w http.ResponseWriter, r *http.Request) {
 	room := accountRoom(acc.ID)
 	acc.Lock()
 	acc.SetConnected(d, true, clock.NowMs())
+	// The first socket of a fresh client process: its old links belonged to a session it no longer has.
+	if r.URL.Query().Get("fresh") == "1" {
+		acc.StartFresh(d)
+	}
 	acc.Unlock()
 	sc := hubInst.Attach(room, d.DeviceID, conn)
 
@@ -137,11 +168,24 @@ func handleAccountSocket(w http.ResponseWriter, r *http.Request) {
 				stillThere = true
 			}
 		}
+		var ticket uint64
 		if !stillThere {
-			acc.SetConnected(d, false, clock.NowMs())
+			// Its remote links are kept for a moment: a dropped socket is usually a blip and
+			// the device is back before anyone notices. See account.LinkGrace.
+			ticket = acc.MarkAway(d, clock.NowMs())
 		}
 		acc.Unlock()
 		broadcastDevices(acc)
+		if !stillThere {
+			time.AfterFunc(account.LinkGrace, func() {
+				acc.Lock()
+				ended := acc.ReleaseIfAway(d, ticket)
+				acc.Unlock()
+				if ended {
+					broadcastDevices(acc)
+				}
+			})
+		}
 	}()
 
 	var budget accountFrameBudget
@@ -174,6 +218,23 @@ func handleAccountFrame(acc *account.Account, d *account.Device, sc *hub.SafeCon
 	now := clock.NowMs()
 
 	switch kind {
+	case "party":
+		code, _ := frame["code"].(string)
+		if len(code) > 16 {
+			code = code[:16]
+		}
+		acc.Lock()
+		d.PartyCode = code
+		acc.Unlock()
+		broadcastDevices(acc)
+	case "prefs":
+		hidden, _ := frame["hidden"].(bool)
+		noControl, _ := frame["noControl"].(bool)
+		unreachable, _ := frame["unreachable"].(bool)
+		acc.Lock()
+		acc.SetPrefs(d, hidden, noControl, unreachable)
+		acc.Unlock()
+		broadcastDevices(acc)
 	case "ping":
 		acc.Lock()
 		d.LastSeenMs = now
@@ -204,7 +265,7 @@ func handleAccountFrame(acc *account.Account, d *account.Device, sc *hub.SafeCon
 		err := acc.Attach(d, to)
 		acc.Unlock()
 		if err != nil {
-			_ = sc.WriteJSON(errorFrame("not_available", err.Error()))
+			_ = sc.WriteJSON(errorFor("not_available", err))
 			return
 		}
 		broadcastDevices(acc)
@@ -247,7 +308,7 @@ func handleAccountFrame(acc *account.Account, d *account.Device, sc *hub.SafeCon
 		}
 		acc.Unlock()
 		if err != nil {
-			_ = sc.WriteJSON(errorFrame("not_allowed", err.Error()))
+			_ = sc.WriteJSON(errorFor("not_allowed", err))
 			return
 		}
 		hubInst.Send(accountRoom(acc.ID), targetID, map[string]interface{}{

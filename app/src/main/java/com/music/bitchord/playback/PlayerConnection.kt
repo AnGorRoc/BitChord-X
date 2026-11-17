@@ -439,8 +439,11 @@ fun rememberPlayerState(controller: MediaController?): PlayerState {
     // Nothing is lost by stopping: `sync` above runs on the controller's own
     // events, and the first thing that happens on the way back is a fresh read.
     val foreground = rememberIsForeground()
-    LaunchedEffect(controller, state.isPlaying, foreground) {
-        while (controller != null && state.isPlaying && foreground) {
+    // A length that is not known yet is read again until it is: a controller is only called back when
+    // something it tracks changes, and the length of what another device plays arrives on its own.
+    val lengthUnknown = state.song != null && state.durationMs <= 0L
+    LaunchedEffect(controller, state.isPlaying, foreground, lengthUnknown) {
+        while (controller != null && (state.isPlaying || lengthUnknown) && foreground) {
             position.report(controller.currentPosition.coerceAtLeast(0L))
             val duration = controller.duration.coerceAtLeast(0L)
             if (duration != state.durationMs) state = state.copy(durationMs = duration)

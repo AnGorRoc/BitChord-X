@@ -1720,18 +1720,21 @@ private fun LyricsSkeleton(modifier: Modifier = Modifier) {
 @Composable
 internal fun rememberPlayerControlsOnScroll(
     enabled: Boolean = true,
+    onUserScroll: () -> Unit = {},
     onReveal: () -> Unit,
     onHide: () -> Unit,
 ): NestedScrollConnection {
     val controlsSlopPx = with(LocalDensity.current) { CONTROLS_SCROLL_SLOP.toPx() }
     val revealControls by rememberUpdatedState(onReveal)
     val hideControls by rememberUpdatedState(onHide)
+    val notifyUserScroll by rememberUpdatedState(onUserScroll)
     return remember(enabled, controlsSlopPx) {
         object : NestedScrollConnection {
             private var travel = 0f
 
             override fun onPreScroll(available: Offset, source: NestedScrollSource): Offset {
                 if (enabled && source == NestedScrollSource.UserInput && available.y != 0f) {
+                    notifyUserScroll()
                     if (travel != 0f && (travel > 0f) != (available.y > 0f)) travel = 0f
                     travel += available.y
                     // Finger travelling up is the list going forward.
@@ -1796,7 +1799,7 @@ internal fun LyricsPanel(
      * For the wide layouts — TV, landscape, tablet — where a column of lyrics
      * read from its top edge leaves most of the screen below the words.
      */
-    centerFocus: Boolean = false,
+    centerFocus: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     val panelPlaying = isPlaying && active
@@ -1894,6 +1897,7 @@ internal fun LyricsPanel(
     // hiding the controls by itself: this list scrolls on its own every time a
     // line lands, and that is not somebody reading on.
     val controlsOnScroll = rememberPlayerControlsOnScroll(
+        onUserScroll = { browsingByDrag = true },
         onReveal = { if (!picking) onRevealControls() },
         onHide = onHideControls,
     )
@@ -2041,6 +2045,13 @@ internal fun LyricsPanel(
         return
     }
 
+    val firstVisibleIndex by remember(listState) {
+        derivedStateOf { listState.firstVisibleItemIndex }
+    }
+    val lastVisibleIndex by remember(listState) {
+        derivedStateOf { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1 }
+    }
+
     LazyColumn(
         state = listState,
         modifier = modifier
@@ -2118,12 +2129,16 @@ internal fun LyricsPanel(
             // the same floor rather than fading to nothing.
             val falloff = if (centerFocus) LINE_FALLOFF_ALPHA else LINE_FALLOFF_ALPHA_PHONE
             val step = distance.coerceAtMost(falloff.lastIndex)
+            val isEdgeItem = index <= firstVisibleIndex || (lastVisibleIndex >= 0 && index >= lastVisibleIndex)
+            val targetBlur = when {
+                !isSynced || reduceDynamicBlur || !lyricsBlur -> 0.dp
+                browsing -> if (isEdgeItem) 1.2.dp else 0.dp
+                isActive -> 0.dp
+                else -> LINE_FALLOFF_BLUR[step.coerceAtMost(LINE_FALLOFF_BLUR.lastIndex)]
+            }
             val blur by animateDpAsState(
-                targetValue = when {
-                    !isSynced || reduceDynamicBlur || !lyricsBlur || browsing || isActive -> 0.dp
-                    else -> LINE_FALLOFF_BLUR[step.coerceAtMost(LINE_FALLOFF_BLUR.lastIndex)]
-                },
-                animationSpec = tween(LYRIC_SETTLE_MS, easing = LYRIC_EASING),
+                targetValue = targetBlur,
+                animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing),
                 label = "lyricBlur",
             )
             val lineAlpha by animateFloatAsState(
@@ -2133,9 +2148,11 @@ internal fun LyricsPanel(
                     // Reading by hand is not following along: the stack flattens
                     // to one brightness so no row is being pointed at.
                     browsing -> BROWSING_ALPHA
+                    // Lines that have already been sung remain legible rather than fading away.
+                    offset < 0 -> 0.92f
                     else -> falloff[step]
                 },
-                animationSpec = tween(LYRIC_SETTLE_MS, easing = LYRIC_EASING),
+                animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing),
                 label = "lyricAlpha",
             )
             if (line.isGap) {

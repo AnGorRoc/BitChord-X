@@ -1377,6 +1377,10 @@ internal fun OutputCaption(
     onOpenMembers: () -> Unit,
 ) {
     val badge = rememberPartyBadge()
+    // The sound is coming out of another of the person's devices: that, before anything else, is
+    // what the line under the controls has to say, and it opens Connect to change it.
+    val devices by PlayerPlatform.host.devices.collectAsStateWithLifecycle()
+    val remoteName = devices.controlled?.name
     val outputName = rememberAudioOutputName(accountName)
     val outputFormat by PlayerPlatform.host.outputFormat.collectAsStateWithLifecycle()
     val nerdStats by NerdStats.current.collectAsStateWithLifecycle()
@@ -1408,8 +1412,8 @@ internal fun OutputCaption(
         ?: stringResource(Res.string.listen_together_jam_unnamed)
     val captionModifier = Modifier
         .fillMaxWidth(0.65f)
-        .clickable { if (badge.inParty) onOpenMembers() else onOpenOutput() }
-    if (!badge.inParty && isHiResOutput) {
+        .clickable { if (remoteName != null || badge.inParty) onOpenMembers() else onOpenOutput() }
+    if (remoteName == null && !badge.inParty && isHiResOutput) {
         ShimmerText(
             text = outputName,
             style = MaterialTheme.typography.labelSmall.copy(
@@ -1421,7 +1425,11 @@ internal fun OutputCaption(
         )
     } else {
         Text(
-            text = if (badge.inParty) jamName else outputName,
+            text = when {
+                remoteName != null -> stringResource(Res.string.connect_playing_on, remoteName)
+                badge.inParty -> jamName
+                else -> outputName
+            },
             style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
             color = LocalPlayerTint.current.copy(alpha = 0.55f),
             maxLines = 1,

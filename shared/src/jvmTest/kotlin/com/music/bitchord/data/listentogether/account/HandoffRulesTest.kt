@@ -29,9 +29,13 @@ class HandoffRulesTest {
     }
 
     @Test
-    fun `picking a quiet device sends it what this one was playing`() {
+    fun `picking a device with nothing sends it what this one was playing`() {
         assertEquals(Handoff.SEND_MY_MUSIC, HandoffRules.onPick(device(playing = null), localHasMusic = true))
-        assertEquals(Handoff.SEND_MY_MUSIC, HandoffRules.onPick(device(playing = false), localHasMusic = true))
+    }
+
+    @Test
+    fun `a paused device keeps its music and is controlled, not overwritten`() {
+        assertEquals(Handoff.CONTROL_ONLY, HandoffRules.onPick(device(playing = false), localHasMusic = true))
     }
 
     @Test
@@ -66,6 +70,24 @@ class HandoffRulesTest {
     @Test
     fun `controlling without handing over silences as soon as the target plays anything`() {
         assertTrue(HandoffRules.shouldSilenceLocal(device(playing = true, videoId = "whatever"), null))
+    }
+
+    @Test
+    fun `a paused song handed over is confirmed by the target showing it, not playing it`() {
+        // Handing over a paused song never makes the target play, so waiting for that was a
+        // failure after twenty seconds every time.
+        assertTrue(HandoffRules.shouldSilenceLocal(device(playing = false, videoId = "v1"), "v1", handedPlaying = false))
+        // But it still has to be that song, and the target still has to have something at all.
+        assertFalse(HandoffRules.shouldSilenceLocal(device(playing = false, videoId = "other"), "v1", handedPlaying = false))
+        assertFalse(HandoffRules.shouldSilenceLocal(device(playing = null), "v1", handedPlaying = false))
+        // A song meant to play is still not confirmed by being merely shown.
+        assertFalse(HandoffRules.shouldSilenceLocal(device(playing = false, videoId = "v1"), "v1", handedPlaying = true))
+    }
+
+    @Test
+    fun `controlling an idle or paused device is confirmed by the link alone`() {
+        assertTrue(HandoffRules.shouldSilenceLocal(device(playing = null), null))
+        assertTrue(HandoffRules.shouldSilenceLocal(device(playing = false, videoId = "v1"), null))
     }
 
     @Test
@@ -146,5 +168,60 @@ class HandoffRulesTest {
         assertEquals(JsonPrimitive(4000), command.payload["positionMs"])
         assertEquals("x", command.id)
         assertNull(AccountFrames.command(AccountFrames.parse("""{"type":"command","action":"seek"}""")!!))
+    }
+
+    // ---- when picking a device cannot be done ---------------------------------------------
+
+    @Test
+    fun `an ordinary connected device can be picked`() {
+        assertNull(HandoffRules.blockedBy(device(playing = true), myPartyCode = null))
+        assertNull(HandoffRules.blockedBy(device(playing = null), myPartyCode = null))
+    }
+
+    @Test
+    fun `a device that is gone or unknown cannot`() {
+        assertEquals(DeviceNotice.Unavailable, HandoffRules.blockedBy(null, myPartyCode = null))
+        assertEquals(DeviceNotice.Unavailable, HandoffRules.blockedBy(device(connected = false), myPartyCode = null))
+    }
+
+    @Test
+    fun `a target in another party than mine, or controlling another device, is refused, naming it`() {
+        val inParty = device(id = "tv").copy(partyCode = "ABC123")
+        assertEquals(DeviceNotice.TargetInParty("tv"), HandoffRules.blockedBy(inParty, myPartyCode = "ZZZ999"))
+        val remote = device(id = "tab").copy(controlling = "pc")
+        assertEquals(DeviceNotice.TargetIsRemote("tab"), HandoffRules.blockedBy(remote, myPartyCode = null))
+    }
+
+    @Test
+    fun `a device in a party can be controlled from one that is in none, and from one in the same party`() {
+        val inParty = device(id = "tv", playing = true).copy(partyCode = "ABC123")
+        assertNull(HandoffRules.blockedBy(inParty, myPartyCode = null))
+        assertNull(HandoffRules.blockedBy(inParty, myPartyCode = "abc123"))
+    }
+
+    @Test
+    fun `picking a device in a party only controls it, whatever else is asked`() {
+        val inParty = device(id = "tv").copy(partyCode = "ABC123")
+        assertEquals(Handoff.CONTROL_ONLY, HandoffRules.onPick(inParty, localHasMusic = true))
+        assertEquals(Handoff.CONTROL_ONLY, HandoffRules.onPick(inParty, localHasMusic = true, force = HandoffForce.SEND))
+    }
+
+    @Test
+    fun `from a device in a party the party moves, never a queue`() {
+        val quiet = device(id = "pc")
+        assertEquals(Handoff.SEND_PARTY, HandoffRules.onPick(quiet, localHasMusic = true, myPartyCode = "ABC123"))
+        assertEquals(Handoff.SEND_PARTY, HandoffRules.onPick(quiet, localHasMusic = false, force = HandoffForce.PULL, myPartyCode = "ABC123"))
+        val sameParty = device(id = "tab").copy(partyCode = "ABC123")
+        assertEquals(Handoff.MOVE_PARTY_SOUND, HandoffRules.onPick(sameParty, localHasMusic = true, myPartyCode = "ABC123"))
+    }
+
+    @Test
+    fun `a target that refuses control or has to be opened is refused, naming it`() {
+        val locked = device(id = "tv").copy(noControl = true)
+        assertEquals(DeviceNotice.TargetNotAllowed("tv"), HandoffRules.blockedBy(locked, myPartyCode = null))
+        val asleep = device(id = "tab").copy(unreachable = true)
+        assertEquals(DeviceNotice.TargetNotReachable("tab"), HandoffRules.blockedBy(asleep, myPartyCode = null))
+        // Hidden is a request about the list, not about being driven.
+        assertNull(HandoffRules.blockedBy(device(id = "pc").copy(hidden = true), myPartyCode = null))
     }
 }

@@ -31,6 +31,9 @@ var (
 	store    = party.NewPartyStore()
 	hubInst  = hub.NewHub()
 	createLimiter = newIPRateLimiter(time.Minute, config.CreateRatePerMinute, config.RateLimitMaxEntries)
+	joinLimiter = newIPRateLimiter(time.Minute, config.JoinRatePerMinute, config.RateLimitMaxEntries)
+	previewLimiter = newIPRateLimiter(time.Minute, config.PreviewRatePerMinute, config.RateLimitMaxEntries)
+	accountConnectLimiter = newIPRateLimiter(time.Minute, config.AccountConnectRatePerMinute, config.RateLimitMaxEntries)
 	presenceTracker = presence.NewTracker(
 		time.Duration(config.PresenceIntervalSec+config.PresenceGraceSec)*time.Second,
 		config.PresenceMaxEntries,
@@ -292,6 +295,7 @@ var serverFeatures = []string{
 	"people",             // accountProof on join: one person's devices are one seat; personId on members
 	"addedBy",            // tracks carry who queued them
 	"accountDevices",     // /api/account/connect + /ws/account: a person's devices see each other
+	"devicePrefs",        // prefs frame: hidden / noControl / unreachable on a device
 }
 
 // handleInfo describes this server so a client can tell an extended build from
@@ -487,6 +491,12 @@ func handleCreateParty(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleJoinParty(w http.ResponseWriter, r *http.Request) {
+	// A join is how a code is guessed: six characters out of thirty-three are far, but not
+	// unreachable for something that tries all day from one address.
+	if !joinLimiter.Allow(clientIP(r)) {
+		jsonError(w, http.StatusTooManyRequests, "join_rate_limited", "Too many attempts. Please try again shortly.")
+		return
+	}
 	code := r.PathValue("code")
 	var req protocol.JoinRequest
 	if !decodeJSONBody(w, r, &req) {
@@ -507,9 +517,28 @@ func handleJoinParty(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	p.Lock()
+	// A device that comes back signed in as somebody else leaves its old seat (see JoinAs). Its
+	// old socket must not stay behind as a member that no longer exists.
+	var before []string
+	for id, existing := range p.Members {
+		if existing.DeviceId == req.DeviceId {
+			before = append(before, id)
+		}
+	}
 	m, err := p.JoinAs(req.UserId, req.DeviceId, req.DisplayName, req.AvatarUrl, req.AccountProof, req.DeviceName)
+	var replaced []string
+	for _, id := range before {
+		if _, still := p.Members[id]; !still {
+			replaced = append(replaced, id)
+		}
+	}
+	var replacedMembers map[string]interface{}
+	if len(replaced) > 0 {
+		replacedMembers = membersFrame(p)
+	}
 	if err != nil {
 		p.Unlock()
+		dropReplacedSockets(p.Code, replaced, replacedMembers)
 		if pe, ok := err.(*party.PartyError); ok {
 			jsonError(w, pe.Status, pe.Code, pe.Message)
 			return
@@ -521,7 +550,11 @@ func handleJoinParty(w http.ResponseWriter, r *http.Request) {
 	youWire := m.ToWire()
 	token := m.Token
 	pCode := p.Code
+	if len(replaced) > 0 {
+		replacedMembers = membersFrame(p)
+	}
 	p.Unlock()
+	dropReplacedSockets(pCode, replaced, replacedMembers)
 
 	jsonResponse(w, http.StatusOK, map[string]interface{}{
 		"code":  pCode,
@@ -541,9 +574,13 @@ func handleJoinParty(w http.ResponseWriter, r *http.Request) {
 // can join. What it does not disclose is what the party is playing, its queue,
 // member or user ids, or anything that would let a caller act on the party.
 //
-// Not rate-limited beyond the service-wide limits: it takes no locks it does
-// not release, allocates a short slice, and creates nothing.
+// It creates nothing and allocates a short slice, but it answers whether a code exists, which is
+// all a guesser needs, so it is limited per address like joining is.
 func handlePreviewParty(w http.ResponseWriter, r *http.Request) {
+	if !previewLimiter.Allow(clientIP(r)) {
+		jsonError(w, http.StatusTooManyRequests, "preview_rate_limited", "Too many attempts. Please try again shortly.")
+		return
+	}
 	code := r.PathValue("code")
 	p, err := store.Get(code)
 	if err != nil {
@@ -567,7 +604,13 @@ func handlePreviewParty(w http.ResponseWriter, r *http.Request) {
 	})
 	members := make([]map[string]interface{}, 0, len(ordered))
 	hostName := ""
+	seen := make(map[string]bool, len(ordered))
 	for _, m := range ordered {
+		// A person on two devices is one face and one seat, as the size limit counts them.
+		if seen[m.PersonId] {
+			continue
+		}
+		seen[m.PersonId] = true
 		members = append(members, map[string]interface{}{
 			"displayName": m.DisplayName,
 			"avatarUrl":   m.AvatarUrl,
@@ -580,9 +623,9 @@ func handlePreviewParty(w http.ResponseWriter, r *http.Request) {
 	preview := map[string]interface{}{
 		"code":        p.Code,
 		"hostName":    hostName,
-		"memberCount": len(p.Members),
+		"memberCount": p.PersonCount(),
 		"maxMembers":  p.MaxMembers,
-		"isFull":      len(p.Members) >= p.MaxMembers,
+		"isFull":      p.PersonCount() >= p.MaxMembers,
 		"members":     members,
 	}
 	p.Unlock()
@@ -922,7 +965,7 @@ func handleInviteLanding(w http.ResponseWriter, r *http.Request) {
 		currentSongTitle = p.Playback.Track.Title
 		currentSongArtist = p.Playback.Track.Artist
 	}
-	memberCount := len(p.Members)
+	memberCount := p.PersonCount()
 	p.Unlock()
 
 	w.WriteHeader(http.StatusOK)
@@ -964,6 +1007,10 @@ func handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	}
 	p.Unlock()
 
+	if hubInst.Count() >= config.MaxSockets {
+		http.Error(w, "server is full", http.StatusServiceUnavailable)
+		return
+	}
 	conn, err := upgrader.Upgrade(w, r, nil)
 	if err != nil {
 		log.Printf("WebSocket upgrade failed: %v", err)
@@ -1287,6 +1334,8 @@ func applyControl(p *party.Party, member *party.Member, action string, frame map
 		// A person leaves with all of their devices.
 		removed := p.RemovePerson(targetID)
 		if len(removed) == 0 { return false, "not_found", "That listener is no longer in this party." }
+		// Removed for good, devices and all: see party.Ban.
+		p.Ban(removed)
 		for _, gone := range removed {
 			hubInst.Send(p.Code, gone.MemberId, map[string]interface{}{
 				"type":    protocol.FrameBye,
@@ -1435,5 +1484,22 @@ func dropOrphanRooms() {
 		if !live[code] {
 			hubInst.DropParty(code)
 		}
+	}
+}
+
+// dropReplacedSockets closes the sockets of members that were replaced by a join (a device that
+// came back as another account) and tells the rest of the party who is left.
+func dropReplacedSockets(code string, replaced []string, members map[string]interface{}) {
+	if len(replaced) == 0 {
+		return
+	}
+	for _, id := range replaced {
+		hubInst.Send(code, id, map[string]interface{}{
+			"type": protocol.FrameBye, "reason": "replaced", "message": "This device joined as someone else.",
+		})
+		hubInst.CloseMember(code, id)
+	}
+	if members != nil {
+		hubInst.Broadcast(code, members, "")
 	}
 }

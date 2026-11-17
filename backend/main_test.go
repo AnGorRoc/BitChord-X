@@ -683,3 +683,33 @@ func TestSetListeningIsPerMember(t *testing.T) {
 	}
 }
 
+
+func TestPreviewCountsPeopleNotDevices(t *testing.T) {
+	p, err := store.CreateWithLimits(config.MaxParties, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer store.Drop(p.Code)
+	proof := strings.Repeat("a", 64)
+	p.Lock()
+	_, _ = p.JoinAs("ana", "phone", "Ana", nil, proof, "Pixel")
+	_, _ = p.JoinAs("ana", "pc", "Ana", nil, proof, "IOP")
+	p.Unlock()
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /api/parties/{code}/preview", handlePreviewParty)
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/api/parties/"+p.Code+"/preview", nil))
+
+	var got struct {
+		MemberCount int           `json:"memberCount"`
+		IsFull      bool          `json:"isFull"`
+		Members     []interface{} `json:"members"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("%v: %s", err, rec.Body.String())
+	}
+	if got.MemberCount != 1 || got.IsFull || len(got.Members) != 1 {
+		t.Fatalf("one person on two devices is one face and one seat of two: %+v", got)
+	}
+}

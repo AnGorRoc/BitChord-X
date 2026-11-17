@@ -1,33 +1,97 @@
 package hub
 
 import (
+	"encoding/json"
+	"errors"
 	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
 )
 
-// SafeConn wraps *websocket.Conn with a mutex to prevent concurrent write panic.
+// outboxFrames is how many frames may wait for one slow connection. A connection that falls this
+// far behind is cut instead of being waited for: it reconnects and is brought up to date by the
+// welcome, and nobody else's music waits on its bad network.
+const outboxFrames = 32
+
+// writeTimeout bounds one write to a peer that stopped reading.
+const writeTimeout = 5 * time.Second
+
+// ErrSlowConsumer is returned when a connection's outbox is full and it is being cut.
+var ErrSlowConsumer = errors.New("connection too slow")
+
+// SafeConn wraps *websocket.Conn. Frames are queued and written, in the order they were queued, by
+// one goroutine per connection, so queuing never waits on the network: a caller holding a party's
+// lock can hand a frame to every member and carry on. That order is the order of the party's own
+// changes, which is what keeps one member from seeing a newer state before an older one.
 type SafeConn struct {
-	mu   sync.Mutex
 	conn *websocket.Conn
+
+	mu     sync.Mutex // guards closed and sending on out
+	closed bool
+	out    chan []byte
 }
 
 func NewSafeConn(conn *websocket.Conn) *SafeConn {
-	return &SafeConn{conn: conn}
+	s := &SafeConn{conn: conn, out: make(chan []byte, outboxFrames)}
+	go s.writeLoop()
+	return s
+}
+
+// writeLoop is the only writer of the socket. After Close it still delivers what was queued (a
+// "bye" sent just before the close must arrive), then closes the connection.
+func (s *SafeConn) writeLoop() {
+	failed := false
+	for frame := range s.out {
+		if failed {
+			continue // drain, so nothing is left blocked on the channel
+		}
+		_ = s.conn.SetWriteDeadline(time.Now().Add(writeTimeout))
+		if err := s.conn.WriteMessage(websocket.TextMessage, frame); err != nil {
+			failed = true
+			_ = s.conn.Close() // ends the read loop, which cleans up
+		}
+	}
+	_ = s.conn.Close()
+}
+
+// WriteBytes queues an already-encoded text frame.
+func (s *SafeConn) WriteBytes(frame []byte) error {
+	s.mu.Lock()
+	if s.closed {
+		s.mu.Unlock()
+		return errors.New("connection closed")
+	}
+	select {
+	case s.out <- frame:
+		s.mu.Unlock()
+		return nil
+	default:
+	}
+	// Full: this peer is not keeping up. Stop queueing for it and let it reconnect.
+	s.closed = true
+	close(s.out)
+	s.mu.Unlock()
+	return ErrSlowConsumer
 }
 
 func (s *SafeConn) WriteJSON(v interface{}) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	_ = s.conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
-	return s.conn.WriteJSON(v)
+	frame, err := json.Marshal(v)
+	if err != nil {
+		return err
+	}
+	return s.WriteBytes(frame)
 }
 
+// Close stops accepting frames, delivers those already queued, and closes the connection.
 func (s *SafeConn) Close() error {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.conn.Close()
+	if !s.closed {
+		s.closed = true
+		close(s.out)
+	}
+	s.mu.Unlock()
+	return nil
 }
 
 // Hub coordinates active WebSocket connections across rooms.
@@ -139,10 +203,17 @@ func (h *Hub) CloseMember(code, memberId string) {
 	if target != nil { _ = target.Close() }
 }
 
+// Broadcast queues payload for every member of the room but skipMemberId. It encodes once and
+// never waits on the network, so it is safe to call while holding a party's lock.
 func (h *Hub) Broadcast(code string, payload interface{}, skipMemberId string) {
+	frame, err := json.Marshal(payload)
+	if err != nil {
+		return
+	}
+
 	h.mu.RLock()
 	room := h.sockets[code]
-	if room == nil || len(room) == 0 {
+	if len(room) == 0 {
 		h.mu.RUnlock()
 		return
 	}
@@ -154,14 +225,18 @@ func (h *Hub) Broadcast(code string, payload interface{}, skipMemberId string) {
 	}
 	h.mu.RUnlock()
 
-	// Concurrently write to all targets so one slow mobile network does not delay others
-	var wg sync.WaitGroup
 	for _, sc := range targets {
-		wg.Add(1)
-		go func(conn *SafeConn) {
-			defer wg.Done()
-			_ = conn.WriteJSON(payload)
-		}(sc)
+		_ = sc.WriteBytes(frame)
 	}
-	wg.Wait()
+}
+
+// Count is how many sockets are open across every room, for a ceiling on what one process holds.
+func (h *Hub) Count() int {
+	h.mu.RLock()
+	defer h.mu.RUnlock()
+	n := 0
+	for _, room := range h.sockets {
+		n += len(room)
+	}
+	return n
 }

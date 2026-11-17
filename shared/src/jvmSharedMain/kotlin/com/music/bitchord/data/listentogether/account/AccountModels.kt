@@ -6,6 +6,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.longOrNull
 
 /** What a device says it is playing. The device itself is the only source of it. */
 @Serializable
@@ -23,6 +24,21 @@ data class AccountNowPlaying(
     val updatedAtMs: Long = 0L,
 )
 
+/**
+ * The playhead of a song that is playing moves on with the clock, but the device only reports it when
+ * it jumps, so the last report can be minutes old. Both stamps are the server's own, so the age is exact
+ * whatever the clocks of the devices read: the position is brought up to the moment of the frame.
+ */
+internal fun AccountNowPlaying.brought(serverMs: Long?): AccountNowPlaying {
+    if (serverMs == null || !isPlaying || anchorMs <= 0L || serverMs <= anchorMs) return this
+    return copy(positionMs = (positionMs + (serverMs - anchorMs)).let { if (durationMs > 0) it.coerceAtMost(durationMs) else it }, anchorMs = serverMs)
+}
+
+/** What this song would read now, [ageMs] after the report was brought up to date. */
+internal fun AccountNowPlaying.aged(ageMs: Long): AccountNowPlaying =
+    if (!isPlaying || ageMs <= 0L) this
+    else copy(positionMs = (positionMs + ageMs).let { if (durationMs > 0) it.coerceAtMost(durationMs) else it })
+
 /** One of the person's devices, as the server lists it. */
 @Serializable
 data class AccountDevice(
@@ -32,13 +48,37 @@ data class AccountDevice(
     val connected: Boolean = false,
     val lastSeenMs: Long = 0L,
     val nowPlaying: AccountNowPlaying? = null,
+    /** When this device's entry arrived here (this device's own clock; not on the wire), to age its playhead. */
+    @kotlinx.serialization.Transient val receivedAtMs: Long = 0L,
     /** The device currently acting as this one's remote. */
     val controlledBy: String? = null,
     /** The device this one is acting as the remote of. */
     val controlling: String? = null,
+    /** The party this device is in, if any. */
+    val partyCode: String? = null,
+    /** The person asked for this device not to be offered on their other devices. */
+    val hidden: Boolean = false,
+    /** This device does not let the person's other devices drive it. */
+    val noControl: Boolean = false,
+    /** Connected, but nothing on it is there to carry out a command until it is opened. */
+    val unreachable: Boolean = false,
 ) {
     val isPlaying: Boolean get() = connected && nowPlaying?.isPlaying == true
+
+    /** A song in its player, playing or paused: devices publish nothing when they have none. */
+    val hasMusic: Boolean get() = connected && nowPlaying != null
+
+    /** What this device is playing, with the playhead moved on to this moment. */
+    fun playhead(): AccountNowPlaying? =
+        nowPlaying?.aged(if (receivedAtMs > 0L) System.currentTimeMillis() - receivedAtMs else 0L)
 }
+
+/** How this device asks to be treated by the person's others. The default is today's behaviour. */
+data class DevicePrefs(
+    val hidden: Boolean = false,
+    val noControl: Boolean = false,
+    val unreachable: Boolean = false,
+)
 
 /** A command another of the person's devices sent to this one. */
 data class DeviceCommand(
@@ -62,6 +102,12 @@ object DeviceActions {
 
     /** Asks the target to send its queue back, for display; see the server's `snapshot`. */
     const val SNAPSHOT = "snapshot"
+
+    /** Asks the target to join the sender's party (payload: code, server) as the same person. */
+    const val JOIN_PARTY = "joinParty"
+
+    /** Asks the target, already in the sender's party, to be (or stop being) the one that sounds. */
+    const val PARTY_LISTEN = "partyListen"
 }
 
 enum class AccountConnection {
@@ -94,7 +140,20 @@ data class AccountState(
      * The device the sound is coming out of for this person right now, as the Connect card shows:
      * the one being controlled, otherwise this one.
      */
-    val soundingDevice: AccountDevice? get() = controlled ?: self
+    val soundingDevice: AccountDevice? get() = controlled ?: partySibling ?: self
+
+    /**
+     * In a party whose sound is on another of the person's devices: this one follows and controls it
+     * while that one plays. The mark is that this device reports nothing playing and a device in
+     * the same party does.
+     */
+    private val partySibling: AccountDevice?
+        get() {
+            val me = self ?: return null
+            val code = me.partyCode ?: return null
+            if (me.nowPlaying != null) return null
+            return others.firstOrNull { it.connected && it.partyCode == code && it.nowPlaying != null }
+        }
 }
 
 /** Reads the frames of the account socket. Kept apart from the socket so it can be tested. */
@@ -106,8 +165,10 @@ object AccountFrames {
         val type = frame["type"]?.jsonPrimitive?.contentOrNull
         if (type != "devices" && type != "welcome") return null
         val array = frame["devices"] as? kotlinx.serialization.json.JsonArray ?: return null
+        val serverMs = frame["serverMs"]?.jsonPrimitive?.longOrNull
+        val receivedAt = System.currentTimeMillis()
         return array.mapNotNull { runCatching { json.decodeFromJsonElement(AccountDevice.serializer(), it) }.getOrNull() }
-            .map { it.copy(controlledBy = it.controlledBy?.ifBlank { null }, controlling = it.controlling?.ifBlank { null }) }
+            .map { it.copy(controlledBy = it.controlledBy?.ifBlank { null }, controlling = it.controlling?.ifBlank { null }, nowPlaying = it.nowPlaying?.brought(serverMs), receivedAtMs = receivedAt) }
     }
 
     fun command(frame: JsonObject): DeviceCommand? {

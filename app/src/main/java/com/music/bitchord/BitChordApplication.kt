@@ -165,6 +165,7 @@ class BitChordApplication : Application(), SingletonImageLoader.Factory {
         ListenTogether.init(this)
         // This device joins its owner's other devices, so each can see and pick the others.
         ListenTogether.account.start()
+        ListenTogether.mirrorPartyToAccount()
         SearchHistory.init(this)
         LastPlayed.init(this)
         BoundedContextPersistence.init(this)
