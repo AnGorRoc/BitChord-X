@@ -106,6 +106,7 @@ internal const val SEEK_SETTLE_TIMEOUT_MS = 4_000L
 internal val THUMB_SIZE = 54.dp
 internal val HEADER_HEIGHT = 60.dp
 internal val ART_TITLE_GAP = 20.dp
+internal val TITLE_EXTRA_DROP = 6.dp
 
 /**
  * How long the sleeve takes to travel the whole way between the full player and
