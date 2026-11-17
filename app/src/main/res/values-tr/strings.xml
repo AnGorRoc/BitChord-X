@@ -1604,4 +1604,11 @@
     <string name="device_accepts_control">Diğer cihazlarımın bunu kontrol etmesine izin ver</string>
     <string name="device_accepts_control_subtitle">Diğer cihazların buradan müzik çalabilir, duraklatabilir ve buraya müzik gönderebilir</string>
     <string name="mini_player_playing_on">%1$s üzerinde çalıyor</string>
+    <string name="share_app_choice_title">BitChord gönder</string>
+    <string name="share_app_choice_message">Buradan gönderilen APK bu telefonla imzalanır, bu yüzden arkadaşın onu resmi sürümlerden güncelleyemez.</string>
+    <string name="share_app_send_release">En son sürümü gönder</string>
+    <string name="share_app_send_release_detail">GitHub’daki en yeni sürümün bağlantısı</string>
+    <string name="share_app_send_apk">Bu uygulamanın APK’sını gönder</string>
+    <string name="share_app_send_apk_detail">Bu telefonda yüklü olan sürümün aynısı</string>
+    <string name="share_app_release_text">BitChord X’i buradan indir: %1$s</string>
 </resources>

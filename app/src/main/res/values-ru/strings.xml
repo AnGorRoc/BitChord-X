@@ -1674,4 +1674,11 @@
     <string name="device_accepts_control">Разрешить моим другим устройствам управлять этим</string>
     <string name="device_accepts_control_subtitle">Другие ваши устройства могут воспроизводить, ставить на паузу и отправлять сюда музыку</string>
     <string name="mini_player_playing_on">Играет на: %1$s</string>
+    <string name="share_app_choice_title">Отправить BitChord</string>
+    <string name="share_app_choice_message">APK, отправленный отсюда, подписан этим телефоном, поэтому ваш друг не сможет обновить его из официальных релизов.</string>
+    <string name="share_app_send_release">Отправить последний релиз</string>
+    <string name="share_app_send_release_detail">Ссылка на самую новую версию на GitHub</string>
+    <string name="share_app_send_apk">Отправить APK этого приложения</string>
+    <string name="share_app_send_apk_detail">Именно та версия, что установлена на этом телефоне</string>
+    <string name="share_app_release_text">Скачайте BitChord X здесь: %1$s</string>
 </resources>

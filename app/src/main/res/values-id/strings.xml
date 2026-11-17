@@ -1627,4 +1627,11 @@
     <string name="device_accepts_control">Izinkan perangkat saya yang lain mengendalikan ini</string>
     <string name="device_accepts_control_subtitle">Perangkat Anda yang lain dapat memutar, menjeda, dan mengirim musik ke sini</string>
     <string name="mini_player_playing_on">Diputar di %1$s</string>
+    <string name="share_app_choice_title">Kirim BitChord</string>
+    <string name="share_app_choice_message">APK yang dikirim dari sini ditandatangani oleh ponsel ini, jadi temanmu tidak bisa memperbaruinya dari rilis resmi.</string>
+    <string name="share_app_send_release">Kirim rilis terbaru</string>
+    <string name="share_app_send_release_detail">Tautan ke versi terbaru di GitHub</string>
+    <string name="share_app_send_apk">Kirim APK aplikasi ini</string>
+    <string name="share_app_send_apk_detail">Versi persis yang terpasang di ponsel ini</string>
+    <string name="share_app_release_text">Unduh BitChord X di sini: %1$s</string>
 </resources>

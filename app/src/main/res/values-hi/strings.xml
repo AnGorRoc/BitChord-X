@@ -1647,4 +1647,11 @@
     <string name="device_accepts_control">मेरे दूसरे डिवाइस को इसे कंट्रोल करने दें</string>
     <string name="device_accepts_control_subtitle">आपके दूसरे डिवाइस यहाँ संगीत चला सकते हैं, रोक सकते हैं और भेज सकते हैं</string>
     <string name="mini_player_playing_on">%1$s पर चल रहा है</string>
+    <string name="share_app_choice_title">BitChord भेजें</string>
+    <string name="share_app_choice_message">यहाँ से भेजा गया APK इस फ़ोन से साइन होता है, इसलिए आपका दोस्त उसे आधिकारिक रिलीज़ से अपडेट नहीं कर पाएगा।</string>
+    <string name="share_app_send_release">नवीनतम रिलीज़ भेजें</string>
+    <string name="share_app_send_release_detail">GitHub पर सबसे नए वर्ज़न का लिंक</string>
+    <string name="share_app_send_apk">इस ऐप का APK भेजें</string>
+    <string name="share_app_send_apk_detail">इस फ़ोन पर इंस्टॉल किया गया यही वर्ज़न</string>
+    <string name="share_app_release_text">BitChord X यहाँ से डाउनलोड करें: %1$s</string>
 </resources>

@@ -1510,4 +1510,11 @@
         <item quantity="one">%1$d person listening</item>
         <item quantity="other">%1$d people listening</item>
     </plurals>
+    <string name="share_app_choice_title">Send BitChord</string>
+    <string name="share_app_choice_message">An APK sent from here is signed by this phone, so your friend won’t be able to update it from the official releases.</string>
+    <string name="share_app_send_release">Send latest release</string>
+    <string name="share_app_send_release_detail">A link to the newest version on GitHub</string>
+    <string name="share_app_send_apk">Send this app’s APK</string>
+    <string name="share_app_send_apk_detail">The exact version installed on this phone</string>
+    <string name="share_app_release_text">Get BitChord X here: %1$s</string>
 </resources>

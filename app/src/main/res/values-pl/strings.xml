@@ -1685,4 +1685,11 @@
     <string name="device_accepts_control">Pozwól moim innym urządzeniom sterować tym</string>
     <string name="device_accepts_control_subtitle">Twoje inne urządzenia mogą odtwarzać, wstrzymywać i wysyłać tu muzykę</string>
     <string name="mini_player_playing_on">Odtwarzanie na: %1$s</string>
+    <string name="share_app_choice_title">Wyślij BitChord</string>
+    <string name="share_app_choice_message">APK wysłany stąd jest podpisany przez ten telefon, więc znajomy nie zaktualizuje go z oficjalnych wydań.</string>
+    <string name="share_app_send_release">Wyślij najnowsze wydanie</string>
+    <string name="share_app_send_release_detail">Link do najnowszej wersji na GitHubie</string>
+    <string name="share_app_send_apk">Wyślij APK tej aplikacji</string>
+    <string name="share_app_send_apk_detail">Dokładnie ta wersja, która jest zainstalowana na tym telefonie</string>
+    <string name="share_app_release_text">Pobierz BitChord X tutaj: %1$s</string>
 </resources>

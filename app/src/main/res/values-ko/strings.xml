@@ -1483,4 +1483,11 @@
     <string name="device_accepts_control">내 다른 기기가 이 기기를 제어하도록 허용</string>
     <string name="device_accepts_control_subtitle">내 다른 기기에서 재생, 일시정지, 음악 전송을 할 수 있습니다</string>
     <string name="mini_player_playing_on">%1$s에서 재생 중</string>
+    <string name="share_app_choice_title">BitChord 보내기</string>
+    <string name="share_app_choice_message">여기서 보내는 APK는 이 휴대폰의 서명이 들어 있어서, 친구가 공식 릴리스로 업데이트할 수 없어요.</string>
+    <string name="share_app_send_release">최신 릴리스 보내기</string>
+    <string name="share_app_send_release_detail">GitHub의 최신 버전 링크</string>
+    <string name="share_app_send_apk">이 앱의 APK 보내기</string>
+    <string name="share_app_send_apk_detail">이 휴대폰에 설치된 바로 그 버전</string>
+    <string name="share_app_release_text">여기서 BitChord X를 받으세요: %1$s</string>
 </resources>
