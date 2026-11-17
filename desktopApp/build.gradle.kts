@@ -127,6 +127,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.3")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-swing:1.9.0")
     implementation("org.slf4j:slf4j-nop:2.0.16")
+    // The shared module only compiles against org.json (Android has its own); the JVM needs the real one.
+    implementation("org.json:json:20240303")
 
     // Browsers keep their cookies in SQLite, and importing a session from one is how this app signs
     // in — see DesktopBrowserCookies.

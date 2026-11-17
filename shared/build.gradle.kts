@@ -46,7 +46,11 @@ kotlin {
                 api("com.github.MetrolistGroup.innertubex:innertubex:v0.7.0")
                 compileOnly("com.github.TeamNewPipe:NewPipeExtractor:v0.26.3")
                 api("com.hierynomus:smbj:0.15.0")
-                api("org.json:json:20240303")
+                // Compile-only: Android ships its own org.json, and bundling this copy
+                // lets R8 rewrite its signatures (put(...) to void) while the phone
+                // runs the platform class, which crashes with NoSuchMethodError. The
+                // desktop app adds the artifact itself.
+                compileOnly("org.json:json:20240303")
             }
         }
         androidMain.get().dependsOn(jvmSharedMain)
