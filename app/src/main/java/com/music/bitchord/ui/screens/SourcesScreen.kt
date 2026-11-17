@@ -1150,16 +1150,6 @@ private fun SourceRow(
     }
 }
 
-@Composable
-private fun AudioQuality.localizedLabel(): String = stringResource(
-    when (this) {
-        AudioQuality.LOW -> R.string.low
-        AudioQuality.MEDIUM -> R.string.medium
-        AudioQuality.HIGH -> R.string.high
-        AudioQuality.LOSSLESS -> R.string.lossless
-    },
-)
-
 /**
  * The space inside Hi-Res Lossless for providers the public pool does not
  * list: typed in here, probed and ranked with the rest, removable.
