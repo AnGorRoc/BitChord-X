@@ -1654,4 +1654,6 @@
     <string name="share_app_send_apk">APK dieser App senden</string>
     <string name="share_app_send_apk_detail">Genau die Version, die auf diesem Handy installiert ist</string>
     <string name="share_app_release_text">Hol dir BitChord X hier: %1$s</string>
+    <string name="tint_with_now_playing">Farben des laufenden Titels</string>
+    <string name="tint_with_now_playing_subtitle">Färbt Seiten und Leisten in den Farben des Covers, das gerade läuft</string>
 </resources>

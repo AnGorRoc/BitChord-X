@@ -75,7 +75,7 @@ fun SearchBottomPill(
     modifier: Modifier = Modifier,
 ) {
     val pillShape = remember { RoundedCornerShape(percent = 50) }
-    val container = MaterialTheme.colorScheme.surface
+    val container = chromeSurface()
     val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
     val useGlass = LocalLiquidGlassEnabled.current && isGlassSupported()
     val barTint = glassBarTint()

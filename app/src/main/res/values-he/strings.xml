@@ -1659,4 +1659,6 @@
     <string name="share_app_send_apk">שליחת קובץ ה-APK של האפליקציה</string>
     <string name="share_app_send_apk_detail">בדיוק הגרסה שמותקנת בטלפון הזה</string>
     <string name="share_app_release_text">אפשר להוריד את BitChord X כאן: %1$s</string>
+    <string name="tint_with_now_playing">צבעים ממה שמתנגן</string>
+    <string name="tint_with_now_playing_subtitle">צובע את הדפים והסרגלים בצבעי העטיפה של השיר שמתנגן</string>
 </resources>

@@ -1681,4 +1681,6 @@
     <string name="share_app_send_apk">Отправить APK этого приложения</string>
     <string name="share_app_send_apk_detail">Именно та версия, что установлена на этом телефоне</string>
     <string name="share_app_release_text">Скачайте BitChord X здесь: %1$s</string>
+    <string name="tint_with_now_playing">Цвета текущего трека</string>
+    <string name="tint_with_now_playing_subtitle">Окрашивает страницы и панели в цвета обложки играющего трека</string>
 </resources>

@@ -1634,4 +1634,6 @@
     <string name="share_app_send_apk">傳送這個 App 的 APK</string>
     <string name="share_app_send_apk_detail">這支手機上安裝的這個版本</string>
     <string name="share_app_release_text">在這裡下載 BitChord X：%1$s</string>
+    <string name="tint_with_now_playing">隨播放內容變色</string>
+    <string name="tint_with_now_playing_subtitle">用正在播放歌曲的封面顏色為頁面和列著色</string>
 </resources>

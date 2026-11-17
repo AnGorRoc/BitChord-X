@@ -1640,4 +1640,6 @@
     <string name="share_app_send_apk">ส่ง APK ของแอปนี้</string>
     <string name="share_app_send_apk_detail">เวอร์ชันเดียวกับที่ติดตั้งในโทรศัพท์เครื่องนี้</string>
     <string name="share_app_release_text">ดาวน์โหลด BitChord X ได้ที่นี่: %1$s</string>
+    <string name="tint_with_now_playing">สีจากเพลงที่กำลังเล่น</string>
+    <string name="tint_with_now_playing_subtitle">แต่งสีหน้าและแถบด้วยสีจากปกของเพลงที่กำลังเล่น</string>
 </resources>

@@ -1611,4 +1611,6 @@
     <string name="share_app_send_apk">Bu uygulamanın APK’sını gönder</string>
     <string name="share_app_send_apk_detail">Bu telefonda yüklü olan sürümün aynısı</string>
     <string name="share_app_release_text">BitChord X’i buradan indir: %1$s</string>
+    <string name="tint_with_now_playing">Çalan şarkının renkleri</string>
+    <string name="tint_with_now_playing_subtitle">Sayfaları ve çubukları çalan şarkının kapak renkleriyle boyar</string>
 </resources>

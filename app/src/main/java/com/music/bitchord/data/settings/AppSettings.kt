@@ -594,6 +594,14 @@ object AppSettings {
      */
     val progressiveBlur = MutableStateFlow(false)
 
+    /**
+     * Washes the app's pages, and the floating bars over them, in the colours of
+     * whatever is playing. Off, they keep the theme's own black or white. The
+     * player is unaffected; release and artist pages keep their own artwork's
+     * colours either way.
+     */
+    val tintWithNowPlaying = MutableStateFlow(true)
+
     /** Blurs unfocused lyric lines, keeping the active line sharp. */
     val lyricsBlur = MutableStateFlow(true)
 
@@ -1215,6 +1223,7 @@ object AppSettings {
         liquidGlass.value = prefs.getBoolean(KEY_LIQUID_GLASS, false)
         glassPerformance.value = prefs.getBoolean(KEY_GLASS_PERFORMANCE, false)
         progressiveBlur.value = prefs.getBoolean(KEY_PROGRESSIVE_BLUR, false)
+        tintWithNowPlaying.value = prefs.getBoolean(KEY_TINT_WITH_NOW_PLAYING, true)
         lyricsBlur.value = prefs.getBoolean(KEY_LYRICS_BLUR, true)
         lyricsOffsetMs.value = prefs.getInt(KEY_LYRICS_OFFSET_MS, 0)
             .coerceIn(MIN_LYRICS_OFFSET_MS, MAX_LYRICS_OFFSET_MS)
@@ -1790,6 +1799,11 @@ object AppSettings {
     fun setProgressiveBlur(value: Boolean) {
         progressiveBlur.value = value
         prefs.edit().putBoolean(KEY_PROGRESSIVE_BLUR, value).apply()
+    }
+
+    fun setTintWithNowPlaying(value: Boolean) {
+        tintWithNowPlaying.value = value
+        prefs.edit().putBoolean(KEY_TINT_WITH_NOW_PLAYING, value).apply()
     }
 
     fun setHighPerformanceMode(value: Boolean) {
@@ -2651,6 +2665,7 @@ object AppSettings {
     private const val KEY_REDUCE_BLUR = "reduce_dynamic_blur"
     private const val KEY_LIQUID_GLASS = "liquid_glass"
     private const val KEY_PROGRESSIVE_BLUR = "progressive_blur"
+    private const val KEY_TINT_WITH_NOW_PLAYING = "tint_with_now_playing"
     private const val KEY_LYRICS_BLUR = "lyrics_blur"
     private const val KEY_LYRICS_OFFSET_MS = "lyrics_offset_ms"
     private const val KEY_TRANSLATION_LANGUAGE = "translation_language"

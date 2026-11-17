@@ -1490,4 +1490,6 @@
     <string name="share_app_send_apk">이 앱의 APK 보내기</string>
     <string name="share_app_send_apk_detail">이 휴대폰에 설치된 바로 그 버전</string>
     <string name="share_app_release_text">여기서 BitChord X를 받으세요: %1$s</string>
+    <string name="tint_with_now_playing">재생 중인 곡의 색</string>
+    <string name="tint_with_now_playing_subtitle">재생 중인 곡의 커버 색으로 페이지와 바를 물들여요</string>
 </resources>

@@ -2561,6 +2561,26 @@ private fun BitChordApp(
         imageUrl = detailApple?.heroUrl ?: topDetail?.thumbnailUrl,
         keyColors = detailApple?.keyColors(),
     )
+    // An album, playlist or artist page, painted in its own artwork.
+    val isDetailVisible = detail != null &&
+        (detail.type == BrowseType.ALBUM ||
+            detail.type == BrowseType.PLAYLIST ||
+            detail.type == BrowseType.ARTIST) &&
+        !isLocalDetail
+    // Every other page is washed in whatever is playing, the way a release page
+    // is washed in its own sleeve: the same [ArtworkPalette.background], so dark
+    // mode gets the record's colour taken deep and light mode a pale wash of it,
+    // and white or black text reads on either. Nothing loaded, or the setting
+    // off, leaves the theme's own background.
+    //
+    // The colours fade from one record to the next, and they are read up here,
+    // so that fade recomposes the app for its quarter of a second; it happens
+    // once per track, not per frame of anything else.
+    val tintWithPlaying by AppSettings.tintWithNowPlaying.collectAsStateWithLifecycle()
+    val playingPalette = rememberArtworkPalette(
+        imageUrl = player.song?.thumbnailUrl?.takeIf { tintWithPlaying },
+    )
+    val appTinted = tintWithPlaying && player.song != null
 
     // One set of numbers for the cards, the page, the stories and the shared
     // picture, so they cannot disagree. Read while any of them is on screen —
@@ -2969,9 +2989,29 @@ private fun BitChordApp(
         //
         // Everything a page's menu floats over, and so what [pageBackdrop]
         // takes its still of; the menus themselves are drawn outside it.
-        CompositionLocalProvider(com.music.bitchord.ui.components.LocalLandscapeChrome provides isLandscapeChrome) {
+        CompositionLocalProvider(
+            com.music.bitchord.ui.components.LocalLandscapeChrome provides isLandscapeChrome,
+            // The bars' frost, when they are not liquid glass, takes on the
+            // page's wash as well: the palette's raised shade of it, as a release
+            // page's buttons do, so they stay a step lighter than the page they
+            // float on. The setting off, or nothing loaded off a release page,
+            // leaves the theme's surface.
+            com.music.bitchord.ui.components.LocalChromeSurface provides when {
+                !tintWithPlaying -> null
+                isDetailVisible -> detailPalette.elevated
+                appTinted -> playingPalette.elevated
+                else -> null
+            },
+            // What rows paint over their swipe reveal: the page's wash, so a
+            // swipe doesn't drag a band of the theme's black across it.
+            com.music.bitchord.ui.theme.LocalPageBackground provides
+                playingPalette.background.takeIf { appTinted },
+        ) {
         Row(Modifier.fillMaxSize().snapshotBackdropSource(pageBackdrop)) {
-            Box(Modifier.weight(1f).fillMaxHeight()) {
+            // Painted once, under every page that has no colour of its own —
+            // the tabs, Search, History and the rest — rather than by each of
+            // them. A release page paints its own artwork's colour over it.
+            Box(Modifier.weight(1f).fillMaxHeight().background(playingPalette.background)) {
                 AnimatedContent(
                     // Whatever is on top of the back stack — see [AppNavigator].
                     targetState = when {
@@ -3752,15 +3792,12 @@ private fun BitChordApp(
                 // The top-bar footprint is transparent on every page so the
                 // shared app-level gradient is continuous; its controls float
                 // as separate circles in both the glass and blur materials.
-                val isDetailVisible = detail != null &&
-                    (detail.type == BrowseType.ALBUM ||
-                        detail.type == BrowseType.PLAYLIST ||
-                        detail.type == BrowseType.ARTIST) &&
-                    !isLocalDetail
+                // The floors and the top fade carry the page's wash too, or the
+                // bars would sit on a band of the theme's black or white.
                 val chromePageColor = if (isDetailVisible) {
                     detailPalette.background
                 } else {
-                    MaterialTheme.colorScheme.background
+                    playingPalette.background
                 }
                 // Apple's scroll edge: what passes up under the status bar and the
                 // controls is blurred — hardest at the top, none just below the

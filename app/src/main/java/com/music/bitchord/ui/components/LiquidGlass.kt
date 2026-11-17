@@ -146,6 +146,25 @@ fun glassBarTint(): Color? =
 private const val DARK_BAR_OPACITY = 0.14f
 
 /**
+ * What the floating bars are frosted in when they are not liquid glass: the
+ * page's own raised colour while the page is washed in an artwork's — Home,
+ * under whatever is playing — and null everywhere else.
+ *
+ * Not static: the colour fades from one record to the next, and only the bars
+ * reading it should recompose on each frame of that, not everything under the
+ * provider.
+ */
+val LocalChromeSurface = compositionLocalOf<Color?> { null }
+
+/**
+ * The container colour for a floating bar's blur, or for its solid fill under
+ * Reduce dynamic blur. The Haze material lays this over the blurred page at its
+ * own opacity, so a tinted bar keeps the same see-through frost as a plain one.
+ */
+@Composable
+fun chromeSurface(): Color = LocalChromeSurface.current ?: MaterialTheme.colorScheme.surface
+
+/**
  * A lightweight visual match for liquid glass over a stable background.
  *
  * This keeps the same translucent tint, directional highlight and hairline as
