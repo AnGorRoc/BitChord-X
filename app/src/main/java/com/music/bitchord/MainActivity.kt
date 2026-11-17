@@ -3705,7 +3705,6 @@ private fun BitChordApp(
                                 artworkMotion = artworkMotion,
                                 shelfSong = shelfSong,
                                 onSignIn = { webSession = WebSessionMode.SIGN_IN },
-                                onPlayRadio = playRadio,
                                 onPlayFromShelf = playFromShelf,
                                 onShelfLongPress = onShelfLongPress,
                                 onOpenTopPick = openTopPick,
