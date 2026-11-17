@@ -234,6 +234,9 @@ const val EXTRA_SWAP_MEDIA_ITEM = "bitchord.swap.media_item"
 /** How long the service may stay in the foreground, paused, while the watch plays. */
 private const val WATCH_SESSION_FOREGROUND_MS = 6 * 60 * 60 * 1000L
 
+/** How long after the service starts the Cast framework is brought up — see the end of onCreate. */
+private const val CAST_START_DELAY_MS = 4_000L
+
 const val ACTION_TOGGLE_FAVORITE = "com.music.bitchord.action.TOGGLE_FAVORITE"
 
 /** Session command used by the media notification's and the 4×1 widget's Shuffle button. */
@@ -2010,9 +2013,20 @@ class PlaybackService : MediaLibraryService() {
         refreshCustomLayouts()
 
         // Last, so a receiver that outlived the app is adopted by a service
-        // whose queue is already restored.
-        CastController.ensureStarted(this)
+        // whose queue is already restored. Attached now — it costs nothing, and
+        // any session the framework reports from here on reaches this service
+        // whoever starts the framework — but started a few seconds later, so the
+        // Play Services check and the Cast framework's registration are not on
+        // the main thread while the first screens are drawing: the service binds
+        // right after the app's first frame, and this cost the frames straight
+        // after it 20-110 ms (traced on an emulated S25). The Cast picker starts
+        // it at once if it is opened sooner (AndroidPlayerHost.castState).
+        // Cancelled with [scope] if the service goes first.
         CastController.attach(castPlayback)
+        scope.launch {
+            delay(CAST_START_DELAY_MS)
+            CastController.ensureStarted(this@PlaybackService)
+        }
     }
 
     private fun newSessionPlayer(player: Player, crossfade: CrossfadeController) = SessionPlayer(
