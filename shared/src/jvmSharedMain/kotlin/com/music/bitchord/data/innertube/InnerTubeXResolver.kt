@@ -402,7 +402,14 @@ object InnerTubeXResolver {
     private const val LOW_KBPS = 64
     private const val EXCLUDE_MS = 10 * 60 * 1000L
     private const val MAX_REMEMBERED = 64
-    /** Off the cold-start path; the first tap on a track is rarely sooner. */
-    private const val WARM_DELAY_MS = 2_000L
+    /**
+     * Off the cold-start path, and off the first scroll too. At 2 s this landed
+     * on the listener's first swipe through Home: the BotGuard WebView brings up
+     * Chromium on the main thread (~165 ms, traced on an emulated S25) and the
+     * EJS solve competes for the CPU the UI needs while it is still warming up.
+     * A track played sooner than this pays those costs itself, as it would
+     * without the warm-up — only age-restricted ones notice.
+     */
+    private const val WARM_DELAY_MS = 10_000L
     private const val KEPT_PLAYERS = 3
 }

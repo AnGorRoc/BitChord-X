@@ -1628,4 +1628,13 @@
     <string name="device_accepts_control">他のデバイスからこのデバイスの操作を許可する</string>
     <string name="device_accepts_control_subtitle">他のデバイスから再生、一時停止、音楽の送信ができます</string>
     <string name="mini_player_playing_on">%1$s で再生中</string>
+    <string name="share_app_choice_title">BitChord を送る</string>
+    <string name="share_app_choice_message">ここから送る APK はこの端末の署名付きのため、受け取った人は公式リリースからアップデートできません。</string>
+    <string name="share_app_send_release">最新リリースを送る</string>
+    <string name="share_app_send_release_detail">GitHub の最新バージョンへのリンク</string>
+    <string name="share_app_send_apk">このアプリの APK を送る</string>
+    <string name="share_app_send_apk_detail">この端末にインストールされているバージョンそのもの</string>
+    <string name="share_app_release_text">BitChord X はこちらから: %1$s</string>
+    <string name="tint_with_now_playing">再生中の曲の色</string>
+    <string name="tint_with_now_playing_subtitle">再生中の曲のジャケットの色でページとバーを彩ります</string>
 </resources>

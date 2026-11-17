@@ -65,6 +65,8 @@ import androidx.compose.foundation.clickable
 import com.music.bitchord.ui.components.IosSwitch
 import com.music.bitchord.ui.components.QrCode
 import com.music.bitchord.ui.components.QrScannerDialog
+import com.music.bitchord.ui.components.LATEST_RELEASE_URL
+import com.music.bitchord.ui.components.ShareAppAlert
 import com.music.bitchord.data.listentogether.spotify.SpotifyJamBridge
 import com.music.bitchord.data.listentogether.spotify.SpotifyJamApi
 import com.music.bitchord.data.listentogether.spotify.SpotifyAccountTier
@@ -218,6 +220,8 @@ fun ListenTogetherScreen(
     val maxMembers = DEFAULT_PARTY_SIZE
     var joinPlayHere by remember { mutableStateOf(true) }
     var sharingApk by remember { mutableStateOf(false) }
+    // The APK or the release link — see [ShareAppAlert] for why both are offered.
+    var choosingShare by remember { mutableStateOf(false) }
     var editingName by remember { mutableStateOf<NameEdit?>(null) }
     var deviceName by remember { mutableStateOf(ListenTogether.deviceName()) }
     var sheet by remember { mutableStateOf<PartySheet?>(null) }
@@ -653,37 +657,54 @@ fun ListenTogetherScreen(
                 },
                 enabled = !sharingApk,
                 trailing = if (sharingApk) ({ Spinner() }) else null,
-                onClick = {
-                    if (sharingApk) return@SettingsRow
-                    sharingApk = true
-                    scope.launch {
-                        val apkUri = extractApkForSharing(context)
-                        sharingApk = false
-                        if (apkUri != null) {
-                            val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                                type = "application/vnd.android.package-archive"
-                                putExtra(Intent.EXTRA_STREAM, apkUri)
-                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                            }
-                            context.startActivity(
-                                Intent.createChooser(
-                                    shareIntent,
-                                    context.getString(R.string.listen_together_share_apk),
-                                ),
-                            )
-                        } else {
-                            Toast.makeText(
-                                context,
-                                context.getString(R.string.listen_together_share_apk_error),
-                                Toast.LENGTH_SHORT,
-                            ).show()
-                        }
-                    }
-                },
+                onClick = { if (!sharingApk) choosingShare = true },
             )
         }
 
         Spacer(Modifier.height(32.dp))
+    }
+
+    if (choosingShare) {
+        ShareAppAlert(
+            onSendRelease = {
+                choosingShare = false
+                val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                    type = "text/plain"
+                    putExtra(Intent.EXTRA_TEXT, context.getString(R.string.share_app_release_text, LATEST_RELEASE_URL))
+                }
+                context.startActivity(
+                    Intent.createChooser(shareIntent, context.getString(R.string.share_app_send_release)),
+                )
+            },
+            onSendApk = {
+                choosingShare = false
+                sharingApk = true
+                scope.launch {
+                    val apkUri = extractApkForSharing(context)
+                    sharingApk = false
+                    if (apkUri != null) {
+                        val shareIntent = Intent(Intent.ACTION_SEND).apply {
+                            type = "application/vnd.android.package-archive"
+                            putExtra(Intent.EXTRA_STREAM, apkUri)
+                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                        }
+                        context.startActivity(
+                            Intent.createChooser(
+                                shareIntent,
+                                context.getString(R.string.listen_together_share_apk),
+                            ),
+                        )
+                    } else {
+                        Toast.makeText(
+                            context,
+                            context.getString(R.string.listen_together_share_apk_error),
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    }
+                }
+            },
+            onDismiss = { choosingShare = false },
+        )
     }
 }
 

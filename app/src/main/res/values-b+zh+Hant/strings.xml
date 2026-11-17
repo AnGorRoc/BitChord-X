@@ -1627,4 +1627,13 @@
     <string name="device_accepts_control">允許我的其他裝置控制此裝置</string>
     <string name="device_accepts_control_subtitle">你的其他裝置可以在此播放、暫停並傳送音樂</string>
     <string name="mini_player_playing_on">正在 %1$s 上播放</string>
+    <string name="share_app_choice_title">傳送 BitChord</string>
+    <string name="share_app_choice_message">從這裡傳送的 APK 帶有這支手機的簽章，你的朋友將無法透過官方版本更新。</string>
+    <string name="share_app_send_release">傳送最新版本</string>
+    <string name="share_app_send_release_detail">前往 GitHub 最新版本的連結</string>
+    <string name="share_app_send_apk">傳送這個 App 的 APK</string>
+    <string name="share_app_send_apk_detail">這支手機上安裝的這個版本</string>
+    <string name="share_app_release_text">在這裡下載 BitChord X：%1$s</string>
+    <string name="tint_with_now_playing">隨播放內容變色</string>
+    <string name="tint_with_now_playing_subtitle">用正在播放歌曲的封面顏色為頁面和列著色</string>
 </resources>

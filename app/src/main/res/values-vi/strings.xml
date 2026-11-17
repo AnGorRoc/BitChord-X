@@ -1567,4 +1567,13 @@
     <string name="device_accepts_control">Cho phép các thiết bị khác của tôi điều khiển thiết bị này</string>
     <string name="device_accepts_control_subtitle">Các thiết bị khác của bạn có thể phát, tạm dừng và gửi nhạc đến đây</string>
     <string name="mini_player_playing_on">Đang phát trên %1$s</string>
+    <string name="share_app_choice_title">Gửi BitChord</string>
+    <string name="share_app_choice_message">APK gửi từ đây được ký bởi điện thoại này, nên bạn của bạn sẽ không thể cập nhật nó từ các bản phát hành chính thức.</string>
+    <string name="share_app_send_release">Gửi bản phát hành mới nhất</string>
+    <string name="share_app_send_release_detail">Liên kết đến phiên bản mới nhất trên GitHub</string>
+    <string name="share_app_send_apk">Gửi APK của ứng dụng này</string>
+    <string name="share_app_send_apk_detail">Đúng phiên bản đang cài trên điện thoại này</string>
+    <string name="share_app_release_text">Tải BitChord X tại đây: %1$s</string>
+    <string name="tint_with_now_playing">Màu theo bài đang phát</string>
+    <string name="tint_with_now_playing_subtitle">Tô màu trang và thanh theo ảnh bìa của bài đang phát</string>
 </resources>
