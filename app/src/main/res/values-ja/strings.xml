@@ -1635,4 +1635,6 @@
     <string name="share_app_send_apk">このアプリの APK を送る</string>
     <string name="share_app_send_apk_detail">この端末にインストールされているバージョンそのもの</string>
     <string name="share_app_release_text">BitChord X はこちらから: %1$s</string>
+    <string name="tint_with_now_playing">再生中の曲の色</string>
+    <string name="tint_with_now_playing_subtitle">再生中の曲のジャケットの色でページとバーを彩ります</string>
 </resources>

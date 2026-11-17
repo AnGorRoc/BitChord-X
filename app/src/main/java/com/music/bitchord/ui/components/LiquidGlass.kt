@@ -140,10 +140,43 @@ private const val DARK_INDICATOR_OPACITY = 0.14f
  */
 @Composable
 fun glassBarTint(): Color? =
-    if (MaterialTheme.colorScheme.surface.luminance() > 0.5f) null else Color.White.copy(alpha = DARK_BAR_OPACITY)
+    chromeGlassTint()
+        ?: if (MaterialTheme.colorScheme.surface.luminance() > 0.5f) null else Color.White.copy(alpha = DARK_BAR_OPACITY)
 
 /** How white the nav bar's glass is in dark theme — see [glassBarTint]. */
 private const val DARK_BAR_OPACITY = 0.14f
+
+/**
+ * The colour the floating bars take from the page under them: the page's own
+ * raised shade while it is washed in an artwork's — whatever is playing, or a
+ * release page's sleeve — and null everywhere else. The frosted bars use it as
+ * their container ([chromeSurface]); liquid glass lays it over the refraction
+ * as a translucent tint ([chromeGlassTint]).
+ *
+ * Not static: the colour fades from one record to the next, and only the bars
+ * reading it should recompose on each frame of that, not everything under the
+ * provider.
+ */
+val LocalChromeSurface = compositionLocalOf<Color?> { null }
+
+/**
+ * The container colour for a floating bar's blur, or for its solid fill under
+ * Reduce dynamic blur. The Haze material lays this over the blurred page at its
+ * own opacity, so a tinted bar keeps the same see-through frost as a plain one.
+ */
+@Composable
+fun chromeSurface(): Color = LocalChromeSurface.current ?: MaterialTheme.colorScheme.surface
+
+/**
+ * [LocalChromeSurface] as liquid glass's surface tint, or null when the page
+ * has no wash. Translucent, so the refracted page still shows through it: the
+ * glass reads as the record's colour rather than as a painted pill.
+ */
+@Composable
+fun chromeGlassTint(): Color? = LocalChromeSurface.current?.copy(alpha = CHROME_GLASS_OPACITY)
+
+/** How much of the page's raised shade liquid glass lays over its refraction. */
+private const val CHROME_GLASS_OPACITY = 0.5f
 
 /**
  * A lightweight visual match for liquid glass over a stable background.
@@ -230,7 +263,7 @@ fun Modifier.liquidGlass(
     if (!isGlassSupported()) return this
     val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
     if (reduceDynamicBlur) {
-        return background(MaterialTheme.colorScheme.surface, shape)
+        return background(chromeSurface(), shape)
             .border(GLASS_EDGE_WIDTH, GLASS_EDGE_COLOR, shape)
     }
     val glassPerformance by AppSettings.glassPerformance.collectAsStateWithLifecycle()
@@ -247,7 +280,7 @@ fun Modifier.liquidGlass(
     } else {
         Color(0xFF121212)
     }
-    val surfaceTintColor = surfaceTint ?: themeTint.copy(alpha = SURFACE_OPACITY)
+    val surfaceTintColor = surfaceTint ?: chromeGlassTint() ?: themeTint.copy(alpha = SURFACE_OPACITY)
 
     return drawBackdrop(
         backdrop = backdrop,

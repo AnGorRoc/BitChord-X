@@ -1651,4 +1651,6 @@
     <string name="share_app_send_apk">Enviar el APK de esta app</string>
     <string name="share_app_send_apk_detail">La versión exacta instalada en este teléfono</string>
     <string name="share_app_release_text">Descarga BitChord X aquí: %1$s</string>
+    <string name="tint_with_now_playing">Colores de lo que suena</string>
+    <string name="tint_with_now_playing_subtitle">Tiñe las páginas y las barras con la portada de la canción que está sonando</string>
 </resources>

@@ -1654,4 +1654,6 @@
     <string name="share_app_send_apk">इस ऐप का APK भेजें</string>
     <string name="share_app_send_apk_detail">इस फ़ोन पर इंस्टॉल किया गया यही वर्ज़न</string>
     <string name="share_app_release_text">BitChord X यहाँ से डाउनलोड करें: %1$s</string>
+    <string name="tint_with_now_playing">चल रहे गाने के रंग</string>
+    <string name="tint_with_now_playing_subtitle">चल रहे गाने के कवर के रंग से पेज और बार रंगें</string>
 </resources>

@@ -394,11 +394,11 @@ fun MiniPlayer(
             .clip(shape)
             .then(
                 if (reduceDynamicBlur) {
-                    Modifier.background(MaterialTheme.colorScheme.surface)
+                    Modifier.background(chromeSurface())
                 } else {
                     Modifier.optimizedHazeEffect(
                         state = hazeState,
-                        style = HazeMaterials.thin(MaterialTheme.colorScheme.surface),
+                        style = HazeMaterials.thin(chromeSurface()),
                     )
                 },
             )

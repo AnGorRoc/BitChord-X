@@ -588,7 +588,7 @@ private fun TopResultCard(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.background)
+            .background(com.music.bitchord.ui.theme.pageBackground())
             .padding(start = PAGE_GUTTER, end = PAGE_GUTTER, top = 18.dp, bottom = 8.dp)
             .longPressMenuClickable(onClick = onPlay, onLongClick = onLongPress)
             .contextClick(onLongPress),
@@ -1030,7 +1030,7 @@ private fun RecentSearchEntityRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(MaterialTheme.colorScheme.background)
+                .background(com.music.bitchord.ui.theme.pageBackground())
                 .longPressMenuClickable(
                     onClick = onClick,
                     onLongClick = onLongPress,

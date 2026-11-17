@@ -179,6 +179,7 @@ internal fun SettingsAppearanceSection(
     val liquidGlass by AppSettings.liquidGlass.collectAsStateWithLifecycle()
     val glassPerformance by AppSettings.glassPerformance.collectAsStateWithLifecycle()
     val progressiveBlur by AppSettings.progressiveBlur.collectAsStateWithLifecycle()
+    val tintWithPlaying by AppSettings.tintWithNowPlaying.collectAsStateWithLifecycle()
     val liquidGlassSupported = isGlassSupported()
     val fullBleedArtwork by AppSettings.fullBleedArtwork.collectAsStateWithLifecycle()
     val playerTheme by AppSettings.playerTheme.collectAsStateWithLifecycle()
@@ -201,6 +202,21 @@ internal fun SettingsAppearanceSection(
                 selectedIndex = ThemeMode.entries.indexOf(theme),
                 onSelect = { AppSettings.setThemeMode(ThemeMode.entries[it]) },
                 modifier = Modifier.padding(start = ROW_INSET, end = ROW_INSET, bottom = 14.dp),
+            )
+        }
+        val tintWithPlayingTitle = stringResource(R.string.tint_with_now_playing)
+        row(tintWithPlayingTitle, "colour", "color", "tint", "artwork", "background", "now playing") {
+            SettingsRow(
+                icon = SfIcons.Appearance,
+                title = tintWithPlayingTitle,
+                subtitle = stringResource(R.string.tint_with_now_playing_subtitle),
+                trailing = {
+                    IosSwitch(
+                        checked = tintWithPlaying,
+                        onCheckedChange = AppSettings::setTintWithNowPlaying,
+                    )
+                },
+                onClick = { AppSettings.setTintWithNowPlaying(!tintWithPlaying) },
             )
         }
         val fontTitle = stringResource(R.string.font)
