@@ -1637,4 +1637,27 @@
     <string name="share_app_release_text">BitChord X はこちらから: %1$s</string>
     <string name="tint_with_now_playing">再生中の曲の色</string>
     <string name="tint_with_now_playing_subtitle">再生中の曲のジャケットの色でページとバーを彩ります</string>
+    <string name="device_notice_playing_on">%1$s で再生中</string>
+    <string name="device_notice_playing_on_generic">別のデバイスで再生中</string>
+    <string name="device_notice_controlling">%1$s を操作中</string>
+    <string name="device_notice_controlling_generic">別のデバイスを操作中</string>
+    <string name="device_notice_brought_here">%1$s の音楽をこちらに移しました</string>
+    <string name="device_notice_brought_here_generic">音楽をこちらに移しました</string>
+    <string name="device_notice_back_here">このデバイスに戻りました</string>
+    <string name="device_notice_party_on">パーティーは %1$s で再生中です</string>
+    <string name="device_notice_party_on_generic">パーティーは別のデバイスで再生中です</string>
+    <string name="device_notice_party_here_again">パーティーは再びこのデバイスで再生中です</string>
+    <string name="listen_together_msg_created">パーティーを開始しました · コード %1$s</string>
+    <string name="listen_together_msg_joined">パーティーに参加しました</string>
+    <string name="listen_together_msg_joined_host">%1$s さんのパーティーに参加しました</string>
+    <string name="listen_together_msg_left">パーティーを退出しました</string>
+    <string name="listen_together_people">メンバー</string>
+    <string name="listen_together_room_settings">ルーム設定</string>
+    <string name="listen_together_code_hint_short">このコードを伝えるか、リンクを共有してください</string>
+    <string name="listen_together_show_qr">QR コードを表示</string>
+    <string name="listen_together_hide_qr">QR コードを隠す</string>
+    <string name="listen_together_copy_link">リンクをコピー</string>
+    <plurals name="listen_together_people_count">
+        <item quantity="other">%1$d 人が聴いています</item>
+    </plurals>
 </resources>

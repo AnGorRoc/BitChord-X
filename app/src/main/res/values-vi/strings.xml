@@ -1576,4 +1576,27 @@
     <string name="share_app_release_text">Tải BitChord X tại đây: %1$s</string>
     <string name="tint_with_now_playing">Màu theo bài đang phát</string>
     <string name="tint_with_now_playing_subtitle">Tô màu trang và thanh theo ảnh bìa của bài đang phát</string>
+    <string name="device_notice_playing_on">Đang phát trên %1$s</string>
+    <string name="device_notice_playing_on_generic">Đang phát trên thiết bị kia</string>
+    <string name="device_notice_controlling">Đang điều khiển %1$s</string>
+    <string name="device_notice_controlling_generic">Đang điều khiển thiết bị kia</string>
+    <string name="device_notice_brought_here">Đã chuyển nhạc từ %1$s sang đây</string>
+    <string name="device_notice_brought_here_generic">Đã chuyển nhạc sang đây</string>
+    <string name="device_notice_back_here">Đã quay lại thiết bị này</string>
+    <string name="device_notice_party_on">Bữa tiệc giờ phát trên %1$s</string>
+    <string name="device_notice_party_on_generic">Bữa tiệc giờ phát trên thiết bị kia</string>
+    <string name="device_notice_party_here_again">Bữa tiệc lại phát trên thiết bị này</string>
+    <string name="listen_together_msg_created">Đã bắt đầu bữa tiệc · mã %1$s</string>
+    <string name="listen_together_msg_joined">Bạn đã tham gia bữa tiệc</string>
+    <string name="listen_together_msg_joined_host">Bạn đã tham gia bữa tiệc của %1$s</string>
+    <string name="listen_together_msg_left">Bạn đã rời bữa tiệc</string>
+    <string name="listen_together_people">Mọi người</string>
+    <string name="listen_together_room_settings">Cài đặt phòng</string>
+    <string name="listen_together_code_hint_short">Cho mọi người biết mã này hoặc chia sẻ liên kết</string>
+    <string name="listen_together_show_qr">Hiện mã QR</string>
+    <string name="listen_together_hide_qr">Ẩn mã QR</string>
+    <string name="listen_together_copy_link">Sao chép liên kết</string>
+    <plurals name="listen_together_people_count">
+        <item quantity="other">%1$d người đang nghe</item>
+    </plurals>
 </resources>
