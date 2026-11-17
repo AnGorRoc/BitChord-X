@@ -194,6 +194,42 @@ internal fun PlaybackOriginCaption(
 /** How far [PlayerScrubber] draws its times above the slot they are laid out in. */
 internal val SCRUBBER_LABEL_LIFT = 9.dp
 
+@Composable
+private fun ScrubberTimestamps(
+    shown: () -> Float,
+    durationMs: Long,
+    tint: Color,
+) {
+    val elapsedSeconds by remember(shown, durationMs) {
+        derivedStateOf {
+            if (durationMs <= 0L) 0L else ((shown().coerceIn(0f, 1f) * durationMs).toLong() / 1000L)
+        }
+    }
+    val elapsedText = remember(elapsedSeconds) {
+        formatTime(elapsedSeconds * 1000L)
+    }
+    val remainingText = remember(elapsedSeconds, durationMs) {
+        val totalSeconds = durationMs / 1000L
+        "-" + formatTime((totalSeconds - elapsedSeconds).coerceAtLeast(0L) * 1000L)
+    }
+
+    Row(
+        modifier = Modifier.fillMaxWidth().additiveChrome(LocalPlayerChrome.current),
+        horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+        Text(
+            text = elapsedText,
+            style = MaterialTheme.typography.labelMedium,
+            color = tint,
+        )
+        Text(
+            text = remainingText,
+            style = MaterialTheme.typography.labelMedium,
+            color = tint,
+        )
+    }
+}
+
 /**
  * The seek bar, with elapsed and remaining either side under it and
  * [centerLabel] — the quality badge — between them.
@@ -215,7 +251,7 @@ internal fun PlayerScrubber(
     onScrubFinished: () -> Unit,
     centerLabel: @Composable BoxScope.() -> Unit = {},
 ) {
-    val shown = shown()
+    val currentShown = shown()
     // Held as a State and read only inside the bar's draw: the blend republishes
     // every fade tick, and collecting it by value here would recompose the
     // scrubber and its labels thirty times a second for a change only the
@@ -226,7 +262,7 @@ internal fun PlayerScrubber(
     val mixPulse = rememberMixPulse({ mixBlend.value }, enabled = !reduceAnimation)
     Column(Modifier.fillMaxWidth()) {
         ThinSlider(
-            value = shown,
+            value = currentShown,
             onValueChange = onScrub,
             onValueChangeFinished = onScrubFinished,
             loading = loading,
@@ -241,23 +277,11 @@ internal fun PlayerScrubber(
                 // so pull the labels back up under it.
                 .offset(y = -SCRUBBER_LABEL_LIFT),
         ) {
-            // Drawn like the artist line: the same white, added the same way.
-            val timeColor = chromeWhite(0.55f)
-            Row(
-                modifier = Modifier.fillMaxWidth().additiveChrome(LocalPlayerChrome.current),
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Text(
-                    text = formatTime((shown * durationMs).toLong()),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = timeColor,
-                )
-                Text(
-                    text = "-" + formatTime(durationMs - (shown * durationMs).toLong()),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = timeColor,
-                )
-            }
+            ScrubberTimestamps(
+                shown = shown,
+                durationMs = durationMs,
+                tint = chromeWhite(0.55f),
+            )
             // Pinned to the box's own centre rather than squeezed into the gap
             // between the two timestamps: that gap's width changes by a digit's
             // worth every time a minute rolls over. Cross-faded with "Mixing"
