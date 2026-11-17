@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -66,7 +67,9 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.rotate
@@ -87,7 +90,6 @@ import com.music.bitchord.data.model.MoodGenre
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.model.artworkAt
 import com.music.bitchord.ui.screens.MOOD_CARD_ASPECT
-import com.music.bitchord.ui.screens.MoodGenreSleeve
 import com.music.bitchord.ui.tv.theme.TvDimensions
 import com.music.bitchord.ui.tv.theme.TvGlass
 import com.music.bitchord.ui.tv.theme.TvType
@@ -832,8 +834,10 @@ fun TvSongRow(
 }
 
 /**
- * A mood or genre card — the phone's own sleeve ([MoodGenreSleeve]: colour stripe,
- * duotone cover, title), lifted on focus.
+ * A mood or genre card — YouTube Music's colour stripe, the category's cover on
+ * the right and the title over it — lifted on focus. The phone's Explore moved to
+ * a bento grid with fixed-height cards, so the TV keeps its own sleeve, sized by
+ * [MOOD_CARD_ASPECT] for the focus grid.
  */
 @Composable
 fun TvMoodCard(
@@ -842,14 +846,55 @@ fun TvMoodCard(
     modifier: Modifier = Modifier,
 ) {
     val interaction = remember { MutableInteractionSource() }
-    MoodGenreSleeve(
+    TvMoodSleeve(
         item = item,
-        titleStyle = TvType.Body.copy(fontSize = 14.sp),
         modifier = modifier
             .aspectRatio(MOOD_CARD_ASPECT)
             .tvLift(interaction, RoundedCornerShape(13.dp), focusedScale = 1.07f)
             .tvClick(interaction, onClick = onClick),
     )
+}
+
+private val TvMoodFallbackStripe = Color(0xFF3A3A44)
+
+@Composable
+private fun TvMoodSleeve(item: MoodGenre, modifier: Modifier = Modifier) {
+    val stripe = remember(item.stripeColor) {
+        item.stripeColor?.let { Color(it.toInt()) } ?: TvMoodFallbackStripe
+    }
+    Box(modifier = modifier.background(stripe)) {
+        item.thumbnailUrl?.let { artwork ->
+            AsyncImage(
+                model = artwork,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .fillMaxHeight()
+                    .fillMaxWidth(0.62f),
+            )
+        }
+        // Pale stripes would swallow white type; a soft shade keeps it legible.
+        Box(
+            Modifier
+                .matchParentSize()
+                .background(
+                    Brush.horizontalGradient(0f to stripe, 0.42f to stripe.copy(alpha = 0.85f), 1f to Color.Transparent),
+                ),
+        )
+        Text(
+            text = item.title,
+            style = TvType.Body.copy(fontSize = 14.sp),
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .fillMaxWidth(0.6f)
+                .padding(12.dp),
+        )
+    }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
