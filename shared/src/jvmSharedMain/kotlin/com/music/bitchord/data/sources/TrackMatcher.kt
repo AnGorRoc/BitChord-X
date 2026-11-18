@@ -255,7 +255,13 @@ object TrackMatcher {
             // the only way through the wider window. Exact title/version plus
             // a shared artist is strong enough; a different artist still gets
             // the ordinary 30-second ceiling below.
-            allowVideoDrift = creditedArtist != null,
+            //
+            // The artist has to be the row's *lead*, not a guest: a catalogue
+            // row "Mocchi, Ruben Rada" shares an artist with Ruben Rada's own
+            // "Quién Va A Cantar", and its 66-second-shorter cover was taken
+            // for the song. A genuine feature is still found by the ordinary
+            // 30-second window.
+            allowVideoDrift = creditedArtist != null && sharesLead(target.artist, candidate.artist),
         ) ?: return null
         val artist = creditedArtist
         // The credits don't merely differ in spelling, they name different
@@ -738,6 +744,19 @@ object TrackMatcher {
         }
         .filter { it.isNotEmpty() }
         .toSet()
+
+    /**
+     * Whether the first-credited artist of one side is among the artists of
+     * the other. A side with no credit leaves nothing to disagree with.
+     */
+    private fun sharesLead(wanted: String, got: String): Boolean {
+        val want = artistNames(wanted)
+        val have = artistNames(got)
+        if (want.isEmpty() || have.isEmpty()) return true
+        val wantLead = want.first()
+        val haveLead = have.first()
+        return have.any { sameArtist(wantLead, it) } && want.any { sameArtist(haveLead, it) }
+    }
 
     private fun sameArtist(a: List<String>, b: List<String>) = runOf(a, b) || runOf(b, a)
 

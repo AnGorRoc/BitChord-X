@@ -764,6 +764,20 @@ class SourcesTest {
     }
 
     @Test
+    fun `a row where the artist is only a guest cannot ride the wide video window`() {
+        val target = TrackMatcher.Target("Quién Va A Cantar", "Ruben Rada", durationSec = 203)
+        // Monochrome's real answer: Mocchi's version, Rada credited as a guest.
+        val mocchi = song("Quien Va A Cantar", "Mocchi, Ruben Rada", "2:17")
+        val official = song("Quién Va A Cantar", "Ruben Rada", "3:23")
+
+        assertNull(TrackMatcher.score(mocchi, target))
+        assertEquals(listOf(official), TrackMatcher.ranked(listOf(mocchi, official), target))
+        // The lead artist still gets the wide window for a video's visual intro.
+        val video = TrackMatcher.Target("Quién Va A Cantar", "Ruben Rada", durationSec = 260)
+        assertEquals(listOf(official), TrackMatcher.ranked(listOf(official), video))
+    }
+
+    @Test
     fun `manual video audio switch accepts the official song despite a long visual intro`() {
         val target = TrackMatcher.Target(
             "Big Dawgs",
