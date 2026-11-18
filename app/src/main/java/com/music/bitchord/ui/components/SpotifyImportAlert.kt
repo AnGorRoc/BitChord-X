@@ -114,6 +114,19 @@ val DIALOG_EDGE_WIDTH = 0.5.dp
 val DIALOG_EDGE_COLOR = Color.White.copy(alpha = 0.12f)
 val DIALOG_LIGHT_EDGE_COLOR = Color.Black.copy(alpha = 0.08f)
 
+/**
+ * Text and glyphs on these dialogs: white on the dark frost, black on the light
+ * one. They were white on both, which left the light dialog blank.
+ */
+@Composable
+internal fun dialogInk(): Color =
+    if (MaterialTheme.colorScheme.background.luminance() < 0.5f) Color.White else Color.Black
+
+/** What sits on a [dialogInk] fill, such as the label of the main button. */
+@Composable
+internal fun dialogInkInverse(): Color =
+    if (MaterialTheme.colorScheme.background.luminance() < 0.5f) Color.Black else Color.White
+
 fun dialogFrostStyle(fill: Color = DIALOG_DARK_GREY, alpha: Float = DIALOG_FROST_ALPHA): HazeStyle = HazeStyle(
     backgroundColor = fill,
     tints = listOf(HazeTint(fill.copy(alpha = alpha))),
@@ -432,7 +445,7 @@ private fun IntroStepView(
         Icon(
             painter = painterResource(Res.drawable.spotify_logo),
             contentDescription = null,
-            tint = Color.White,
+            tint = dialogInk(),
             modifier = Modifier.size(42.dp),
         )
 
@@ -444,7 +457,7 @@ private fun IntroStepView(
                 fontWeight = FontWeight.Bold,
                 fontSize = 20.sp,
             ),
-            color = Color.White,
+            color = dialogInk(),
             textAlign = TextAlign.Center,
         )
 
@@ -454,7 +467,7 @@ private fun IntroStepView(
                 fontSize = 13.sp,
                 lineHeight = 17.sp,
             ),
-            color = Color.White.copy(alpha = 0.70f),
+            color = dialogInk().copy(alpha = 0.70f),
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 6.dp, bottom = 16.dp),
         )
@@ -501,8 +514,8 @@ private fun IntroStepView(
                 .height(48.dp),
             shape = RoundedCornerShape(percent = 50),
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color.White,
-                contentColor = Color.Black,
+                containerColor = dialogInk(),
+                contentColor = dialogInkInverse(),
             ),
         ) {
             Text(
@@ -526,7 +539,7 @@ private fun IntroStepView(
             Text(
                 text = stringResource(R.string.spotify_import_cancel),
                 style = MaterialTheme.typography.labelMedium,
-                color = Color.White.copy(alpha = 0.60f),
+                color = dialogInk().copy(alpha = 0.60f),
             )
         }
     }
@@ -544,14 +557,14 @@ internal fun DestinationOptionCard(
 ) {
     val cardShape = RoundedCornerShape(16.dp)
     val containerColor = if (selected) {
-        Color.White.copy(alpha = 0.14f)
+        dialogInk().copy(alpha = 0.14f)
     } else {
-        Color.White.copy(alpha = 0.05f)
+        dialogInk().copy(alpha = 0.05f)
     }
     val borderColor = if (selected) {
-        Color.White.copy(alpha = 0.40f)
+        dialogInk().copy(alpha = 0.40f)
     } else {
-        Color.White.copy(alpha = 0.08f)
+        dialogInk().copy(alpha = 0.08f)
     }
 
     Row(
@@ -569,15 +582,15 @@ internal fun DestinationOptionCard(
                 .size(34.dp)
                 .clip(CircleShape)
                 .background(
-                    if (selected) Color.White.copy(alpha = 0.20f)
-                    else Color.White.copy(alpha = 0.08f),
+                    if (selected) dialogInk().copy(alpha = 0.20f)
+                    else dialogInk().copy(alpha = 0.08f),
                 ),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 imageVector = icon,
                 contentDescription = null,
-                tint = if (selected) Color.White else Color.White.copy(alpha = 0.55f),
+                tint = if (selected) dialogInk() else dialogInk().copy(alpha = 0.55f),
                 modifier = Modifier.size(19.dp),
             )
         }
@@ -591,7 +604,7 @@ internal fun DestinationOptionCard(
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 13.5.sp,
                 ),
-                color = if (enabled) Color.White else Color.White.copy(alpha = 0.40f),
+                color = if (enabled) dialogInk() else dialogInk().copy(alpha = 0.40f),
             )
             Text(
                 text = subtitle,
@@ -599,7 +612,7 @@ internal fun DestinationOptionCard(
                     fontSize = 11.5.sp,
                     lineHeight = 15.sp,
                 ),
-                color = if (enabled) Color.White.copy(alpha = 0.65f) else Color.White.copy(alpha = 0.35f),
+                color = if (enabled) dialogInk().copy(alpha = 0.65f) else dialogInk().copy(alpha = 0.35f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -610,7 +623,7 @@ internal fun DestinationOptionCard(
         Icon(
             imageVector = if (selected) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
             contentDescription = null,
-            tint = if (selected) Color.White else Color.White.copy(alpha = 0.25f),
+            tint = if (selected) dialogInk() else dialogInk().copy(alpha = 0.25f),
             modifier = Modifier.size(20.dp),
         )
     }
@@ -657,7 +670,7 @@ private fun InputStepView(
                 Icon(
                     imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = dialogInk(),
                     modifier = Modifier.size(20.dp),
                 )
             }
@@ -665,14 +678,14 @@ private fun InputStepView(
             Text(
                 text = stringResource(R.string.spotify_import_step_input_title),
                 style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 16.sp),
-                color = Color.White,
+                color = dialogInk(),
             )
 
             // Clickable destination tag pill
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(percent = 50))
-                    .background(Color.White.copy(alpha = 0.12f))
+                    .background(dialogInk().copy(alpha = 0.12f))
                     .clickable(enabled = signedIn, onClick = onToggleDestination)
                     .padding(horizontal = 9.dp, vertical = 4.dp),
                 contentAlignment = Alignment.Center,
@@ -688,7 +701,7 @@ private fun InputStepView(
                             Icons.Rounded.Cloud
                         },
                         contentDescription = null,
-                        tint = Color.White,
+                        tint = dialogInk(),
                         modifier = Modifier.size(13.dp),
                     )
                     Text(
@@ -698,7 +711,7 @@ private fun InputStepView(
                             stringResource(R.string.spotify_import_destination_tag_youtube)
                         },
                         style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp, fontWeight = FontWeight.SemiBold),
-                        color = Color.White,
+                        color = dialogInk(),
                     )
                 }
             }
@@ -712,11 +725,11 @@ private fun InputStepView(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(inputShape)
-                .background(Color.White.copy(alpha = 0.08f))
+                .background(dialogInk().copy(alpha = 0.08f))
                 .border(
                     width = 0.5.dp,
                     color = if (errorMessage != null) MaterialTheme.colorScheme.error
-                    else Color.White.copy(alpha = 0.18f),
+                    else dialogInk().copy(alpha = 0.18f),
                     shape = inputShape,
                 )
                 .padding(horizontal = 12.dp, vertical = 6.dp),
@@ -725,7 +738,7 @@ private fun InputStepView(
             Icon(
                 painter = painterResource(Res.drawable.spotify_logo),
                 contentDescription = null,
-                tint = Color.White,
+                tint = dialogInk(),
                 modifier = Modifier.size(20.dp),
             )
 
@@ -740,7 +753,7 @@ private fun InputStepView(
                     Text(
                         text = stringResource(R.string.spotify_import_hint),
                         style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
-                        color = Color.White.copy(alpha = 0.40f),
+                        color = dialogInk().copy(alpha = 0.40f),
                     )
                 }
                 BasicTextField(
@@ -748,10 +761,10 @@ private fun InputStepView(
                     onValueChange = onLinkChange,
                     modifier = Modifier.fillMaxWidth(),
                     textStyle = MaterialTheme.typography.bodyMedium.copy(
-                        color = Color.White,
+                        color = dialogInk(),
                         fontSize = 13.sp,
                     ),
-                    cursorBrush = SolidColor(Color.White),
+                    cursorBrush = SolidColor(dialogInk()),
                     singleLine = true,
                     keyboardOptions = KeyboardOptions(
                         keyboardType = KeyboardType.Uri,
@@ -771,7 +784,7 @@ private fun InputStepView(
                     Icon(
                         imageVector = Icons.Rounded.Clear,
                         contentDescription = stringResource(R.string.spotify_import_clear_tooltip),
-                        tint = Color.White.copy(alpha = 0.70f),
+                        tint = dialogInk().copy(alpha = 0.70f),
                         modifier = Modifier.size(17.dp),
                     )
                 }
@@ -784,13 +797,13 @@ private fun InputStepView(
                         imageVector = Icons.Rounded.ContentPaste,
                         contentDescription = null,
                         modifier = Modifier.size(15.dp),
-                        tint = Color.White,
+                        tint = dialogInk(),
                     )
                     Spacer(Modifier.width(4.dp))
                     Text(
                         text = stringResource(R.string.spotify_import_paste_action),
                         style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                        color = Color.White,
+                        color = dialogInk(),
                     )
                 }
             }
@@ -977,7 +990,7 @@ private fun InputStepView(
                 Text(
                     text = stringResource(R.string.spotify_import_cancel),
                     style = MaterialTheme.typography.labelLarge,
-                    color = Color.White.copy(alpha = 0.60f),
+                    color = dialogInk().copy(alpha = 0.60f),
                 )
             }
 
@@ -989,10 +1002,10 @@ private fun InputStepView(
                     .height(48.dp),
                 shape = RoundedCornerShape(percent = 50),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.White,
-                    contentColor = Color.Black,
-                    disabledContainerColor = Color.White.copy(alpha = 0.15f),
-                    disabledContentColor = Color.White.copy(alpha = 0.35f),
+                    containerColor = dialogInk(),
+                    contentColor = dialogInkInverse(),
+                    disabledContainerColor = dialogInk().copy(alpha = 0.15f),
+                    disabledContentColor = dialogInk().copy(alpha = 0.35f),
                 ),
             ) {
                 Text(
@@ -1028,13 +1041,13 @@ private fun MatchingStepView(
         ) {
             CircularProgressIndicator(
                 modifier = Modifier.size(54.dp),
-                color = Color.White,
+                color = dialogInk(),
                 strokeWidth = 2.5.dp,
             )
             Icon(
                 painter = painterResource(Res.drawable.spotify_logo),
                 contentDescription = null,
-                tint = Color.White,
+                tint = dialogInk(),
                 modifier = Modifier.size(26.dp),
             )
         }
@@ -1044,13 +1057,13 @@ private fun MatchingStepView(
         Text(
             text = stringResource(R.string.spotify_import_step_matching_title),
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 17.sp),
-            color = Color.White,
+            color = dialogInk(),
         )
 
         Text(
             text = status,
             style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
-            color = Color.White.copy(alpha = 0.70f),
+            color = dialogInk().copy(alpha = 0.70f),
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 4.dp, bottom = 16.dp),
         )
@@ -1062,8 +1075,8 @@ private fun MatchingStepView(
                 .fillMaxWidth()
                 .height(5.dp)
                 .clip(RoundedCornerShape(percent = 50)),
-            color = Color.White,
-            trackColor = Color.White.copy(alpha = 0.15f),
+            color = dialogInk(),
+            trackColor = dialogInk().copy(alpha = 0.15f),
         )
 
         if (total > 0) {
@@ -1071,7 +1084,7 @@ private fun MatchingStepView(
             Text(
                 text = "$percent%",
                 style = MaterialTheme.typography.labelSmall.copy(fontWeight = FontWeight.SemiBold),
-                color = Color.White,
+                color = dialogInk(),
                 modifier = Modifier.padding(top = 8.dp),
             )
         }
@@ -1085,7 +1098,7 @@ private fun MatchingStepView(
             Text(
                 text = stringResource(R.string.spotify_import_cancel),
                 style = MaterialTheme.typography.labelMedium,
-                color = Color.White.copy(alpha = 0.60f),
+                color = dialogInk().copy(alpha = 0.60f),
             )
         }
     }
@@ -1104,7 +1117,7 @@ private fun UnmatchedStepView(
         Icon(
             imageVector = Icons.Rounded.CheckCircle,
             contentDescription = null,
-            tint = Color.White,
+            tint = dialogInk(),
             modifier = Modifier.size(46.dp),
         )
 
@@ -1113,13 +1126,13 @@ private fun UnmatchedStepView(
         Text(
             text = stringResource(R.string.spotify_import_complete),
             style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold, fontSize = 17.sp),
-            color = Color.White,
+            color = dialogInk(),
         )
 
         Text(
             text = stringResource(R.string.spotify_import_unmatched, missed.size),
             style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.5.sp, lineHeight = 16.sp),
-            color = Color.White.copy(alpha = 0.70f),
+            color = dialogInk().copy(alpha = 0.70f),
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 4.dp, bottom = 12.dp),
         )
@@ -1129,7 +1142,7 @@ private fun UnmatchedStepView(
                 .fillMaxWidth()
                 .heightIn(max = 180.dp)
                 .clip(RoundedCornerShape(12.dp))
-                .background(Color.White.copy(alpha = 0.06f))
+                .background(dialogInk().copy(alpha = 0.06f))
                 .verticalScroll(rememberScrollState())
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -1143,13 +1156,13 @@ private fun UnmatchedStepView(
                         modifier = Modifier
                             .size(5.dp)
                             .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.45f)),
+                            .background(dialogInk().copy(alpha = 0.45f)),
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
                         text = if (track.artist.isBlank()) track.title else "${track.title} · ${track.artist}",
                         style = MaterialTheme.typography.bodySmall.copy(fontSize = 12.sp),
-                        color = Color.White.copy(alpha = 0.85f),
+                        color = dialogInk().copy(alpha = 0.85f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
@@ -1166,8 +1179,8 @@ private fun UnmatchedStepView(
                 .height(48.dp),
             shape = RoundedCornerShape(percent = 50),
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color.White,
-                contentColor = Color.Black,
+                containerColor = dialogInk(),
+                contentColor = dialogInkInverse(),
             ),
         ) {
             Text(
