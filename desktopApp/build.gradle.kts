@@ -565,7 +565,20 @@ fun buildStartupArchive(image: File, probe: File, work: File, logger: org.gradle
         archive.delete()
         logger.warn("startupArchive: the dump failed (${log.absolutePath}); shipping without it.")
     } else {
-        logger.lifecycle("startupArchive: ${archive.length() / (1024 * 1024)} MB over ${classPath.size} jars")
+        // `-Xshare:on` makes the JVM fail where it would otherwise quietly run without the archive,
+        // so a class path or runtime that does not fit it is caught here rather than on a user's PC.
+        val check = ProcessBuilder(
+            launcher.absolutePath, "-Xshare:on", "-Xlog:disable",
+            "-XX:SharedArchiveFile=${archive.absolutePath}",
+            "-cp", classPath.joinToString(File.pathSeparator), "-version",
+        ).redirectErrorStream(true).redirectOutput(File(work, "check.log")).start()
+        if (!check.waitFor(2, TimeUnit.MINUTES) || check.exitValue() != 0) {
+            check.destroyForcibly()
+            archive.delete()
+            logger.warn("startupArchive: the JVM does not accept the archive (${File(work, "check.log").absolutePath}); shipping without it.")
+        } else {
+            logger.lifecycle("startupArchive: ${archive.length() / (1024 * 1024)} MB over ${classPath.size} jars, accepted by the JVM")
+        }
     }
 }
 
