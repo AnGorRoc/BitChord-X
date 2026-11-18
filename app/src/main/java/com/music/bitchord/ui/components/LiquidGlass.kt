@@ -153,11 +153,12 @@ private const val DARK_BAR_OPACITY = 0.14f
  * their container ([chromeSurface]); liquid glass lays it over the refraction
  * as a translucent tint ([chromeGlassTint]).
  *
- * Not static: the colour fades from one record to the next, and only the bars
- * reading it should recompose on each frame of that, not everything under the
- * provider.
+ * A reader rather than a colour: the colour fades from one record to the next,
+ * and working it out where it is provided would recompose the whole app on
+ * every frame of that fade. The reader stays the same object, so only the bars
+ * calling it follow the fade.
  */
-val LocalChromeSurface = compositionLocalOf<Color?> { null }
+val LocalChromeSurface = staticCompositionLocalOf<() -> Color?> { { null } }
 
 /**
  * The container colour for a floating bar's blur, or for its solid fill under
@@ -165,7 +166,7 @@ val LocalChromeSurface = compositionLocalOf<Color?> { null }
  * own opacity, so a tinted bar keeps the same see-through frost as a plain one.
  */
 @Composable
-fun chromeSurface(): Color = LocalChromeSurface.current ?: MaterialTheme.colorScheme.surface
+fun chromeSurface(): Color = LocalChromeSurface.current() ?: MaterialTheme.colorScheme.surface
 
 /**
  * [LocalChromeSurface] as liquid glass's surface tint, or null when the page
@@ -173,7 +174,7 @@ fun chromeSurface(): Color = LocalChromeSurface.current ?: MaterialTheme.colorSc
  * glass reads as the record's colour rather than as a painted pill.
  */
 @Composable
-fun chromeGlassTint(): Color? = LocalChromeSurface.current?.copy(alpha = CHROME_GLASS_OPACITY)
+fun chromeGlassTint(): Color? = LocalChromeSurface.current()?.copy(alpha = CHROME_GLASS_OPACITY)
 
 /** How much of the page's raised shade liquid glass lays over its refraction. */
 private const val CHROME_GLASS_OPACITY = 0.5f
