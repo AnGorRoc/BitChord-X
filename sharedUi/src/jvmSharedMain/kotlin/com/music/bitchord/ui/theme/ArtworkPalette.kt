@@ -8,6 +8,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -94,6 +96,50 @@ fun com.music.bitchord.data.canvas.AppleArtistArt.keyColors() = ArtworkKeyColors
 fun rememberArtworkPalette(
     imageUrl: String?,
     dark: Boolean = MaterialTheme.colorScheme.background.luminance() < 0.5f,
+    artPx: Int = CARD_ART_PX,
+    keyColors: ArtworkKeyColors? = null,
+): ArtworkPalette = rememberArtworkPaletteState(imageUrl, dark, artPx, keyColors).current
+
+/**
+ * [ArtworkPalette] as animated state that has not been read yet.
+ *
+ * Reading a fading colour subscribes whoever reads it to every frame of the
+ * fade. [rememberArtworkPalette] reads them all where it is called; this hands
+ * the states on instead, so a caller high up the tree — the app's root, which
+ * washes every page — can pass them down and let only what actually paints
+ * the colour redraw while it fades, rather than the whole app recomposing for
+ * a quarter of a second on every track change.
+ */
+@Stable
+class ArtworkPaletteState internal constructor(
+    private val backgroundState: State<Color>,
+    private val washState: State<Color>,
+    private val elevatedState: State<Color>,
+    private val accentState: State<Color>,
+    private val onBackgroundState: State<Color>,
+    private val onBackgroundVariantState: State<Color>,
+    private val dividerState: State<Color>,
+) {
+    val background: Color get() = backgroundState.value
+    val elevated: Color get() = elevatedState.value
+
+    /** Every colour, read now — subscribes the reader to the fade. */
+    val current: ArtworkPalette
+        get() = ArtworkPalette(
+            background = backgroundState.value,
+            wash = washState.value,
+            elevated = elevatedState.value,
+            accent = accentState.value,
+            onBackground = onBackgroundState.value,
+            onBackgroundVariant = onBackgroundVariantState.value,
+            divider = dividerState.value,
+        )
+}
+
+@Composable
+fun rememberArtworkPaletteState(
+    imageUrl: String?,
+    dark: Boolean = MaterialTheme.colorScheme.background.luminance() < 0.5f,
     /**
      * The artwork size to read, which should be whichever one the surface
      * already has on screen, matching the backdrop drawn from it.
@@ -104,7 +150,7 @@ fun rememberArtworkPalette(
      */
     artPx: Int = CARD_ART_PX,
     keyColors: ArtworkKeyColors? = null,
-): ArtworkPalette {
+): ArtworkPaletteState {
     val scheme = MaterialTheme.colorScheme
     val reduceAnimation by PlayerPlatform.host.settings.reduceAnimation.collectAsStateWithLifecycle()
     // Always asked, so the composable call is unconditional; handed nothing to
@@ -131,17 +177,16 @@ fun rememberArtworkPalette(
     } else {
         tween(TINT_FADE_MS)
     }
-    return ArtworkPalette(
-        background = animateColorAsState(target.background, spec, label = "tintBackground").value,
-        wash = animateColorAsState(target.wash, spec, label = "tintWash").value,
-        elevated = animateColorAsState(target.elevated, spec, label = "tintElevated").value,
-        accent = animateColorAsState(target.accent, spec, label = "tintAccent").value,
-        onBackground = animateColorAsState(target.onBackground, spec, label = "tintOn").value,
-        onBackgroundVariant = animateColorAsState(
-            target.onBackgroundVariant, spec, label = "tintOnVariant",
-        ).value,
-        divider = animateColorAsState(target.divider, spec, label = "tintDivider").value,
-    )
+    val background = animateColorAsState(target.background, spec, label = "tintBackground")
+    val wash = animateColorAsState(target.wash, spec, label = "tintWash")
+    val elevated = animateColorAsState(target.elevated, spec, label = "tintElevated")
+    val accent = animateColorAsState(target.accent, spec, label = "tintAccent")
+    val onBackground = animateColorAsState(target.onBackground, spec, label = "tintOn")
+    val onBackgroundVariant = animateColorAsState(target.onBackgroundVariant, spec, label = "tintOnVariant")
+    val divider = animateColorAsState(target.divider, spec, label = "tintDivider")
+    return remember(background, wash, elevated, accent, onBackground, onBackgroundVariant, divider) {
+        ArtworkPaletteState(background, wash, elevated, accent, onBackground, onBackgroundVariant, divider)
+    }
 }
 
 /**

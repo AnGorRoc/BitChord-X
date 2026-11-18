@@ -898,7 +898,7 @@ internal fun AlertScaffold(
     val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
     val shape = RoundedCornerShape(ALERT_CORNER)
     // The card shade of what's playing, when the app is washed in it.
-    val cardFill = com.music.bitchord.ui.theme.LocalCardSurface.current ?: MaterialTheme.colorScheme.surface
+    val cardFill = com.music.bitchord.ui.theme.cardSurfaceOrNull() ?: MaterialTheme.colorScheme.surface
 
     Box(
         modifier = Modifier

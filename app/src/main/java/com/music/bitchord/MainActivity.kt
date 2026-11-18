@@ -2580,7 +2580,7 @@ private fun BitChordApp(
         topDetail?.takeIf { it.type == BrowseType.ARTIST }
             ?.let { AppleArtistArtRepository.cached(it.browseId) }
     }
-    val detailPalette = rememberArtworkPalette(
+    val detailPalette = com.music.bitchord.ui.theme.rememberArtworkPaletteState(
         imageUrl = detailApple?.heroUrl ?: topDetail?.thumbnailUrl,
         keyColors = detailApple?.keyColors(),
     )
@@ -2596,20 +2596,26 @@ private fun BitChordApp(
     // and white or black text reads on either. Nothing loaded, or the setting
     // off, leaves the theme's own background.
     //
-    // The colours fade from one record to the next, and they are read up here,
-    // so that fade recomposes the app for its quarter of a second; it happens
-    // once per track, not per frame of anything else.
+    // The colours fade from one record to the next. They are never read in
+    // this body: it is the whole app, and reading a fading colour here would
+    // recompose all of it on every frame of the fade, on every track change.
+    // They go down as readers instead, called by whatever paints them — a
+    // background drawn in its draw phase, a bar's container — so only those
+    // follow the fade.
     val tintWithPlaying by AppSettings.tintWithNowPlaying.collectAsStateWithLifecycle()
-    val playingPalette = rememberArtworkPalette(
+    val playingPalette = com.music.bitchord.ui.theme.rememberArtworkPaletteState(
         imageUrl = player.song?.thumbnailUrl?.takeIf { tintWithPlaying },
     )
     val appTinted = tintWithPlaying && player.song != null
+    val darkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
     // The page wash and the card shade one step off it. Provided around the
-    // pages below, and again around each sheet this function opens outside
-    // them — a sheet sits in a window of its own, beyond the pages' provider.
-    val pageTint = playingPalette.background.takeIf { appTinted }
-    val cardTint = pageTint?.let {
-        com.music.bitchord.ui.theme.cardShadeOf(it, dark = MaterialTheme.colorScheme.background.luminance() < 0.5f)
+    // pages below, and again around the sheets and alerts this function opens
+    // outside them — a sheet sits in a window of its own, beyond the pages'.
+    val pageTint: () -> Color? = remember(appTinted, playingPalette) {
+        { if (appTinted) playingPalette.background else null }
+    }
+    val cardTint: () -> Color? = remember(pageTint, darkTheme) {
+        { pageTint()?.let { com.music.bitchord.ui.theme.cardShadeOf(it, darkTheme) } }
     }
     val tintLocals = arrayOf(
         com.music.bitchord.ui.theme.LocalPageBackground provides pageTint,
@@ -3030,11 +3036,17 @@ private fun BitChordApp(
             // lighter than the page they float on: as the frosted bars'
             // container, or as a translucent tint over liquid glass. The setting
             // off, or nothing loaded off a release page, leaves the theme's own.
-            com.music.bitchord.ui.components.LocalChromeSurface provides when {
-                !tintWithPlaying -> null
-                isDetailVisible -> detailPalette.elevated
-                appTinted -> playingPalette.elevated
-                else -> null
+            com.music.bitchord.ui.components.LocalChromeSurface provides remember(
+                tintWithPlaying, isDetailVisible, appTinted, detailPalette, playingPalette,
+            ) {
+                {
+                    when {
+                        !tintWithPlaying -> null
+                        isDetailVisible -> detailPalette.elevated
+                        appTinted -> playingPalette.elevated
+                        else -> null
+                    }
+                }
             },
             // What rows paint over their swipe reveal: the page's wash, so a
             // swipe doesn't drag a band of the theme's black across it.
@@ -3045,7 +3057,9 @@ private fun BitChordApp(
             // Painted once, under every page that has no colour of its own —
             // the tabs, Search, History and the rest — rather than by each of
             // them. A release page paints its own artwork's colour over it.
-            Box(Modifier.weight(1f).fillMaxHeight().background(playingPalette.background)) {
+            // Drawn, not composed: the colour is read in the draw phase, so its
+            // fade redraws this layer and recomposes nothing.
+            Box(Modifier.weight(1f).fillMaxHeight().drawBehind { drawRect(playingPalette.background) }) {
                 AnimatedContent(
                     // Whatever is on top of the back stack — see [AppNavigator].
                     targetState = when {
@@ -3157,7 +3171,7 @@ private fun BitChordApp(
                         // cover the wash painted under it and leave the pages
                         // black — and the glass refracting black — with Liquid
                         // Glass on. Off, this is the same colour drawn twice.
-                        .background(playingPalette.background)
+                        .drawBehind { drawRect(playingPalette.background) }
                         // Every page's scroll passes through here, so
                         // the dock collapses on all of them
                         // without each one having to know about it.
@@ -3836,10 +3850,12 @@ private fun BitChordApp(
                 // as separate circles in both the glass and blur materials.
                 // The floors and the top fade carry the page's wash too, or the
                 // bars would sit on a band of the theme's black or white.
-                val chromePageColor = if (isDetailVisible) {
-                    detailPalette.background
+                // A reader, called by each floor inside [WithColor], so only the
+                // floors follow the wash's fade.
+                val chromePageColor: () -> Color = if (isDetailVisible) {
+                    { detailPalette.background }
                 } else {
-                    playingPalette.background
+                    { playingPalette.background }
                 }
                 // Apple's scroll edge: what passes up under the status bar and the
                 // controls is blurred — hardest at the top, none just below the
@@ -4282,12 +4298,14 @@ private fun BitChordApp(
                         )
                     }
                     if ((player.song != null && !keyboardUp) || selectedTab == TAB_SEARCH) {
+                        WithColor(chromePageColor) { pageColor ->
                         BottomFadeScrim(
                             withMiniPlayer = false,
                             fadeHeightOverride = 96.dp,
-                            pageColor = chromePageColor,
+                            pageColor = pageColor,
                             modifier = Modifier.align(Alignment.BottomCenter),
                         )
+                        }
                     }
                     FloatingBarsTapGuard(
                         barsHeight = { if (selectedTab == TAB_SEARCH || player.song == null || keyboardUp) 0 else floatingBarsHeight.intValue },
@@ -4406,21 +4424,25 @@ private fun BitChordApp(
                     }
                 } else {
                     if (reduceDynamicBlur || !glassActive || !progressiveBlur) {
+                        WithColor(chromePageColor) { pageColor ->
                         BottomFadeScrim(
-                            pageColor = chromePageColor,
+                            pageColor = pageColor,
                             modifier = Modifier
                                 .align(Alignment.TopCenter)
                                 .rotate(180f)
                                 .graphicsLayer { alpha = topFadeAlpha },
                         )
+                        }
                     } else {
+                        WithColor(chromePageColor) { pageColor ->
                         TopFadeBlur(
                             hazeState = hazeState,
-                            pageColor = chromePageColor,
+                            pageColor = pageColor,
                             modifier = Modifier
                                 .align(Alignment.TopCenter)
                                 .graphicsLayer { alpha = topFadeAlpha },
                         )
+                        }
                     }
                     com.music.bitchord.ui.components.OfflineBanner(
                         visible = offlineBannerActive,
@@ -4523,14 +4545,16 @@ private fun BitChordApp(
                     )
     
                     // Drawn before the bars so their own glass reads on top of it.
+                    WithColor(chromePageColor) { pageColor ->
                     BottomFadeScrim(
                         withMiniPlayer = player.song != null,
                         // Not the wash: by the foot of the screen the page has finished
                         // easing out of it and into this, so this is what is actually
                         // under the tab bar.
-                        pageColor = chromePageColor,
+                        pageColor = pageColor,
                         modifier = Modifier.align(Alignment.BottomCenter),
                     )
+                    }
                     FloatingBarsTapGuard(
                         barsHeight = { if (selectedTab == TAB_SEARCH) 0 else floatingBarsHeight.intValue },
                         modifier = Modifier.align(Alignment.BottomCenter),
@@ -6424,6 +6448,13 @@ private const val PLAYER_SCRIM_ALPHA = 0.32f
  */
 @Composable
 private fun Isolated(content: @Composable () -> Unit) = content()
+
+/**
+ * Reads [color] in a recompose scope of its own and hands it to [content], so a
+ * fading colour recomposes only this — not the body that called it.
+ */
+@Composable
+private fun WithColor(color: () -> Color, content: @Composable (Color) -> Unit) = content(color())
 
 /** Longer than the ⋯ menu's exit, so its panel keeps its frost on the way out. */
 private const val SNAPSHOT_RELEASE_DELAY_MS = 400L

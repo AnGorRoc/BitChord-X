@@ -945,7 +945,7 @@ internal fun SpotifyLibraryIntroDialog(
     val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
     val dialogShape = RoundedCornerShape(26.dp)
     val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
-    val dialogFill = com.music.bitchord.ui.theme.LocalCardSurface.current ?: if (isDark) DIALOG_DARK_GREY else DIALOG_LIGHT_GREY
+    val dialogFill = com.music.bitchord.ui.theme.cardSurfaceOrNull() ?: if (isDark) DIALOG_DARK_GREY else DIALOG_LIGHT_GREY
     val dialogBorder = if (isDark) DIALOG_EDGE_COLOR else DIALOG_LIGHT_EDGE_COLOR
     val dialogAlpha = if (isDark) DIALOG_FROST_ALPHA else DIALOG_LIGHT_FROST_ALPHA
     val scrimAlpha = if (isDark) 0.55f else 0.28f
