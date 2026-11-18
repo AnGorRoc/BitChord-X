@@ -3585,7 +3585,18 @@ class PlaybackService : MediaLibraryService() {
                         if (fresh.isNotEmpty()) latestPlayer.addMediaItems(fresh.map { it.toMediaItem() })
                     }
                     if (AppSettings.dontRepeatSuggestions.value) sessionSongHistory += resolved
-                    return@launch
+                    // A batch can come back short (duplicates filtered, the radio
+                    // running thin). The queue must stay topped up, so keep asking
+                    // — from an earlier seed, for different results — until the
+                    // tail is full again.
+                    val stillWaiting = partyAutoplayWaiting(latestParty, current.videoId)
+                        ?: (latestPlayer.currentMediaItemIndex + 1 until latestPlayer.mediaItemCount)
+                            .count { latestPlayer.getMediaItemAt(it).fromAutoplay }
+                    remaining = MAX_QUEUED_AUTOPLAY - stillWaiting
+                    if (remaining <= 0) return@launch
+                    delay(AUTOPLAY_EMPTY_REFRESH_DELAY_MS)
+                    seedBack = if (latestPlayer.currentMediaItemIndex - (seedBack + 1) >= 0) seedBack + 1 else 0
+                    continue
                 }
 
                 // Empty and failed responses used to leave [autoplaySeed]
@@ -3597,7 +3608,7 @@ class PlaybackService : MediaLibraryService() {
                 // asks again every [AUTOPLAY_WATCHDOG_MS] only while this song
                 // plays at the end of the queue, and stops with it.
                 val at = latestPlayer.currentMediaItemIndex
-                if (at < 0 || at != latestPlayer.mediaItemCount - 1) return@launch
+                if (at < 0) return@launch
                 if (emptyRefreshesRemaining-- > 0) {
                     delay(AUTOPLAY_EMPTY_REFRESH_DELAY_MS)
                 } else {
@@ -3607,7 +3618,10 @@ class PlaybackService : MediaLibraryService() {
                     // This song's radio came back with nothing new: seed from an earlier one.
                     seedBack = if (at - (seedBack + 1) >= 0) seedBack + 1 else 0
                 }
-                remaining = MAX_QUEUED_AUTOPLAY
+                remaining = MAX_QUEUED_AUTOPLAY -
+                    ((at + 1 until latestPlayer.mediaItemCount).count { latestPlayer.getMediaItemAt(it).fromAutoplay })
+                        .coerceAtLeast(0)
+                if (remaining <= 0) return@launch
             }
         }
     }
