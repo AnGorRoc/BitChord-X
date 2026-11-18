@@ -878,6 +878,22 @@ fun NowPlayingScreen(
     // never fires again. Keyed on the cover there is nothing to reset: the
     // bitmap really is still loaded, so the state stays true.
     val art = rememberPlayerArtwork(remoteArt)
+    // The cover's own dissolve into the next one, driven here rather than by Coil's
+    // crossfade: Coil skips that for anything served from the memory cache, which
+    // the preloaded next cover always is, so the cover used to snap while the
+    // backdrop faded. Starts the moment the new cover is on screen and runs for
+    // [COVER_SWAP_MS], the backdrop's own duration. Not on the first cover shown.
+    val coverFade = remember { Animatable(1f) }
+    var coverShownOnce by remember { mutableStateOf(false) }
+    LaunchedEffect(art.url, art.loaded) {
+        if (!art.loaded) return@LaunchedEffect
+        if (!coverShownOnce) {
+            coverShownOnce = true
+            return@LaunchedEffect
+        }
+        coverFade.snapTo(0f)
+        coverFade.animateTo(1f, tween(COVER_SWAP_MS, easing = FastOutSlowInEasing))
+    }
     // The next track's cover, warmed while this one plays so the skip finds it.
     PreloadArtwork(rememberRemoteArtworkUrl(queue.getOrNull(queueIndex + 1)))
     // Sticky, unlike [PlayerArtwork.loaded]: the banner is the shape of the player rather
@@ -2824,6 +2840,7 @@ fun NowPlayingScreen(
                                 // [PlayerArtwork.loaded] still flips the moment it does.
                                 modifier = Modifier
                                     .fillMaxSize()
+                                    .graphicsLayer { alpha = coverFade.value }
                                     .drawWithContent {
                                         val frame = still()
                                         if (frame == null) {

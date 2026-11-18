@@ -25,7 +25,6 @@ import coil3.compose.LocalPlatformContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImagePainter
 import coil3.request.ImageRequest
-import coil3.request.crossfade
 import com.music.bitchord.data.canvas.CanvasArtwork
 import com.music.bitchord.data.model.CARD_ART_PX
 import com.music.bitchord.data.model.Song
@@ -145,9 +144,6 @@ internal class PlayerArtwork(val url: String?, private val context: PlatformCont
         ImageRequest.Builder(context)
             .data(url)
             .size(ART_PX)
-            // Quick dissolve into the new cover; the backdrop fades at the same
-            // speed ([COVER_SWAP_MS]) so cover and background change together.
-            .crossfade(COVER_SWAP_MS)
             // What makes a retry a new request as far as Coil's model comparison
             // is concerned. Only from the second go onwards, so the ordinary
             // request stays byte-identical to the one the mesh and the palette
