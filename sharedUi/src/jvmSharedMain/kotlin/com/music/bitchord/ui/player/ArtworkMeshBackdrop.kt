@@ -147,7 +147,7 @@ fun FullArtworkBlurBackdrop(
     Box(modifier = modifier.fillMaxSize().background(FallbackBackdrop)) {
         Crossfade(
             targetState = image,
-            animationSpec = tween(320, easing = FastOutSlowInEasing),
+            animationSpec = tween(COVER_SWAP_MS, easing = FastOutSlowInEasing),
             label = "preparedBackdropImage",
         ) { bitmap ->
             if (bitmap != null) {
@@ -568,7 +568,7 @@ private const val MESH_BLUR_PASSES = 3
  * lands, or every fade is cut off partway and the backdrop never settles where
  * a frame actually put it.
  */
-private const val MESH_FADE_MS = 900
+private const val MESH_FADE_MS = COVER_SWAP_MS
 
 /**
  * The most rows and columns of [source] that are actually looked at.
