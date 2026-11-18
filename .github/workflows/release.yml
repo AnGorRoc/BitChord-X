@@ -200,6 +200,17 @@ jobs:
         $v = "${{ needs.check.outputs.version }}"
         .\gradlew.bat :desktopApp:packageExe :desktopApp:createDistributable "-PbitchordVersionName=$v"
 
+    - name: Check the start-up archives are in the app image
+      shell: pwsh
+      run: |
+        # Without them the app still runs, only ~2x slower to open; the build downgrades that to a
+        # warning, so it is turned back into a failure here rather than shipped unnoticed (DESKTOP.md).
+        $image = "desktopApp/build/compose/binaries/main/app/BitChord"
+        foreach ($f in "app/resources/startup.jsa", "runtime/bin/server/classes.jsa") {
+          if (-not (Test-Path "$image/$f")) { throw "Missing $f in the Windows app image: the start-up archive was not built." }
+          "{0}: {1:N0} MB" -f $f, ((Get-Item "$image/$f").Length / 1MB)
+        }
+
     - name: Collect Windows artifacts
       shell: pwsh
       run: |
