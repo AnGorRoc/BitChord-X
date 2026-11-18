@@ -777,9 +777,7 @@
     <string name="auto_download_notice_title">已新增至 %1$s：%2$d</string>
     <string name="playlist_updates_channel">播放清單更新</string>
 
-    <string name="legacy_mesh_gradient">經典網格漸變</string>
 
-    <string name="legacy_mesh_gradient_subtitle">恢復 v1.5 中播放器背後的流動色塊效果</string>
 
     <string name="liquid_glass">液態玻璃 （Liquid Glass）</string>
 
