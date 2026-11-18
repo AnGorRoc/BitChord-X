@@ -57,6 +57,8 @@
 - **Sign in with your Google account** for personalized content.
 - **Spotify integration** — import and sync your playlists and Liked Songs with destination selection and retry.
 - **Listen Together (Party Mode)** — synchronize playback with friends with permanent QR code sharing and instant code joins.
+- **Connect** — your phone and PC see each other: hand playback over, or use one as the speaker and another as the remote.
+- **Explore charts** — regional charts, new releases and daily topics.
 - **Dynamic Radio & Origin Tracking** — contextual radio stations and source badges.
 - **Discord Rich Presence** — in-app login, live track/artist/album and progress.
 - **Scrobbling** to Last.fm and ListenBrainz.

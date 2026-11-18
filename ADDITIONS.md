@@ -74,12 +74,16 @@ BitChord-X builds on [BitChord](https://github.com/kushagrasinghx/BitChord) by K
   - Synchronized real-time playback across multiple devices.
   - Persistent interactive QR code zoom modal displayed directly above the party code on mobile and desktop.
   - Enabled by default in the player capsule.
+  - Start a party in one tap, with no signed-in account needed; people are grouped by person, and queue covers show who added each song.
+- **Connect (My devices)**: Your phone and PC see each other. Hand playback over, use one device as the speaker and another as the remote, and hide a device or have it refuse control. The mini player says where the sound is coming from while another device is the speaker.
+- **Spotify Jam bridge**: Join a Spotify Jam from a QR scan or an invite link.
 - **Enhanced Spotify Sync**:
   - Dedicated import modal with introductory explanation.
   - Destination playlist selector (create new playlist or merge into existing).
   - Skipped/unmatched songs diagnostic dialog and background retry.
   - Optimized PCM decoding and matching algorithms.
 - **Universal Link Resolution**: Deep links from Spotify, Apple Music, Deezer, SoundCloud, Tidal, and Amazon Music open in-app and search automatically.
+- **Explore with charts**: Regional charts, new releases and daily topics on a Bento genre grid, on phone and desktop.
 - **Dynamic Radio Pages**: Dynamic radio station detail pages and playback source origin tags.
 - **Network Streaming**: SMB and WebDAV network folders directly browsable as local sources.
 - **Replay & Discovery**: Periodic listening replay with animated story cards, artist fact cards, artist signatures, and shareable lyric cards.
