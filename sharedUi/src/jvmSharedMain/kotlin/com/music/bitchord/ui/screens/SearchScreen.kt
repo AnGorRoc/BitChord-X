@@ -114,7 +114,6 @@ fun SearchScreen(
     onSongSwipeAction: ((Song, SongSwipeAction) -> Unit)? = null,
     onSongHoldPlaylist: ((Song) -> Unit)? = null,
     onTopResultPlay: (Song) -> Unit,
-    onTopResultPlaylist: (Song) -> Unit,
     onBrowseClick: (BrowseItem) -> Unit,
     /**
      * Holding an album or playlist hit rather than tapping it — the same menu
@@ -536,83 +535,6 @@ private fun LazyListScope.librarySearchResults(
                         color = MaterialTheme.colorScheme.outline,
                     )
                 }
-            }
-        }
-    }
-}
-
-/** The All response carries its highest-confidence music hit as a promoted card. */
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun TopResultCard(
-    song: Song,
-    onPlay: () -> Unit,
-    onPlaylist: () -> Unit,
-    onLongPress: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(com.music.bitchord.ui.theme.pageBackground())
-            .padding(start = PAGE_GUTTER, end = PAGE_GUTTER, top = 18.dp, bottom = 8.dp)
-            .longPressMenuClickable(onClick = onPlay, onLongClick = onLongPress)
-            .contextClick(onLongPress),
-    ) {
-        Text(
-            text = "Top result",
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Spacer(Modifier.height(10.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            AsyncImage(
-                model = song.thumbnailUrl?.artworkAt(ROW_ART_PX),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.trackArtSize(72.dp, song.isVideo).clip(RoundedCornerShape(10.dp)),
-            )
-            Spacer(Modifier.width(14.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = song.title,
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = song.artist,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            RowMoreButton(
-                onClick = onLongPress,
-                tint = MaterialTheme.colorScheme.onSurface,
-                iconSize = 24.dp,
-            )
-        }
-        Spacer(Modifier.height(12.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            OutlinedButton(
-                onClick = onPlay,
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
-            ) {
-                Icon(Icons.Rounded.PlayArrow, contentDescription = null)
-                Spacer(Modifier.width(6.dp))
-                Text(stringResource(Res.string.play))
-            }
-            OutlinedButton(
-                onClick = onPlaylist,
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
-            ) {
-                Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = null)
-                Spacer(Modifier.width(6.dp))
-                Text(stringResource(Res.string.playlist_action))
             }
         }
     }

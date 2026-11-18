@@ -376,19 +376,6 @@ internal fun SearchTabHost(
             )
             onPlayRadio(song, QueueSource(searchLabel, PlaybackSourceType.SEARCH))
         },
-        onTopResultPlaylist = { song ->
-            viewModel.recordEntity(
-                SearchHistoryEntity(
-                    id = song.videoId,
-                    title = song.title,
-                    subtitle = song.artist.ifEmpty { "" },
-                    artworkUrl = song.thumbnailUrl,
-                    entityType = EntityType.TRACK,
-                ),
-            )
-            viewModel.loadPlaylists()
-            onSetPlaylistTarget(song)
-        },
         onBrowseClick = { item ->
             viewModel.recordEntity(
                 SearchHistoryEntity(

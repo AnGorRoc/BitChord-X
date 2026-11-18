@@ -5103,10 +5103,6 @@ fun BitChordDesktopApp() {
                                 recordSongSearch(song)
                                 playSong(song, source = DesktopQueueSource(DesktopStrings["search", "Search"], PlaybackSourceType.SEARCH))
                             },
-                            onTopResultPlaylist = { song ->
-                                recordSongSearch(song)
-                                playlistTarget = song
-                            },
                             onBrowseClick = { item ->
                                 recordBrowseSearch(item)
                                 openBrowseItem(item)
