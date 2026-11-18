@@ -1903,26 +1903,6 @@ internal fun LyricsPanel(
     )
 
     val currentLine by rememberUpdatedState(focusLine)
-    val activeOnScreen by remember(listState) {
-        derivedStateOf {
-            listState.layoutInfo.visibleItemsInfo.any { it.index == currentLine }
-        }
-    }
-    // Paused, there is no song to follow back to, so a hand scroll should sit
-    // wherever it was left rather than snapping back on these timers.
-    LaunchedEffect(browsingByDrag, activeOnScreen, listState.isScrollInProgress, panelPlaying) {
-        if (panelPlaying && browsingByDrag && activeOnScreen && !listState.isScrollInProgress) {
-            delay(600)
-            browsingByDrag = false
-        }
-    }
-
-    LaunchedEffect(browsingByDrag, listState.isScrollInProgress, panelPlaying) {
-        if (panelPlaying && browsingByDrag && !listState.isScrollInProgress) {
-            delay(5_000)
-            browsingByDrag = false
-        }
-    }
 
     // The panel's own journey, published so each row can work out how far
     // behind it should be running. Held as a plain value plus a frame clock
@@ -1956,6 +1936,41 @@ internal fun LyricsPanel(
             (info.viewportStartOffset + info.viewportEndOffset) / 2 - size / 2
         }
     }
+    // Reconnecting to the song. Letting go of the list is not enough, and neither
+    // is the playing line being somewhere on screen — it nearly always is, which
+    // is how a first small scroll used to be undone a moment after it was made.
+    // The reader has to have left the line and then brought it back to where
+    // the panel holds it, or the song has to have caught up with them.
+    val densityPx = LocalDensity.current.density
+    val nearFocus by remember(listState) {
+        derivedStateOf {
+            val visible = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == currentLine }
+                ?: return@derivedStateOf false
+            val tolerance = maxOf(visible.size * 0.3f, 24f * densityPx)
+            abs(visible.offset - focusOffset(visible.size)) <= tolerance
+        }
+    }
+    var leftFocus by remember { mutableStateOf(false) }
+    LaunchedEffect(browsingByDrag, nearFocus, currentLine) {
+        if (!browsingByDrag) leftFocus = false else if (!nearFocus) leftFocus = true
+    }
+    // Paused, there is no song to follow back to, so a hand scroll should sit
+    // wherever it was left.
+    LaunchedEffect(browsingByDrag, leftFocus, nearFocus, listState.isScrollInProgress, panelPlaying) {
+        if (panelPlaying && browsingByDrag && leftFocus && nearFocus && !listState.isScrollInProgress) {
+            delay(400)
+            browsingByDrag = false
+        }
+    }
+    // A phone reads from the top, so the song only ever walks back into view
+    // from below; a long idle is the way out for one left reading ahead.
+    LaunchedEffect(browsingByDrag, listState.isScrollInProgress, panelPlaying) {
+        if (!centerFocus && panelPlaying && browsingByDrag && !listState.isScrollInProgress) {
+            delay(10_000)
+            browsingByDrag = false
+        }
+    }
+
     // Nothing resets [browsing] off [controlsOpen] any more. It used to, so
     // that tapping the controls back resumed following — but the controls now
     // also come back by scrolling up, and clearing the flag there handed the
@@ -2138,7 +2153,7 @@ internal fun LyricsPanel(
             }
             val blur by animateDpAsState(
                 targetValue = targetBlur,
-                animationSpec = tween(durationMillis = 350, easing = FastOutSlowInEasing),
+                animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
                 label = "lyricBlur",
             )
             val lineAlpha by animateFloatAsState(
