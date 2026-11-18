@@ -15,6 +15,11 @@ import com.music.bitchord.data.sources.SourceKind
 import com.music.bitchord.playback.EqLayout
 import com.music.bitchord.playback.EqualizerPreset
 import com.music.bitchord.playback.SingMethod
+import com.music.bitchord.data.Http
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.isActive
+import okhttp3.Request
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -244,6 +249,28 @@ object AppSettings {
 
     private val networkScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private const val NETWORK_LOST_GRACE_MS = 750L
+
+    /** Answers 204 with no body when the internet is reachable; the same check Android's own uses. */
+    private const val CONNECTION_PROBE_URL = "https://www.youtube.com/generate_204"
+    private const val CONNECTION_PROBE_TIMEOUT_MS = 4_000L
+
+    /** How long to wait before asking again while the system still has not confirmed the network. */
+    private const val CONNECTION_REPROBE_MS = 12_000L
+
+    private val probeClient by lazy {
+        Http.client.newBuilder()
+            .callTimeout(CONNECTION_PROBE_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+            .followRedirects(false)
+            .build()
+    }
+
+    private fun probeInternet(): Boolean = try {
+        probeClient.newCall(Request.Builder().url(CONNECTION_PROBE_URL).build()).execute().use { it.code == 204 }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Exception) {
+        false
+    }
     private val streamingAvailableFlow = MutableStateFlow(true)
 
     private val offlineModeFlow = MutableStateFlow(false)
@@ -1427,32 +1454,58 @@ object AppSettings {
     private fun watchConnection(context: Context) {
         val manager = context.getSystemService(ConnectivityManager::class.java) ?: return
         var pendingCheck: Job? = null
+        var probing: Job? = null
 
-        val actuallyUp = {
+        val reach = {
             runCatching {
-                val network = manager.activeNetwork ?: return@runCatching false
-                val capabilities = manager.getNetworkCapabilities(network)
-                    ?: return@runCatching false
-                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-                    capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
-            }.getOrDefault(false)
+                val capabilities = manager.activeNetwork?.let(manager::getNetworkCapabilities)
+                networkReach(
+                    hasNetwork = capabilities != null,
+                    hasInternet = capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true,
+                    validated = capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true,
+                )
+            }.getOrDefault(NetworkReach.NONE)
         }
 
         val markStreaming = {
             pendingCheck?.cancel()
             pendingCheck = null
+            probing?.cancel()
+            probing = null
             streamingAvailableFlow.value = true
         }
 
         val refresh = {
-            if (actuallyUp()) {
-                markStreaming()
-            } else {
-                pendingCheck?.cancel()
-                pendingCheck = networkScope.launch {
-                    delay(NETWORK_LOST_GRACE_MS)
-                    if (!actuallyUp()) streamingAvailableFlow.value = false
+            when (reach()) {
+                NetworkReach.VALIDATED -> markStreaming()
+                NetworkReach.UNCONFIRMED -> {
+                    // The system has not vouched for this network, which says nothing about whether it
+                    // works. Ask the internet directly, and keep asking while it stays unconfirmed, so
+                    // a connection that is up is never left reading as offline.
+                    pendingCheck?.cancel()
                     pendingCheck = null
+                    if (probing?.isActive != true) {
+                        probing = networkScope.launch {
+                            while (isActive && reach() == NetworkReach.UNCONFIRMED) {
+                                if (streamingAvailable(NetworkReach.UNCONFIRMED, probeInternet())) {
+                                    streamingAvailableFlow.value = true
+                                    return@launch
+                                }
+                                streamingAvailableFlow.value = false
+                                delay(CONNECTION_REPROBE_MS)
+                            }
+                        }
+                    }
+                }
+                NetworkReach.NONE -> {
+                    probing?.cancel()
+                    probing = null
+                    pendingCheck?.cancel()
+                    pendingCheck = networkScope.launch {
+                        delay(NETWORK_LOST_GRACE_MS)
+                        if (reach() == NetworkReach.NONE) streamingAvailableFlow.value = false
+                        pendingCheck = null
+                    }
                 }
             }
             meteredConnection.value = runCatching {
