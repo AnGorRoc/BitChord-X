@@ -316,6 +316,8 @@ import bitchord.desktopapp.generated.resources.sf_pro_display_semibold
 import com.music.bitchord.data.model.ArtistPage
 import com.music.bitchord.data.model.BrowseItem
 import com.music.bitchord.data.model.BrowseType
+import com.music.bitchord.data.model.albumNeedsArtistShelves
+import com.music.bitchord.data.model.albumShelvesFromArtist
 import com.music.bitchord.data.model.CARD_ART_PX
 import com.music.bitchord.data.model.HEADER_ART_PX
 import com.music.bitchord.data.model.HomeShelf
@@ -454,6 +456,9 @@ private const val TYPEAHEAD_MEDIA_DEBOUNCE_MS = 400L
 private const val TYPEAHEAD_MEDIA_LIMIT = 8
 
 private const val INITIAL_RADIO_TRACKS = 24
+
+/** How many of a search's first results get their artist page fetched ahead of a click. */
+private const val SEARCH_ARTIST_PREFETCH_LIMIT = 7
 
 /** An artist's top songs, capped so the release shelves are not buried. */
 private const val MAX_ARTIST_SONGS = 20
@@ -738,6 +743,10 @@ fun BitChordDesktopApp() {
     // than once per recomposition.
     var autoplaySeed by remember { mutableStateOf<String?>(null) }
     var autoplayJob by remember { mutableStateOf<Job?>(null) }
+    // Tracks fetched but not queued yet: the part of the stock beyond what the queue shows.
+    var autoplayReserve by remember { mutableStateOf<List<Song>>(emptyList()) }
+    // The last hand-picked track the tail was built around; see DesktopAutoplay.baseOf.
+    var autoplayBaseId by remember { mutableStateOf<String?>(null) }
     var automix by remember { mutableStateOf(persistence.boolean("automix", false)) }
     // A manual skip blends into the already-prepared next track over ~15s instead of cutting.
     var automixOnSkip by remember { mutableStateOf(persistence.boolean("automix_on_skip", false)) }
@@ -1333,6 +1342,21 @@ fun BitChordDesktopApp() {
         )
     }
 
+    // An album page's own carousels are often thin. When it names no other releases, or no similar
+    // artists, they come from the artist's page (cached after the first time), as on the phone.
+    LaunchedEffect(openedCollection?.browseId, openedCollection?.loading) {
+        val album = openedCollection
+            ?.takeIf { it.type == BrowseType.ALBUM && !it.loading && it.songs.isNotEmpty() }
+            ?: return@LaunchedEffect
+        val artistId = album.songs.firstNotNullOfOrNull { it.artistId } ?: return@LaunchedEffect
+        if (!albumNeedsArtistShelves(album.sections, album.browseId)) return@LaunchedEffect
+        DesktopSearchClient.artistPage(artistId).onSuccess { artist ->
+            val current = openedCollection?.takeIf { it.browseId == album.browseId } ?: return@onSuccess
+            val extra = albumShelvesFromArtist(current.sections, current.browseId, artist)
+            if (extra.isNotEmpty()) openedCollection = current.copy(sections = current.sections + extra)
+        }
+    }
+
     // A Spotify playlist: its tracks, then each one's YouTube Music match. Keyed like the browse
     // above, so opening another page cancels it, and Back to a page left half matched (or Retry
     // on one that failed) reads it again.
@@ -1487,12 +1511,48 @@ fun BitChordDesktopApp() {
 
         if (dontRepeatSuggestions) sessionSongHistory += current
 
+        // The station follows the end of what the listener chose, not the song that happens to be
+        // playing: a track queued by hand, or one played on its own, becomes the base and the tail
+        // is rebuilt around it. Not in a party, where the server's queue is the one topped up.
+        val base = if (party.inParty) null else DesktopAutoplay.baseOf(liveQueue.songs, liveQueue.index)
+        if (base != null && base.videoId != autoplayBaseId) {
+            autoplayBaseId = base.videoId
+            autoplayReserve = emptyList()
+            autoplayJob?.cancel()
+            autoplayJob = null
+            autoplaySeed = null
+            val trimmed = liveQueue.withoutAutoplay()
+            if (trimmed !== liveQueue) {
+                liveQueue = trimmed
+                saveQueue()
+            }
+        }
+        fun autoplayAhead() = liveQueue.songs.drop(liveQueue.index + 1).count { it.fromAutoplay }
+        if (!party.inParty) {
+            // Tracks already fetched go in first, so the queue stays full without a request.
+            val room = MAX_QUEUED_AUTOPLAY - autoplayAhead()
+            if (room > 0 && autoplayReserve.isNotEmpty()) {
+                val queuedIds = liveQueue.songs.mapTo(HashSet()) { it.videoId }
+                val usable = autoplayReserve.filter { it.videoId !in queuedIds }
+                val (take, rest) = DesktopAutoplay.split(usable, room)
+                autoplayReserve = rest
+                if (take.isNotEmpty()) {
+                    liveQueue = liveQueue.append(take)
+                    saveQueue()
+                }
+            }
+        }
         // In a party the server's queue is the one being topped up, and this computer's copy of it
         // lags by however long reconcile is held off. Counted from the copy, a batch that had
         // already landed read as missing and the same station went out again.
-        val queued = partyAutoplayWaiting(party, current.videoId)
-            ?: liveQueue.songs.drop(liveQueue.index + 1).count { it.fromAutoplay }
-        val needed = MAX_QUEUED_AUTOPLAY - queued
+        val queued = partyAutoplayWaiting(party, current.videoId) ?: autoplayAhead()
+        // Outside a party the stock is what is queued plus what is held back, and the station is
+        // asked for again only once that is down to a full queue.
+        val needed = if (party.inParty) {
+            MAX_QUEUED_AUTOPLAY - queued
+        } else {
+            DesktopAutoplay.neededFor(queued, autoplayReserve.size)
+        }
         if (needed <= 0 && !playFirst) return
         // One request per seed.
         if (!playFirst && autoplaySeed == current.videoId) return
@@ -1516,14 +1576,18 @@ fun BitChordDesktopApp() {
                     .takeIf { it.inParty }?.queue?.items.orEmpty().map { it.toDesktopSong() }
                 val suggestions = DesktopAutoplay.tracksFor(
                     existing = if (dontRepeatSuggestions) {
-                        liveQueue.songs + partyQueue + sessionSongHistory
+                        liveQueue.songs + partyQueue + autoplayReserve + sessionSongHistory
                     } else {
-                        liveQueue.songs + partyQueue
+                        liveQueue.songs + partyQueue + autoplayReserve
                     },
-                    seedSong = AutoplayRefill.seedOrder(liveQueue.index, liveQueue.songs.size)
-                        .let { order -> order.getOrNull(attempt % order.size.coerceAtLeast(1)) }
-                        ?.let { liveQueue.songs.getOrNull(it) }
-                        ?.takeIf { attempt > 0 } ?: current,
+                    seedSong = if (attempt == 0 && base != null) {
+                        base
+                    } else {
+                        AutoplayRefill.seedOrder(liveQueue.index, liveQueue.songs.size)
+                            .let { order -> order.getOrNull(attempt % order.size.coerceAtLeast(1)) }
+                            ?.let { liveQueue.songs.getOrNull(it) }
+                            ?.takeIf { attempt > 0 } ?: current
+                    },
                     limit = remaining,
                 ).getOrElse { failure ->
                     DesktopTrackLog.log("autoplay: could not build a station: ${failure.message}")
@@ -1548,9 +1612,13 @@ fun BitChordDesktopApp() {
                         passAttempts = 0
                         delay(if (emptyRefreshesRemaining-- > 0) AutoplayRefill.RETRY_DELAY_MS else AutoplayRefill.WATCHDOG_MS)
                     }
-                    remaining = AutoplayRefill.missing(
-                        liveQueue.songs.drop(liveQueue.index + 1).count { it.fromAutoplay },
-                    ).coerceAtLeast(1)
+                    remaining = (
+                        if (latestParty.inParty) {
+                            AutoplayRefill.missing(autoplayAhead())
+                        } else {
+                            DesktopAutoplay.neededFor(autoplayAhead(), autoplayReserve.size)
+                        }
+                        ).coerceAtLeast(1)
                     continue
                 }
                 // The station carries on from what was playing, so it keeps that queue's origin —
@@ -1570,8 +1638,16 @@ fun BitChordDesktopApp() {
                     }
                     if (playFirst) DesktopListenTogether.next()
                 } else {
-                    liveQueue = liveQueue.append(queuedSuggestions)
+                    // What does not fit waits in the reserve for the queue to make room. Playing the
+                    // first one on the spot needs it queued, so that batch goes in whole.
+                    val (toQueue, held) = if (playFirst) {
+                        queuedSuggestions to emptyList()
+                    } else {
+                        DesktopAutoplay.split(queuedSuggestions, MAX_QUEUED_AUTOPLAY - autoplayAhead())
+                    }
+                    liveQueue = liveQueue.append(toQueue)
                     saveQueue()
+                    autoplayReserve = (autoplayReserve + held).distinctBy { it.videoId }
                     // The mix continues from where it was added rather than starting a queue of
                     // its own.
                     if (playFirst) playQueueIndex(at)
@@ -1582,9 +1658,7 @@ fun BitChordDesktopApp() {
                 )
                 // A batch can come back short; keep asking, from an earlier seed, until full.
                 if (latestParty.inParty || playFirst) return@launch
-                val stillMissing = AutoplayRefill.missing(
-                    liveQueue.songs.drop(liveQueue.index + 1).count { it.fromAutoplay },
-                )
+                val stillMissing = DesktopAutoplay.neededFor(autoplayAhead(), autoplayReserve.size)
                 if (stillMissing <= 0) return@launch
                 remaining = stillMissing
                 delay(AutoplayRefill.NEXT_SEED_DELAY_MS)
@@ -1619,6 +1693,8 @@ fun BitChordDesktopApp() {
         if (enabled) {
             loadAutoplaySongs()
         } else {
+            autoplayReserve = emptyList()
+            autoplayBaseId = null
             val trimmed = liveQueue.withoutAutoplay()
             if (trimmed !== liveQueue) {
                 liveQueue = trimmed
@@ -2217,6 +2293,15 @@ fun BitChordDesktopApp() {
     }
     LaunchedEffect(liveQueue.songs.size, liveQueue.index, partyState.queue.seq) {
         val currentId = selectedSong?.videoId
+        // A track queued by hand (or taken out) moves the end of what the listener chose, and the
+        // station follows that end: rebuild the tail around the new one.
+        if (!partyState.inParty && DesktopAutoplay.enabled(partyState, autoplay)) {
+            val base = DesktopAutoplay.baseOf(liveQueue.songs, liveQueue.index)
+            if (base != null && base.videoId != autoplayBaseId) {
+                loadAutoplaySongs()
+                return@LaunchedEffect
+            }
+        }
         val shouldRefresh = DesktopAutoplay.queueNeedsRefresh(
             enabled = DesktopAutoplay.enabled(partyState, autoplay),
             repeatAll = repeatMode == DesktopRepeatMode.ALL,
@@ -2666,6 +2751,26 @@ fun BitChordDesktopApp() {
         }
     }
 
+    var searchPrefetchJob by remember { mutableStateOf<Job?>(null) }
+
+    /**
+     * Fetches the pages of the artists the first results name, so opening one is instant: the
+     * repository keeps them for twenty minutes and hands the same request to whoever asks while it
+     * is in flight. A newer search replaces the one running.
+     */
+    fun prefetchSearchArtists(rows: List<SearchResult>) {
+        searchPrefetchJob?.cancel()
+        val artistIds = rows.take(SEARCH_ARTIST_PREFETCH_LIMIT)
+            .mapNotNull { (it as? SearchResult.Browse)?.item }
+            .filter { it.type == BrowseType.ARTIST || it.browseId.startsWith("UC") }
+            .map { it.browseId }
+            .distinct()
+        if (artistIds.isEmpty()) return
+        searchPrefetchJob = scope.launch(Dispatchers.IO) {
+            artistIds.forEach { id -> launch { DesktopSearchClient.artistPage(id) } }
+        }
+    }
+
     fun search() {
         if (query.isBlank() || searchLoading) return
         when (val link = MusicLinkParser.parseText(query)) {
@@ -2749,6 +2854,7 @@ fun BitChordDesktopApp() {
                 DesktopMusicSources.search(query, searchFilter).fold(
                     onSuccess = { rows ->
                         searchRows = rows
+                        prefetchSearchArtists(rows)
                         if (typedHit == null) {
                             rows.firstNotNullOfOrNull { row ->
                                 when (row) {
@@ -4964,6 +5070,7 @@ fun BitChordDesktopApp() {
                                 onDownload = ::downloadSong,
                                 downloadedIds = downloads.map(Song::videoId).toSet(),
                                 downloadInProgress = downloadInProgress,
+                                onShelfItemClick = ::openShelfItem,
                                 contentPadding = contentPadding,
                             )
                         }
@@ -5102,10 +5209,6 @@ fun BitChordDesktopApp() {
                             onTopResultPlay = { song ->
                                 recordSongSearch(song)
                                 playSong(song, source = DesktopQueueSource(DesktopStrings["search", "Search"], PlaybackSourceType.SEARCH))
-                            },
-                            onTopResultPlaylist = { song ->
-                                recordSongSearch(song)
-                                playlistTarget = song
                             },
                             onBrowseClick = { item ->
                                 recordBrowseSearch(item)
@@ -8993,6 +9096,7 @@ private fun DesktopCollectionPage(
     onAddToPlaylist: (Song) -> Unit,
     downloadedIds: Set<String>,
     downloadInProgress: Set<String>,
+    onShelfItemClick: (ShelfItem, String?) -> Unit,
     contentPadding: PaddingValues,
 ) {
     val songs = collection.songs
@@ -9316,6 +9420,13 @@ private fun DesktopCollectionPage(
                                 modifier = Modifier.size(22.dp),
                             )
                         }
+                    }
+                }
+            }
+            collection.sections.forEachIndexed { index, shelf ->
+                item(key = "collection-shelf-$index-${shelf.title}") {
+                    Box(Modifier.padding(top = 18.dp)) {
+                        DesktopShelf(shelf, onItemClick = onShelfItemClick)
                     }
                 }
             }

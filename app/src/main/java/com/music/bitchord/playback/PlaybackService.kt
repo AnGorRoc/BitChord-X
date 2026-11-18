@@ -866,6 +866,15 @@ class PlaybackService : MediaLibraryService() {
     private var preferredPrefetchRequest: List<String>? = null
     private var autoplaySeed: String? = null
 
+    /**
+     * AutoPlay tracks fetched but not queued yet — the part of the [AUTOPLAY_STOCK] beyond what the
+     * queue shows. Empty whenever the station they came from stops being the right one.
+     */
+    private var autoplayReserve: List<Song> = emptyList()
+
+    /** The queue's last hand-picked track the AutoPlay tail was built around; see [autoplayBaseOf]. */
+    private var autoplayBaseId: String? = null
+
     /** Index in the live queue represented by entry zero of the persisted window. */
     private var persistedQueueStart = 0
 
@@ -3476,6 +3485,8 @@ class PlaybackService : MediaLibraryService() {
             autoplayLoadJob = null
             autoplaySeed = null
             dropAutoplayTracksFromQueue()
+            autoplayReserve = emptyList()
+            autoplayBaseId = null
             // Switching AutoPlay off is the listener saying they don't want
             // those tracks; leaving a stash behind would put them back the next
             // time repeat-all ended.
@@ -3506,17 +3517,50 @@ class PlaybackService : MediaLibraryService() {
         }
         val current = exoPlayer.currentMediaItem?.toSong() ?: return
         if (AppSettings.dontRepeatSuggestions.value) sessionSongHistory += current
+        // The station follows the end of what the listener chose, not the song that happens to be
+        // playing: a track queued by hand, or one played on its own, becomes the base and the
+        // tail is rebuilt around it. Not in a party, where the server's queue is the one topped up.
+        val base = if (party.inParty) null else autoplayBaseOf(exoPlayer)
+        if (base != null && base.videoId != autoplayBaseId) {
+            autoplayBaseId = base.videoId
+            autoplayReserve = emptyList()
+            autoplayLoadJob?.cancel()
+            autoplayLoadJob = null
+            autoplaySeed = null
+            dropAutoplayTracksFromQueue()
+        }
+        val aheadOf = { p: ExoPlayer ->
+            (p.currentMediaItemIndex + 1 until p.mediaItemCount).count { p.getMediaItemAt(it).fromAutoplay }
+        }
+        if (!party.inParty) {
+            // Tracks already fetched go in first, so the queue stays full without a request.
+            val room = MAX_QUEUED_AUTOPLAY - aheadOf(exoPlayer)
+            if (room > 0 && autoplayReserve.isNotEmpty()) {
+                val queuedIds = (0 until exoPlayer.mediaItemCount)
+                    .mapTo(HashSet()) { exoPlayer.getMediaItemAt(it).mediaId }
+                val usable = autoplayReserve.filter { it.videoId !in queuedIds }
+                val take = usable.take(room)
+                autoplayReserve = usable.drop(take.size)
+                if (take.isNotEmpty()) exoPlayer.addMediaItems(take.map { it.toMediaItem() })
+            }
+        }
         // In a party the server's queue is the one being topped up, and this
         // player's copy of it lags behind by however long reconcile is held off
         // — read from the copy, a batch that had already landed counted as
         // missing and the same station was sent again.
-        val queuedAutoplay = partyAutoplayWaiting(party, current.videoId)
-            ?: (exoPlayer.currentMediaItemIndex + 1 until exoPlayer.mediaItemCount)
-                .count { exoPlayer.getMediaItemAt(it).fromAutoplay }
-        val needed = MAX_QUEUED_AUTOPLAY - queuedAutoplay
+        val queuedAutoplay = partyAutoplayWaiting(party, current.videoId) ?: aheadOf(exoPlayer)
+        // Outside a party the stock is what is queued plus what is held back; asked for again only
+        // once that is down to a full queue.
+        val needed = if (party.inParty) {
+            MAX_QUEUED_AUTOPLAY - queuedAutoplay
+        } else {
+            val stock = queuedAutoplay + autoplayReserve.size
+            if (stock > MAX_QUEUED_AUTOPLAY) 0 else AUTOPLAY_STOCK - stock
+        }
         if (needed <= 0) return
         if (autoplaySeed == current.videoId) return
         autoplaySeed = current.videoId
+        autoplayLoadJob?.cancel()
         autoplayLoadJob = scope.launch {
             var remaining = needed
             var emptyRefreshesRemaining = MAX_AUTOPLAY_EMPTY_REFRESHES
@@ -3547,7 +3591,9 @@ class PlaybackService : MediaLibraryService() {
                 val currentAt = activePlayer.currentMediaItemIndex
                 val seedOrder = AutoplayRefill.seedOrder(currentAt, activePlayer.mediaItemCount)
                 val seedAt = seedOrder.getOrNull(attempt % seedOrder.size.coerceAtLeast(1)) ?: currentAt
-                val seedSong = if (seedAt == currentAt || seedAt !in 0 until activePlayer.mediaItemCount) {
+                val seedSong = if (attempt == 0 && base != null) {
+                    base
+                } else if (seedAt == currentAt || seedAt !in 0 until activePlayer.mediaItemCount) {
                     current
                 } else {
                     activePlayer.getMediaItemAt(seedAt).toSong()
@@ -3600,8 +3646,11 @@ class PlaybackService : MediaLibraryService() {
                                 .count { latestPlayer.getMediaItemAt(it).fromAutoplay }
                         val fresh = resolved
                             .filterNot { song -> queuedNow.any { QueueBuilder.isSameRecording(it, song) } }
-                            .take(room.coerceAtLeast(0))
-                        if (fresh.isNotEmpty()) latestPlayer.addMediaItems(fresh.map { it.toMediaItem() })
+                        val toQueue = fresh.take(room.coerceAtLeast(0))
+                        if (toQueue.isNotEmpty()) latestPlayer.addMediaItems(toQueue.map { it.toMediaItem() })
+                        // What does not fit waits for the queue to make room.
+                        autoplayReserve = (autoplayReserve + fresh.drop(toQueue.size))
+                            .distinctBy { it.videoId }
                     }
                     if (AppSettings.dontRepeatSuggestions.value) sessionSongHistory += resolved
                     // A batch can come back short (duplicates filtered, the radio
@@ -3641,6 +3690,21 @@ class PlaybackService : MediaLibraryService() {
                 if (remaining <= 0) return@launch
             }
         }
+    }
+
+    /**
+     * The last track the listener chose that is still playing or waiting — the end of the album,
+     * the song played on its own, or the one queued by hand last. AutoPlay continues from there.
+     * Null when nothing hand-picked is left (AutoPlay's own tracks are playing), in which case
+     * the tail already built keeps going, and in a bounded context, whose queue is only a window.
+     */
+    private fun autoplayBaseOf(exoPlayer: ExoPlayer): Song? {
+        if (boundedContextWindow != null) return null
+        val from = exoPlayer.currentMediaItemIndex.takeIf { it >= 0 } ?: return null
+        return (exoPlayer.mediaItemCount - 1 downTo from)
+            .map { exoPlayer.getMediaItemAt(it) }
+            .firstOrNull { !it.fromAutoplay }
+            ?.toSong()
     }
 
     /**
@@ -3695,6 +3759,14 @@ class PlaybackService : MediaLibraryService() {
     /** Re-arms AutoPlay when an external queue edit empties or shrinks its tail. */
     private fun refreshAutoplayIfQueueEmpty() {
         val exoPlayer = player ?: return
+        // A track queued by hand (or taken out) moves the end of what the listener chose, and
+        // AutoPlay follows that end: rebuild the tail around the new one.
+        if (autoplayEnabled(ListenTogether.state.value) &&
+            autoplayBaseOf(exoPlayer)?.let { it.videoId != autoplayBaseId } == true
+        ) {
+            loadAutoplayForCurrentTrack()
+            return
+        }
         val aheadNow = (exoPlayer.currentMediaItemIndex + 1 until exoPlayer.mediaItemCount)
             .count { exoPlayer.getMediaItemAt(it).fromAutoplay }
         // Removing some of AutoPlay's tracks leaves a non-empty tail, which the

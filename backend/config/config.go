@@ -120,6 +120,10 @@ var (
 	// Build identifier reported by /api/info, e.g. a commit hash.
 	Version              = strings.TrimSpace(os.Getenv("JAM_VERSION"))
 	Port                 = getInt("PORT", 8000)
+	AdminPort            = getInt("ADMIN_PORT", 8001)
+	AdminSecret          = strings.TrimSpace(os.Getenv("ADMIN_SECRET"))
+	DatabaseURL          = strings.TrimSpace(os.Getenv("DATABASE_URL"))
+	TelemetryRatePerMin  = getInt("JAM_TELEMETRY_RATE_PER_MINUTE", 20)
 )
 
 // AppLink is one Android app allowed to open this server's invite links.

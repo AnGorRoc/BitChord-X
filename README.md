@@ -100,7 +100,7 @@
 
 On top of the original feature set, BitChord-X adds:
 
-- **Desktop Compose Multiplatform** — Native desktop applications for Windows (DWM frame, snap layouts, JNA-powered mica/acrylic), macOS (.dmg/.pkg), and Linux (.AppImage/.deb/.rpm). See [DESKTOP.md](DESKTOP.md).
+- **Desktop Compose Multiplatform** — Native desktop applications for Windows (DWM frame, snap layouts, JNA-powered mica/acrylic), macOS (.dmg), and Linux (.AppImage/.deb). See [DESKTOP.md](DESKTOP.md).
 - **Harmonic Automix with Camelot Key Guard** — DJ-style beat matching guided by the 24-key Camelot Wheel, BPM stretch guards ($\le 16\%$), equal-power gain curves, reactive analyzing indicators, and lyric/vocal clash prevention (`lastVocalTime`, `firstVocalTime`).
 - **Sing / Karaoke Mode** — Integrated real-time vocal suppression with liquid capsule fader and DSP engine selector.
 - **Liquid Dock & Kinetic Player** — Dock compaction on scroll into an inline miniplayer flanked by the active tab and search pill, smooth morph play/pause, kinetic skip springs, and spring pop miniplayer transitions.
@@ -137,13 +137,13 @@ BitChord-X is available for Android and Desktop (Windows, macOS, and Linux).
 </div>
 
 ### Android
-Grab the latest signed APK from the [Releases](https://github.com/AnGorRoc/BitChord-X/releases) page. Sideloading requires enabling "Install unknown apps" for whichever app you download it with.
+Grab the latest signed APK from the [Releases](https://github.com/AnGorRoc/BitChord-X/releases) page. Phones with a 64-bit ARM processor (almost every current phone) can use either the universal APK or the smaller `arm64-v8a` one; the other processor types (32-bit ARM, x86) are no longer built separately. Sideloading requires enabling "Install unknown apps" for whichever app you download it with.
 
 ### Desktop (Windows, macOS, Linux)
 Standalone installers and portable packages are provided for each release with all dependencies bundled (no separate JDK required):
-- **Windows**: Setup installer (`.exe`), Windows Installer (`.msi`), and portable archive (`.zip`).
-- **macOS**: Apple Silicon (`arm64.dmg`) and Intel (`x64.dmg`) disk images, plus `.pkg` installers.
-- **Linux**: Universal `.AppImage`, Debian/Ubuntu (`.deb`), and Fedora/RHEL/openSUSE (`.rpm`).
+- **Windows**: Setup installer (`.exe`) and portable archive (`.zip`).
+- **macOS**: Apple Silicon disk image (`arm64.dmg`).
+- **Linux**: Universal `.AppImage` and Debian/Ubuntu (`.deb`).
 
 For complete desktop setup, system requirements, and manual build commands, see [DESKTOP.md](DESKTOP.md).
 

@@ -15,6 +15,11 @@ import com.music.bitchord.data.sources.SourceKind
 import com.music.bitchord.playback.EqLayout
 import com.music.bitchord.playback.EqualizerPreset
 import com.music.bitchord.playback.SingMethod
+import com.music.bitchord.data.Http
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.isActive
+import okhttp3.Request
+import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -244,6 +249,28 @@ object AppSettings {
 
     private val networkScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private const val NETWORK_LOST_GRACE_MS = 750L
+
+    /** Answers 204 with no body when the internet is reachable; the same check Android's own uses. */
+    private const val CONNECTION_PROBE_URL = "https://www.youtube.com/generate_204"
+    private const val CONNECTION_PROBE_TIMEOUT_MS = 4_000L
+
+    /** How long to wait before asking again while the system still has not confirmed the network. */
+    private const val CONNECTION_REPROBE_MS = 12_000L
+
+    private val probeClient by lazy {
+        Http.client.newBuilder()
+            .callTimeout(CONNECTION_PROBE_TIMEOUT_MS, TimeUnit.MILLISECONDS)
+            .followRedirects(false)
+            .build()
+    }
+
+    private fun probeInternet(): Boolean = try {
+        probeClient.newCall(Request.Builder().url(CONNECTION_PROBE_URL).build()).execute().use { it.code == 204 }
+    } catch (e: CancellationException) {
+        throw e
+    } catch (_: Exception) {
+        false
+    }
     private val streamingAvailableFlow = MutableStateFlow(true)
 
     private val offlineModeFlow = MutableStateFlow(false)
@@ -532,6 +559,9 @@ object AppSettings {
 
     /** Hides the "Playing from" / "Played by" caption at the top of the main player. */
     val hideSongStatus = MutableStateFlow(false)
+
+    /** Sends anonymous presence/version telemetry and opt-in error reports. Enabled by default. */
+    val telemetryEnabled = MutableStateFlow(true)
 
     val showQueueHistory = MutableStateFlow(false)
 
@@ -1199,6 +1229,7 @@ object AppSettings {
         hideVolumeBar.value = prefs.getBoolean(KEY_HIDE_VOLUME_BAR, true)
         hideStatusBarInPlayer.value = prefs.getBoolean(KEY_HIDE_STATUS_BAR_IN_PLAYER, false)
         hideSongStatus.value = prefs.getBoolean(KEY_HIDE_SONG_STATUS, false)
+        telemetryEnabled.value = prefs.getBoolean(KEY_TELEMETRY_ENABLED, true)
         showQueueHistory.value = prefs.getBoolean(KEY_SHOW_QUEUE_HISTORY, false)
         swipeToPlayNext.value = prefs.getBoolean(KEY_SWIPE_TO_PLAY_NEXT, false)
         swipeRightAction.value = prefs.getString(KEY_SWIPE_RIGHT_ACTION, null)
@@ -1427,32 +1458,58 @@ object AppSettings {
     private fun watchConnection(context: Context) {
         val manager = context.getSystemService(ConnectivityManager::class.java) ?: return
         var pendingCheck: Job? = null
+        var probing: Job? = null
 
-        val actuallyUp = {
+        val reach = {
             runCatching {
-                val network = manager.activeNetwork ?: return@runCatching false
-                val capabilities = manager.getNetworkCapabilities(network)
-                    ?: return@runCatching false
-                capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
-                    capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
-            }.getOrDefault(false)
+                val capabilities = manager.activeNetwork?.let(manager::getNetworkCapabilities)
+                networkReach(
+                    hasNetwork = capabilities != null,
+                    hasInternet = capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true,
+                    validated = capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED) == true,
+                )
+            }.getOrDefault(NetworkReach.NONE)
         }
 
         val markStreaming = {
             pendingCheck?.cancel()
             pendingCheck = null
+            probing?.cancel()
+            probing = null
             streamingAvailableFlow.value = true
         }
 
         val refresh = {
-            if (actuallyUp()) {
-                markStreaming()
-            } else {
-                pendingCheck?.cancel()
-                pendingCheck = networkScope.launch {
-                    delay(NETWORK_LOST_GRACE_MS)
-                    if (!actuallyUp()) streamingAvailableFlow.value = false
+            when (reach()) {
+                NetworkReach.VALIDATED -> markStreaming()
+                NetworkReach.UNCONFIRMED -> {
+                    // The system has not vouched for this network, which says nothing about whether it
+                    // works. Ask the internet directly, and keep asking while it stays unconfirmed, so
+                    // a connection that is up is never left reading as offline.
+                    pendingCheck?.cancel()
                     pendingCheck = null
+                    if (probing?.isActive != true) {
+                        probing = networkScope.launch {
+                            while (isActive && reach() == NetworkReach.UNCONFIRMED) {
+                                if (streamingAvailable(NetworkReach.UNCONFIRMED, probeInternet())) {
+                                    streamingAvailableFlow.value = true
+                                    return@launch
+                                }
+                                streamingAvailableFlow.value = false
+                                delay(CONNECTION_REPROBE_MS)
+                            }
+                        }
+                    }
+                }
+                NetworkReach.NONE -> {
+                    probing?.cancel()
+                    probing = null
+                    pendingCheck?.cancel()
+                    pendingCheck = networkScope.launch {
+                        delay(NETWORK_LOST_GRACE_MS)
+                        if (reach() == NetworkReach.NONE) streamingAvailableFlow.value = false
+                        pendingCheck = null
+                    }
                 }
             }
             meteredConnection.value = runCatching {
@@ -1683,6 +1740,11 @@ object AppSettings {
     fun setHideSongStatus(value: Boolean) {
         hideSongStatus.value = value
         prefs.edit().putBoolean(KEY_HIDE_SONG_STATUS, value).apply()
+    }
+
+    fun setTelemetryEnabled(value: Boolean) {
+        telemetryEnabled.value = value
+        prefs.edit().putBoolean(KEY_TELEMETRY_ENABLED, value).apply()
     }
 
     fun setShowQueueHistory(value: Boolean) {
@@ -2646,6 +2708,7 @@ object AppSettings {
     private const val KEY_HIDE_VOLUME_BAR = "hide_volume_bar"
     private const val KEY_HIDE_STATUS_BAR_IN_PLAYER = "hide_status_bar_in_player"
     private const val KEY_HIDE_SONG_STATUS = "hide_song_status"
+    private const val KEY_TELEMETRY_ENABLED = "telemetry_enabled"
     private const val KEY_SHOW_QUEUE_HISTORY = "show_queue_history"
     private const val KEY_SWIPE_TO_PLAY_NEXT = "swipe_to_play_next"
     private const val KEY_SWIPE_RIGHT_ACTION = "swipe_right_action"

@@ -54,6 +54,7 @@ internal fun SettingsMiscellaneousSection(search: SettingsSearch) {
     val hideStatusBarInPlayer by AppSettings.hideStatusBarInPlayer.collectAsStateWithLifecycle()
     val showQueueHistory by AppSettings.showQueueHistory.collectAsStateWithLifecycle()
     val hideSongStatus by AppSettings.hideSongStatus.collectAsStateWithLifecycle()
+    val telemetryEnabled by AppSettings.telemetryEnabled.collectAsStateWithLifecycle()
 
     SearchableSettingsGroup(search, header = stringResource(R.string.miscellaneous)) {
         val swipeRightTitle = stringResource(R.string.swipe_right_action)
@@ -210,6 +211,21 @@ internal fun SettingsMiscellaneousSection(search: SettingsSearch) {
                     )
                 },
                 onClick = { AppSettings.setHideSongStatus(!hideSongStatus) },
+            )
+        }
+        val telemetryTitle = stringResource(R.string.telemetry_diagnostics)
+        row(telemetryTitle, "telemetry", "diagnostics", "privacy", "errors", "crash", "analytics") {
+            SettingsRow(
+                icon = SfIcons.Info,
+                title = telemetryTitle,
+                subtitle = stringResource(R.string.telemetry_diagnostics_subtitle),
+                trailing = {
+                    IosSwitch(
+                        checked = telemetryEnabled,
+                        onCheckedChange = AppSettings::setTelemetryEnabled,
+                    )
+                },
+                onClick = { AppSettings.setTelemetryEnabled(!telemetryEnabled) },
             )
         }
     }

@@ -356,8 +356,6 @@
     <string name="player_theme_default_subtitle">The cover\'s own colours carry on below it</string>
     <string name="player_theme_simple_subtitle">A soft blur of the cover behind the whole player</string>
     <string name="player_theme_legacy_subtitle">Brings back the drifting colour blobs behind the player from v1.5</string>
-    <string name="legacy_mesh_gradient">Legacy mesh gradient</string>
-    <string name="legacy_mesh_gradient_subtitle">Brings back the drifting colour blobs behind the player from v1.5</string>
     <string name="animated_cover_art">Animated cover art</string>
     <string name="artist_signatures">Artist signatures</string>
     <string name="artist_signatures_subtitle">Shows a handwritten signature when Apple Music has no title logo</string>
@@ -1521,4 +1519,6 @@
     <string name="share_app_release_text">Get BitChord X here: %1$s</string>
     <string name="tint_with_now_playing">Colours from what’s playing</string>
     <string name="tint_with_now_playing_subtitle">Tint the pages and bars with the cover of the song that’s playing</string>
+    <string name="telemetry_diagnostics">Anonymous telemetry &amp; error reports</string>
+    <string name="telemetry_diagnostics_subtitle">Sends: random install ID, app version, platform, connection times, and on errors: error details, basic device model and Android version. Never sends your account, IP, listening history or playlists.</string>
 </resources>

@@ -40,13 +40,10 @@ patterns, where `<v>` is the version from section 1:
 | Platform | File |
 |---|---|
 | Windows | `BitChord-<v>-windows-x64-setup.exe` (what the update check downloads) |
-| Windows | `BitChord-<v>-windows-x64.msi` |
 | Windows | `BitChord-<v>-windows-x64-portable.zip` |
 | Linux | `BitChord-<v>-linux-x86_64.AppImage` (preferred by the update check) |
 | Linux | `BitChord-<v>-linux-amd64.deb` (used if there is no AppImage) |
-| Linux | `BitChord-<v>-linux-x86_64.rpm` |
-| macOS | `BitChord-<v>-macos-arm64.dmg` (Apple Silicon; also `.pkg` and `.zip`) |
-| macOS | `BitChord-<v>-macos-x64.dmg` (Intel; also `.pkg` and `.zip`) |
+| macOS | `BitChord-<v>-macos-arm64.dmg` (Apple Silicon) |
 
 Rules:
 
@@ -98,8 +95,7 @@ Before publishing, confirm each of these on the built files, not just in the sou
 - [ ] They are attached to the same release as the Windows files.
 - [ ] The release is not a draft or pre-release (for a real release).
 - [ ] Install the previous release, then the new one over it: deb with `sudo apt install
-      ./BitChord-*.deb`, rpm with `sudo dnf upgrade ./BitChord-*.rpm`. It must upgrade, not
-      reinstall or conflict.
+      ./BitChord-*.deb`. It must upgrade, not reinstall or conflict.
 - [ ] With the previous release installed, the "Update available" dialog appears and Download
       opens the correct file for that platform.
 

@@ -9,6 +9,14 @@ import com.music.bitchord.playback.QueueBuilder
 /** Most Autoplay-suggested tracks kept queued ahead of the current one at once. */
 const val MAX_QUEUED_AUTOPLAY = 10
 
+/**
+ * How many Autoplay tracks are fetched and held at once. Only [MAX_QUEUED_AUTOPLAY] of them are in the
+ * queue; the rest wait in a reserve that tops the queue up as tracks play, so the station is asked
+ * for again only once the stock is down to [MAX_QUEUED_AUTOPLAY]: one request every few tracks
+ * instead of one per track. The same figures as the phone's.
+ */
+const val AUTOPLAY_STOCK = 15
+
 /** The station that keeps playing when the queue runs out. */
 internal object DesktopAutoplay {
 
@@ -38,6 +46,32 @@ internal object DesktopAutoplay {
         !loadInProgress &&
         currentIndex >= 0 &&
         currentIndex == itemCount - 1
+
+    /**
+     * The last track the listener chose that is still playing or waiting: the end of the album, the
+     * song played on its own, or the one queued by hand last. The station continues from there, and
+     * the tail is rebuilt around it when it changes. Null when nothing hand-picked is left, in which
+     * case the tail already built keeps going.
+     */
+    fun baseOf(songs: List<Song>, index: Int): Song? {
+        if (index !in songs.indices) return null
+        return (songs.size - 1 downTo index).map(songs::get).firstOrNull { !it.fromAutoplay }
+    }
+
+    /**
+     * How many tracks to ask the station for. The stock is what is queued plus what is held in the
+     * reserve, and the station is asked again only once that is down to a full queue.
+     */
+    fun neededFor(queuedAhead: Int, reserved: Int): Int {
+        val stock = queuedAhead + reserved
+        return if (stock > MAX_QUEUED_AUTOPLAY) 0 else AUTOPLAY_STOCK - stock
+    }
+
+    /** [fresh] split into what fits in the queue's [room] and what waits in the reserve. */
+    fun split(fresh: List<Song>, room: Int): Pair<List<Song>, List<Song>> {
+        val take = fresh.take(room.coerceAtLeast(0))
+        return take to fresh.drop(take.size)
+    }
 
     /** The YouTube id to seed a station on. */
     suspend fun youtubeSeedFor(song: Song): String? {

@@ -1927,6 +1927,33 @@ object AudioCache {
         return true
     }
 
+    private var headJob: Job? = null
+
+    /**
+     * Gets the opening of the first songs a search or an artist page lists ready before any is
+     * tapped: each, in the order given, is settled on its best copy and has its first
+     * [PRELOAD_BYTES] put on disk — [prepareUpcoming], one song after another so the first is never
+     * waiting behind the last.
+     *
+     * A new call replaces the one running, since a fresh list means the old one is no longer what
+     * the listener is looking at. Nothing is fetched under Direct Source Stream, which reads
+     * nothing before a track is about to play, or with the cache switched off.
+     */
+    fun prefetchSongsHead(upcoming: List<Upcoming>) {
+        headJob?.cancel()
+        headJob = null
+        if (upcoming.isEmpty() || isCacheDisabled || DirectSourceGate.isActive()) return
+        headJob = scope.launch {
+            for (song in upcoming) {
+                runCatching { prepareUpcoming(song) }
+                    .onFailure {
+                        if (it is kotlinx.coroutines.CancellationException) throw it
+                        TrackLog.d(TAG, "head warm-up skipped ${song.mediaId}: ${it.message}", about = song.mediaId)
+                    }
+            }
+        }
+    }
+
     /** Whether enough of [uri]'s opening is on disk for it to start without waiting on the network. */
     fun headReady(uri: Uri): Boolean = cachedPrefixBytes(uri) >= HEAD_READY_BYTES || isFullyCached(uri)
 

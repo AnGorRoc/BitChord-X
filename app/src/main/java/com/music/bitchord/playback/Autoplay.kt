@@ -16,6 +16,14 @@ import kotlinx.coroutines.CancellationException
 const val MAX_QUEUED_AUTOPLAY = 10
 
 /**
+ * How many AutoPlay tracks are fetched and held at once. Only [MAX_QUEUED_AUTOPLAY] of them are
+ * in the queue; the rest wait in a reserve that tops the queue up as tracks play, so the station
+ * is asked for again only once the stock is down to [MAX_QUEUED_AUTOPLAY] — one request every
+ * few tracks instead of one per track.
+ */
+const val AUTOPLAY_STOCK = 15
+
+/**
  * Whether AutoPlay is on for the music this device is playing.
  *
  * In a party it is the party's setting and not this phone's: AutoPlay is shared

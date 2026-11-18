@@ -75,10 +75,7 @@ import com.music.bitchord.data.model.BrowseType
 import com.music.bitchord.data.model.ROW_ART_PX
 import com.music.bitchord.data.model.SearchFilter
 import com.music.bitchord.data.model.artworkAt
-import com.music.bitchord.data.model.RankedSearch
 import com.music.bitchord.data.model.SearchResult
-import com.music.bitchord.data.model.SearchSectionKind
-import com.music.bitchord.data.model.rankAllSearch
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.model.playingRowMatcher
 import com.music.bitchord.data.model.UiState
@@ -117,7 +114,6 @@ fun SearchScreen(
     onSongSwipeAction: ((Song, SongSwipeAction) -> Unit)? = null,
     onSongHoldPlaylist: ((Song) -> Unit)? = null,
     onTopResultPlay: (Song) -> Unit,
-    onTopResultPlaylist: (Song) -> Unit,
     onBrowseClick: (BrowseItem) -> Unit,
     /**
      * Holding an album or playlist hit rather than tapping it — the same menu
@@ -360,33 +356,9 @@ fun SearchScreen(
                             is SearchResult.Browse -> null
                         } }
                     val isCurrentRow = playingRowMatcher(tracks, currentSong)
-                    val ranked = if (filter == SearchFilter.ALL) rankAllSearch(results.data, query) else null
-                    val topResult = ranked?.topResult
-                    // The promoted card is YouTube's pick, but a closer artist or album
-                    // outranks it; it then sits at the head of the Songs section instead.
-                    val topResultCard: LazyListScope.() -> Unit = {
-                        if (topResult != null) {
-                            item(key = "search:top-result:${topResult.song.videoId}") {
-                                SwipeToQueueBox(
-                                    onSwipeToQueue = { onSongSwipe(topResult.song) },
-                                    onSwipeAction = onSongSwipeAction?.let { handler ->
-                                        { action -> handler(topResult.song, action) }
-                                    },
-                                    onSwipeHoldPlaylist = { onTopResultPlaylist(topResult.song) },
-                                    modifier = Modifier.fillMaxWidth(),
-                                ) {
-                                    TopResultCard(
-                                        song = topResult.song,
-                                        onPlay = { onTopResultPlay(topResult.song) },
-                                        onPlaylist = { onTopResultPlaylist(topResult.song) },
-                                        onLongPress = { onSongLongPress(topResult.song) },
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    if (ranked?.topResultLeads == true) topResultCard()
-                    searchSections(results.data, ranked).forEach { section ->
+                    // YouTube's own answer, as given: its order, its mix of artists, songs and
+                    // albums, no headings. It knows what ranks best for a query.
+                    listOf(SearchSection(null, results.data)).forEach { section ->
                         section.title?.let { title ->
                             item(key = "search-section:$title") {
                                 Text(
@@ -402,7 +374,6 @@ fun SearchScreen(
                                 )
                             }
                         }
-                        if (section.kind == SearchSectionKind.SONGS && ranked?.topResultLeads == false) topResultCard()
                         itemsIndexed(
                             items = section.rows,
                             key = { index, row ->
@@ -414,7 +385,23 @@ fun SearchScreen(
                             },
                         ) { index, row ->
                             when (row) {
-                                is SearchResult.TopTrack -> Unit
+                                is SearchResult.TopTrack -> SongRow(
+                                    song = row.song,
+                                    onClick = {
+                                        onSongClick(tracks, tracks.indexOf(row.song).coerceAtLeast(0))
+                                    },
+                                    onLongPress = { onSongLongPress(row.song) },
+                                    onSwipeToQueue = { onSongSwipe(row.song) },
+                                    onSwipeAction = onSongSwipeAction?.let { handler ->
+                                        { action -> handler(row.song, action) }
+                                    },
+                                    onSwipeHoldPlaylist = onSongHoldPlaylist?.let { handler ->
+                                        { handler(row.song) }
+                                    },
+                                    isCurrent = isCurrentRow(row.song),
+                                    isPlaying = isPlaying && isCurrentRow(row.song),
+                                    searchPlayingStyle = true,
+                                )
                                 is SearchResult.Track -> SongRow(
                                     song = row.song,
                                     onClick = {
@@ -463,29 +450,7 @@ fun SearchScreen(
 private data class SearchSection(
     val title: String?,
     val rows: List<SearchResult>,
-    val kind: SearchSectionKind? = null,
 )
-
-/**
- * The unfiltered page is useful only when its mixed result types are readable at a glance.
- * [ranked] orders them by how closely each answers the query; see [rankAllSearch].
- */
-private fun searchSections(rows: List<SearchResult>, ranked: RankedSearch?): List<SearchSection> {
-    if (ranked == null) return listOf(SearchSection(null, rows))
-    return ranked.sections.map { section ->
-        SearchSection(
-            title = when (section.kind) {
-                SearchSectionKind.SONGS -> "Songs"
-                SearchSectionKind.ARTISTS -> "Artists"
-                SearchSectionKind.ALBUMS -> "Albums"
-                SearchSectionKind.PLAYLISTS -> "Playlists"
-                SearchSectionKind.MORE -> "More"
-            },
-            rows = section.rows,
-            kind = section.kind,
-        )
-    }
-}
 
 /**
  * The Library source's page: the Local Music folder's tracks that match, as
@@ -570,83 +535,6 @@ private fun LazyListScope.librarySearchResults(
                         color = MaterialTheme.colorScheme.outline,
                     )
                 }
-            }
-        }
-    }
-}
-
-/** The All response carries its highest-confidence music hit as a promoted card. */
-@OptIn(ExperimentalFoundationApi::class)
-@Composable
-private fun TopResultCard(
-    song: Song,
-    onPlay: () -> Unit,
-    onPlaylist: () -> Unit,
-    onLongPress: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(com.music.bitchord.ui.theme.pageBackground())
-            .padding(start = PAGE_GUTTER, end = PAGE_GUTTER, top = 18.dp, bottom = 8.dp)
-            .longPressMenuClickable(onClick = onPlay, onLongClick = onLongPress)
-            .contextClick(onLongPress),
-    ) {
-        Text(
-            text = "Top result",
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-        )
-        Spacer(Modifier.height(10.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            AsyncImage(
-                model = song.thumbnailUrl?.artworkAt(ROW_ART_PX),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.trackArtSize(72.dp, song.isVideo).clip(RoundedCornerShape(10.dp)),
-            )
-            Spacer(Modifier.width(14.dp))
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = song.title,
-                    style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Spacer(Modifier.height(4.dp))
-                Text(
-                    text = song.artist,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            RowMoreButton(
-                onClick = onLongPress,
-                tint = MaterialTheme.colorScheme.onSurface,
-                iconSize = 24.dp,
-            )
-        }
-        Spacer(Modifier.height(12.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            OutlinedButton(
-                onClick = onPlay,
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
-            ) {
-                Icon(Icons.Rounded.PlayArrow, contentDescription = null)
-                Spacer(Modifier.width(6.dp))
-                Text(stringResource(Res.string.play))
-            }
-            OutlinedButton(
-                onClick = onPlaylist,
-                colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.onSurface),
-            ) {
-                Icon(Icons.AutoMirrored.Rounded.PlaylistAdd, contentDescription = null)
-                Spacer(Modifier.width(6.dp))
-                Text(stringResource(Res.string.playlist_action))
             }
         }
     }

@@ -159,6 +159,7 @@ import com.music.bitchord.data.model.CARD_ART_PX
 import com.music.bitchord.data.model.HEADER_ART_PX
 import com.music.bitchord.data.model.ROW_ART_PX
 import com.music.bitchord.data.model.HomeShelf
+import com.music.bitchord.data.model.isArtistShelf
 import com.music.bitchord.data.model.ShelfItem
 import com.music.bitchord.data.settings.SongSort
 import com.music.bitchord.data.model.Song
@@ -239,9 +240,6 @@ private const val SEARCH_ITEM_INDEX = 1
 
 /** The inset the header text and the action pills share. */
 private val HEADER_GUTTER = PAGE_GUTTER + 8.dp
-
-/** Extra breathing room for the editorial copy on album and artist pages. */
-private val ABOUT_GUTTER = PAGE_GUTTER + 6.dp
 
 /** The artist bio and everything below it: the page edge every page shares. */
 private val ARTIST_CONTENT_GUTTER = PAGE_GUTTER
@@ -711,46 +709,36 @@ fun DetailScreen(
             fun LazyListScope.aboutItem() {
                 if (!showAbout) return
                 item(key = "about") {
-                    if (isArtist) {
-                        ArtistAboutCard(
-                            title = stringResource(R.string.about_artist),
-                            text = description?.takeIf { it.isNotBlank() },
-                            stats = if (hasStats) {
-                                {
-                                    ArtistStatsRow(
-                                        subscriberCountText = page.subscriberCountText,
-                                        monthlyListenerCount = page.monthlyListenerCount,
-                                        palette = palette,
-                                    )
-                                }
-                            } else null,
-                            footer = aboutSignature?.let { sig ->
-                                {
-                                    AboutSignature(
-                                        signature = sig,
-                                        name = page.title,
-                                        palette = palette,
-                                        horizontalPadding = 0.dp,
-                                    )
-                                }
-                            },
-                            palette = palette,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = ARTIST_CONTENT_GUTTER)
-                                .padding(top = 28.dp, bottom = 28.dp),
-                        )
-                    } else {
-                        AboutSection(
-                            title = stringResource(R.string.about_album),
-                            text = description?.takeIf { it.isNotBlank() },
-                            palette = palette,
-                            horizontalPadding = ABOUT_GUTTER,
-                        )
-                    }
+                    ArtistAboutCard(
+                        title = stringResource(if (isArtist) R.string.about_artist else R.string.about_album),
+                        text = description?.takeIf { it.isNotBlank() },
+                        stats = if (hasStats) {
+                            {
+                                ArtistStatsRow(
+                                    subscriberCountText = page.subscriberCountText,
+                                    monthlyListenerCount = page.monthlyListenerCount,
+                                    palette = palette,
+                                )
+                            }
+                        } else null,
+                        footer = aboutSignature?.let { sig ->
+                            {
+                                AboutSignature(
+                                    signature = sig,
+                                    name = page.title,
+                                    palette = palette,
+                                    horizontalPadding = 0.dp,
+                                )
+                            }
+                        },
+                        palette = palette,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = ARTIST_CONTENT_GUTTER)
+                            .padding(top = 28.dp, bottom = 28.dp),
+                    )
                 }
             }
-            if (!isArtist) aboutItem()
 
             when (val state = page.songs) {
                 is UiState.Loading -> detailSkeleton(isArtist)
@@ -899,43 +887,46 @@ fun DetailScreen(
                 }
             }
 
-            // Albums / Singles & EPs carousels (artist pages).
+            // Releases and carousels (other albums, similar artists, etc.).
             // Keyed so a section that reloads or reorders keeps its carousel's scroll
             // position instead of rebinding by slot; the index keeps a repeated title unique.
             itemsIndexed(page.sections, key = { index, shelf -> "section_${index}_${shelf.title}" }) { _, shelf ->
-                val canShowAll = shelf.items.size > ARTIST_ROW_MAX_ITEMS
-                val displayItems = remember(shelf.items) {
-                    if (canShowAll) shelf.items.take(ARTIST_ROW_MAX_ITEMS) else shelf.items
+                val displayItems = remember(shelf.items, page.browseId) {
+                    val filtered = if (!isArtist) shelf.items.filter { it.browseId != page.browseId } else shelf.items
+                    if (filtered.size > ARTIST_ROW_MAX_ITEMS) filtered.take(ARTIST_ROW_MAX_ITEMS) else filtered
                 }
-                val isArtistSection = remember(shelf.items) { shelf.isArtistShelf() }
-                Column(Modifier.padding(top = 22.dp)) {
-                    SectionHeading(
-                        title = shelf.title,
-                        palette = palette,
-                        onShowAll = if (canShowAll) { { onActiveShelfChange(shelf) } } else null,
-                        horizontalPadding = ARTIST_CONTENT_GUTTER,
-                    )
-                    val carouselState = rememberLazyListState()
-                    LazyRow(
-                        state = carouselState,
-                        contentPadding = PaddingValues(horizontal = ARTIST_CONTENT_GUTTER),
-                        horizontalArrangement = Arrangement.spacedBy(14.dp),
-                        flingBehavior = rememberSnapFlingBehavior(lazyListState = carouselState),
-                    ) {
-                        items(displayItems) { item ->
-                            SectionCard(
-                                item = item,
-                                palette = palette,
-                                onClick = { onSectionItemClick(item) },
-                                onLongPress = onSectionItemLongPress?.let { { it(item) } },
-                                isCircular = isArtistSection,
-                                modifier = Modifier.width(if (item.isVideo) VIDEO_CARD_WIDTH else SHELF_CARD_WIDTH),
-                            )
+                if (displayItems.isNotEmpty()) {
+                    val canShowAll = shelf.items.size > ARTIST_ROW_MAX_ITEMS
+                    val isArtistSection = remember(displayItems) { shelf.isArtistShelf() }
+                    Column(Modifier.padding(top = 22.dp)) {
+                        SectionHeading(
+                            title = shelf.title,
+                            palette = palette,
+                            onShowAll = if (canShowAll) { { onActiveShelfChange(shelf) } } else null,
+                            horizontalPadding = ARTIST_CONTENT_GUTTER,
+                        )
+                        val carouselState = rememberLazyListState()
+                        LazyRow(
+                            state = carouselState,
+                            contentPadding = PaddingValues(horizontal = ARTIST_CONTENT_GUTTER),
+                            horizontalArrangement = Arrangement.spacedBy(14.dp),
+                            flingBehavior = rememberSnapFlingBehavior(lazyListState = carouselState),
+                        ) {
+                            items(displayItems) { item ->
+                                SectionCard(
+                                    item = item,
+                                    palette = palette,
+                                    onClick = { onSectionItemClick(item) },
+                                    onLongPress = onSectionItemLongPress?.let { { it(item) } },
+                                    isCircular = isArtistSection,
+                                    modifier = Modifier.width(if (item.isVideo) VIDEO_CARD_WIDTH else SHELF_CARD_WIDTH),
+                                )
+                            }
                         }
                     }
                 }
             }
-            if (isArtist) aboutItem()
+            aboutItem()
         }
 
                 if (matches.size > 20) {
@@ -2138,63 +2129,6 @@ private fun ArtistAboutCard(
 }
 
 @Composable
-private fun AboutSection(
-    title: String,
-    text: String?,
-    palette: ArtworkPalette,
-    horizontalPadding: Dp = ABOUT_GUTTER,
-    /** Drawn under the text. */
-    stats: (@Composable () -> Unit)? = null,
-    /** Drawn last, under the stats. */
-    footer: (@Composable () -> Unit)? = null,
-) {
-    var expanded by remember(text) { mutableStateOf(false) }
-    var clipped by remember(text) { mutableStateOf(false) }
-    Column {
-        Text(
-            text = title,
-            style = MaterialTheme.typography.titleMedium,
-            color = palette.onBackground,
-            modifier = Modifier.padding(
-                start = horizontalPadding,
-                end = horizontalPadding,
-                top = 2.dp,
-                bottom = 6.dp,
-            ),
-        )
-        if (text != null) Text(
-            text = text,
-            style = MaterialTheme.typography.bodyLarge,
-            fontWeight = FontWeight.Medium,
-            color = palette.onBackgroundVariant,
-            maxLines = if (expanded) Int.MAX_VALUE else 2,
-            overflow = TextOverflow.Ellipsis,
-            onTextLayout = { result -> if (!expanded) clipped = result.hasVisualOverflow },
-            modifier = Modifier
-                .fillMaxWidth()
-                .animateContentSize()
-                .padding(horizontal = horizontalPadding)
-                .let { m -> if (clipped || expanded) m.clickable { expanded = !expanded } else m },
-        )
-        if (clipped || expanded) {
-            Text(
-                text = stringResource(if (expanded) R.string.less else R.string.more),
-                style = MaterialTheme.typography.labelLarge,
-                color = palette.accent,
-                modifier = Modifier
-                    .padding(horizontal = horizontalPadding, vertical = 4.dp)
-                    .clickable { expanded = !expanded },
-            )
-        }
-        if (stats != null) {
-            Spacer(Modifier.height(if (text != null) 12.dp else 4.dp))
-            stats()
-        }
-        footer?.invoke()
-    }
-}
-
-@Composable
 private fun SectionHeading(
     title: String,
     palette: ArtworkPalette,
@@ -2634,9 +2568,6 @@ private fun ArtistShelfGridPage(
         }
     }
 }
-
-private fun HomeShelf.isArtistShelf(): Boolean =
-    items.isNotEmpty() && items.count { it.browseId?.startsWith("UC") == true || LocalGroups.isArtist(it.browseId) } * 2 > items.size
 
 /**
  * Splits the one subtitle a browse row hands over — "Album • Travis Scott •

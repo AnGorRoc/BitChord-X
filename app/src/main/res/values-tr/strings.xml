@@ -791,9 +791,7 @@
     <string name="auto_download_notice_title">%1$s listesine eklendi: %2$d</string>
     <string name="playlist_updates_channel">Çalma listesi güncellemeleri</string>
 
-    <string name="legacy_mesh_gradient">Klasik ağ gradyanı</string>
 
-    <string name="legacy_mesh_gradient_subtitle">v1.5\'teki oynatıcı arkasındaki akıcı renk geçişlerini geri getirir</string>
 
 
 

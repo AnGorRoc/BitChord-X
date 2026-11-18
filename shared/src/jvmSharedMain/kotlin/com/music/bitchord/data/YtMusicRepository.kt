@@ -29,7 +29,11 @@ import com.music.bitchord.data.model.VersionTimeMap
 import com.music.bitchord.data.model.WatchTarget
 import com.music.bitchord.data.sources.TrackMatcher
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
+import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
@@ -839,6 +843,8 @@ object YtMusicRepository {
          * continuation, same as [header].
          */
         val description: String? = null,
+        /** Carousels or shelves returned on an album page (e.g. More by artist, Similar albums). */
+        val sections: List<HomeShelf> = emptyList(),
     )
 
     /**
@@ -881,6 +887,7 @@ object YtMusicRepository {
             library = metadata.library,
             header = metadata.header,
             description = metadata.description,
+            sections = metadata.sections.ifEmpty { InnertubeParser.parseAlbumSections(albumResponse) },
         )
     }
 
@@ -964,6 +971,7 @@ object YtMusicRepository {
         val podcast = InnertubeParser.podcastShow(response) ?: show
         val continuation = InnertubeParser.continuationToken(response)
         if (podcast != null && continuation != null) showByToken[continuation] = podcast
+        val sections = InnertubeParser.parseAlbumSections(response)
         return SongPage(
             // One response can name the same track twice — an album page that
             // also carries a "you might also like" shelf, say. Collecting into a
@@ -973,6 +981,7 @@ object YtMusicRepository {
             library = library,
             header = header,
             description = InnertubeParser.parseDescription(response),
+            sections = sections,
         )
     }
 
@@ -1148,6 +1157,7 @@ object YtMusicRepository {
      */
     suspend fun setSubscribed(channelId: String, subscribed: Boolean): Result<Unit> =
         call("subscription:$channelId") { Innertube.setSubscribed(channelId, subscribed) }
+            .onSuccess { synchronized(artistPageCache) { artistPageCache.remove(channelId) } }
 
     /**
      * The playlists a track can be added to. Paged because accounts with long
@@ -1234,13 +1244,78 @@ object YtMusicRepository {
     suspend fun deletePlaylist(playlistId: String): Result<Unit> =
         call("playlist:delete") { Innertube.deletePlaylist(playlistId) }
 
+    private data class CachedArtistPage(
+        val page: ArtistPage,
+        val cookieHash: Int?,
+        val cachedAtMs: Long,
+    )
+
+    private const val ARTIST_CACHE_MAX_ENTRIES = 64
+    private const val ARTIST_CACHE_TTL_MS = 20L * 60 * 1000
+
+    private val artistPageCache = object : LinkedHashMap<String, CachedArtistPage>(ARTIST_CACHE_MAX_ENTRIES, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, CachedArtistPage>?): Boolean =
+            size > ARTIST_CACHE_MAX_ENTRIES
+    }
+
+    private val artistPrefetchScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val inFlightArtistPages = ConcurrentHashMap<Pair<String, Int?>, Deferred<Result<ArtistPage>>>()
+
+    /** Returns a fresh cached [ArtistPage] for [browseId] if available for the current session. */
+    fun cachedArtistPage(browseId: String): ArtistPage? {
+        val cookieHash = Innertube.cookie?.hashCode()
+        val now = System.currentTimeMillis()
+        synchronized(artistPageCache) {
+            val entry = artistPageCache[browseId] ?: return null
+            if (entry.cookieHash != cookieHash || now - entry.cachedAtMs > ARTIST_CACHE_TTL_MS) {
+                artistPageCache.remove(browseId)
+                return null
+            }
+            return entry.page
+        }
+    }
+
     /**
      * Artist page. The landing page only lists ~5 songs, so the linked
      * "Top songs" playlist is fetched to fill the list out, and any linked
      * full release shelves (Albums, Singles & EPs) are fetched to populate
      * their complete discography.
+     *
+     * Results are cached in memory (per session) and in-flight requests for
+     * the same artist are coalesced so preloading and opening never duplicate work.
      */
-    suspend fun artistPage(browseId: String): Result<ArtistPage> = call("artist:$browseId") {
+    suspend fun artistPage(browseId: String, forceRefresh: Boolean = false): Result<ArtistPage> {
+        if (!forceRefresh) {
+            cachedArtistPage(browseId)?.let { return Result.success(it) }
+        }
+        val key = browseId to Innertube.cookie?.hashCode()
+        if (forceRefresh) {
+            synchronized(artistPageCache) { artistPageCache.remove(browseId) }
+        }
+        // Started only once it is in the map: a fetch that finished first would remove an entry that
+        // was not there yet, and the finished result would stay behind as the answer for good.
+        val deferred = inFlightArtistPages.computeIfAbsent(key) {
+            artistPrefetchScope.async(start = CoroutineStart.LAZY) {
+                try {
+                    fetchArtistPage(browseId).onSuccess { page ->
+                        synchronized(artistPageCache) {
+                            artistPageCache[browseId] = CachedArtistPage(
+                                page = page,
+                                cookieHash = key.second,
+                                cachedAtMs = System.currentTimeMillis(),
+                            )
+                        }
+                    }
+                } finally {
+                    inFlightArtistPages.remove(key)
+                }
+            }
+        }
+        deferred.start()
+        return deferred.await()
+    }
+
+    private suspend fun fetchArtistPage(browseId: String): Result<ArtistPage> = call("artist:$browseId") {
         val page = InnertubeParser.parseArtistPage(Innertube.browse(browseId))
         coroutineScope {
             val fullSongsDeferred = async {

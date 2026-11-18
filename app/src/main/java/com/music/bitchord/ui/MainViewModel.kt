@@ -59,6 +59,9 @@ import com.music.bitchord.data.model.DetailPage
 import com.music.bitchord.data.model.HomeFeed
 import com.music.bitchord.data.model.HomeShelf
 import com.music.bitchord.data.model.withoutRepeatsOf
+import com.music.bitchord.data.model.albumNeedsArtistShelves
+import com.music.bitchord.data.model.albumShelvesFromArtist
+import com.music.bitchord.data.model.withoutRelease
 import com.music.bitchord.data.model.LibraryPage
 import com.music.bitchord.data.model.LibraryState
 import com.music.bitchord.data.model.LikeStatus
@@ -354,6 +357,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private data class SearchCacheEntry(
         val rows: List<SearchResult>,
         val continuation: String?,
+        val cachedAtMs: Long = System.currentTimeMillis(),
     )
 
     private data class SearchSession(
@@ -366,6 +370,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private val searchCache = LruCache<String, SearchCacheEntry>(SEARCH_CACHE_ENTRIES)
     private var searchSession: SearchSession? = null
+    private var searchPrefetchJob: Job? = null
+    private var artistSongsPrefetchJob: Job? = null
 
     /** Synced lyrics for whatever is playing; null while unknown or absent. */
     private val _lyrics = MutableStateFlow<List<LyricLine>?>(null)
@@ -2798,16 +2804,19 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val anonymous: Boolean = true,
     )
 
-    private fun cacheKey(query: String, filter: SearchFilter) = "${filter.name}:$query"
+    private fun cacheKey(query: String, filter: SearchFilter) =
+        "${filter.name}:${query.trim().lowercase(Locale.ROOT)}"
 
     /**
      * The results of the longest earlier query this one starts with — near
      * enough to leave up while the narrower search runs.
      */
     private fun prefixMatch(query: String, filter: SearchFilter): List<SearchResult>? {
+        val normalized = query.trim()
+        if (normalized.isEmpty()) return null
         val prefix = "${filter.name}:"
         return searchCache.snapshot()
-            .filterKeys { it.startsWith(prefix) && query.startsWith(it.removePrefix(prefix), true) }
+            .filterKeys { it.startsWith(prefix) && normalized.startsWith(it.removePrefix(prefix), true) }
             .maxByOrNull { it.key.length }
             ?.value
             ?.rows
@@ -2819,6 +2828,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             // Nothing in flight can still be waiting to overwrite this: the
             // id it would be checked against has already moved past it.
             newestRequestId.incrementAndGet()
+            searchPrefetchJob?.cancel()
             searchSession = null
             _searchLoadingMore.value = false
             _results.value = null
@@ -2858,13 +2868,16 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 // query has been run before, otherwise the closest earlier
                 // one. Only fall back to a spinner with neither.
                 val exact = searchCache.get(key)
+                val isFresh = exact != null &&
+                    (System.currentTimeMillis() - exact.cachedAtMs) <= SEARCH_CACHE_TTL_MS
                 val cached = exact?.rows ?: prefixMatch(request.query, request.filter)
                 _results.value = cached?.let { UiState.Success(it) } ?: UiState.Loading
                 // An explicit submit still has to reach the server even when
                 // an anonymous lookup cached the same query: that call is what
                 // records it in the account's history.
-                if (exact != null && request.anonymous) {
+                if (exact != null && isFresh && request.anonymous) {
                     searchSession = SearchSession(key, request.requestId, request.filter, exact.continuation, request.anonymous)
+                    prefetchSearchResults(exact.rows)
                     return@collectLatest
                 }
 
@@ -2998,7 +3011,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (rows.isEmpty()) return UiState.Error(text(R.string.no_results))
         searchCache.put(key, SearchCacheEntry(rows, page.continuation))
         searchSession = SearchSession(key, requestId, _filter.value, page.continuation, anonymous)
-        prefetchTopResult(rows)
+        prefetchSearchResults(rows)
         return UiState.Success(rows)
     }
 
@@ -3008,56 +3021,65 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         is SearchResult.Browse -> "b:${row.item.browseId}"
     }
 
+    private fun Song.toUpcoming(): AudioCache.Upcoming = AudioCache.Upcoming(
+        mediaId = videoId,
+        target = TrackMatcher.Target(
+            title = title,
+            artist = artist,
+            durationSec = TrackMatcher.secondsOf(durationText),
+            album = albumName,
+            isExplicit = isExplicit,
+            isVideo = isVideo,
+        ),
+    )
+
     /**
-     * Warms the stream URL for the top song result the instant results land,
-     * not when it's tapped. [AudioCache] gives a head start to whatever's
-     * already queued; a fresh search has nothing queued yet, and the top
-     * result is overwhelmingly what gets tapped — see [play][MainActivity.play].
-     * The exact search result is warmed because video tracks now play their
-     * own audio by default; catalogue matching is only requested manually.
+     * Preloads search results as soon as they land (or hit cache):
+     * 1. Any artist appearing in the first [SEARCH_ARTIST_PREFETCH_LIMIT] results
+     *    has their full artist page fetched and cached so opening it is instant.
+     * 2. The first [SEARCH_SONG_PREFETCH_LIMIT] songs have their opening seconds
+     *    preloaded in priority order at the best available quality.
      */
-    private fun prefetchTopResult(rows: List<SearchResult>) {
-        val song = rows.firstNotNullOfOrNull {
-            when (it) {
-                is SearchResult.TopTrack -> it.song
-                is SearchResult.Track -> it.song
+    private fun prefetchSearchResults(rows: List<SearchResult>) {
+        searchPrefetchJob?.cancel()
+        val artistIds = rows.take(SEARCH_ARTIST_PREFETCH_LIMIT)
+            .mapNotNull { row ->
+                (row as? SearchResult.Browse)
+                    ?.item
+                    ?.takeIf { browseTypeOf(it.browseId, it.type) == BrowseType.ARTIST }
+                    ?.browseId
+            }
+            .distinct()
+        val topSongs = rows.mapNotNull { row ->
+            when (row) {
+                is SearchResult.TopTrack -> row.song
+                is SearchResult.Track -> row.song
                 is SearchResult.Browse -> null
             }
-        } ?: return
-        // Direct Source Stream fetches nothing before it is played. Warming
-        // here would also pin JioSaavn's quick answer ahead of the addon.
-        if (DirectSourceGate.isActive()) return
-        viewModelScope.launch {
-            runCatching {
-                val audio = song
-                // A source-backed row resolves through its own source already
-                // and never takes the YouTube path — warming either half of
-                // this for one would be work nothing asks for.
-                if (SourceRegistry.parseTrackKey(audio.videoId) != null) return@runCatching
-                // JioSaavn first, on the same reasoning as the queue's
-                // read-ahead: it is the copy that will actually be played if it
-                // has the track, so warming YouTube's URL instead warms the one
-                // that loses. Pinned through [StreamChoice] so playback opens
-                // this very stream rather than racing for it again — see
-                // [SourceResolver.prefetchSubstitute], which requires it.
-                val warmed = SourceResolver.prefetchSubstitute(
-                    TrackMatcher.Target(
-                        title = audio.title,
-                        artist = audio.artist,
-                        durationSec = TrackMatcher.secondsOf(audio.durationText),
-                        album = audio.albumName,
-                        isExplicit = audio.isExplicit,
-                        isVideo = audio.isVideo,
-                    ),
-                )
-                if (warmed != null) {
-                    AudioCache.pinForReadAhead(audio.videoId, warmed, substituted = true)
-                    return@runCatching
+        }.distinctBy { it.videoId }.take(SEARCH_SONG_PREFETCH_LIMIT)
+
+        if (artistIds.isEmpty() && topSongs.isEmpty()) return
+
+        searchPrefetchJob = viewModelScope.launch {
+            artistIds.forEach { artistId ->
+                launch {
+                    YtMusicRepository.artistPage(artistId).onSuccess { page ->
+                        page.thumbnailUrl?.let { prefetchArtwork(getApplication(), listOf(it)) }
+                    }
                 }
-                // Disabled, or hasn't got it: the tap path falls back to
-                // YouTube, so that is what is worth having ready.
-                StreamResolver.resolve(audio.videoId)
             }
+            if (topSongs.isNotEmpty()) {
+                AudioCache.prefetchSongsHead(topSongs.map { it.toUpcoming() })
+            }
+        }
+    }
+
+    private fun prefetchArtistSongs(songs: List<Song>) {
+        val topSongs = songs.distinctBy { it.videoId }.take(SEARCH_SONG_PREFETCH_LIMIT)
+        if (topSongs.isEmpty()) return
+        artistSongsPrefetchJob?.cancel()
+        artistSongsPrefetchJob = viewModelScope.launch {
+            AudioCache.prefetchSongsHead(topSongs.map { it.toUpcoming() })
         }
     }
 
@@ -3097,7 +3119,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
          */
         const val TYPEAHEAD_MAX_RESULTS = 15
 
-        const val SEARCH_CACHE_ENTRIES = 100
+        const val SEARCH_CACHE_ENTRIES = 200
+        private const val SEARCH_CACHE_TTL_MS = 30L * 60 * 1000
+        private const val SEARCH_ARTIST_PREFETCH_LIMIT = 7
+        private const val SEARCH_SONG_PREFETCH_LIMIT = 2
 
         /**
          * What a page with an empty listing says.
@@ -3207,6 +3232,31 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         val resolved = browseTypeOf(browseId, type)
+        if (resolved == BrowseType.ARTIST) {
+            YtMusicRepository.cachedArtistPage(browseId)?.let { cached ->
+                val resolvedArtwork = cached.thumbnailUrl ?: thumbnailUrl
+                val songsState = if (cached.songs.isEmpty()) {
+                    UiState.Error(text(R.string.no_tracks_here))
+                } else {
+                    prefetchArtistSongs(cached.songs)
+                    UiState.Success(cached.songs.withArtwork(thumbnailUrl ?: cached.thumbnailUrl))
+                }
+                _detailStack.value += DetailPage(
+                    browseId = browseId,
+                    title = cached.name ?: title,
+                    subtitle = subtitle,
+                    thumbnailUrl = resolvedArtwork,
+                    songs = songsState,
+                    sections = cached.sections,
+                    description = cached.description,
+                    subscriberCountText = cached.subscriberCountText,
+                    monthlyListenerCount = cached.monthlyListenerCount,
+                    subscription = cached.subscription,
+                    type = resolved,
+                )
+                return
+            }
+        }
         _detailStack.value += DetailPage(
             browseId = browseId,
             title = title,
@@ -3295,6 +3345,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                             if (page.songs.isEmpty()) {
                                 UiState.Error(text(R.string.no_tracks_here))
                             } else {
+                                prefetchArtistSongs(page.songs)
                                 UiState.Success(page.songs.withArtwork(thumbnailUrl ?: artwork))
                             }
                         },
@@ -3326,6 +3377,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                                 if (thumbnailUrl == null) artwork = header.thumbnailUrl
                             }
                             description = page.description
+                            if (resolved == BrowseType.ALBUM) {
+                                sections = page.sections.withoutRelease(browseId)
+                            }
                             if (page.songs.isEmpty()) {
                                 UiState.Error(text(R.string.no_tracks_here))
                             } else {
@@ -3367,6 +3421,21 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             // Only once the first page is on screen: [fillIn] appends to it,
             // and has nothing to append to before this.
             more?.let { fillIn(browseId, it, thumbnailUrl ?: artwork) }
+
+            if (resolved == BrowseType.ALBUM && state is UiState.Success) {
+                val artistId = state.data.firstNotNullOfOrNull { it.artistId }
+                if (artistId != null && albumNeedsArtistShelves(sections, browseId)) {
+                    viewModelScope.launch {
+                        YtMusicRepository.artistPage(artistId).onSuccess { artistPage ->
+                            _detailStack.value = _detailStack.value.map { pageItem ->
+                                if (pageItem.browseId != browseId) return@map pageItem
+                                val extra = albumShelvesFromArtist(pageItem.sections, browseId, artistPage)
+                                if (extra.isEmpty()) pageItem else pageItem.copy(sections = pageItem.sections + extra)
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 

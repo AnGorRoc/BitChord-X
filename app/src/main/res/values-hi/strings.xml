@@ -796,9 +796,7 @@
     <string name="auto_download_notice_title">%1$s में जोड़े गए: %2$d</string>
     <string name="playlist_updates_channel">प्लेलिस्ट अपडेट</string>
 
-    <string name="legacy_mesh_gradient">क्लासिक मेश ग्रेडिएंट</string>
 
-    <string name="legacy_mesh_gradient_subtitle">v1.5 से प्लेयर के पीछे बहने वाले रंग लौटाएं</string>
 
     <string name="liquid_glass">लिक्विड ग्लास</string>
 
