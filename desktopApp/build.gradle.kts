@@ -607,6 +607,13 @@ compose.desktop {
         mainClass = composeMainClass
         jvmArgs("-Xmx512m")
         jvmArgs("-XX:+UseG1GC", "-XX:G1PeriodicGCInterval=20000", "-XX:G1PeriodicGCSystemLoadThreshold=0")
+        // Only the quick compiler (C1), no profiling tier and no optimising one (C2). Measured on the
+        // packaged app with a song playing: the window opens ~0.4 s sooner, the first 18 s cost ~40%
+        // less CPU (21-29 s instead of 39-41 s), steady-state CPU and memory are no higher, and the
+        // optimising compiler, where the JVM crash in ListeningStats was, never runs. What it gives up
+        // is peak speed in long, hot numeric loops, which this app barely has: audio decoding,
+        // rendering and image work are native. Drop this line to get the default tiered mode back.
+        jvmArgs("-XX:TieredStopAtLevel=1")
         jvmArgs("-Dbitchord.version=$appVersion")
         if (startupArchiveEnabled && startupClassList.isFile) {
             // `-Xshare:auto` (the default) makes a missing or mismatched archive a silent fallback.
