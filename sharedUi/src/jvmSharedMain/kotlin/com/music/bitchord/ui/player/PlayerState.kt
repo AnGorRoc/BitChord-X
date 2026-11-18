@@ -203,6 +203,7 @@ internal fun PreloadArtwork(remoteArt: String?) {
         listOf(CARD_ART_PX, ART_PX).forEach { px ->
             loader.enqueue(ImageRequest.Builder(context).data(remoteArt.artworkAt(px)).size(px).build())
         }
+        preloadArtworkMesh(context, remoteArt, ART_PX)
     }
 }
 
@@ -336,3 +337,36 @@ internal fun rememberPlayerVolume(): PlayerVolume {
     return volume
 }
 
+
+/** One speed for the cover's dissolve and the backdrop's, so they change together. */
+internal const val COVER_SWAP_MS = 300
+
+/**
+ * The cover on its way out and the cover on its way in, for the dissolve between
+ * two tracks. [under] is the previous cover's painter (kept, never reloaded, so it cannot blink out)
+ * cache) drawn beneath the new one while [alpha] — the new cover's opacity —
+ * climbs from 0 to 1 over [COVER_SWAP_MS].
+ */
+@Stable
+internal class CoverSwap {
+    var url: String? = null
+        private set
+    var cur: androidx.compose.ui.graphics.painter.Painter? = null
+    var under: androidx.compose.ui.graphics.painter.Painter? = null
+        private set
+    var alpha by mutableFloatStateOf(1f)
+
+    /** Called in composition the moment the artwork changes, so no frame shows the new cover un-faded. */
+    fun onNewCover(newUrl: String?) {
+        val previous = cur
+        if (previous != null && newUrl != null) {
+            under = previous
+            alpha = 0f
+        } else {
+            under = null
+            alpha = 1f
+        }
+        url = newUrl
+        if (newUrl == null) cur = null
+    }
+}

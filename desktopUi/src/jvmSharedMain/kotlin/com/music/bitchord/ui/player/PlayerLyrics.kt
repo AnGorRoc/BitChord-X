@@ -396,6 +396,10 @@ private const val SKELETON_PERIOD_MS = 1_400
 /** What a line reads at while the list is being scrolled by hand. */
 private const val BROWSING_ALPHA = 0.8f
 
+/** The share of the viewport, at each end, that stays lightly blurred while browsing. */
+private const val BROWSE_EDGE_BAND = 0.14f
+private val BROWSE_EDGE_BLUR = 1.6.dp
+
 /** The playing line sits at 1; the rest sit fractionally back from it. */
 private const val INACTIVE_SCALE = 0.98f
 
@@ -1889,7 +1893,10 @@ internal fun LyricsPanel(
     // line lands, and that is not somebody reading on.
     val controlsOnScroll = rememberPlayerControlsOnScroll(
         onUserScroll = { browsingByDrag = true },
-        onReveal = { if (!picking) onRevealControls() },
+        // Only at the very top. Anywhere else a small reversal of the finger
+        // brought the deck back and the panel shrank in the middle of reading;
+        // a tap on the lower half still brings it back on purpose.
+        onReveal = { if (!picking && !listState.canScrollBackward) onRevealControls() },
         onHide = onHideControls,
     )
 
@@ -2033,6 +2040,27 @@ internal fun LyricsPanel(
         }
     }
 
+    // Tapping a line is the clearest way of saying "this is where I am": the
+    // panel takes that line, whatever it was browsing. It waits for the song to
+    // arrive there rather than following at once, otherwise it would first
+    // scroll back to the line it was on before the seek had landed.
+    var followLine by remember { mutableStateOf(-1) }
+    val seekToLine: (Int, Long) -> Unit = { index, timeMs ->
+        followLine = index
+        onSeekToLine(timeMs)
+    }
+    LaunchedEffect(followLine, focusLine) {
+        if (followLine < 0) return@LaunchedEffect
+        if (focusLine in followLine..followLine + 1) {
+            browsingByDrag = false
+            followLine = -1
+        } else {
+            delay(900)
+            browsingByDrag = false
+            followLine = -1
+        }
+    }
+
     if (lines.isEmpty()) {
         val empty = modifier.revealLyricsControlsOnTap(!controlsOpen, onBottomHalfTap)
         // "None" is a finding, and it is only worth reporting once the lookup
@@ -2056,6 +2084,20 @@ internal fun LyricsPanel(
     }
     val lastVisibleIndex by remember(listState) {
         derivedStateOf { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1 }
+    }
+    // Rows whose middle sits in the top or bottom stretch of the viewport. Read
+    // only while browsing, when the panel keeps a light blur there and nowhere
+    // else; structural equality so rows recompose only as one crosses a band.
+    val edgeRows by remember(listState) {
+        derivedStateOf(structuralEqualityPolicy()) {
+            val info = listState.layoutInfo
+            val span = info.viewportEndOffset - info.viewportStartOffset
+            val band = span * BROWSE_EDGE_BAND
+            info.visibleItemsInfo.filter {
+                val mid = it.offset + it.size / 2f - info.viewportStartOffset
+                mid < band || mid > span - band
+            }.map { it.index }.toSet()
+        }
     }
 
     LazyColumn(
@@ -2135,23 +2177,22 @@ internal fun LyricsPanel(
             // the same floor rather than fading to nothing.
             val falloff = if (centerFocus) LINE_FALLOFF_ALPHA else LINE_FALLOFF_ALPHA_PHONE
             val step = distance.coerceAtMost(falloff.lastIndex)
-            val isEdgeItem = index <= firstVisibleIndex || (lastVisibleIndex >= 0 && index >= lastVisibleIndex)
             val targetBlur = when {
                 !isSynced || reduceDynamicBlur || !lyricsBlur -> 0.dp
-                browsing -> if (isEdgeItem) 1.2.dp else 0.dp
+                browsing -> if (index in edgeRows) BROWSE_EDGE_BLUR else 0.dp
                 isActive -> 0.dp
                 else -> LINE_FALLOFF_BLUR[step.coerceAtMost(LINE_FALLOFF_BLUR.lastIndex)]
             }
             val blur by animateDpAsState(
                 targetValue = targetBlur,
-                animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
+                animationSpec = tween(durationMillis = 450, easing = FastOutSlowInEasing),
                 label = "lyricBlur",
             )
             val lineAlpha by animateFloatAsState(
                 targetValue = when {
                     !isSynced -> 0.95f
                     isActive -> 1f
-                    browsing -> if (isEdgeItem) 0.65f else 0.95f
+                    browsing -> if (index in edgeRows) 0.65f else 0.95f
                     offset < 0 -> 0.92f
                     else -> falloff[step]
                 },
@@ -2203,7 +2244,7 @@ internal fun LyricsPanel(
                         // A gap is nothing to pick, so it only ever seeks — and
                         // not even that while a pick is open, where a stray tap
                         // in the silence would jump the song.
-                        .clickable(enabled = isSynced && !picking) { onSeekToLine(line.timeMs) }
+                        .clickable(enabled = isSynced && !picking) { seekToLine(index, line.timeMs) }
                         // Matches the inset every sung line carries, so the
                         // rhythm of the list doesn't break at a break.
                         .padding(GLOW_ROOM)
@@ -2373,7 +2414,7 @@ internal fun LyricsPanel(
                                     if (picking) {
                                         onTogglePick(index)
                                     } else {
-                                        onSeekToLine(line.timeMs)
+                                        seekToLine(index, line.timeMs)
                                     }
                                 },
                             )
@@ -2386,7 +2427,7 @@ internal fun LyricsPanel(
                                 enabled = isSynced,
                                 interactionSource = interaction,
                                 indication = LocalIndication.current,
-                            ) { onSeekToLine(line.timeMs) }
+                            ) { seekToLine(index, line.timeMs) }
                         },
                     )
                 // Lead and answering vocal are one row: they are one line of

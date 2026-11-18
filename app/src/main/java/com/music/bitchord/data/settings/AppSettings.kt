@@ -600,7 +600,7 @@ object AppSettings {
      * player is unaffected; release and artist pages keep their own artwork's
      * colours either way.
      */
-    val tintWithNowPlaying = MutableStateFlow(true)
+    val tintWithNowPlaying = MutableStateFlow(false)
 
     /** Blurs unfocused lyric lines, keeping the active line sharp. */
     val lyricsBlur = MutableStateFlow(true)
@@ -1223,7 +1223,7 @@ object AppSettings {
         liquidGlass.value = prefs.getBoolean(KEY_LIQUID_GLASS, false)
         glassPerformance.value = prefs.getBoolean(KEY_GLASS_PERFORMANCE, false)
         progressiveBlur.value = prefs.getBoolean(KEY_PROGRESSIVE_BLUR, false)
-        tintWithNowPlaying.value = prefs.getBoolean(KEY_TINT_WITH_NOW_PLAYING, true)
+        tintWithNowPlaying.value = prefs.getBoolean(KEY_TINT_WITH_NOW_PLAYING, false)
         lyricsBlur.value = prefs.getBoolean(KEY_LYRICS_BLUR, true)
         lyricsOffsetMs.value = prefs.getInt(KEY_LYRICS_OFFSET_MS, 0)
             .coerceIn(MIN_LYRICS_OFFSET_MS, MAX_LYRICS_OFFSET_MS)

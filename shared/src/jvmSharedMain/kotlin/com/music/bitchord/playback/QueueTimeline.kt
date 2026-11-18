@@ -21,6 +21,8 @@ data class QueueSource(
 data class ContextQueueResult(
     val timeline: List<Song>,
     val startIndex: Int,
+    /** How many rows at the front are what was already played, kept behind the new music. */
+    val keptHistory: Int = 0,
 )
 
 /**
@@ -66,6 +68,22 @@ object QueueTimeline {
             emptyList()
         }
 
+    /** Completed entries retained behind the current song, as the phone's and the desktop's queues. */
+    const val MAX_HISTORY = 25
+
+    /**
+     * What has been played in [timeline] (everything up to and including the playing track) as
+     * history for a queue that replaces it, so starting something new does not erase what came
+     * before. At most [budget] rows, the most recent ones, all in the context section: they are
+     * behind the listener now, not part of any queue to come.
+     */
+    fun playedHistory(timeline: List<Song>, currentIndex: Int, budget: Int = MAX_HISTORY): List<Song> {
+        if (budget <= 0 || currentIndex !in timeline.indices) return emptyList()
+        return timeline.subList(0, currentIndex + 1).takeLast(budget).map {
+            if (it.queueTier == QueueTier.CONTEXT) it else it.copy(queueTier = QueueTier.CONTEXT)
+        }
+    }
+
     private fun Song.from(source: QueueSource): Song = copy(
         playbackSource = source.title,
         playbackSourceType = source.type,
@@ -75,7 +93,7 @@ object QueueTimeline {
     /**
      * Constructs an interleaved queue for starting a Context (Album, Playlist, Artist):
      *
-     * Invariant: [Preceding Context] + [Selected Track] + [Preserved USER_QUEUE] + [Following Context Tracks].
+     * Invariant: [Played history] + [Preceding Context] + [Selected Track] + [Preserved USER_QUEUE] + [Following Context Tracks].
      * Playback starts at [ContextQueueResult.startIndex] (= precedingContext.size). Preceding tracks
      * remain in history for backward navigation and loop around under repeat-all.
      */
@@ -95,26 +113,36 @@ object QueueTimeline {
         val precedingContext = contextEntries.subList(0, safeIndex)
         val selected = contextEntries[safeIndex]
         val followingContext = contextEntries.subList(safeIndex + 1, contextEntries.size)
+        // What was heard before stays behind, ahead of the new context's own earlier tracks; the
+        // most recent MAX_HISTORY rows in all are kept.
+        val history = playedHistory(currentTimeline, currentIndex, MAX_HISTORY - precedingContext.size)
 
         return ContextQueueResult(
-            timeline = precedingContext + listOf(selected) + upcomingUserQueue + followingContext,
-            startIndex = precedingContext.size,
+            timeline = history + precedingContext + listOf(selected) + upcomingUserQueue + followingContext,
+            startIndex = history.size + precedingContext.size,
+            keptHistory = history.size,
         )
     }
 
     /**
      * Constructs a queue for playing a one-off song (from Search, Home, Explore):
      *
-     * Invariant: [Tapped Track] + [Preserved USER_QUEUE].
+     * Invariant: [Played history] + [Tapped Track] + [Preserved USER_QUEUE].
      */
     fun buildOneOffQueue(
         currentTimeline: List<Song>,
         currentIndex: Int,
         tappedSong: Song,
         source: QueueSource,
-    ): List<Song> =
-        listOf(tappedSong.from(source).asQueueEntry(QueueTier.CONTEXT)) +
-            upcomingUserQueue(currentTimeline, currentIndex)
+    ): ContextQueueResult {
+        val history = playedHistory(currentTimeline, currentIndex)
+        return ContextQueueResult(
+            timeline = history + listOf(tappedSong.from(source).asQueueEntry(QueueTier.CONTEXT)) +
+                upcomingUserQueue(currentTimeline, currentIndex),
+            startIndex = history.size,
+            keptHistory = history.size,
+        )
+    }
 
     /**
      * Constructs a single-song playback timeline for Listen Together mode:

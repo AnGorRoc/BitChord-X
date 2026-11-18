@@ -147,6 +147,7 @@ import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import coil3.compose.AsyncImagePainter
 import com.music.bitchord.ui.components.ExplicitBadge
 import com.music.bitchord.ui.components.VideoThumbnails
 import com.music.bitchord.ui.components.menuAnchor
@@ -878,6 +879,35 @@ fun NowPlayingScreen(
     // never fires again. Keyed on the cover there is nothing to reset: the
     // bitmap really is still loaded, so the state stays true.
     val art = rememberPlayerArtwork(remoteArt)
+    // The cover's own dissolve into the next one, driven here rather than by Coil's
+    // crossfade: Coil skips that for anything served from the memory cache, which
+    // the preloaded next cover always is, so the cover used to snap while the
+    // backdrop faded. Starts the moment the new cover is on screen and runs for
+    // [COVER_SWAP_MS], the backdrop's own duration. Not on the first cover shown.
+    //
+    // The old cover stays drawn underneath ([CoverSwap.under]) while the new one
+    // fades in over it, so nothing in between shows the placeholder card.
+    val swap = remember { CoverSwap() }
+    if (swap.url != art.url) swap.onNewCover(art.url)
+    // Sticky: once any cover has been shown the sleeve keeps its photo styling
+    // (clip, shadow, no placeholder icon) through the next one's load, instead of
+    // dropping to the small placeholder card and jumping back.
+    var artShown by remember { mutableStateOf(false) }
+    LaunchedEffect(art, art.loaded, art.failed) {
+        if (art.failed) {
+            swap.alpha = 1f
+            return@LaunchedEffect
+        }
+        if (!art.loaded) return@LaunchedEffect
+        artShown = true
+        if (swap.alpha < 1f) {
+            animate(
+                initialValue = swap.alpha,
+                targetValue = 1f,
+                animationSpec = tween(COVER_SWAP_MS, easing = FastOutSlowInEasing),
+            ) { value, _ -> swap.alpha = value }
+        }
+    }
     // The next track's cover, warmed while this one plays so the skip finds it.
     PreloadArtwork(rememberRemoteArtworkUrl(queue.getOrNull(queueIndex + 1)))
     // Sticky, unlike [PlayerArtwork.loaded]: the banner is the shape of the player rather
@@ -1846,6 +1876,7 @@ fun NowPlayingScreen(
                         alpha = {
                             if (spotifyCanvasPresentation || fullArtworkBackdropAlpha >= 1f) 0f else 1f
                         },
+                        sharedProgress = { swap.alpha },
                     )
                 }
                 fullArtworkBlurContent(
@@ -2676,14 +2707,14 @@ fun NowPlayingScreen(
                                     // collapse, once the dissolve has all but gone. Let
                                     // go of on the way to the mini player, whose cover
                                     // sits flat in its bar.
-                                    shadowElevation = if (art.loaded) {
+                                    shadowElevation = if (artShown) {
                                         10.dp.toPx() * (1f - 2f * shown).coerceAtLeast(0f) * dockT()
                                     } else {
                                         0f
                                     }
                                     shape = dockFrame.cornerShape(sleeveCorner())
                                     // What `.shadow` did: it clips only when it casts.
-                                    clip = art.loaded
+                                    clip = artShown
                                 }
                                 .graphicsLayer {
                                     // Clipped a second time, as `.shadow` and then
@@ -2769,10 +2800,14 @@ fun NowPlayingScreen(
                                         shape = TileShape
                                         clip = share > 0f
                                     }
-                                    .background(Color.Black.copy(alpha = 0.18f)),
+                                    // Only when there is no cover to wait for: while one is merely
+                                    // loading, a dark card sat centred behind it until it arrived.
+                                    .background(
+                                        if (art.url == null || art.failed) Color.Black.copy(alpha = 0.18f) else Color.Transparent,
+                                    ),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                if (!art.loaded && !canvasRendered) {
+                                if (!artShown && !canvasRendered && (art.url == null || art.failed)) {
                                     Icon(
                                         imageVector = BitChordIcons.MusicNote,
                                         contentDescription = null,
@@ -2786,6 +2821,19 @@ fun NowPlayingScreen(
                                             },
                                     )
                                 }
+                            }
+                            // The cover going out, held under the incoming one for the
+                            // length of the dissolve and skipped outright after it.
+                            swap.under?.let { outgoing ->
+                                androidx.compose.foundation.Image(
+                                    painter = outgoing,
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .graphicsLayer { alpha = if (swap.alpha < 1f) 1f else 0f }
+                                        .drawWithContent { if (still() == null) drawContent() },
+                                )
                             }
                             AsyncImage(
                                 // Decode at the sleeve's *expanded* size, always.
@@ -2807,7 +2855,10 @@ fun NowPlayingScreen(
                                 // Video thumbnails are 16:9; letterboxing them inside
                                 // the square sleeve looks like a broken frame.
                                 contentScale = ContentScale.Crop,
-                                onState = art::onState,
+                                onState = { state ->
+                                    art.onState(state)
+                                    if (state is AsyncImagePainter.State.Success) swap.cur = state.painter
+                                },
                                 // TextureView-backed canvas frames can arrive
                                 // before Coil has decoded the sleeve. Alpha alone
                                 // doesn't hide this layer for that window: a
@@ -2824,6 +2875,7 @@ fun NowPlayingScreen(
                                 // [PlayerArtwork.loaded] still flips the moment it does.
                                 modifier = Modifier
                                     .fillMaxSize()
+                                    .graphicsLayer { alpha = swap.alpha }
                                     .drawWithContent {
                                         val frame = still()
                                         if (frame == null) {

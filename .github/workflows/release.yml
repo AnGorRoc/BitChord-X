@@ -100,7 +100,7 @@ jobs:
         path: build/release-assets/*.apk
 
   linux:
-    name: Linux · AppImage, deb, rpm
+    name: Linux · AppImage, deb
     needs: check
     if: needs.check.outputs.exists != 'true'
     runs-on: ubuntu-24.04
@@ -126,7 +126,7 @@ jobs:
     - name: Install packaging tools
       run: |
         sudo apt-get update
-        sudo apt-get install -y rpm fakeroot binutils file libfuse2t64 || sudo apt-get install -y rpm fakeroot binutils file libfuse2
+        sudo apt-get install -y fakeroot binutils file libfuse2t64 || sudo apt-get install -y fakeroot binutils file libfuse2
         curl -sSL -o appimagetool.AppImage \
           https://github.com/AppImage/appimagetool/releases/download/continuous/appimagetool-x86_64.AppImage
         chmod +x appimagetool.AppImage
@@ -134,10 +134,10 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
-    - name: Build deb, rpm and desktop app image
+    - name: Build deb and desktop app image
       run: |
         v="${{ needs.check.outputs.version }}"
-        ./gradlew :desktopApp:packageDeb :desktopApp:packageRpm :desktopApp:createDistributable -PbitchordVersionName=$v
+        ./gradlew :desktopApp:packageDeb :desktopApp:createDistributable -PbitchordVersionName=$v
 
     - name: Build AppImage
       run: |
@@ -153,7 +153,6 @@ jobs:
         v="${{ needs.check.outputs.version }}"
         mkdir -p dist
         cp desktopApp/build/compose/binaries/main/deb/*.deb "dist/BitChord-$v-linux-amd64.deb"
-        cp desktopApp/build/compose/binaries/main/rpm/*.rpm "dist/BitChord-$v-linux-x86_64.rpm"
         ls -lh dist
 
     - name: Upload Linux artifacts
@@ -163,7 +162,7 @@ jobs:
         path: dist/*
 
   windows:
-    name: Windows · exe, msi, portable
+    name: Windows · exe, portable
     needs: check
     if: needs.check.outputs.exists != 'true'
     runs-on: windows-latest
@@ -195,18 +194,28 @@ jobs:
         echo "LASTFM_SECRET=${{ secrets.LASTFM_SECRET }}" >> local.properties
         echo "LISTEN_TOGETHER_SERVER=$LT_SERVER" >> local.properties
 
-    - name: Build msi, exe and app image
+    - name: Build exe and app image
       shell: pwsh
       run: |
         $v = "${{ needs.check.outputs.version }}"
-        .\gradlew.bat :desktopApp:packageMsi :desktopApp:packageExe :desktopApp:createDistributable "-PbitchordVersionName=$v"
+        .\gradlew.bat :desktopApp:packageExe :desktopApp:createDistributable "-PbitchordVersionName=$v"
+
+    - name: Check the start-up archives are in the app image
+      shell: pwsh
+      run: |
+        # Without them the app still runs, only ~2x slower to open; the build downgrades that to a
+        # warning, so it is turned back into a failure here rather than shipped unnoticed (DESKTOP.md).
+        $image = "desktopApp/build/compose/binaries/main/app/BitChord"
+        foreach ($f in "app/resources/startup.jsa", "runtime/bin/server/classes.jsa") {
+          if (-not (Test-Path "$image/$f")) { throw "Missing $f in the Windows app image: the start-up archive was not built." }
+          "{0}: {1:N0} MB" -f $f, ((Get-Item "$image/$f").Length / 1MB)
+        }
 
     - name: Collect Windows artifacts
       shell: pwsh
       run: |
         $v = "${{ needs.check.outputs.version }}"
         New-Item -ItemType Directory -Force dist | Out-Null
-        Copy-Item desktopApp/build/compose/binaries/main/msi/*.msi "dist/BitChord-$v-windows-x64.msi"
         Copy-Item desktopApp/build/compose/binaries/main/exe/*.exe "dist/BitChord-$v-windows-x64-setup.exe"
         7z a -tzip -mx=5 "dist/BitChord-$v-windows-x64-portable.zip" `
           "desktopApp/build/compose/binaries/main/app/BitChord/*" | Out-Null
@@ -219,7 +228,7 @@ jobs:
         path: dist/*
 
   macos:
-    name: macOS · dmg, pkg, zip (arm64)
+    name: macOS · dmg (arm64)
     needs: check
     if: needs.check.outputs.exists != 'true'
     runs-on: macos-latest
@@ -246,10 +255,10 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
-    - name: Build DMG, PKG and app bundle
+    - name: Build DMG installer
       run: |
         v="${{ needs.check.outputs.version }}"
-        ./gradlew :desktopApp:packageDmg :desktopApp:packagePkg :desktopApp:createDistributable -PbitchordVersionName=$v
+        ./gradlew :desktopApp:packageDmg -PbitchordVersionName=$v
 
     - name: Collect macOS artifacts
       run: |
@@ -258,10 +267,6 @@ jobs:
         for f in desktopApp/build/compose/binaries/main/dmg/*.dmg; do
           [ -f "$f" ] && cp "$f" "dist/BitChord-$v-macos-arm64.dmg"
         done
-        for f in desktopApp/build/compose/binaries/main/pkg/*.pkg; do
-          [ -f "$f" ] && cp "$f" "dist/BitChord-$v-macos-arm64.pkg"
-        done
-        ditto -c -k --keepParent desktopApp/build/compose/binaries/main/app/BitChord.app "dist/BitChord-$v-macos-arm64.zip"
         ls -lh dist
 
     - name: Upload macOS artifacts

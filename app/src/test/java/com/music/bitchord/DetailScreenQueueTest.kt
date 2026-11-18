@@ -61,7 +61,7 @@ class DetailScreenQueueTest {
             newContextSongs = queue,
             selectedIndex = position,
             contextSource = QueueSource("My Playlist", PlaybackSourceType.BROWSE, "playlist-123"),
-        )
+        ).withoutKeptHistory()
 
         // startIndex points to selectedSong (precedingContext.size = 20)
         assertEquals(20, result.startIndex)
@@ -119,7 +119,7 @@ class DetailScreenQueueTest {
             newContextSongs = queue,
             selectedIndex = position,
             contextSource = QueueSource("My Playlist", PlaybackSourceType.BROWSE, "playlist-123"),
-        )
+        ).withoutKeptHistory()
 
         // Context contains ONLY the filtered search results, not track-48, track-49...
         // Expected timeline: [track-12] + [track-47] + [u1] + [track-83]
@@ -223,3 +223,10 @@ class DetailScreenQueueTest {
         assertEquals("Search", timeline[0].playbackSource)
     }
 }
+
+/** The layout of the new context alone, without the already-played rows kept in front of it. */
+private fun com.music.bitchord.playback.ContextQueueResult.withoutKeptHistory() = copy(
+    timeline = timeline.drop(keptHistory),
+    startIndex = startIndex - keptHistory,
+    keptHistory = 0,
+)

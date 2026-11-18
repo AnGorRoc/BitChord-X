@@ -42,7 +42,7 @@ object QueueCoordinator {
         currentIndex: Int,
         tappedSong: Song,
         source: QueueSource,
-    ): List<Song> = QueueTimeline.buildOneOffQueue(currentTimeline, currentIndex, tappedSong, source)
+    ): ContextQueueResult = QueueTimeline.buildOneOffQueue(currentTimeline, currentIndex, tappedSong, source)
 
     /** @see QueueTimeline.buildPartyPlaybackQueue */
     fun buildPartyPlaybackQueue(

@@ -50,6 +50,7 @@ import com.music.bitchord.data.model.TopPickKind
 import com.music.bitchord.data.model.TopPickMood
 import com.music.bitchord.data.spotify.ExportState
 import com.music.bitchord.playback.AutoplayRefill
+import com.music.bitchord.playback.ContextQueueResult
 import com.music.bitchord.playback.MusicLinkParser
 import com.music.bitchord.playback.ParsedMusicLink
 import com.music.bitchord.playback.PlaybackPosition
@@ -987,12 +988,12 @@ fun BitChordDesktopApp() {
         if (routedToRemote(listOf(song), 0)) return
         val tapped = canonicalSong(song).withSource(source)
         val songs = if (DesktopListenTogether.state.value.inParty) {
-            partyPlaybackQueue(tapped)
+            ContextQueueResult(partyPlaybackQueue(tapped), 0)
         } else {
             // The phone's one-off queue: the song, then whatever the listener had queued by hand.
             QueueTimeline.buildOneOffQueue(liveQueue.songs, liveQueue.index, tapped, tapped.queueSource())
         }
-        liveQueue = DesktopQueue(songs, index = 0)
+        liveQueue = DesktopQueue(songs.timeline, index = songs.startIndex)
         preShuffleOrder = emptyList()
         playCurrent(startPlaying)
     }
@@ -1076,7 +1077,13 @@ fun BitChordDesktopApp() {
             contextSource = playable[at].queueSource(),
         )
         liveQueue = if (shuffle) {
-            DesktopQueue.shuffledStartingAt(built.timeline, built.startIndex)
+            // What was heard stays where it is; only the new music is shuffled.
+            val kept = built.timeline.take(built.keptHistory)
+            val shuffled = DesktopQueue.shuffledStartingAt(
+                built.timeline.drop(built.keptHistory),
+                built.startIndex - built.keptHistory,
+            )
+            shuffled.copy(songs = kept + shuffled.songs, index = built.keptHistory)
         } else {
             // Keep the complete queue so Previous can navigate to the tracks before the selected one.
             DesktopQueue.startingAt(built.timeline, built.startIndex)
@@ -1202,12 +1209,21 @@ fun BitChordDesktopApp() {
             }
             if (partyTrackChangeBlocked()) return@launch
             if (liveQueue.current?.videoId == seed.videoId) {
-                liveQueue = DesktopQueue(listOf(liveQueue.current!!) + related, index = 0)
+                // What was heard stays behind the station.
+                liveQueue = DesktopQueue(
+                    liveQueue.songs.take(liveQueue.index + 1) + related,
+                    index = liveQueue.index,
+                ).trimmed()
                 saveQueue()
                 partySyncHolder[0]?.onLocalIntent()
             } else {
                 val station = listOf(seed.asQueueEntry(QueueTier.CONTEXT)) + related
-                liveQueue = if (shuffle) DesktopQueue.shuffledStartingAt(station, 0) else DesktopQueue(station, 0)
+                val kept = QueueTimeline.playedHistory(liveQueue.songs, liveQueue.index)
+                liveQueue = if (shuffle) {
+                    DesktopQueue.shuffledStartingAt(station, 0).let { it.copy(songs = kept + it.songs, index = kept.size) }
+                } else {
+                    DesktopQueue(kept + station, kept.size)
+                }
                 preShuffleOrder = if (shuffle) station.map(DesktopQueue::orderKey) else emptyList()
                 playCurrent()
             }

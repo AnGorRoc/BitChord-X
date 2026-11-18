@@ -911,6 +911,16 @@ fun mediaIdIn(uri: Uri): String? = if (uri.authority == "source") {
  * starts. Built off the main thread and handed to the player back on it, which
  * is where Media3 requires the call to be made.
  */
+/**
+ * What this controller has already played, up to the history limit, to keep behind a queue that
+ * replaces the current one: starting something new must not erase what came before.
+ */
+fun MediaController.playedHistory(): List<Song> {
+    val at = currentMediaItemIndex
+    if (at < 0 || at >= mediaItemCount) return emptyList()
+    return QueueTimeline.playedHistory((0..at).map { getMediaItemAt(it).toSong() }, at)
+}
+
 suspend fun MediaController.playSongs(songs: List<Song>, startIndex: Int) {
     if (songs.isEmpty()) return
     if (routedToRemote(songs, startIndex)) return

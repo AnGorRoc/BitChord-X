@@ -15,6 +15,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.first
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -147,7 +149,7 @@ fun FullArtworkBlurBackdrop(
     Box(modifier = modifier.fillMaxSize().background(FallbackBackdrop)) {
         Crossfade(
             targetState = image,
-            animationSpec = tween(320, easing = FastOutSlowInEasing),
+            animationSpec = tween(COVER_SWAP_MS, easing = FastOutSlowInEasing),
             label = "preparedBackdropImage",
         ) { bitmap ->
             if (bitmap != null) {
@@ -303,6 +305,12 @@ fun ArtworkMeshBackdrop(
     seam: () -> Dp = { 0.dp },
     /** What the surface is before any artwork has been read. */
     fallback: Color = FallbackBackdrop,
+    /**
+     * The cover dissolve's own progress, 0 to 1. When a new mesh arrives just as that
+     * dissolve begins, the backdrop is driven by it instead of a clock of its own, so
+     * the cover and the background move as one.
+     */
+    sharedProgress: (() -> Float)? = null,
 ) {
     val reduceAnimation by PlayerSettings.reduceAnimation.collectAsStateWithLifecycle()
 
@@ -313,6 +321,7 @@ fun ArtworkMeshBackdrop(
     var shown by remember { mutableStateOf(mesh) }
     var incoming by remember { mutableStateOf<ArtworkMesh?>(null) }
     val fade = remember { Animatable(0f) }
+    var useShared by remember { mutableStateOf(false) }
 
     LaunchedEffect(mesh) {
         val next = mesh ?: return@LaunchedEffect
@@ -332,6 +341,15 @@ fun ArtworkMeshBackdrop(
             return@LaunchedEffect
         }
         incoming = next
+        if (sharedProgress != null && sharedProgress() < 0.05f) {
+            useShared = true
+            snapshotFlow { sharedProgress() }.first { it >= 1f }
+            useShared = false
+            shown = next
+            incoming = null
+            return@LaunchedEffect
+        }
+        useShared = false
         fade.snapTo(0f)
         fade.animateTo(1f, tween(MESH_FADE_MS, easing = FastOutSlowInEasing))
         shown = next
@@ -349,7 +367,7 @@ fun ArtworkMeshBackdrop(
         shown?.let { drawMesh(it, seamY, alpha = 1f) }
         // Read here rather than in composition: an Animatable read inside a
         // draw lambda invalidates the drawing and leaves composition out of it.
-        incoming?.let { drawMesh(it, seamY, alpha = fade.value) }
+        incoming?.let { drawMesh(it, seamY, alpha = if (useShared) sharedProgress?.invoke() ?: 1f else fade.value) }
 
         // Enough of a scrim to keep white text off a bright sleeve, and no
         // more. The old backdrop needed a heavier one because it lightened
@@ -568,7 +586,7 @@ private const val MESH_BLUR_PASSES = 3
  * lands, or every fade is cut off partway and the backdrop never settles where
  * a frame actually put it.
  */
-private const val MESH_FADE_MS = 900
+private const val MESH_FADE_MS = COVER_SWAP_MS
 
 /**
  * The most rows and columns of [source] that are actually looked at.
@@ -753,3 +771,25 @@ private fun Int.lifted(): Int {
 
 private const val MESH_VIBRANCE = 1.12f
 private const val MESH_FLOOR = 0.045f
+
+/**
+ * Reads [imageUrl]'s mesh into the cache ahead of the skip that will want it, so
+ * the backdrop's fade starts on the same frame as the cover's instead of after a
+ * decode. Same request [rememberArtworkMesh] makes, so it also warms Coil's cache.
+ */
+internal suspend fun preloadArtworkMesh(
+    context: coil3.PlatformContext,
+    imageUrl: String,
+    artPx: Int,
+) {
+    if (meshCache[imageUrl] != null) return
+    val request = ImageRequest.Builder(context)
+        .data(imageUrl.artworkAt(artPx))
+        .size(MESH_PX)
+        .forPixelAccess()
+        .build()
+    val result = SingletonImageLoader.get(context).execute(request)
+    val bitmap = (result as? SuccessResult)?.image?.toImageBitmap() ?: return
+    val found = withContext(Dispatchers.Default) { meshOf(bitmap, imageUrl.hashCode()) } ?: return
+    meshCache[imageUrl] = found
+}
