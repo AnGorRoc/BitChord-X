@@ -605,7 +605,45 @@ object ListeningStats {
             // For weekly mode, compute per-entity totals from day-level sub-buckets.
             val weekRange = if (period.needsDayFilter()) period.range(today) else null
 
-            val rankedSongs = if (weekRange != null) {
+            val rankedSongs = rankSongs(weekRange)
+
+            // The artist's own picture and page where one has been found, and
+            // the track's sleeve where one hasn't -- see [ArtistFacts]. Resolved
+            // here rather than stored in the bucket because it is a fact about
+            // the artist, not about the evening they were played on: written
+            // into every month it would freeze at whatever was known the first
+            // time they came up, and be missing from every month before that.
+            val rankedArtists = rankArtists(weekRange)
+
+            val rankedAlbums = rankAlbums(weekRange)
+
+            val rankedGenres = rankGenres(rankedArtists)
+
+            val busiest = days.entries.maxByOrNull { it.value }
+            return ReplaySummary(
+                period = period,
+                label = period.label(today),
+                totalMs = rankedSongs.sumOf { it.ms },
+                totalPlays = rankedSongs.sumOf { it.plays },
+                songs = rankedSongs,
+                artists = rankedArtists,
+                albums = rankedAlbums,
+                genres = rankedGenres,
+                hourOfDay = hours.toList(),
+                busiestDay = busiest?.key,
+                busiestDayMs = busiest?.value ?: 0L,
+                distinctSongs = rankedSongs.size,
+                distinctArtists = rankedArtists.size,
+                distinctAlbums = rankedAlbums.size,
+                since = earliest,
+            )
+        }
+
+        // The charts below are separate functions rather than one long body: toSummary used to be
+        // a single ~3 KB method, big enough that the JIT's optimising compiler took it on as an
+        // on-stack replacement and crashed the JVM while compiling it.
+        private fun rankSongs(weekRange: Pair<LocalDate, LocalDate>?): List<RankedSong> =
+            if (weekRange != null) {
                 tracks.values
                     .mapNotNull { entry ->
                         val (ms, plays) = entry.weekRange(weekRange)
@@ -649,13 +687,8 @@ object ListeningStats {
                     }
             }
 
-            // The artist's own picture and page where one has been found, and
-            // the track's sleeve where one hasn't -- see [ArtistFacts]. Resolved
-            // here rather than stored in the bucket because it is a fact about
-            // the artist, not about the evening they were played on: written
-            // into every month it would freeze at whatever was known the first
-            // time they came up, and be missing from every month before that.
-            val rankedArtists = if (weekRange != null) {
+        private fun rankArtists(weekRange: Pair<LocalDate, LocalDate>?): List<RankedEntry> =
+            if (weekRange != null) {
                 artists.values
                     .mapNotNull { entry ->
                         val (ms, plays) = entry.weekRange(weekRange)
@@ -689,7 +722,8 @@ object ListeningStats {
                     }
             }
 
-            val rankedAlbums = if (weekRange != null) {
+        private fun rankAlbums(weekRange: Pair<LocalDate, LocalDate>?): List<RankedEntry> =
+            if (weekRange != null) {
                 albums.values
                     .mapNotNull { entry ->
                         val (ms, plays) = entry.weekRange(weekRange)
@@ -707,6 +741,7 @@ object ListeningStats {
                     .map { RankedEntry(it.name, it.sub, it.art, it.id, it.ms, it.plays) }
             }
 
+        private fun rankGenres(rankedArtists: List<RankedEntry>): List<RankedEntry> {
             // Genres are derived rather than stored — see [ArtistFacts]. An
             // artist with no tag yet simply doesn't vote, which is why this can
             // be an empty list on a page whose other charts are full.
@@ -728,7 +763,7 @@ object ListeningStats {
                 .filter { it.artworkUrl == null || it.browseId == null }
                 .forEach { ArtistFacts.noticed(it.title) }
 
-            val rankedGenres = genreMs.entries
+            return genreMs.entries
                 .sortedByDescending { it.value }
                 .map {
                     RankedEntry(
@@ -740,25 +775,6 @@ object ListeningStats {
                         plays = genrePlays[it.key] ?: 0,
                     )
                 }
-
-            val busiest = days.entries.maxByOrNull { it.value }
-            return ReplaySummary(
-                period = period,
-                label = period.label(today),
-                totalMs = rankedSongs.sumOf { it.ms },
-                totalPlays = rankedSongs.sumOf { it.plays },
-                songs = rankedSongs,
-                artists = rankedArtists,
-                albums = rankedAlbums,
-                genres = rankedGenres,
-                hourOfDay = hours.toList(),
-                busiestDay = busiest?.key,
-                busiestDayMs = busiest?.value ?: 0L,
-                distinctSongs = rankedSongs.size,
-                distinctArtists = rankedArtists.size,
-                distinctAlbums = rankedAlbums.size,
-                since = earliest,
-            )
         }
     }
 
