@@ -117,30 +117,33 @@ class QueueCoordinatorTest {
             contextSource = QueueSource("Abbey Road", PlaybackSourceType.BROWSE, "album-id"),
         )
 
-        // Expected: [album-1] (preceding) + [album-2] (selected) + [userQ1, userQ2] + [album-3] (following)
-        // startIndex = 1 (album-2)
-        assertEquals(1, result.startIndex)
-        assertEquals(5, result.timeline.size)
+        // Expected: [now] (already played, kept) + [album-1] (preceding) + [album-2] (selected)
+        // + [userQ1, userQ2] + [album-3] (following); startIndex = 2 (album-2)
+        assertEquals(2, result.startIndex)
+        assertEquals(1, result.keptHistory)
+        assertEquals(6, result.timeline.size)
 
-        assertEquals("album-1", result.timeline[0].videoId)
-        assertEquals(QueueTier.CONTEXT, result.timeline[0].queueTier)
-        assertEquals("Abbey Road", result.timeline[0].playbackSource)
+        assertEquals("now", result.timeline[0].videoId)
 
-        assertEquals("album-2", result.timeline[1].videoId)
+        assertEquals("album-1", result.timeline[1].videoId)
         assertEquals(QueueTier.CONTEXT, result.timeline[1].queueTier)
         assertEquals("Abbey Road", result.timeline[1].playbackSource)
 
-        assertEquals("u1", result.timeline[2].videoId)
-        assertEquals("entry-u1", result.timeline[2].queueEntryId)
-        assertEquals(QueueTier.USER_QUEUE, result.timeline[2].queueTier)
+        assertEquals("album-2", result.timeline[2].videoId)
+        assertEquals(QueueTier.CONTEXT, result.timeline[2].queueTier)
+        assertEquals("Abbey Road", result.timeline[2].playbackSource)
 
-        assertEquals("u2", result.timeline[3].videoId)
-        assertEquals("entry-u2", result.timeline[3].queueEntryId)
+        assertEquals("u1", result.timeline[3].videoId)
+        assertEquals("entry-u1", result.timeline[3].queueEntryId)
         assertEquals(QueueTier.USER_QUEUE, result.timeline[3].queueTier)
 
-        assertEquals("album-3", result.timeline[4].videoId)
-        assertEquals(QueueTier.CONTEXT, result.timeline[4].queueTier)
-        assertEquals("Abbey Road", result.timeline[4].playbackSource)
+        assertEquals("u2", result.timeline[4].videoId)
+        assertEquals("entry-u2", result.timeline[4].queueEntryId)
+        assertEquals(QueueTier.USER_QUEUE, result.timeline[4].queueTier)
+
+        assertEquals("album-3", result.timeline[5].videoId)
+        assertEquals(QueueTier.CONTEXT, result.timeline[5].queueTier)
+        assertEquals("Abbey Road", result.timeline[5].playbackSource)
     }
 
     @Test
@@ -157,8 +160,8 @@ class QueueCoordinatorTest {
             contextSource = QueueSource("Abbey Road", PlaybackSourceType.BROWSE, "album-id"),
         )
 
-        assertEquals(0, result.startIndex)
-        assertEquals(listOf("album-1", "u1", "album-2", "album-3"), result.timeline.map { it.videoId })
+        assertEquals(1, result.startIndex)
+        assertEquals(listOf("now", "album-1", "u1", "album-2", "album-3"), result.timeline.map { it.videoId })
     }
 
     @Test
@@ -175,8 +178,8 @@ class QueueCoordinatorTest {
             contextSource = QueueSource("Abbey Road", PlaybackSourceType.BROWSE, "album-id"),
         )
 
-        assertEquals(2, result.startIndex)
-        assertEquals(listOf("album-1", "album-2", "album-3", "u1"), result.timeline.map { it.videoId })
+        assertEquals(3, result.startIndex)
+        assertEquals(listOf("now", "album-1", "album-2", "album-3", "u1"), result.timeline.map { it.videoId })
     }
 
     @Test
@@ -192,8 +195,8 @@ class QueueCoordinatorTest {
             contextSource = QueueSource("Abbey Road", PlaybackSourceType.BROWSE, "album-id"),
         )
 
-        assertEquals(1, result.startIndex)
-        assertEquals(listOf("album-1", "album-2", "album-3"), result.timeline.map { it.videoId })
+        assertEquals(2, result.startIndex)
+        assertEquals(listOf("now", "album-1", "album-2", "album-3"), result.timeline.map { it.videoId })
     }
 
     @Test
@@ -247,14 +250,33 @@ class QueueCoordinatorTest {
             source = QueueSource("Search", PlaybackSourceType.SEARCH),
         )
 
-        assertEquals(2, result.size)
-        assertEquals("search-song", result[0].videoId)
-        assertEquals(QueueTier.CONTEXT, result[0].queueTier)
-        assertEquals("Search", result[0].playbackSource)
+        assertEquals(1, result.startIndex)
+        assertEquals(3, result.timeline.size)
+        assertEquals("now", result.timeline[0].videoId)
+        assertEquals("search-song", result.timeline[1].videoId)
+        assertEquals(QueueTier.CONTEXT, result.timeline[1].queueTier)
+        assertEquals("Search", result.timeline[1].playbackSource)
 
-        assertEquals("u1", result[1].videoId)
-        assertEquals("entry-u1", result[1].queueEntryId)
-        assertEquals(QueueTier.USER_QUEUE, result[1].queueTier)
+        assertEquals("u1", result.timeline[2].videoId)
+        assertEquals("entry-u1", result.timeline[2].queueEntryId)
+        assertEquals(QueueTier.USER_QUEUE, result.timeline[2].queueTier)
+
+    }
+
+    @Test
+    fun `a new queue keeps at most 25 of what was already played behind it`() {
+        val played = (0 until 40).map { testSong("old-$it") }
+        val result = QueueCoordinator.buildOneOffQueue(
+            currentTimeline = played + testSong("later"),
+            currentIndex = 39,
+            tappedSong = testSong("new"),
+            source = QueueSource("Search", PlaybackSourceType.SEARCH),
+        )
+        assertEquals(25, result.keptHistory)
+        assertEquals(25, result.startIndex)
+        assertEquals("old-15", result.timeline.first().videoId)
+        assertEquals("old-39", result.timeline[24].videoId)
+        assertEquals("new", result.timeline[25].videoId)
     }
 
     @Test
@@ -566,7 +588,7 @@ class QueueCoordinatorTest {
     @Test
     fun `buildContextQueue produces identical queue semantics for Album and Playlist`() {
         val userQ = testSong("u1", tier = QueueTier.USER_QUEUE, entryId = "entry-u1")
-        val currentTimeline = listOf(testSong("current", tier = QueueTier.CONTEXT), userQ)
+        val currentTimeline = listOf(testSong("current", tier = QueueTier.CONTEXT, entryId = "entry-current"), userQ)
 
         val trackSet = listOf(
             testSong("track-1"),
@@ -612,8 +634,8 @@ class QueueCoordinatorTest {
         playlistResult.timeline.forEach { assertNotNull(it.queueEntryId) }
 
         // Source-specific fields reflect their respective collection sources
-        assertEquals(List(5) { "Abbey Road" }, albumResult.timeline.filter { it.queueTier == QueueTier.CONTEXT }.map { it.playbackSource })
-        assertEquals(List(5) { "Classic Rock" }, playlistResult.timeline.filter { it.queueTier == QueueTier.CONTEXT }.map { it.playbackSource })
+        assertEquals(List(5) { "Abbey Road" }, albumResult.timeline.drop(albumResult.keptHistory).filter { it.queueTier == QueueTier.CONTEXT }.map { it.playbackSource })
+        assertEquals(List(5) { "Classic Rock" }, playlistResult.timeline.drop(playlistResult.keptHistory).filter { it.queueTier == QueueTier.CONTEXT }.map { it.playbackSource })
     }
 
     @Test

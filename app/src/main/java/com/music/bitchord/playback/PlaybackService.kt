@@ -2347,7 +2347,9 @@ class PlaybackService : MediaLibraryService() {
             if (oldTail < activePlayer.mediaItemCount) {
                 activePlayer.removeMediaItems(oldTail, activePlayer.mediaItemCount)
             }
-            if (currentIndex > 0) activePlayer.removeMediaItems(0, currentIndex)
+            // What was heard stays behind the station, up to the history limit.
+            val excessHistory = currentIndex - MAX_QUEUE_HISTORY
+            if (excessHistory > 0) activePlayer.removeMediaItems(0, excessHistory)
             saveQueueSnapshotImmediately(activePlayer)
         }
     }
@@ -3210,8 +3212,21 @@ class PlaybackService : MediaLibraryService() {
             if (isActive) QueueShuffle.setCanonicalContext(canonicalItems)
         }
 
-        val items = boundedMediaItems(plan, window)
-        val start = plan.history.size
+        // What was heard before stays behind the new music instead of being wiped with the old
+        // queue, up to the history limit. Unanchored rows: they belong to no part of this context.
+        val keptPlayed = if (currentIndex in 0 until exoPlayer.mediaItemCount) {
+            (0..currentIndex).map(exoPlayer::getMediaItemAt)
+                .takeLast((MAX_QUEUE_HISTORY - plan.history.size).coerceAtLeast(0))
+                .map { item ->
+                    item.toSong()
+                        .copy(queueTier = QueueTier.CONTEXT, queueEntryId = "history:${UUID.randomUUID()}")
+                        .toMediaItem()
+                }
+        } else {
+            emptyList()
+        }
+        val items = keptPlayed + boundedMediaItems(plan, window)
+        val start = keptPlayed.size + plan.history.size
         exoPlayer.setMediaItems(items, start.coerceIn(items.indices), 0L)
         saveBoundedContextSnapshot(exoPlayer)
         exoPlayer.prepare()

@@ -243,6 +243,7 @@ import com.music.bitchord.playback.beginRadioQueue
 import com.music.bitchord.playback.commitRadioQueue
 import com.music.bitchord.playback.fromAutoplay
 import com.music.bitchord.playback.hasYouTubeOriginal
+import com.music.bitchord.playback.playedHistory
 import com.music.bitchord.playback.loadAutoplayTracks
 import com.music.bitchord.playback.playSongs
 import com.music.bitchord.playback.BoundedQueuePlanner
@@ -1652,7 +1653,7 @@ private fun BitChordApp(
                 tappedSong = song,
                 source = source,
             )
-            c.playSongs(oneOffQueue, 0)
+            c.playSongs(oneOffQueue.timeline, oneOffQueue.startIndex)
             // Start radio in the mini-player; the user opens the full view by tapping it.
         }
     }
@@ -1724,11 +1725,14 @@ private fun BitChordApp(
                     if (oldTail < activeController.mediaItemCount) {
                         activeController.removeMediaItems(oldTail, activeController.mediaItemCount)
                     }
-                    if (currentIndex > 0) activeController.removeMediaItems(0, currentIndex)
+                    // What was heard stays behind the station, up to the history limit.
+                    val excessHistory = currentIndex - com.music.bitchord.playback.QueueTimeline.MAX_HISTORY
+                    if (excessHistory > 0) activeController.removeMediaItems(0, excessHistory)
                     activeRadioSeed = song.videoId to song.title
                 } else {
                     activeRadioSeed = null
-                    activeController.playSongs(listOf(seed) + related, 0)
+                    val kept = activeController.playedHistory()
+                    activeController.playSongs(kept + listOf(seed) + related, kept.size)
                 }
                 // Make this station — never the queue from before it — what a
                 // fresh process restores, even if it is killed immediately.
@@ -1780,7 +1784,8 @@ private fun BitChordApp(
                 }
                 activeRadioSeed = null
                 activeController.beginRadioQueue()
-                activeController.playSongs(station, 0)
+                val kept = activeController.playedHistory()
+                activeController.playSongs(kept + station, kept.size)
                 activeController.commitRadioQueue()
             }
         }
