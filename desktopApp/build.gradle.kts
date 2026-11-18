@@ -540,11 +540,8 @@ compose.desktop {
         nativeDistributions {
             targetFormats(
                 TargetFormat.Dmg,
-                TargetFormat.Pkg,
                 TargetFormat.Exe,
-                TargetFormat.Msi,
                 TargetFormat.Deb,
-                TargetFormat.Rpm,
             )
             packageName = "BitChord"
             packageVersion = nativePackageVersion
