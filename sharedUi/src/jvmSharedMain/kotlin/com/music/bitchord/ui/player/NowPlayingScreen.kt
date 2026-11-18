@@ -883,16 +883,30 @@ fun NowPlayingScreen(
     // the preloaded next cover always is, so the cover used to snap while the
     // backdrop faded. Starts the moment the new cover is on screen and runs for
     // [COVER_SWAP_MS], the backdrop's own duration. Not on the first cover shown.
-    val coverFade = remember { Animatable(1f) }
-    var coverShownOnce by remember { mutableStateOf(false) }
-    LaunchedEffect(art.url, art.loaded) {
-        if (!art.loaded) return@LaunchedEffect
-        if (!coverShownOnce) {
-            coverShownOnce = true
+    //
+    // The old cover stays drawn underneath ([CoverSwap.under]) while the new one
+    // fades in over it, so nothing in between shows the placeholder card.
+    val swap = remember { CoverSwap() }
+    if (swap.url != art.url) swap.onNewCover(art.url, art.request)
+    // Sticky: once any cover has been shown the sleeve keeps its photo styling
+    // (clip, shadow, no placeholder icon) through the next one's load, instead of
+    // dropping to the small placeholder card and jumping back.
+    var artShown by remember { mutableStateOf(false) }
+    LaunchedEffect(art, art.loaded, art.failed) {
+        if (art.failed) {
+            swap.alpha = 1f
             return@LaunchedEffect
         }
-        coverFade.snapTo(0f)
-        coverFade.animateTo(1f, tween(COVER_SWAP_MS, easing = FastOutSlowInEasing))
+        if (!art.loaded) return@LaunchedEffect
+        artShown = true
+        swap.cur = art.request
+        if (swap.alpha < 1f) {
+            animate(
+                initialValue = swap.alpha,
+                targetValue = 1f,
+                animationSpec = tween(COVER_SWAP_MS, easing = FastOutSlowInEasing),
+            ) { value, _ -> swap.alpha = value }
+        }
     }
     // The next track's cover, warmed while this one plays so the skip finds it.
     PreloadArtwork(rememberRemoteArtworkUrl(queue.getOrNull(queueIndex + 1)))
@@ -2692,14 +2706,14 @@ fun NowPlayingScreen(
                                     // collapse, once the dissolve has all but gone. Let
                                     // go of on the way to the mini player, whose cover
                                     // sits flat in its bar.
-                                    shadowElevation = if (art.loaded) {
+                                    shadowElevation = if (artShown) {
                                         10.dp.toPx() * (1f - 2f * shown).coerceAtLeast(0f) * dockT()
                                     } else {
                                         0f
                                     }
                                     shape = dockFrame.cornerShape(sleeveCorner())
                                     // What `.shadow` did: it clips only when it casts.
-                                    clip = art.loaded
+                                    clip = artShown
                                 }
                                 .graphicsLayer {
                                     // Clipped a second time, as `.shadow` and then
@@ -2788,7 +2802,7 @@ fun NowPlayingScreen(
                                     .background(Color.Black.copy(alpha = 0.18f)),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                if (!art.loaded && !canvasRendered) {
+                                if (!artShown && !canvasRendered) {
                                     Icon(
                                         imageVector = BitChordIcons.MusicNote,
                                         contentDescription = null,
@@ -2802,6 +2816,19 @@ fun NowPlayingScreen(
                                             },
                                     )
                                 }
+                            }
+                            // The cover going out, held under the incoming one for the
+                            // length of the dissolve and skipped outright after it.
+                            swap.under?.let { outgoing ->
+                                AsyncImage(
+                                    model = outgoing,
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier
+                                        .fillMaxSize()
+                                        .graphicsLayer { alpha = if (swap.alpha < 1f) 1f else 0f }
+                                        .drawWithContent { if (still() == null) drawContent() },
+                                )
                             }
                             AsyncImage(
                                 // Decode at the sleeve's *expanded* size, always.
@@ -2840,7 +2867,7 @@ fun NowPlayingScreen(
                                 // [PlayerArtwork.loaded] still flips the moment it does.
                                 modifier = Modifier
                                     .fillMaxSize()
-                                    .graphicsLayer { alpha = coverFade.value }
+                                    .graphicsLayer { alpha = swap.alpha }
                                     .drawWithContent {
                                         val frame = still()
                                         if (frame == null) {

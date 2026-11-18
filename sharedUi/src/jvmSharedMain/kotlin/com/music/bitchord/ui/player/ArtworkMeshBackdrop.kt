@@ -753,3 +753,25 @@ private fun Int.lifted(): Int {
 
 private const val MESH_VIBRANCE = 1.12f
 private const val MESH_FLOOR = 0.045f
+
+/**
+ * Reads [imageUrl]'s mesh into the cache ahead of the skip that will want it, so
+ * the backdrop's fade starts on the same frame as the cover's instead of after a
+ * decode. Same request [rememberArtworkMesh] makes, so it also warms Coil's cache.
+ */
+internal suspend fun preloadArtworkMesh(
+    context: coil3.PlatformContext,
+    imageUrl: String,
+    artPx: Int,
+) {
+    if (meshCache[imageUrl] != null) return
+    val request = ImageRequest.Builder(context)
+        .data(imageUrl.artworkAt(artPx))
+        .size(MESH_PX)
+        .forPixelAccess()
+        .build()
+    val result = SingletonImageLoader.get(context).execute(request)
+    val bitmap = (result as? SuccessResult)?.image?.toImageBitmap() ?: return
+    val found = withContext(Dispatchers.Default) { meshOf(bitmap, imageUrl.hashCode()) } ?: return
+    meshCache[imageUrl] = found
+}
