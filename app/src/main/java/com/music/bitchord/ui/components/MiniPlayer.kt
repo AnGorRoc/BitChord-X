@@ -368,6 +368,7 @@ fun MiniPlayer(
     modifier: Modifier = Modifier,
 ) {
     val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
+    val useGlass = LocalLiquidGlassEnabled.current && isGlassSupported()
     val haptics = rememberHaptics()
     // percent rather than a dp figure, so the corner stays exactly half the
     // height if the row's contents ever change it — which is what keeps a pill
@@ -393,10 +394,13 @@ fun MiniPlayer(
             )
             .clip(shape)
             .then(
-                if (reduceDynamicBlur) {
-                    Modifier.background(chromeSurface())
-                } else {
-                    Modifier.optimizedHazeEffect(
+                when {
+                    reduceDynamicBlur -> Modifier.background(chromeSurface())
+                    // The same glass as the tab bar right under it, tint and
+                    // all, so the two read as one material rather than glass
+                    // beside frost. The bar's own inline player already was.
+                    useGlass -> Modifier.liquidGlass(shape = shape, surfaceTint = glassBarTint())
+                    else -> Modifier.optimizedHazeEffect(
                         state = hazeState,
                         style = HazeMaterials.thin(chromeSurface()),
                     )
