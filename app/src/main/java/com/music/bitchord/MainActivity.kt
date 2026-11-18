@@ -3008,11 +3008,11 @@ private fun BitChordApp(
         // takes its still of; the menus themselves are drawn outside it.
         CompositionLocalProvider(
             com.music.bitchord.ui.components.LocalLandscapeChrome provides isLandscapeChrome,
-            // The bars' frost, when they are not liquid glass, takes on the
-            // page's wash as well: the palette's raised shade of it, as a release
-            // page's buttons do, so they stay a step lighter than the page they
-            // float on. The setting off, or nothing loaded off a release page,
-            // leaves the theme's surface.
+            // The bars take on the page's wash as well — the palette's raised
+            // shade of it, as a release page's buttons do, so they stay a step
+            // lighter than the page they float on: as the frosted bars'
+            // container, or as a translucent tint over liquid glass. The setting
+            // off, or nothing loaded off a release page, leaves the theme's own.
             com.music.bitchord.ui.components.LocalChromeSurface provides when {
                 !tintWithPlaying -> null
                 isDetailVisible -> detailPalette.elevated
@@ -3134,6 +3134,13 @@ private fun BitChordApp(
                                 Modifier
                             },
                         )
+                        // The page's wash again, inside the glass layer: that
+                        // layer starts every recording from the theme's own
+                        // background (see paintBackdrop), which would otherwise
+                        // cover the wash painted under it and leave the pages
+                        // black — and the glass refracting black — with Liquid
+                        // Glass on. Off, this is the same colour drawn twice.
+                        .background(playingPalette.background)
                         // Every page's scroll passes through here, so
                         // the dock collapses on all of them
                         // without each one having to know about it.
