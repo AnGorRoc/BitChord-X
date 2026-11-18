@@ -1148,7 +1148,7 @@ internal fun NewShelfCard(
                 .fillMaxWidth()
                 .aspectRatio(1f)
                 .clip(RoundedCornerShape(12.dp))
-                .background(MaterialTheme.colorScheme.surfaceVariant),
+                .background(com.music.bitchord.ui.theme.cardSurface()),
             contentAlignment = Alignment.Center,
         ) {
             if (logo != null) {

@@ -366,7 +366,19 @@ internal fun topBandScrimAlpha(artworkLuminance: Float?): Float {
 private const val PLAYER_STATUS_SCRIM_MIN_ALPHA = 0.16f
 private const val PLAYER_STATUS_SCRIM_MAX_ALPHA = 0.65f
 
-private fun Seed.toPalette(dark: Boolean): ArtworkPalette = if (dark) {
+/**
+ * The colour the page is washed in: the sleeve's most common one when you can
+ * see colour in it, else its brightest note. A cover that is mostly black,
+ * white or grey otherwise turns the whole page grey, as if no tint were on —
+ * the same reasoning [playerTint] uses for the player's text.
+ */
+private val Seed.pageSource: Color
+    get() = listOf(dominant, vibrant).firstOrNull { it.chroma() >= TINT_MIN_CHROMA } ?: dominant
+
+private fun Seed.toPalette(dark: Boolean): ArtworkPalette = toPaletteFrom(pageSource, dark)
+
+/** [dominant] here is the page's source colour, which shadows the raw swatch on purpose. */
+private fun Seed.toPaletteFrom(dominant: Color, dark: Boolean): ArtworkPalette = if (dark) {
     ArtworkPalette(
         // Deep enough that white body text clears contrast on any sleeve, but
         // not so deep the hue is gone — the whole point is that the page is

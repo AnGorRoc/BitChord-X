@@ -897,6 +897,8 @@ internal fun AlertScaffold(
 ) {
     val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
     val shape = RoundedCornerShape(ALERT_CORNER)
+    // The card shade of what's playing, when the app is washed in it.
+    val cardFill = com.music.bitchord.ui.theme.LocalCardSurface.current ?: MaterialTheme.colorScheme.surface
 
     Box(
         modifier = Modifier
@@ -915,11 +917,11 @@ internal fun AlertScaffold(
                 .clip(shape)
                 .then(
                     if (reduceDynamicBlur || !frosted) {
-                        Modifier.background(MaterialTheme.colorScheme.surface)
+                        Modifier.background(cardFill)
                     } else {
                         Modifier.optimizedHazeEffect(
                             state = hazeState,
-                            style = HazeMaterials.regular(MaterialTheme.colorScheme.surface),
+                            style = HazeMaterials.regular(cardFill),
                         )
                     },
                 )

@@ -140,7 +140,7 @@ fun PlaylistPickerSheet(
         // It reaches the top of the screen, where corners would only cut two
         // notches out of the status bar's background.
         shape = RectangleShape,
-        containerColor = MaterialTheme.colorScheme.background,
+        containerColor = com.music.bitchord.ui.theme.pageBackground(),
         dragHandle = null,
         contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
         // Back is this sheet's to carry out, below: left to M3 it closes the whole

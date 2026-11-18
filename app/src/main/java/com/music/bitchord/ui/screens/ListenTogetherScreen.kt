@@ -366,7 +366,7 @@ fun ListenTogetherScreen(
                 failure = null
             },
             sheetState = sheetState,
-            containerColor = MaterialTheme.colorScheme.background,
+            containerColor = com.music.bitchord.ui.theme.pageBackground(),
         ) {
             when (open) {
                 PartySheet.JoinCode -> JoinPartySheet(

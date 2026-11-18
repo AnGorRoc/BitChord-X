@@ -287,7 +287,7 @@ internal fun AccountCard(
                     Modifier
                         .padding(horizontal = GROUP_INSET)
                         .clip(GroupShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .background(com.music.bitchord.ui.theme.cardSurface())
                 },
             )
             .then(

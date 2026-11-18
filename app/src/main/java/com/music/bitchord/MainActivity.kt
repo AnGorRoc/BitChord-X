@@ -2604,6 +2604,17 @@ private fun BitChordApp(
         imageUrl = player.song?.thumbnailUrl?.takeIf { tintWithPlaying },
     )
     val appTinted = tintWithPlaying && player.song != null
+    // The page wash and the card shade one step off it. Provided around the
+    // pages below, and again around each sheet this function opens outside
+    // them — a sheet sits in a window of its own, beyond the pages' provider.
+    val pageTint = playingPalette.background.takeIf { appTinted }
+    val cardTint = pageTint?.let {
+        com.music.bitchord.ui.theme.cardShadeOf(it, dark = MaterialTheme.colorScheme.background.luminance() < 0.5f)
+    }
+    val tintLocals = arrayOf(
+        com.music.bitchord.ui.theme.LocalPageBackground provides pageTint,
+        com.music.bitchord.ui.theme.LocalCardSurface provides cardTint,
+    )
 
     // One set of numbers for the cards, the page, the stories and the shared
     // picture, so they cannot disagree. Read while any of them is on screen —
@@ -3027,18 +3038,8 @@ private fun BitChordApp(
             },
             // What rows paint over their swipe reveal: the page's wash, so a
             // swipe doesn't drag a band of the theme's black across it.
-            com.music.bitchord.ui.theme.LocalPageBackground provides
-                playingPalette.background.takeIf { appTinted },
-            // Settings' grouped cards: one deeper shade of that same wash.
-            com.music.bitchord.ui.theme.LocalCardSurface provides
-                if (appTinted) {
-                    com.music.bitchord.ui.theme.cardShadeOf(
-                        playingPalette.background,
-                        dark = MaterialTheme.colorScheme.background.luminance() < 0.5f,
-                    )
-                } else {
-                    null
-                },
+            // Settings' grouped cards take the deeper shade.
+            *tintLocals,
         ) {
         Row(Modifier.fillMaxSize().snapshotBackdropSource(pageBackdrop)) {
             // Painted once, under every page that has no colour of its own —
@@ -5264,6 +5265,9 @@ private fun BitChordApp(
             }
         }
 
+        // Everything drawn over the pages — sheets, alerts, menus — sits outside
+        // the pages' provider, so takes the same wash and card shade here.
+        CompositionLocalProvider(*tintLocals) {
         // ---- Share the Replay ----
         if (showReplayShare) {
             replay.summary?.takeUnless { it.isEmpty }?.let { summary ->
@@ -5274,7 +5278,7 @@ private fun BitChordApp(
                     // buttons below the fold — a sheet whose only two controls
                     // need a drag to reach.
                     sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-                    containerColor = MaterialTheme.colorScheme.background,
+                    containerColor = com.music.bitchord.ui.theme.pageBackground(),
                 ) {
                     ReplayShareSheet(
                         summary = summary,
@@ -5785,7 +5789,7 @@ private fun BitChordApp(
             browseActions?.takeIf { browseRenameInSheet }?.let { target ->
                 ModalBottomSheet(
                     onDismissRequest = { browseActions = null },
-                    containerColor = MaterialTheme.colorScheme.background,
+                    containerColor = com.music.bitchord.ui.theme.pageBackground(),
                 ) {
                     browseMenuBody(target)
                 }
@@ -6082,7 +6086,7 @@ private fun BitChordApp(
             ModalBottomSheet(
                 onDismissRequest = { showSing = false },
                 sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-                containerColor = MaterialTheme.colorScheme.background,
+                containerColor = com.music.bitchord.ui.theme.pageBackground(),
             ) {
                 SingSheet(onDismiss = { showSing = false })
             }
@@ -6324,6 +6328,7 @@ private fun BitChordApp(
                 // here, the alert opened behind whichever it was.
                 inOwnWindow = playerRaised || songActions != null || browseActions != null,
             )
+        }
         }
 
     }
