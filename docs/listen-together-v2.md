@@ -9,13 +9,13 @@ pantalla actual de Listen Together como entrada principal.
 
 | Fase | Estado |
 |---|---|
-| F0 Servidor: personas, `addedBy`, cola de 500, canal de cuenta | ✅ hecho y probado (Go, sockets reales) |
-| F1 Cliente compartido: `AccountDevices`, `HandoffRules`, modelos | ✅ hecho; prueba viva cliente real ↔ servidor real |
-| F2 Android: modal Conectar, altavoz de dispositivo, dispositivo objetivo | ✅ hecho; probado en un teléfono contra un servidor local (aparece, recibe cola, play/pause, snapshot). **Sin probar con dos dispositivos reales ni con la cuenta de Google real.** El arreglo del eco de la cola está compilado y no re-probado. |
-| F2 PC: modal Conectar y dispositivo en el escritorio | ✅ hecho: el PC es dispositivo objetivo (publica lo que suena, aplica play/pausa/seek/siguiente/cola, responde "snapshot") y mando de otro dispositivo (`DesktopDeviceLink`, con el reloj remoto dibujado en el reproductor); modal Conectar y avatar en la cola portados a `desktopUi`. **Probado**: la app de escritorio real contra el servidor local con un mando falso (aparece, recibe cola, seek, snapshot). **Sin probar**: el PC como mando (requiere tocar su interfaz) y con tu cuenta real. |
-| F3 Party por persona (cliente), avatar en la cola, cola completa, crear sin nombre | ✅ Android. Los clientes envían la prueba de cuenta y el nombre del dispositivo, los miembros se agrupan por persona, la portada de la cola lleva la foto de quien añadió la canción y el límite de cola viene del servidor. ⏳ PC. |
-| F4 Configuración y limpieza | ✅ Android: "Mis dispositivos" (sala personal, modo independiente, aviso de "nadie suena") retirado del cliente; la pantalla de Listen Together tiene un grupo "Tú" con el nombre en las parties y el nombre del dispositivo; crear no pide nombre; "Iniciar party" y "Unirse" del modal abren la hoja correcta. Traducidas las 10 cadenas nuevas en los 18 idiomas (había 4 del paso anterior sin traducir; las pruebas de idiomas lo cazaron). ✅ También retirado del PC y del servidor: `/api/devices/join`, la sala personal, `setIndependent` y sus pruebas. ⏳ Sin hoja "Party" aparte: la gestión de la party sigue en la pantalla de Listen Together. |
-| Spotify | ⏸ fuera por ahora (ver `spotify-jam-bridge.md`). |
+| F0 Servidor: personas, `addedBy`, cola de 500, canal de cuenta | Hecho y probado (Go, sockets reales) |
+| F1 Cliente compartido: `AccountDevices`, `HandoffRules`, modelos | Hecho; prueba viva cliente real ↔ servidor real |
+| F2 Android: modal Conectar, altavoz de dispositivo, dispositivo objetivo | Hecho; probado en un teléfono contra un servidor local (aparece, recibe cola, play/pause, snapshot). **Sin probar con dos dispositivos reales ni con la cuenta de Google real.** El arreglo del eco de la cola está compilado y no re-probado. |
+| F2 PC: modal Conectar y dispositivo en el escritorio | Hecho: el PC es dispositivo objetivo (publica lo que suena, aplica play/pausa/seek/siguiente/cola, responde "snapshot") y mando de otro dispositivo (`DesktopDeviceLink`, con el reloj remoto dibujado en el reproductor); modal Conectar y avatar en la cola portados a `desktopUi`. **Probado**: la app de escritorio real contra el servidor local con un mando falso (aparece, recibe cola, seek, snapshot). **Sin probar**: el PC como mando (requiere tocar su interfaz) y con tu cuenta real. |
+| F3 Party por persona (cliente), avatar en la cola, cola completa, crear sin nombre | Hecho en Android. Los clientes envían la prueba de cuenta y el nombre del dispositivo, los miembros se agrupan por persona, la portada de la cola lleva la foto de quien añadió la canción y el límite de cola viene del servidor. ⏳ PC. |
+| F4 Configuración y limpieza | Hecho en Android: "Mis dispositivos" (sala personal, modo independiente, aviso de "nadie suena") retirado del cliente; la pantalla de Listen Together tiene un grupo "Tú" con el nombre en las parties y el nombre del dispositivo; crear no pide nombre; "Iniciar party" y "Unirse" del modal abren la hoja correcta. Traducidas las 10 cadenas nuevas en los 18 idiomas (había 4 del paso anterior sin traducir; las pruebas de idiomas lo cazaron). También retirado del PC y del servidor: `/api/devices/join`, la sala personal, `setIndependent` y sus pruebas. ⏳ Sin hoja "Party" aparte: la gestión de la party sigue en la pantalla de Listen Together. |
+| Spotify | Aparcado: fuera por ahora (ver `spotify-jam-bridge.md`). |
 
 Notas de lo aprendido al probar:
 - El temporizador de 5 s del servidor cerraba las salas que no son party; las de cuenta ya se saltan.
@@ -82,18 +82,18 @@ Notas de lo aprendido al probar:
 ┌──────────────────────────────────────────┐
 │ Conectar                                  │
 │ ┌──────────────────────────────────────┐ │
-│ │ IOP            [Muy alta] ›    [💻]  │ │  ← tarjeta del dispositivo que SUENA
+│ │ IOP            [Muy alta] ›    [PC]  │ │  ← tarjeta del dispositivo que SUENA
 │ │ TUSSI — LAJA, Anuel AA (acento)      │ │    (si es remoto: barra de volumen)
-│ │ 🔈 ━━━━━━━━━━━━━━━━━━━━━━━━━━━ 🔊   │ │
+│ │ vol- ━━━━━━━━━━━━━━━━━━━━━━━ vol+   │ │
 │ └──────────────────────────────────────┘ │
 │ Tus dispositivos                          │
-│ 📱 Este teléfono                          │  ← si el que suena es otro
-│ 🖥  Escritorio-casa   Sonando: Otra canc. ⋯│
+│ [tel] Este teléfono                          │  ← si el que suena es otro
+│ [PC] Escritorio-casa   Sonando: Otra canc. ⋯│
 │ ·· Tablet          Visto hace 2 h      ⋯ │  ← inactivo, atenuado
 │                                           │
 │ Party                                     │
 │  (fuera)  [ Iniciar party ] [ Unirse ]    │
-│  (dentro) 👤👤👤 Party de Ana · 3 personas │
+│  (dentro) (3) Party de Ana · 3 personas │
 │           [Invitar] [Ver party ›]         │
 │                                           │
 │ Ajustes de Listen Together ›              │

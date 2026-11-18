@@ -3,6 +3,7 @@ import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 import java.util.zip.ZipFile
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import NativeTools.buildStartupArchive
 import NativeTools.cmakeBinary
 import NativeTools.findOnPath
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
@@ -480,59 +481,6 @@ val startupArchiveEnabled = targetOs == "windows" && hostIsWindows
 val runtimeProbeDir = layout.buildDirectory.dir("startup-cds/runtime-probe")
 val appImageDir = layout.buildDirectory.dir("compose/binaries/main/app/BitChord")
 
-fun buildStartupArchive(image: File, probe: File, work: File, logger: org.gradle.api.logging.Logger) {
-    val app = File(image, "app")
-    val classPath = File(app, "BitChord.cfg").readLines()
-        .filter { it.startsWith("app.classpath=") }
-        .map { it.removePrefix("app.classpath=").replace("\$APPDIR", app.absolutePath) }
-    check(classPath.isNotEmpty()) { "startupArchive: no class path in ${File(app, "BitChord.cfg")}" }
-    val launcher = File(probe, "bin/java.exe")
-    check(launcher.isFile) { "startupArchive: the runtime probe is missing; createRuntimeImage has to run first" }
-
-    work.deleteRecursively()
-    work.mkdirs()
-    // The JVM refuses a whole list over one line longer than 4096 characters (a few huge Compose
-    // lambdas produce them), so those are left out.
-    val list = File(work, "startup.classlist")
-    list.writeText(startupClassList.readLines().filter { it.length < 4000 }.joinToString("\n") + "\n")
-
-    val resources = File(app, "resources").apply { mkdirs() }
-    val archive = File(resources, "startup.jsa")
-    archive.delete()
-    val log = File(work, "dump.log")
-    val process = ProcessBuilder(
-        launcher.absolutePath,
-        "-Xshare:dump",
-        "-Xlog:disable",
-        "-XX:SharedClassListFile=${list.absolutePath}",
-        "-XX:SharedArchiveFile=${archive.absolutePath}",
-        "-cp", classPath.joinToString(File.pathSeparator),
-    ).redirectErrorStream(true).redirectOutput(log).start()
-    if (!process.waitFor(10, TimeUnit.MINUTES)) {
-        process.destroyForcibly()
-        archive.delete()
-        logger.warn("startupArchive: the dump took over 10 minutes and was stopped; shipping without it.")
-    } else if (process.exitValue() != 0 || !archive.isFile) {
-        archive.delete()
-        logger.warn("startupArchive: the dump failed (${log.absolutePath}); shipping without it.")
-    } else {
-        // `-Xshare:on` makes the JVM fail where it would otherwise quietly run without the archive,
-        // so a class path or runtime that does not fit it is caught here rather than on a user's PC.
-        val check = ProcessBuilder(
-            launcher.absolutePath, "-Xshare:on", "-Xlog:disable",
-            "-XX:SharedArchiveFile=${archive.absolutePath}",
-            "-cp", classPath.joinToString(File.pathSeparator), "-version",
-        ).redirectErrorStream(true).redirectOutput(File(work, "check.log")).start()
-        if (!check.waitFor(2, TimeUnit.MINUTES) || check.exitValue() != 0) {
-            check.destroyForcibly()
-            archive.delete()
-            logger.warn("startupArchive: the JVM does not accept the archive (${File(work, "check.log").absolutePath}); shipping without it.")
-        } else {
-            logger.lifecycle("startupArchive: ${archive.length() / (1024 * 1024)} MB over ${classPath.size} jars, accepted by the JVM")
-        }
-    }
-}
-
 if (startupArchiveEnabled && startupClassList.isFile) {
     tasks.matching { it.name == "createDistributable" }.configureEach {
         val probe = runtimeProbeDir
@@ -540,7 +488,8 @@ if (startupArchiveEnabled && startupClassList.isFile) {
         val work = layout.buildDirectory.dir("startup-cds/work")
         inputs.file(startupClassList).withPropertyName("startupClassList")
         inputs.files(probe.map { it.file("lib/modules") }).withPropertyName("runtimeModules").optional()
-        doLast { buildStartupArchive(image.get().asFile, probe.get().asFile, work.get().asFile, logger) }
+        val classList = startupClassList
+        doLast { buildStartupArchive(image.get().asFile, probe.get().asFile, work.get().asFile, classList, logger) }
     }
     // The installer is wrapped around the image the archive was made for. Naming the type is
     // enough: Compose passes `--app-image` instead of `--input` when the property is set.

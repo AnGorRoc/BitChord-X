@@ -57,6 +57,8 @@
 - **Sign in with your Google account** for personalized content.
 - **Spotify integration** — import and sync your playlists and Liked Songs with destination selection and retry.
 - **Listen Together (Party Mode)** — synchronize playback with friends with permanent QR code sharing and instant code joins.
+- **Connect** — your phone and PC see each other: hand playback over, or use one as the speaker and another as the remote.
+- **Explore charts** — regional charts, new releases and daily topics.
 - **Dynamic Radio & Origin Tracking** — contextual radio stations and source badges.
 - **Discord Rich Presence** — in-app login, live track/artist/album and progress.
 - **Scrobbling** to Last.fm and ListenBrainz.
@@ -104,13 +106,15 @@ On top of the original feature set, BitChord-X adds:
 - **Liquid Dock & Kinetic Player** — Dock compaction on scroll into an inline miniplayer flanked by the active tab and search pill, smooth morph play/pause, kinetic skip springs, and spring pop miniplayer transitions.
 - **Immersive Visuals** — Cover art reflection, atmospheric veil, 120fps liquid glass optimizations, and HSL-tuned artist gradients.
 - **Listen Together (Party Mode)** — Real-time synchronized listening with interactive QR code zoom modal and code sharing enabled by default.
+- **Connect** — Your own devices see each other: hand playback over, or use one as the speaker and another as the remote. Parties no longer need a signed-in account.
+- **Explore with charts** — Regional charts, new releases and daily topics on a Bento genre grid, on phone and desktop.
 - **Enhanced Spotify Sync** — Dedicated import dialog with destination selection, match diagnostics, skipped tracks review, and background retry.
 - **Hi-Res Lossless & Network Streaming** — Real FLAC up to 24-bit with failover and custom providers, plus SMB and WebDAV network folders.
 - **Dynamic Radio & Source Origin** — Rich radio detail pages and contextual playback origin indicators.
 - **Replay & Discovery** — End-of-year/periodic Replay with stories, Artist Facts, signatures, and shareable lyric cards.
 - **Smarter Downloads & Cache** — Tiered download planner, separate lossless cache budget, and background upgrades for cached tracks.
 - **Universal Links** — Open tracks and playlists directly from Spotify, Apple Music, Deezer, SoundCloud, Tidal, and Amazon Music.
-- **Full Spanish Localization** — Complete translation across mobile, desktop, and Wear OS.
+- **Localization** — Complete Spanish translation across mobile, desktop, and Wear OS, and every supported language covers the desktop app, Explore and Connect.
 
 The full list with technical details is in [ADDITIONS.md](ADDITIONS.md).
 

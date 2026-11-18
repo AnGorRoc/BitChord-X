@@ -85,8 +85,10 @@ jobs:
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
+    # A release runs on a fresh runner, so Gradle's configuration cache saves nothing here, and some packaging
+    # tasks cannot be restored from it. Every Gradle call below turns it off.
     - name: Build the signed phone and TV APKs
-      run: ./gradlew releaseAssets
+      run: ./gradlew releaseAssets --no-configuration-cache
 
     - name: Check the tag matches the build
       run: |
@@ -137,7 +139,12 @@ jobs:
     - name: Build deb and desktop app image
       run: |
         v="${{ needs.check.outputs.version }}"
-        ./gradlew :desktopApp:packageDeb :desktopApp:createDistributable -PbitchordVersionName=$v
+        # Maven Central sometimes answers 429 to a runner; a second try a minute later goes through.
+        for attempt in 1 2 3; do
+          ./gradlew :desktopApp:packageDeb :desktopApp:createDistributable --no-configuration-cache -PbitchordVersionName=$v && break
+          [ "$attempt" = 3 ] && exit 1
+          sleep 60
+        done
 
     - name: Build AppImage
       run: |
@@ -198,7 +205,7 @@ jobs:
       shell: pwsh
       run: |
         $v = "${{ needs.check.outputs.version }}"
-        .\gradlew.bat :desktopApp:packageExe :desktopApp:createDistributable "-PbitchordVersionName=$v"
+        .\gradlew.bat :desktopApp:packageExe :desktopApp:createDistributable --no-configuration-cache "-PbitchordVersionName=$v"
 
     - name: Check the start-up archives are in the app image
       shell: pwsh
@@ -258,7 +265,7 @@ jobs:
     - name: Build DMG installer
       run: |
         v="${{ needs.check.outputs.version }}"
-        ./gradlew :desktopApp:packageDmg -PbitchordVersionName=$v
+        ./gradlew :desktopApp:packageDmg --no-configuration-cache -PbitchordVersionName=$v
 
     - name: Collect macOS artifacts
       run: |

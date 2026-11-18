@@ -64,6 +64,16 @@ BitChord starts but Automix never analyses anything, install the
 and restart it — that is the one dependency the bundled runtime cannot carry
 itself, because Windows expects it to be a system component.
 
+## Window behaviour
+
+- **One window.** Opening BitChord a second time brings the running window forward instead of starting
+  another copy.
+- **Closing the window quits the app.** This is the default. To keep the music going after the window is
+  closed, turn on **Keep running in background when closed** in Settings: BitChord then stays in the system
+  tray, and turning the option on also turns the tray icon on.
+- **Keyboard shortcuts.** `Ctrl` (`Cmd` on macOS) with `,` opens Settings, with `F` focuses search and with
+  `W` closes the window. The window remembers its size and position, and has a sensible minimum size.
+
 ## Building the packages yourself
 
 jpackage builds a package by driving the target platform's own tooling, so each
@@ -102,6 +112,10 @@ gradlew.bat :desktopApp:createDistributable
 
 Pass `-Pbitchord.version=1.2.3` to stamp a version other than the one in
 `desktopApp/build.gradle.kts`; a release build takes it from the tag.
+
+**Gradle notes.** The native tool lookup lives in `buildSrc`, so the first build needs network access to fetch
+the `kotlin-dsl` plugin. With it, the native tasks no longer break when Gradle reuses its configuration cache,
+and `--no-configuration-cache` is not needed.
 
 ## Start-up time on Windows
 
