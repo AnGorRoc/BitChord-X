@@ -233,8 +233,6 @@
     <string name="light">Clair</string>
     <string name="dark">Sombre</string>
     <string name="full_screen_cover_art_subtitle">Étend la pochette jusqu\'aux bords du lecteur au lieu d\'un carré</string>
-    <string name="immersive_player_mode">Mode lecteur immersif</string>
-    <string name="immersive_player_mode_subtitle">La pochette s\'étend en haut avec reflet ambiant sur les commandes</string>
     <string name="animated_cover_art_subtitle">Lit la vidéo en boucle que proposent certaines sorties au lieu d\'une pochette fixe</string>
     <string name="dont_repeat_songs_subtitle">La lecture automatique ne proposera pas une chanson déjà jouée ou suggérée pendant cette session</string>
     <string name="download_quality_subtitle">%1$s par piste, quelle que soit la connexion</string>
@@ -950,19 +948,19 @@
 
 
 
-    <string name="auto_quick_picks">Sélection rapide</string>
+    <string name="auto_quick_picks">Sélections rapides</string>
 
     <string name="auto_recents">Récents</string>
 
-    <string name="auto_liked">Chansons aimées</string>
+    <string name="auto_liked">Titres likés</string>
 
-    <string name="auto_login_title">Se connecter à YouTube sur votre téléphone</string>
+    <string name="auto_login_title">Connectez-vous à YouTube sur votre téléphone</string>
 
     <string name="auto_login_subtitle">Ouvrez BitChord sur votre téléphone pour vous connecter</string>
 
-    <string name="auto_empty_recents_title">Aucune chanson récente</string>
+    <string name="auto_empty_recents_title">Aucun titre récent</string>
 
-    <string name="auto_empty_recents_subtitle">Les chansons que vous écoutez apparaîtront ici</string>
+    <string name="auto_empty_recents_subtitle">Les titres que vous écoutez apparaîtront ici</string>
 
     <string name="auto_empty_quick_picks_title">Aucune suggestion</string>
 
@@ -972,15 +970,15 @@
 
     <string name="auto_empty_playlists_subtitle">Vérifiez votre connexion et réessayez</string>
 
-    <string name="auto_empty_liked_title">Aucune chanson aimée</string>
+    <string name="auto_empty_liked_title">Aucun titre liké</string>
 
-    <string name="auto_empty_liked_subtitle">Appuyez sur le cœur d\'une chanson pour l\'enregistrer ici</string>
+    <string name="auto_empty_liked_subtitle">Appuyez sur le cœur d\'un titre pour l\'enregistrer ici</string>
 
-    <string name="auto_empty_offline_title">Aucune chanson hors ligne</string>
+    <string name="auto_empty_offline_title">Aucun titre hors ligne</string>
 
-    <string name="auto_empty_offline_subtitle">Téléchargez des chansons sur votre téléphone pour les écouter ici</string>
+    <string name="auto_empty_offline_subtitle">Téléchargez des titres sur votre téléphone pour les écouter ici</string>
 
-    <string name="auto_unavailable_title">Contenu indisponible</string>
+    <string name="auto_unavailable_title">Contenu non disponible</string>
 
     <string name="auto_unavailable_subtitle">Rouvrez le dossier et réessayez</string>
 
@@ -992,7 +990,7 @@
     <string name="smart_version_alignment">Alignement audio intelligent</string>
     <string name="smart_version_alignment_subtitle">Analyse les formes d\'onde pour retrouver le moment de lecture exactement correspondant</string>
 
-    <string name="equalizer_footer">Moule le son dans BitChord avant qu\'il n\'atteigne le système.</string>
+    <string name="equalizer_footer">Façonne le son dans BitChord avant qu\'il n\'atteigne le système.</string>
 
     <string name="equalizer_dynamic">Dynamique</string>
 
@@ -1008,15 +1006,15 @@
 
     <string name="equalizer_focused">Ciblé</string>
 
-    <string name="equalizer_broad_footer">Faites glisser vers la gauche pour un son plus chaud et vers la droite pour un son plus brillant ; vers le bas creuse les médiums, vers le haut les met en avant. Le mode Large agit sur de vastes étendues du spectre à la fois.</string>
+    <string name="equalizer_broad_footer">Glissez à gauche pour un son plus chaud, à droite pour un son plus brillant. Large modifie de larges plages de fréquences à la fois.</string>
 
-    <string name="equalizer_focused_footer">Faites glisser vers la gauche pour un son plus chaud et vers la droite pour un son plus brillant ; vers le bas creuse les médiums, vers le haut les met en avant. Le mode Ciblé agit sur des plages plus étroites, modifiant moins le reste du spectre autour.</string>
+    <string name="equalizer_focused_footer">Focalisé agit sur des plages plus étroites et modifie moins les fréquences adjacentes.</string>
 
     <string name="equalizer_preset">Préréglage</string>
 
     <string name="equalizer_bands">Bandes</string>
 
-    <string name="equalizer_bands_footer">Déplacer une bande abandonne le préréglage pour faire de la courbe votre propre réglage.</string>
+    <string name="equalizer_bands_footer">Déplacer une bande quitte le préréglage et crée votre propre courbe.</string>
 
     <string name="equalizer_reset">Réinitialiser toutes les bandes</string>
 
@@ -1026,16 +1024,16 @@
 
     <string name="equalizer_balance_right">D</string>
 
-    <string name="equalizer_balance_footer">Déplace le son vers une oreille en réduisant le volume de l\'autre.</string>
+    <string name="equalizer_balance_footer">Déplace le son vers une oreille en atténuant l\'autre.</string>
     <string name="equalizer_bitstream_title">Inactif pour le moment</string>
     <string name="equalizer_bitstream_subtitle">Ce titre est envoyé à la sortie sans être décodé</string>
     <string name="equalizer_bitstream_footer">L\'égaliseur travaille sur de l\'audio décodé. Ce titre est transmis en bitstream pour que votre appareil le décode, il n\'y a donc aucun échantillon à filtrer ici.</string>
 
     <string name="system_equalizer">Égaliseur système</string>
 
-    <string name="system_equalizer_subtitle">Le panneau propre à votre appareil</string>
+    <string name="system_equalizer_subtitle">Panneau propre à votre appareil</string>
 
-    <string name="system_equalizer_footer">S\'applique après celui de BitChord, sur toute la session audio. Activer les deux applique les deux réglages.</string>
+    <string name="system_equalizer_footer">S\'applique après celui de BitChord sur toute la session audio. Utiliser les deux applique les deux.</string>
 
     <string name="eq_preset_flat">Plat</string>
 
@@ -1053,7 +1051,7 @@
 
     <string name="eq_preset_loudness">Loudness</string>
 
-    <string name="eq_preset_spoken_word">Parole</string>
+    <string name="eq_preset_spoken_word">Voix parlée</string>
 
     <string name="eq_preset_electronic">Électronique</string>
 
@@ -1067,13 +1065,13 @@
 
     <string name="eq_preset_small_speakers">Petits haut-parleurs</string>
 
-    <string name="eq_preset_late_night">Écoute nocturne</string>
+    <string name="eq_preset_late_night">Nuit tardive</string>
 
     <string name="eq_preset_custom">Personnalisé</string>
 
     <string name="translation_language">Langue de traduction</string>
 
-    <string name="translation_language_description">La langue dans laquelle le bouton de traduction traduit les paroles.</string>
+    <string name="translation_language_description">La langue vers laquelle le bouton de traduction traduit les paroles.</string>
 
     <string name="translation_language_app_default">Langue de l\'application</string>
 
@@ -1081,23 +1079,23 @@
 
     <string name="search_languages">Rechercher des langues</string>
 
-    <string name="no_languages_match">Aucune langue ne correspond</string>
+    <string name="no_languages_match">Aucune langue correspondante</string>
 
 
 
     <string name="audio_pipeline">Pipeline audio</string>
     <string name="cast_dialog_title">Caster</string>
-    <string name="cast_dialog_subtitle">Lire sur un Chromecast ou une enceinte Google Cast</string>
+    <string name="cast_dialog_subtitle">Lire sur une enceinte Chromecast ou Google Cast</string>
     <string name="cast_searching">Recherche d\'appareils…</string>
-    <string name="cast_searching_hint">Votre téléphone et le récepteur doivent être connectés au même réseau Wi-Fi.</string>
+    <string name="cast_searching_hint">Votre téléphone et le récepteur doivent être sur le même réseau Wi-Fi.</string>
     <string name="cast_device_connecting">Connexion en cours…</string>
     <string name="cast_device_connected">Diffusion en cours</string>
     <string name="cast_stop">Arrêter la diffusion</string>
-    <string name="cast_track_unsupported">Ce titre ne peut pas être casté</string>
+    <string name="cast_track_unsupported">Ce titre ne peut pas être diffusé</string>
     <string name="cast_connect_failed">Impossible de se connecter au récepteur</string>
     <string name="audio_pipeline_subtitle">Chemin du signal en direct, du décodeur à la sortie</string>
 
-    <string name="pipeline_track_info">Informations sur la piste</string>
+    <string name="pipeline_track_info">Informations sur le titre</string>
 
     <string name="pipeline_decoder">Décodeur</string>
 
@@ -1105,7 +1103,7 @@
 
     <string name="pipeline_dsp">DSP</string>
 
-    <string name="pipeline_output_device">Appareil de sortie</string>
+    <string name="pipeline_output_device">Périphérique de sortie</string>
 
     <string name="pipeline_source">Source</string>
 
@@ -1121,7 +1119,7 @@
 
     <string name="pipeline_decoder_name">Nom du décodeur</string>
 
-    <string name="pipeline_io_rate">Fréquence d\'E/S</string>
+    <string name="pipeline_io_rate">Débit E/S</string>
 
     <string name="pipeline_type">Type</string>
 
@@ -1131,7 +1129,7 @@
 
     <string name="pipeline_pcm_format">Format PCM</string>
 
-    <string name="pipeline_eq_preset">Préréglage d\'égaliseur</string>
+    <string name="pipeline_eq_preset">Préréglage EQ</string>
 
     <string name="pipeline_stereo_expand">Élargissement stéréo</string>
 
@@ -1145,9 +1143,9 @@
 
     <string name="shared_link">Lien partagé</string>
 
-    <string name="song_will_play_next">La chanson sera lue ensuite</string>
+    <string name="song_will_play_next">Le titre sera lu ensuite</string>
 
-    <string name="song_added_to_queue">Chanson ajoutée à la file d\'attente</string>
+    <string name="song_added_to_queue">Titre ajouté à la file d\'attente</string>
     <string name="song_added_to_playlist">Ajouté à la playlist</string>
     <string name="song_already_in_playlist">Déjà dans la playlist</string>
     <plurals name="add_to_playlists_count">
@@ -1164,7 +1162,7 @@
 
     <string name="paxsenix_api_key_configured">Clé API PaxSenix — configurée</string>
 
-    <string name="paxsenix_api_key_missing">Clé API PaxSenix — optionnelle, non configurée</string>
+    <string name="paxsenix_api_key_missing">Clé API PaxSenix — facultative, non configurée</string>
 
 
 
@@ -1299,9 +1297,9 @@
     <string name="song_info_unavailable">Non disponible</string>
     <string name="song_info_error">Certaines informations n’ont pas pu être chargées.</string>
     <string name="song_info_retry">Réessayer</string>
-    <string name="no_audio_version">No audio version found for this video</string>
-    <string name="no_video_version">No video version found for this song</string>
-    <string name="version_switch_in_party">Everyone in Listen Together hears the same version</string>
+    <string name="no_audio_version">Aucune version audio seule trouvée pour cette vidéo</string>
+    <string name="no_video_version">Aucune version vidéo trouvée pour ce titre</string>
+    <string name="version_switch_in_party">Tous les participants à Écouter ensemble entendent la même version</string>
     <string name="opened_file">Fichier ouvert</string>
     <string name="folders">Dossiers</string>
     <string name="folder">Dossier</string>
@@ -1515,46 +1513,46 @@
     <string name="spotify_sync_unmatched_title">Titres ignorés</string>
     <string name="spotify_sync_unmatched_hint">Ces titres n\'ont pas pu être trouvés sur YouTube Music :</string>
     <!-- Spotify Import & Sing Mode -->
-    <string name="spotify_import_intro_title">Import from Spotify</string>
-    <string name="spotify_import_intro_subtitle">Transfer to BitChord</string>
-    <string name="spotify_import_intro_desc">Transfer playlists and match songs automatically.</string>
-    <string name="spotify_import_destination_title">Save to</string>
-    <string name="spotify_import_destination_notice">Choose destination:</string>
-    <string name="spotify_import_target_local_title">On this device</string>
-    <string name="spotify_import_target_local_desc">Local · Offline ready</string>
-    <string name="spotify_import_target_youtube_title">In YouTube Music</string>
-    <string name="spotify_import_target_youtube_desc">Cloud · All devices</string>
-    <string name="spotify_import_target_youtube_login_req">Sign-in required</string>
-    <string name="spotify_import_continue">Continue</string>
-    <string name="spotify_import_paste_action">Paste</string>
-    <string name="spotify_import_advanced_options">Advanced options</string>
-    <string name="spotify_import_cancel">Cancel</string>
-    <string name="spotify_import_start">Import</string>
-    <string name="spotify_import_step_input_title">Playlist link</string>
-    <string name="spotify_import_step_matching_title">Importing…</string>
+    <string name="spotify_import_intro_title">Importer depuis Spotify</string>
+    <string name="spotify_import_intro_subtitle">Transférer vers BitChord</string>
+    <string name="spotify_import_intro_desc">Transférez des playlists et faites correspondre les titres automatiquement.</string>
+    <string name="spotify_import_destination_title">Enregistrer dans</string>
+    <string name="spotify_import_destination_notice">Choisir la destination :</string>
+    <string name="spotify_import_target_local_title">Sur cet appareil</string>
+    <string name="spotify_import_target_local_desc">Local · Prêt pour hors ligne</string>
+    <string name="spotify_import_target_youtube_title">Dans YouTube Music</string>
+    <string name="spotify_import_target_youtube_desc">Cloud · Tous les appareils</string>
+    <string name="spotify_import_target_youtube_login_req">Connexion requise</string>
+    <string name="spotify_import_continue">Continuer</string>
+    <string name="spotify_import_paste_action">Coller</string>
+    <string name="spotify_import_advanced_options">Options avancées</string>
+    <string name="spotify_import_cancel">Annuler</string>
+    <string name="spotify_import_start">Importer</string>
+    <string name="spotify_import_step_input_title">Lien de la playlist</string>
+    <string name="spotify_import_step_matching_title">Importation en cours…</string>
     <string name="spotify_import_destination_tag_local">Local</string>
     <string name="spotify_import_destination_tag_youtube">YouTube</string>
-    <string name="spotify_import_clear_tooltip">Clear</string>
-    <string name="spotify_import_privacy_title">Visibility</string>
-    <string name="spotify_import_done_button">Done</string>
-    <string name="spotify_import_complete">Import completed</string>
-    <string name="spotify_library_intro_title">Import from Spotify</string>
-    <string name="spotify_library_intro_desc">Transfer playlists to your library.</string>
-    <string name="spotify_library_intro_start_selecting">Select playlists</string>
-    <string name="spotify_library_intro_link_action">Or import via link</string>
-    <string name="spotify_library_import_by_link">Import by link</string>
-    <string name="spotify_library_import_by_link_subtitle">Paste a playlist link</string>
-    <string name="spotify_library_selected_title">Select playlists to import</string>
-    <string name="sing_preset_karaoke">Karaoke</string>
-    <string name="sing_preset_duet">Duet</string>
+    <string name="spotify_import_clear_tooltip">Effacer</string>
+    <string name="spotify_import_privacy_title">Visibilité</string>
+    <string name="spotify_import_done_button">Terminé</string>
+    <string name="spotify_import_complete">Importation terminée</string>
+    <string name="spotify_library_intro_title">Importer depuis Spotify</string>
+    <string name="spotify_library_intro_desc">Transférez des playlists dans votre bibliothèque.</string>
+    <string name="spotify_library_intro_start_selecting">Sélectionner des playlists</string>
+    <string name="spotify_library_intro_link_action">Ou importer via un lien</string>
+    <string name="spotify_library_import_by_link">Importer par lien</string>
+    <string name="spotify_library_import_by_link_subtitle">Collez un lien de playlist</string>
+    <string name="spotify_library_selected_title">Sélectionnez les playlists à importer</string>
+    <string name="sing_preset_karaoke">Karaoké</string>
+    <string name="sing_preset_duet">Duo</string>
     <string name="sing_preset_original">Original</string>
-    <string name="sing_mode_original">Original Vocals</string>
-    <string name="sing_mode_duet">Duet (50%)</string>
-    <string name="sing_mode_karaoke">Karaoke (0%)</string>
+    <string name="sing_mode_original">Voix originales</string>
+    <string name="sing_mode_duet">Duo (50%)</string>
+    <string name="sing_mode_karaoke">Karaoké (0%)</string>
     <string name="sing_status_original">Original</string>
-    <string name="sing_status_duet">Duet (50%)</string>
-    <string name="sing_status_karaoke">Karaoke</string>
-    <string name="sing_engine_title">Acoustic Engine</string>
+    <string name="sing_status_duet">Duo (50%)</string>
+    <string name="sing_status_karaoke">Karaoké</string>
+    <string name="sing_engine_title">Moteur acoustique</string>
     <string name="sing_badge_dsp">BITCHORD SING</string>
     <string name="swipe_right_action">Balayer un titre vers la droite</string>
     <string name="swipe_left_action">Balayer un titre vers la gauche</string>
@@ -1562,44 +1560,44 @@
     <string name="swipe_action_disabled">Désactivé</string>
 
     <!-- Spotify Onboarding -->
-    <string name="onboarding_spotify_title">Connect your Spotify</string>
-    <string name="onboarding_spotify_body">Bring your playlists and favorite music with you. Songs are matched on YouTube Music.</string>
-    <string name="onboarding_sign_in_spotify">Connect with Spotify</string>
-    <string name="onboarding_spotify_connected">Spotify connected</string>
-    <string name="onboarding_spotify_finish">Get started</string>
-    <string name="onboarding_skip_spotify">Maybe later</string>
+    <string name="onboarding_spotify_title">Connectez votre Spotify</string>
+    <string name="onboarding_spotify_body">Importez vos playlists et vos titres préférés. Les morceaux sont lus via YouTube Music.</string>
+    <string name="onboarding_sign_in_spotify">Se connecter avec Spotify</string>
+    <string name="onboarding_spotify_connected">Spotify connecté</string>
+    <string name="onboarding_spotify_finish">Commencer</string>
+    <string name="onboarding_skip_spotify">Peut-être plus tard</string>
 
     <string name="automix_overview">Automix overview</string>
-    <string name="content_preferences">Content Preferences</string>
-    <string name="hide_recents">Hide Recents</string>
-    <string name="hide_home_videos">Hide videos from Home</string>
-    <string name="hide_home_videos_subtitle">Shelves of only videos go too. Search, artists and playlists still show them</string>
-    <string name="hide_top_picks">Hide Top Picks for You</string>
-    <string name="hide_home_moods">Hide Find Your Mood</string>
-    <string name="square_video_thumbnails">Square video thumbnails</string>
-    <string name="square_video_thumbnails_subtitle">Show music videos as squares everywhere, including the player</string>
-    <string name="prefer_music_only">Prefer music-only version</string>
-    <string name="prefer_music_only_subtitle">Music videos play as their audio version, and the next track in the queue is converted ahead of time so Automix and crossfade work</string>
-    <string name="glass_performance">Better Performance for Glass</string>
-    <string name="full_screen_detail_cover">Full-screen album/playlist cover</string>
-    <string name="full_screen_detail_cover_subtitle">Runs album and playlist covers to the edges of the page instead of a framed sleeve</string>
-    <string name="listen_together_scan_qr_action">Scan QR code</string>
-    <string name="listen_together_camera_permission_title">Camera permission needed</string>
-    <string name="listen_together_camera_permission_desc">To scan party or Spotify Jam QR codes directly, allow camera access.</string>
-    <string name="listen_together_grant_permission">Grant permission</string>
-    <string name="listen_together_scan_qr_prompt">Point the camera at a BitChord or Spotify Jam QR code</string>
-    <string name="listen_together_gallery_qr">Scan from gallery</string>
-    <string name="listen_together_paste_link">Paste link from clipboard</string>
-    <string name="listen_together_invalid_qr">No valid party code or Spotify Jam link found</string>
-    <string name="listen_together_spotify_jam_title">Spotify Jam bridge</string>
-    <string name="listen_together_spotify_jam_premium_subtitle">Spotify Premium connected. Friends on Spotify can join your Jam directly.</string>
-    <string name="listen_together_spotify_jam_free_subtitle">Spotify Free account. You can join existing Jams; host Jam creation requires Premium.</string>
-    <string name="listen_together_spotify_jam_disconnected_subtitle">Connect Spotify in Settings to sync and host Spotify Jams.</string>
-    <string name="listen_together_share_spotify_jam">Share Spotify Jam link</string>
-    <string name="listen_together_share_spotify_jam_text">Join my Spotify Jam via BitChord</string>
-    <string name="listen_together_scan_spotify_jam_qr">Scan Spotify Jam QR</string>
-    <string name="listen_together_scan_spotify_jam_subtitle">Spotify users can scan this code using the Spotify app camera</string>
-    <string name="listen_together_spotify_members">Spotify Jam members</string>
+    <string name="content_preferences">Préférences de contenu</string>
+    <string name="hide_recents">Masquer les récents</string>
+    <string name="hide_home_videos">Masquer les vidéos de l\'accueil</string>
+    <string name="hide_home_videos_subtitle">Les sections de vidéos seules disparaissent aussi. La recherche, les artistes et playlists les affichent toujours</string>
+    <string name="hide_top_picks">Masquer « Les meilleurs choix pour vous »</string>
+    <string name="hide_home_moods">Masquer « Trouver votre ambiance »</string>
+    <string name="square_video_thumbnails">Miniatures vidéo carrées</string>
+    <string name="square_video_thumbnails_subtitle">Afficher les clips musicaux sous forme de carrés partout, y compris dans le lecteur</string>
+    <string name="prefer_music_only">Préférer la version audio seule</string>
+    <string name="prefer_music_only_subtitle">Les clips vidéo sont lus en version audio et le titre suivant est converti à l\'avance pour qu\'Automix et le fondu enchaîné fonctionnent</string>
+    <string name="glass_performance">Meilleures performances pour le verre</string>
+    <string name="full_screen_detail_cover">Pochette d\'album/playlist plein écran</string>
+    <string name="full_screen_detail_cover_subtitle">Étend les pochettes d\'album et de playlist jusqu\'aux bords de la page au lieu d\'un encadré</string>
+    <string name="listen_together_scan_qr_action">Scanner le code QR</string>
+    <string name="listen_together_camera_permission_title">Autorisation de caméra requise</string>
+    <string name="listen_together_camera_permission_desc">Pour scanner directement des codes QR de party ou Spotify Jam, autorisez l\'accès à la caméra.</string>
+    <string name="listen_together_grant_permission">Accorder l\'autorisation</string>
+    <string name="listen_together_scan_qr_prompt">Pointez la caméra vers un code QR BitChord ou Spotify Jam</string>
+    <string name="listen_together_gallery_qr">Scanner depuis la galerie</string>
+    <string name="listen_together_paste_link">Coller le lien depuis le presse-papiers</string>
+    <string name="listen_together_invalid_qr">Aucun code de party ou lien Spotify Jam valide trouvé</string>
+    <string name="listen_together_spotify_jam_title">Pont Spotify Jam</string>
+    <string name="listen_together_spotify_jam_premium_subtitle">Spotify Premium connecté. Vos amis sur Spotify peuvent rejoindre votre Jam directement.</string>
+    <string name="listen_together_spotify_jam_free_subtitle">Compte Spotify Free. Vous pouvez rejoindre des Jams existants ; l\'hébergement nécessite Premium.</string>
+    <string name="listen_together_spotify_jam_disconnected_subtitle">Connectez Spotify dans les Paramètres pour synchroniser et héberger des Spotify Jams.</string>
+    <string name="listen_together_share_spotify_jam">Partager le lien Spotify Jam</string>
+    <string name="listen_together_share_spotify_jam_text">Rejoignez mon Spotify Jam via BitChord</string>
+    <string name="listen_together_scan_spotify_jam_qr">Scanner le QR Spotify Jam</string>
+    <string name="listen_together_scan_spotify_jam_subtitle">Les utilisateurs de Spotify peuvent scanner ce code avec l\'appareil photo de Spotify</string>
+    <string name="listen_together_spotify_members">Membres du Spotify Jam</string>
     <string name="created_by_bitchord">Created by BitChord</string>
     <string name="trending_title">Trending</string>
     <string name="region_global">Global</string>
@@ -1681,4 +1679,6 @@
         <item quantity="one">%1$d personne écoute</item>
         <item quantity="other">%1$d personnes écoutent</item>
     </plurals>
+    <string name="filter_music_videos_autoplay">Filtrer les clips musicaux dans AutoPlay</string>
+    <string name="filter_music_videos_autoplay_subtitle">Ne mettre en file que des pistes audio dans AutoPlay et les radios, jamais de clips vidéo</string>
 </resources>

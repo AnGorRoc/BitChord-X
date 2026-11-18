@@ -325,12 +325,12 @@
   <string name="time_capsules_subtitle">시대별 사운드로 떠나는 여행</string>
   <string name="explore_by_genre_title">장르 및 분위기별 탐색</string>
   <string name="explore_by_genre_subtitle">Bento 그리드로 보는 추천 카테고리</string>
-  <string name="created_by_bitchord">Created by BitChord</string>
-  <string name="trending_title">Trending</string>
+  <string name="created_by_bitchord">BitChord에서 생성됨</string>
+  <string name="trending_title">인기 급상승</string>
   <string name="trending_videos_title">인기 뮤직비디오</string>
   <string name="trending_artists_title">인기 아티스트</string>
   <string name="region_global">Global</string>
-  <string name="region_auto">Automatic (IP)</string>
+  <string name="region_auto">자동 (IP)</string>
   <string name="daily_mixes_title">오늘의 하이라이트</string>
   <string name="daily_mixes_subtitle">매일 새로 고침되는 엄선된 컬렉션</string>
   <string name="browse_all_title">모두 둘러보기</string>

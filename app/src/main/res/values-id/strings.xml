@@ -229,8 +229,6 @@
     <string name="light">Terang</string>
     <string name="dark">Gelap</string>
     <string name="full_screen_cover_art_subtitle">Membuat sampul memenuhi tepi pemutar alih-alih berbentuk persegi</string>
-    <string name="immersive_player_mode">Mode pemutar imersif</string>
-    <string name="immersive_player_mode_subtitle">Sampul meluas di bagian atas dengan pantulan ambient di atas kontrol</string>
     <string name="animated_cover_art_subtitle">Memutar video berulang yang disertakan beberapa rilisan alih-alih sampul diam</string>
     <string name="dont_repeat_songs_subtitle">Putar Otomatis tidak akan menyarankan lagu yang sudah diputar atau disarankan dalam sesi ini</string>
     <string name="download_quality_subtitle">%1$s per trek, apa pun koneksinya</string>
@@ -931,49 +929,49 @@
 
 
 
-    <string name="auto_quick_picks">Quick picks</string>
+    <string name="auto_quick_picks">Pilihan cepat</string>
 
-    <string name="auto_recents">Recent</string>
+    <string name="auto_recents">Baru saja</string>
 
-    <string name="auto_liked">Liked songs</string>
+    <string name="auto_liked">Lagu yang disukai</string>
 
-    <string name="auto_login_title">Sign in to YouTube on your phone</string>
+    <string name="auto_login_title">Masuk ke YouTube di ponsel Anda</string>
 
-    <string name="auto_login_subtitle">Open BitChord on your phone to sign in</string>
+    <string name="auto_login_subtitle">Buka BitChord di ponsel Anda untuk masuk</string>
 
-    <string name="auto_empty_recents_title">No recent songs</string>
+    <string name="auto_empty_recents_title">Tidak ada lagu baru-baru ini</string>
 
-    <string name="auto_empty_recents_subtitle">Songs you play will appear here</string>
+    <string name="auto_empty_recents_subtitle">Lagu yang Anda putar akan muncul di sini</string>
 
-    <string name="auto_empty_quick_picks_title">No suggestions</string>
+    <string name="auto_empty_quick_picks_title">Tidak ada saran</string>
 
-    <string name="auto_empty_quick_picks_subtitle">Check your connection and try again</string>
+    <string name="auto_empty_quick_picks_subtitle">Periksa koneksi Anda dan coba lagi</string>
 
-    <string name="auto_empty_playlists_title">No playlists available</string>
+    <string name="auto_empty_playlists_title">Tidak ada playlist tersedia</string>
 
-    <string name="auto_empty_playlists_subtitle">Check your connection and try again</string>
+    <string name="auto_empty_playlists_subtitle">Periksa koneksi Anda dan coba lagi</string>
 
-    <string name="auto_empty_liked_title">No liked songs</string>
+    <string name="auto_empty_liked_title">Tidak ada lagu yang disukai</string>
 
-    <string name="auto_empty_liked_subtitle">Tap the heart on a song to save it here</string>
+    <string name="auto_empty_liked_subtitle">Ketuk ikon hati pada lagu untuk menyimpannya di sini</string>
 
-    <string name="auto_empty_offline_title">No offline songs</string>
+    <string name="auto_empty_offline_title">Tidak ada lagu offline</string>
 
-    <string name="auto_empty_offline_subtitle">Download songs on your phone to listen here</string>
+    <string name="auto_empty_offline_subtitle">Unduh lagu di ponsel Anda untuk mendengarkan di sini</string>
 
-    <string name="auto_unavailable_title">Content unavailable</string>
+    <string name="auto_unavailable_title">Konten tidak tersedia</string>
 
-    <string name="auto_unavailable_subtitle">Reopen the folder and try again</string>
+    <string name="auto_unavailable_subtitle">Buka kembali folder dan coba lagi</string>
 
-    <string name="settings_search_hint">Search settings</string>
+    <string name="settings_search_hint">Cari pengaturan</string>
 
-    <string name="settings_search_empty">No settings match “%1$s”</string>
+    <string name="settings_search_empty">Tidak ada pengaturan yang cocok dengan “%1$s”</string>
 
 
     <string name="smart_version_alignment">Penyelarasan audio cerdas</string>
     <string name="smart_version_alignment_subtitle">Menganalisis gelombang audio untuk mencocokkan momen pemutaran yang tepat</string>
 
-    <string name="equalizer_footer">Shapes the sound inside BitChord, before it reaches the system.</string>
+    <string name="equalizer_footer">Membentuk suara di dalam BitChord sebelum mencapai sistem.</string>
 
     <string name="equalizer_dynamic">Dynamic</string>
 
@@ -989,17 +987,17 @@
 
     <string name="equalizer_focused">Focused</string>
 
-    <string name="equalizer_broad_footer">Drag left for a warmer sound and right for a brighter one; down scoops the middle, up brings it forward. Broad moves wide stretches of the spectrum at once.</string>
+    <string name="equalizer_broad_footer">Geser ke kiri untuk suara lebih hangat dan ke kanan untuk lebih cerah. Lebar menyesuaikan rentang frekuensi luas sekaligus.</string>
 
-    <string name="equalizer_focused_footer">Drag left for a warmer sound and right for a brighter one; down scoops the middle, up brings it forward. Focused works on narrower stretches, so it changes less around what it moves.</string>
+    <string name="equalizer_focused_footer">Fokus bekerja pada rentang yang lebih sempit sehingga tidak banyak mengubah frekuensi di sekitarnya.</string>
 
     <string name="equalizer_preset">Preset</string>
 
     <string name="equalizer_bands">Bands</string>
 
-    <string name="equalizer_bands_footer">Moving a band leaves the preset behind and the curve becomes your own.</string>
+    <string name="equalizer_bands_footer">Menggeser pita akan meninggalkan preset dan kurva menjadi milik Anda sendiri.</string>
 
-    <string name="equalizer_reset">Reset all bands</string>
+    <string name="equalizer_reset">Atur ulang semua pita</string>
 
     <string name="equalizer_balance">Balance</string>
 
@@ -1007,34 +1005,34 @@
 
     <string name="equalizer_balance_right">R</string>
 
-    <string name="equalizer_balance_footer">Shifts the sound towards one ear by quietening the other.</string>
+    <string name="equalizer_balance_footer">Menggeser suara ke satu telinga dengan meredam telinga lainnya.</string>
     <string name="equalizer_bitstream_title">Tidak berjalan saat ini</string>
     <string name="equalizer_bitstream_subtitle">Lagu ini dikirim ke output tanpa didekode</string>
     <string name="equalizer_bitstream_footer">Equalizer bekerja pada audio yang sudah didekode. Lagu ini diteruskan sebagai bitstream untuk didekode oleh perangkatmu, jadi tidak ada sampel yang bisa difilter di sini.</string>
 
-    <string name="system_equalizer">System equalizer</string>
+    <string name="system_equalizer">Equalizer sistem</string>
 
-    <string name="system_equalizer_subtitle">Your device\'s own panel</string>
+    <string name="system_equalizer_subtitle">Panel perangkat Anda sendiri</string>
 
-    <string name="system_equalizer_footer">Runs after BitChord\'s, on the whole audio session. Using both applies both.</string>
+    <string name="system_equalizer_footer">Berjalan setelah BitChord pada seluruh sesi audio. Menggunakan keduanya akan menerapkan keduanya.</string>
 
     <string name="eq_preset_flat">Flat</string>
 
     <string name="eq_preset_acoustic">Acoustic</string>
 
-    <string name="eq_preset_bass_boost">Bass boost</string>
+    <string name="eq_preset_bass_boost">Penguat bass</string>
 
-    <string name="eq_preset_bass_cut">Bass cut</string>
+    <string name="eq_preset_bass_cut">Pemotongan bass</string>
 
     <string name="eq_preset_vocal">Vocal</string>
 
-    <string name="eq_preset_treble_boost">Treble boost</string>
+    <string name="eq_preset_treble_boost">Penguat treble</string>
 
-    <string name="eq_preset_treble_cut">Treble cut</string>
+    <string name="eq_preset_treble_cut">Pemotongan treble</string>
 
     <string name="eq_preset_loudness">Loudness</string>
 
-    <string name="eq_preset_spoken_word">Spoken word</string>
+    <string name="eq_preset_spoken_word">Kata yang diucapkan</string>
 
     <string name="eq_preset_electronic">Electronic</string>
 
@@ -1046,39 +1044,39 @@
 
     <string name="eq_preset_classical">Classical</string>
 
-    <string name="eq_preset_small_speakers">Small speakers</string>
+    <string name="eq_preset_small_speakers">Speaker kecil</string>
 
-    <string name="eq_preset_late_night">Late night</string>
+    <string name="eq_preset_late_night">Larut malam</string>
 
     <string name="eq_preset_custom">Custom</string>
 
-    <string name="translation_language">Translation language</string>
+    <string name="translation_language">Bahasa terjemahan</string>
 
-    <string name="translation_language_description">The language the translate button turns lyrics into.</string>
+    <string name="translation_language_description">Bahasa tempat tombol terjemahan menerjemahkan lirik.</string>
 
-    <string name="translation_language_app_default">App language</string>
+    <string name="translation_language_app_default">Bahasa aplikasi</string>
 
-    <string name="translation_language_subtitle">Follows the app language</string>
+    <string name="translation_language_subtitle">Mengikuti bahasa aplikasi</string>
 
-    <string name="search_languages">Search languages</string>
+    <string name="search_languages">Cari bahasa</string>
 
-    <string name="no_languages_match">No languages match</string>
+    <string name="no_languages_match">Tidak ada bahasa yang cocok</string>
 
 
 
     <string name="audio_pipeline">Audio Pipeline</string>
     <string name="cast_dialog_title">Cast</string>
-    <string name="cast_dialog_subtitle">Play on a Chromecast or Google Cast speaker</string>
-    <string name="cast_searching">Looking for devices…</string>
-    <string name="cast_searching_hint">Your phone and the receiver need to be on the same Wi-Fi network.</string>
+    <string name="cast_dialog_subtitle">Putar di speaker Chromecast atau Google Cast</string>
+    <string name="cast_searching">Mencari perangkat…</string>
+    <string name="cast_searching_hint">Ponsel dan penerima Anda harus berada di jaringan Wi-Fi yang sama.</string>
     <string name="cast_device_connecting">Connecting…</string>
     <string name="cast_device_connected">Casting</string>
-    <string name="cast_stop">Stop casting</string>
-    <string name="cast_track_unsupported">This track can\'t be cast</string>
-    <string name="cast_connect_failed">Couldn\'t connect to the receiver</string>
+    <string name="cast_stop">Hentikan transmisi</string>
+    <string name="cast_track_unsupported">Trek ini tidak dapat ditransmisikan</string>
+    <string name="cast_connect_failed">Tidak dapat terhubung ke penerima</string>
     <string name="audio_pipeline_subtitle">Jalur sinyal langsung, dari dekoder ke output</string>
 
-    <string name="pipeline_track_info">Track Info</string>
+    <string name="pipeline_track_info">Info trek</string>
 
     <string name="pipeline_decoder">Decoder</string>
 
@@ -1086,23 +1084,23 @@
 
     <string name="pipeline_dsp">DSP</string>
 
-    <string name="pipeline_output_device">Output Device</string>
+    <string name="pipeline_output_device">Perangkat output</string>
 
     <string name="pipeline_source">Source</string>
 
     <string name="pipeline_format">Format</string>
 
-    <string name="pipeline_bit_depth">Bit Depth</string>
+    <string name="pipeline_bit_depth">Kedalaman bit</string>
 
-    <string name="pipeline_sample_rate">Sample Rate</string>
+    <string name="pipeline_sample_rate">Laju sampel</string>
 
     <string name="pipeline_bitrate">Bitrate</string>
 
     <string name="pipeline_channels">Channels</string>
 
-    <string name="pipeline_decoder_name">Decoder Name</string>
+    <string name="pipeline_decoder_name">Nama dekoder</string>
 
-    <string name="pipeline_io_rate">I/O Rate</string>
+    <string name="pipeline_io_rate">Laju I/O</string>
 
     <string name="pipeline_type">Type</string>
 
@@ -1110,25 +1108,25 @@
 
     <string name="pipeline_quality">Quality</string>
 
-    <string name="pipeline_pcm_format">PCM Format</string>
+    <string name="pipeline_pcm_format">Format PCM</string>
 
-    <string name="pipeline_eq_preset">EQ Preset</string>
+    <string name="pipeline_eq_preset">Preset EQ</string>
 
-    <string name="pipeline_stereo_expand">Stereo Expand</string>
+    <string name="pipeline_stereo_expand">Perluasan stereo</string>
 
     <string name="pipeline_buffers">Buffers</string>
 
-    <string name="pipeline_output_api">Output API</string>
+    <string name="pipeline_output_api">API output</string>
 
-    <string name="pipeline_device_name">Device Name</string>
+    <string name="pipeline_device_name">Nama perangkat</string>
 
 
 
-    <string name="shared_link">Shared link</string>
+    <string name="shared_link">Tautan dibagikan</string>
 
-    <string name="song_will_play_next">Song will play next</string>
+    <string name="song_will_play_next">Lagu akan diputar berikutnya</string>
 
-    <string name="song_added_to_queue">Song added to queue</string>
+    <string name="song_added_to_queue">Lagu ditambahkan ke antrean</string>
     <string name="song_added_to_playlist">Ditambahkan ke playlist</string>
     <string name="song_already_in_playlist">Sudah ada di playlist</string>
     <plurals name="add_to_playlists_count">
@@ -1139,11 +1137,11 @@
     </plurals>
     <string name="party_queue_full">Antrean penuh (maksimal %d lagu di pesta)</string>
 
-    <string name="paxsenix_api_key">PaxSenix API key</string>
+    <string name="paxsenix_api_key">Kunci API PaxSenix</string>
 
-    <string name="paxsenix_api_key_configured">PaxSenix API key — configured</string>
+    <string name="paxsenix_api_key_configured">Kunci API PaxSenix — dikonfigurasi</string>
 
-    <string name="paxsenix_api_key_missing">PaxSenix API key — optional, not configured</string>
+    <string name="paxsenix_api_key_missing">Kunci API PaxSenix — opsional, belum dikonfigurasi</string>
 
 
 
@@ -1278,9 +1276,9 @@
     <string name="song_info_unavailable">Tidak tersedia</string>
     <string name="song_info_error">Sebagian informasi tidak dapat dimuat.</string>
     <string name="song_info_retry">Coba lagi</string>
-    <string name="no_audio_version">No audio version found for this video</string>
-    <string name="no_video_version">No video version found for this song</string>
-    <string name="version_switch_in_party">Everyone in Listen Together hears the same version</string>
+    <string name="no_audio_version">Tidak ada versi audio yang ditemukan untuk video ini</string>
+    <string name="no_video_version">Tidak ada versi video yang ditemukan untuk lagu ini</string>
+    <string name="version_switch_in_party">Semua orang di Dengarkan Bersama mendengar versi yang sama</string>
     <string name="opened_file">File yang dibuka</string>
     <string name="folders">Folder</string>
     <string name="folder">Folder</string>
@@ -1494,46 +1492,46 @@
     <string name="spotify_sync_unmatched_title">Lagu dilewati</string>
     <string name="spotify_sync_unmatched_hint">Lagu-lagu ini tidak ditemukan di YouTube Music:</string>
     <!-- Spotify Import & Sing Mode -->
-    <string name="spotify_import_intro_title">Import from Spotify</string>
-    <string name="spotify_import_intro_subtitle">Transfer to BitChord</string>
-    <string name="spotify_import_intro_desc">Transfer playlists and match songs automatically.</string>
-    <string name="spotify_import_destination_title">Save to</string>
-    <string name="spotify_import_destination_notice">Choose destination:</string>
-    <string name="spotify_import_target_local_title">On this device</string>
-    <string name="spotify_import_target_local_desc">Local · Offline ready</string>
-    <string name="spotify_import_target_youtube_title">In YouTube Music</string>
-    <string name="spotify_import_target_youtube_desc">Cloud · All devices</string>
-    <string name="spotify_import_target_youtube_login_req">Sign-in required</string>
-    <string name="spotify_import_continue">Continue</string>
-    <string name="spotify_import_paste_action">Paste</string>
-    <string name="spotify_import_advanced_options">Advanced options</string>
-    <string name="spotify_import_cancel">Cancel</string>
-    <string name="spotify_import_start">Import</string>
-    <string name="spotify_import_step_input_title">Playlist link</string>
-    <string name="spotify_import_step_matching_title">Importing…</string>
+    <string name="spotify_import_intro_title">Impor dari Spotify</string>
+    <string name="spotify_import_intro_subtitle">Transfer ke BitChord</string>
+    <string name="spotify_import_intro_desc">Transfer playlist dan cocokkan lagu secara otomatis.</string>
+    <string name="spotify_import_destination_title">Simpan ke</string>
+    <string name="spotify_import_destination_notice">Pilih tujuan:</string>
+    <string name="spotify_import_target_local_title">Di perangkat ini</string>
+    <string name="spotify_import_target_local_desc">Lokal · Siap offline</string>
+    <string name="spotify_import_target_youtube_title">Di YouTube Music</string>
+    <string name="spotify_import_target_youtube_desc">Cloud · Semua perangkat</string>
+    <string name="spotify_import_target_youtube_login_req">Perlu masuk</string>
+    <string name="spotify_import_continue">Lanjutkan</string>
+    <string name="spotify_import_paste_action">Tempel</string>
+    <string name="spotify_import_advanced_options">Opsi lanjutan</string>
+    <string name="spotify_import_cancel">Batal</string>
+    <string name="spotify_import_start">Impor</string>
+    <string name="spotify_import_step_input_title">Tautan playlist</string>
+    <string name="spotify_import_step_matching_title">Mengimpor…</string>
     <string name="spotify_import_destination_tag_local">Local</string>
     <string name="spotify_import_destination_tag_youtube">YouTube</string>
-    <string name="spotify_import_clear_tooltip">Clear</string>
-    <string name="spotify_import_privacy_title">Visibility</string>
-    <string name="spotify_import_done_button">Done</string>
-    <string name="spotify_import_complete">Import completed</string>
-    <string name="spotify_library_intro_title">Import from Spotify</string>
-    <string name="spotify_library_intro_desc">Transfer playlists to your library.</string>
-    <string name="spotify_library_intro_start_selecting">Select playlists</string>
-    <string name="spotify_library_intro_link_action">Or import via link</string>
-    <string name="spotify_library_import_by_link">Import by link</string>
-    <string name="spotify_library_import_by_link_subtitle">Paste a playlist link</string>
-    <string name="spotify_library_selected_title">Select playlists to import</string>
+    <string name="spotify_import_clear_tooltip">Hapus</string>
+    <string name="spotify_import_privacy_title">Visibilitas</string>
+    <string name="spotify_import_done_button">Selesai</string>
+    <string name="spotify_import_complete">Impor selesai</string>
+    <string name="spotify_library_intro_title">Impor dari Spotify</string>
+    <string name="spotify_library_intro_desc">Transfer playlist ke koleksi Anda.</string>
+    <string name="spotify_library_intro_start_selecting">Pilih playlist</string>
+    <string name="spotify_library_intro_link_action">Atau impor lewat tautan</string>
+    <string name="spotify_library_import_by_link">Impor lewat tautan</string>
+    <string name="spotify_library_import_by_link_subtitle">Tempel tautan playlist</string>
+    <string name="spotify_library_selected_title">Pilih playlist untuk diimpor</string>
     <string name="sing_preset_karaoke">Karaoke</string>
     <string name="sing_preset_duet">Duet</string>
-    <string name="sing_preset_original">Original</string>
-    <string name="sing_mode_original">Original Vocals</string>
+    <string name="sing_preset_original">Asli</string>
+    <string name="sing_mode_original">Vokal asli</string>
     <string name="sing_mode_duet">Duet (50%)</string>
     <string name="sing_mode_karaoke">Karaoke (0%)</string>
-    <string name="sing_status_original">Original</string>
+    <string name="sing_status_original">Asli</string>
     <string name="sing_status_duet">Duet (50%)</string>
     <string name="sing_status_karaoke">Karaoke</string>
-    <string name="sing_engine_title">Acoustic Engine</string>
+    <string name="sing_engine_title">Mesin akustik</string>
     <string name="sing_badge_dsp">BITCHORD SING</string>
     <string name="swipe_right_action">Geser kanan pada lagu</string>
     <string name="swipe_left_action">Geser kiri pada lagu</string>
@@ -1541,44 +1539,44 @@
     <string name="swipe_action_disabled">Nonaktif</string>
 
     <!-- Spotify Onboarding -->
-    <string name="onboarding_spotify_title">Connect your Spotify</string>
-    <string name="onboarding_spotify_body">Bring your playlists and favorite music with you. Songs are matched on YouTube Music.</string>
-    <string name="onboarding_sign_in_spotify">Connect with Spotify</string>
-    <string name="onboarding_spotify_connected">Spotify connected</string>
-    <string name="onboarding_spotify_finish">Get started</string>
-    <string name="onboarding_skip_spotify">Maybe later</string>
+    <string name="onboarding_spotify_title">Hubungkan Spotify Anda</string>
+    <string name="onboarding_spotify_body">Bawa playlist dan lagu favorit Anda. Lagu dicocokkan di YouTube Music.</string>
+    <string name="onboarding_sign_in_spotify">Hubungkan dengan Spotify</string>
+    <string name="onboarding_spotify_connected">Spotify terhubung</string>
+    <string name="onboarding_spotify_finish">Mulai</string>
+    <string name="onboarding_skip_spotify">Mungkin nanti</string>
 
     <string name="automix_overview">Automix overview</string>
-    <string name="content_preferences">Content Preferences</string>
-    <string name="hide_recents">Hide Recents</string>
-    <string name="hide_home_videos">Hide videos from Home</string>
-    <string name="hide_home_videos_subtitle">Shelves of only videos go too. Search, artists and playlists still show them</string>
-    <string name="hide_top_picks">Hide Top Picks for You</string>
-    <string name="hide_home_moods">Hide Find Your Mood</string>
-    <string name="square_video_thumbnails">Square video thumbnails</string>
-    <string name="square_video_thumbnails_subtitle">Show music videos as squares everywhere, including the player</string>
-    <string name="prefer_music_only">Prefer music-only version</string>
-    <string name="prefer_music_only_subtitle">Music videos play as their audio version, and the next track in the queue is converted ahead of time so Automix and crossfade work</string>
-    <string name="glass_performance">Better Performance for Glass</string>
-    <string name="full_screen_detail_cover">Full-screen album/playlist cover</string>
-    <string name="full_screen_detail_cover_subtitle">Runs album and playlist covers to the edges of the page instead of a framed sleeve</string>
-    <string name="listen_together_scan_qr_action">Scan QR code</string>
-    <string name="listen_together_camera_permission_title">Camera permission needed</string>
-    <string name="listen_together_camera_permission_desc">To scan party or Spotify Jam QR codes directly, allow camera access.</string>
-    <string name="listen_together_grant_permission">Grant permission</string>
-    <string name="listen_together_scan_qr_prompt">Point the camera at a BitChord or Spotify Jam QR code</string>
-    <string name="listen_together_gallery_qr">Scan from gallery</string>
-    <string name="listen_together_paste_link">Paste link from clipboard</string>
-    <string name="listen_together_invalid_qr">No valid party code or Spotify Jam link found</string>
-    <string name="listen_together_spotify_jam_title">Spotify Jam bridge</string>
-    <string name="listen_together_spotify_jam_premium_subtitle">Spotify Premium connected. Friends on Spotify can join your Jam directly.</string>
-    <string name="listen_together_spotify_jam_free_subtitle">Spotify Free account. You can join existing Jams; host Jam creation requires Premium.</string>
-    <string name="listen_together_spotify_jam_disconnected_subtitle">Connect Spotify in Settings to sync and host Spotify Jams.</string>
-    <string name="listen_together_share_spotify_jam">Share Spotify Jam link</string>
-    <string name="listen_together_share_spotify_jam_text">Join my Spotify Jam via BitChord</string>
-    <string name="listen_together_scan_spotify_jam_qr">Scan Spotify Jam QR</string>
-    <string name="listen_together_scan_spotify_jam_subtitle">Spotify users can scan this code using the Spotify app camera</string>
-    <string name="listen_together_spotify_members">Spotify Jam members</string>
+    <string name="content_preferences">Preferensi konten</string>
+    <string name="hide_recents">Sembunyikan baru saja diputar</string>
+    <string name="hide_home_videos">Sembunyikan video dari Beranda</string>
+    <string name="hide_home_videos_subtitle">Baris video saja juga dihapus. Pencarian, artis, dan playlist masih menampilkannya</string>
+    <string name="hide_top_picks">Sembunyikan Pilihan Teratas untuk Anda</string>
+    <string name="hide_home_moods">Sembunyikan Temukan Mood Anda</string>
+    <string name="square_video_thumbnails">Gambar mini video persegi</string>
+    <string name="square_video_thumbnails_subtitle">Tampilkan video musik sebagai persegi di mana saja, termasuk pemutar</string>
+    <string name="prefer_music_only">Pilih versi musik saja</string>
+    <string name="prefer_music_only_subtitle">Video musik diputar sebagai versi audionya, dan lagu berikutnya dikonversi sebelumnya agar Automix dan crossfade berfungsi</string>
+    <string name="glass_performance">Kinerja Lebih Baik untuk Glass</string>
+    <string name="full_screen_detail_cover">Sampul album/playlist layar penuh</string>
+    <string name="full_screen_detail_cover_subtitle">Menampilkan sampul album dan playlist ke tepi halaman alih-alih bingkai</string>
+    <string name="listen_together_scan_qr_action">Pindai kode QR</string>
+    <string name="listen_together_camera_permission_title">Izin kamera diperlukan</string>
+    <string name="listen_together_camera_permission_desc">Untuk memindai kode QR party atau Spotify Jam secara langsung, izinkan akses kamera.</string>
+    <string name="listen_together_grant_permission">Beri izin</string>
+    <string name="listen_together_scan_qr_prompt">Arahkan kamera ke kode QR BitChord atau Spotify Jam</string>
+    <string name="listen_together_gallery_qr">Pindai dari galeri</string>
+    <string name="listen_together_paste_link">Tempel tautan dari papan klip</string>
+    <string name="listen_together_invalid_qr">Tidak ada kode party atau tautan Spotify Jam yang valid ditemukan</string>
+    <string name="listen_together_spotify_jam_title">Jembatan Spotify Jam</string>
+    <string name="listen_together_spotify_jam_premium_subtitle">Spotify Premium terhubung. Teman di Spotify dapat bergabung langsung ke Jam Anda.</string>
+    <string name="listen_together_spotify_jam_free_subtitle">Akun Spotify Free. Anda dapat bergabung dengan Jam yang ada; membuat Jam host memerlukan Premium.</string>
+    <string name="listen_together_spotify_jam_disconnected_subtitle">Hubungkan Spotify di Pengaturan untuk menyinkronkan dan menjadi host Spotify Jam.</string>
+    <string name="listen_together_share_spotify_jam">Bagikan tautan Spotify Jam</string>
+    <string name="listen_together_share_spotify_jam_text">Bergabunglah dengan Spotify Jam saya melalui BitChord</string>
+    <string name="listen_together_scan_spotify_jam_qr">Pindai QR Spotify Jam</string>
+    <string name="listen_together_scan_spotify_jam_subtitle">Pengguna Spotify dapat memindai kode ini menggunakan kamera aplikasi Spotify</string>
+    <string name="listen_together_spotify_members">Anggota Spotify Jam</string>
     <string name="created_by_bitchord">Created by BitChord</string>
     <string name="trending_title">Trending</string>
     <string name="region_global">Global</string>
@@ -1659,4 +1657,6 @@
     <plurals name="listen_together_people_count">
         <item quantity="other">%1$d orang mendengarkan</item>
     </plurals>
+    <string name="filter_music_videos_autoplay">Filter video musik di AutoPlay</string>
+    <string name="filter_music_videos_autoplay_subtitle">Hanya antrekan trek audio di AutoPlay dan rekomendasi radio, jangan pernah video musik</string>
 </resources>

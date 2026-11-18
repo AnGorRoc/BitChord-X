@@ -16,7 +16,7 @@
     <string name="d_choose_something_to_play">Elige algo para reproducir</string>
     <string name="d_close_player">Cerrar el reproductor</string>
     <string name="d_close_up_next">Cerrar A continuación</string>
-    <string name="d_closing_the_window_leaves_bitchord_in_the_tray_instead_o">Al cerrar la ventana, BitChord queda en la bandeja en lugar de salir</string>
+    <string name="d_closing_the_window_leaves_bitchord_in_the_tray_instead_o">Al cerrar la ventana, BitChord se mantiene en segundo plano en la bandeja en lugar de salir</string>
     <string name="d_continue_playing">Seguir escuchando</string>
     <string name="d_custom_module">Módulo personalizado</string>
     <string name="d_discord_rich_presence_last_fm_and_listenbrainz">Rich Presence de Discord, Last.fm y ListenBrainz</string>
@@ -27,7 +27,7 @@
     <string name="d_find_anything_in_youtube_music">Encuentra lo que sea en YouTube Music</string>
     <string name="d_found_on_your_listenbrainz_profile_under_settings">Está en tu perfil de ListenBrainz, en Ajustes.</string>
     <string name="d_google_signs_in_inside_a_browser">Google inicia sesión dentro de un navegador y devuelve una sesión. Elige un navegador en el que ya hayas iniciado sesión y BitChord usará esa sesión.</string>
-    <string name="d_keep_playing_when_closed">Seguir reproduciendo al cerrar</string>
+    <string name="d_keep_playing_when_closed">Ejecutar en segundo plano al cerrar</string>
     <string name="d_keep_the_music_going_with_similar_songs">Mantén la música con canciones parecidas</string>
     <string name="d_keeps_the_spotlight_on_the_current_line">Mantiene el foco en la línea actual</string>
     <string name="d_listening_shape">Perfil de escucha</string>
