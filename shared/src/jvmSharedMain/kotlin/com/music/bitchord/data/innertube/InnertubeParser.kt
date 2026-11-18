@@ -284,6 +284,15 @@ object InnertubeParser {
         return out
     }
 
+    /**
+     * Carousels on an album browse response: "More by the artist", "Similar albums",
+     * "Other versions", etc.
+     */
+    fun parseAlbumSections(root: JsonElement): List<HomeShelf> {
+        val carousels = collectRenderers(root, "musicCarouselShelfRenderer")
+        return carousels.mapNotNull(::carouselShelf)
+    }
+
     private fun carouselShelf(carousel: JsonObject): HomeShelf? {
         val header = carousel.o("header").o("musicCarouselShelfBasicHeaderRenderer")
         val title = header.o("title").runs()
