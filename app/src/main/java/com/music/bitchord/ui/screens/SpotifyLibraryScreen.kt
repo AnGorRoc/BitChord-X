@@ -111,6 +111,8 @@ import com.music.bitchord.ui.components.DIALOG_FROST_ALPHA
 import com.music.bitchord.ui.components.DIALOG_LIGHT_EDGE_COLOR
 import com.music.bitchord.ui.components.DIALOG_LIGHT_FROST_ALPHA
 import com.music.bitchord.ui.components.DIALOG_LIGHT_GREY
+import com.music.bitchord.ui.components.dialogInk
+import com.music.bitchord.ui.components.dialogInkInverse
 import com.music.bitchord.ui.components.DestinationOptionCard
 import com.music.bitchord.ui.components.MenuFrostDark
 import com.music.bitchord.ui.components.PAGE_GUTTER
@@ -943,7 +945,7 @@ internal fun SpotifyLibraryIntroDialog(
     val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
     val dialogShape = RoundedCornerShape(26.dp)
     val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
-    val dialogFill = if (isDark) DIALOG_DARK_GREY else DIALOG_LIGHT_GREY
+    val dialogFill = com.music.bitchord.ui.theme.LocalCardSurface.current ?: if (isDark) DIALOG_DARK_GREY else DIALOG_LIGHT_GREY
     val dialogBorder = if (isDark) DIALOG_EDGE_COLOR else DIALOG_LIGHT_EDGE_COLOR
     val dialogAlpha = if (isDark) DIALOG_FROST_ALPHA else DIALOG_LIGHT_FROST_ALPHA
     val scrimAlpha = if (isDark) 0.55f else 0.28f
@@ -989,7 +991,7 @@ internal fun SpotifyLibraryIntroDialog(
             Icon(
                 painter = painterResource(Res.drawable.spotify_logo),
                 contentDescription = null,
-                tint = Color.White,
+                tint = dialogInk(),
                 modifier = Modifier.size(42.dp),
             )
 
@@ -1001,7 +1003,7 @@ internal fun SpotifyLibraryIntroDialog(
                     fontWeight = FontWeight.Bold,
                     fontSize = 20.sp,
                 ),
-                color = Color.White,
+                color = dialogInk(),
                 textAlign = TextAlign.Center,
             )
 
@@ -1011,7 +1013,7 @@ internal fun SpotifyLibraryIntroDialog(
                     fontSize = 13.sp,
                     lineHeight = 17.sp,
                 ),
-                color = Color.White.copy(alpha = 0.70f),
+                color = dialogInk().copy(alpha = 0.70f),
                 textAlign = TextAlign.Center,
                 modifier = Modifier.padding(top = 6.dp, bottom = 16.dp),
             )
@@ -1058,8 +1060,8 @@ internal fun SpotifyLibraryIntroDialog(
                     .height(48.dp),
                 shape = RoundedCornerShape(percent = 50),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = Color.White,
-                    contentColor = Color.Black,
+                    containerColor = dialogInk(),
+                    contentColor = dialogInkInverse(),
                 ),
             ) {
                 Text(
@@ -1083,7 +1085,7 @@ internal fun SpotifyLibraryIntroDialog(
                 Text(
                     text = stringResource(R.string.spotify_import_cancel),
                     style = MaterialTheme.typography.labelMedium,
-                    color = Color.White.copy(alpha = 0.60f),
+                    color = dialogInk().copy(alpha = 0.60f),
                 )
             }
         }

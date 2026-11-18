@@ -576,7 +576,7 @@ fun ExploreScreen(
         ModalBottomSheet(
             onDismissRequest = { showChartOptionsModal = false },
             sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-            containerColor = MaterialTheme.colorScheme.surface,
+            containerColor = com.music.bitchord.ui.theme.pageBackground(),
             dragHandle = { BottomSheetDefaults.DragHandle() },
         ) {
             ChartOptionsModalContent(
@@ -884,8 +884,8 @@ fun ExploreScreen(
                                                     Brush.verticalGradient(
                                                         0.0f to Color.Transparent,
                                                         0.32f to Color.Transparent,
-                                                        0.70f to MaterialTheme.colorScheme.background.copy(alpha = 0.70f),
-                                                        1.0f to MaterialTheme.colorScheme.background,
+                                                        0.70f to com.music.bitchord.ui.theme.pageBackground().copy(alpha = 0.70f),
+                                                        1.0f to com.music.bitchord.ui.theme.pageBackground(),
                                                     ),
                                                 ),
                                         )

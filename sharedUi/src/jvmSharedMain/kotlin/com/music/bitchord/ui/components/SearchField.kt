@@ -83,7 +83,7 @@ fun SearchField(
                     Modifier
                         .height(46.dp)
                         .clip(searchShape)
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .background(com.music.bitchord.ui.theme.cardSurface())
                 },
             )
             // Asymmetric: the magnifier is a button now and wants a real touch
