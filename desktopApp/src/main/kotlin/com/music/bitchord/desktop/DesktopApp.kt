@@ -316,6 +316,8 @@ import bitchord.desktopapp.generated.resources.sf_pro_display_semibold
 import com.music.bitchord.data.model.ArtistPage
 import com.music.bitchord.data.model.BrowseItem
 import com.music.bitchord.data.model.BrowseType
+import com.music.bitchord.data.model.albumNeedsArtistShelves
+import com.music.bitchord.data.model.albumShelvesFromArtist
 import com.music.bitchord.data.model.CARD_ART_PX
 import com.music.bitchord.data.model.HEADER_ART_PX
 import com.music.bitchord.data.model.HomeShelf
@@ -454,6 +456,9 @@ private const val TYPEAHEAD_MEDIA_DEBOUNCE_MS = 400L
 private const val TYPEAHEAD_MEDIA_LIMIT = 8
 
 private const val INITIAL_RADIO_TRACKS = 24
+
+/** How many of a search's first results get their artist page fetched ahead of a click. */
+private const val SEARCH_ARTIST_PREFETCH_LIMIT = 7
 
 /** An artist's top songs, capped so the release shelves are not buried. */
 private const val MAX_ARTIST_SONGS = 20
@@ -1331,6 +1336,21 @@ fun BitChordDesktopApp() {
             },
             onFailure = { collectionError = it.message ?: "Could not open ${pending.title.ifBlank { "this page" }}" },
         )
+    }
+
+    // An album page's own carousels are often thin. When it names no other releases, or no similar
+    // artists, they come from the artist's page (cached after the first time), as on the phone.
+    LaunchedEffect(openedCollection?.browseId, openedCollection?.loading) {
+        val album = openedCollection
+            ?.takeIf { it.type == BrowseType.ALBUM && !it.loading && it.songs.isNotEmpty() }
+            ?: return@LaunchedEffect
+        val artistId = album.songs.firstNotNullOfOrNull { it.artistId } ?: return@LaunchedEffect
+        if (!albumNeedsArtistShelves(album.sections, album.browseId)) return@LaunchedEffect
+        DesktopSearchClient.artistPage(artistId).onSuccess { artist ->
+            val current = openedCollection?.takeIf { it.browseId == album.browseId } ?: return@onSuccess
+            val extra = albumShelvesFromArtist(current.sections, current.browseId, artist)
+            if (extra.isNotEmpty()) openedCollection = current.copy(sections = current.sections + extra)
+        }
     }
 
     // A Spotify playlist: its tracks, then each one's YouTube Music match. Keyed like the browse
@@ -2666,6 +2686,26 @@ fun BitChordDesktopApp() {
         }
     }
 
+    var searchPrefetchJob by remember { mutableStateOf<Job?>(null) }
+
+    /**
+     * Fetches the pages of the artists the first results name, so opening one is instant: the
+     * repository keeps them for twenty minutes and hands the same request to whoever asks while it
+     * is in flight. A newer search replaces the one running.
+     */
+    fun prefetchSearchArtists(rows: List<SearchResult>) {
+        searchPrefetchJob?.cancel()
+        val artistIds = rows.take(SEARCH_ARTIST_PREFETCH_LIMIT)
+            .mapNotNull { (it as? SearchResult.Browse)?.item }
+            .filter { it.type == BrowseType.ARTIST || it.browseId.startsWith("UC") }
+            .map { it.browseId }
+            .distinct()
+        if (artistIds.isEmpty()) return
+        searchPrefetchJob = scope.launch(Dispatchers.IO) {
+            artistIds.forEach { id -> launch { DesktopSearchClient.artistPage(id) } }
+        }
+    }
+
     fun search() {
         if (query.isBlank() || searchLoading) return
         when (val link = MusicLinkParser.parseText(query)) {
@@ -2749,6 +2789,7 @@ fun BitChordDesktopApp() {
                 DesktopMusicSources.search(query, searchFilter).fold(
                     onSuccess = { rows ->
                         searchRows = rows
+                        prefetchSearchArtists(rows)
                         if (typedHit == null) {
                             rows.firstNotNullOfOrNull { row ->
                                 when (row) {
@@ -4964,6 +5005,7 @@ fun BitChordDesktopApp() {
                                 onDownload = ::downloadSong,
                                 downloadedIds = downloads.map(Song::videoId).toSet(),
                                 downloadInProgress = downloadInProgress,
+                                onShelfItemClick = ::openShelfItem,
                                 contentPadding = contentPadding,
                             )
                         }
@@ -8989,6 +9031,7 @@ private fun DesktopCollectionPage(
     onAddToPlaylist: (Song) -> Unit,
     downloadedIds: Set<String>,
     downloadInProgress: Set<String>,
+    onShelfItemClick: (ShelfItem, String?) -> Unit,
     contentPadding: PaddingValues,
 ) {
     val songs = collection.songs
@@ -9312,6 +9355,13 @@ private fun DesktopCollectionPage(
                                 modifier = Modifier.size(22.dp),
                             )
                         }
+                    }
+                }
+            }
+            collection.sections.forEachIndexed { index, shelf ->
+                item(key = "collection-shelf-$index-${shelf.title}") {
+                    Box(Modifier.padding(top = 18.dp)) {
+                        DesktopShelf(shelf, onItemClick = onShelfItemClick)
                     }
                 }
             }

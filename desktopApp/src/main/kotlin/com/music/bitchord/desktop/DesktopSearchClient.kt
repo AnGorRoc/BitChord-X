@@ -14,6 +14,7 @@ import com.music.bitchord.data.model.PlaylistPrivacy
 import com.music.bitchord.data.model.SearchFilter
 import com.music.bitchord.data.model.SearchResult
 import com.music.bitchord.data.model.Song
+import com.music.bitchord.data.model.withoutRelease
 import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
@@ -57,6 +58,7 @@ object DesktopSearchClient {
     suspend fun browse(browseId: String, fallback: BrowseItem? = null): Result<DesktopCollection> =
         YtMusicRepository.browseSongs(browseId).map { page ->
             val header = page.header
+            val type = fallback?.type?.takeIf { it != BrowseType.OTHER } ?: browseTypeOf(browseId)
             DesktopCollection(
                 browseId = browseId,
                 title = header?.title?.takeIf(String::isNotBlank)
@@ -64,10 +66,12 @@ object DesktopSearchClient {
                     ?: "Collection",
                 subtitle = header?.subtitle?.takeIf(String::isNotBlank) ?: fallback?.subtitle.orEmpty(),
                 thumbnailUrl = header?.thumbnailUrl ?: fallback?.thumbnailUrl,
-                type = fallback?.type?.takeIf { it != BrowseType.OTHER } ?: browseTypeOf(browseId),
+                type = type,
                 songs = page.songs,
                 continuation = page.continuation,
                 owned = page.owned,
+                // An album page names other releases and similar artists; the page itself is not one.
+                sections = if (type == BrowseType.ALBUM) page.sections.withoutRelease(browseId) else emptyList(),
             )
         }
 
@@ -186,6 +190,8 @@ data class DesktopCollection(
      * knew, drawn as a loader until the browse answers.
      */
     val loading: Boolean = false,
+    /** The carousels under an album's tracks: its artist's other releases and similar artists. */
+    val sections: List<HomeShelf> = emptyList(),
 ) {
     /** The raw id an edit is addressed to; the browse id carries a `VL` prefix. */
     val playlistId: String get() = browseId.removePrefix("VL")
