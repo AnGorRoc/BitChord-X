@@ -1483,9 +1483,11 @@ fun BitChordDesktopApp() {
         autoplayJob = scope.launch {
             var remaining = needed.coerceAtLeast(1)
             var emptyRefreshesRemaining = 1
-            // Which song seeds the station: this one first, then — when its station has nothing new
-            // left — the songs before it, one further back each time, as the phone does.
-            var seedBack = 0
+            // Which song seeds the station, as on the phone: this one, the last one queued, then the
+            // rest. Music already queued (Recents, say) often has nothing new in its station, so a
+            // pass tries several seeds back to back before it waits.
+            var attempt = 0
+            var passAttempts = 0
             while (isActive) {
                 DesktopTrackLog.log("autoplay: building a station from '${current.title}'")
                 val at = liveQueue.songs.size
@@ -1499,11 +1501,10 @@ fun BitChordDesktopApp() {
                     } else {
                         liveQueue.songs + partyQueue
                     },
-                    seedSong = if (seedBack == 0) {
-                        current
-                    } else {
-                        liveQueue.songs.getOrNull(liveQueue.index - seedBack) ?: current
-                    },
+                    seedSong = AutoplayRefill.seedOrder(liveQueue.index, liveQueue.songs.size)
+                        .let { order -> order.getOrNull(attempt % order.size.coerceAtLeast(1)) }
+                        ?.let { liveQueue.songs.getOrNull(it) }
+                        ?.takeIf { attempt > 0 } ?: current,
                     limit = remaining,
                 ).getOrElse { failure ->
                     DesktopTrackLog.log("autoplay: could not build a station: ${failure.message}")
@@ -1518,14 +1519,15 @@ fun BitChordDesktopApp() {
                 ) return@launch
                 if (suggestions.isEmpty()) {
                     DesktopTrackLog.log("autoplay: no station came back for '${current.title}'")
-                    // The tail must stay full: ask again, from an earlier seed once the quick
-                    // retry is spent, for as long as this track is the one playing.
                     if (liveQueue.index < 0) return@launch
-                    if (emptyRefreshesRemaining-- > 0) {
-                        delay(AutoplayRefill.RETRY_DELAY_MS)
+                    // The tail must stay full: try the next seed at once, a few per pass, then
+                    // wait and go again for as long as this track is the one playing.
+                    attempt++
+                    if (++passAttempts < AutoplayRefill.SEEDS_PER_PASS) {
+                        delay(AutoplayRefill.NEXT_SEED_DELAY_MS)
                     } else {
-                        delay(AutoplayRefill.WATCHDOG_MS)
-                        seedBack = AutoplayRefill.nextSeedBack(liveQueue.index, seedBack)
+                        passAttempts = 0
+                        delay(if (emptyRefreshesRemaining-- > 0) AutoplayRefill.RETRY_DELAY_MS else AutoplayRefill.WATCHDOG_MS)
                     }
                     remaining = AutoplayRefill.missing(
                         liveQueue.songs.drop(liveQueue.index + 1).count { it.fromAutoplay },
@@ -1566,8 +1568,8 @@ fun BitChordDesktopApp() {
                 )
                 if (stillMissing <= 0) return@launch
                 remaining = stillMissing
-                delay(AutoplayRefill.RETRY_DELAY_MS)
-                seedBack = AutoplayRefill.nextSeedBack(liveQueue.index, seedBack)
+                delay(AutoplayRefill.NEXT_SEED_DELAY_MS)
+                attempt++
             }
         }
     }

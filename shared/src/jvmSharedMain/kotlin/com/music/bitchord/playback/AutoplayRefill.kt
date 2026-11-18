@@ -18,11 +18,21 @@ object AutoplayRefill {
     /** How many more suggestions the tail needs; zero or less means it is full. */
     fun missing(queuedAhead: Int): Int = MAX_QUEUED - queuedAhead
 
+    /** Seeds tried back to back in one pass before waiting. */
+    const val SEEDS_PER_PASS = 4
+
+    /** Pause between seeds inside one pass. */
+    const val NEXT_SEED_DELAY_MS = 300L
+
     /**
-     * Which earlier song seeds the next request. A radio that has nothing new left for this song is
-     * asked again from the one before it, then the one before that, wrapping back to the current
-     * song once the queue's start is passed.
+     * Queue indexes to seed the radio from, in order: the playing song, the last one queued (what
+     * the station should carry on from), then the rest — earlier ones first, then later ones.
+     * A radio seeded on music that is already queued (Recents, say) often offers nothing new, so a
+     * different seed is what finds more.
      */
-    fun nextSeedBack(currentIndex: Int, seedBack: Int): Int =
-        if (currentIndex - (seedBack + 1) >= 0) seedBack + 1 else 0
+    fun seedOrder(currentIndex: Int, size: Int): List<Int> {
+        if (size <= 0 || currentIndex !in 0 until size) return emptyList()
+        return (listOf(currentIndex, size - 1) + (currentIndex - 1 downTo 0) + (currentIndex + 1 until size))
+            .distinct()
+    }
 }
