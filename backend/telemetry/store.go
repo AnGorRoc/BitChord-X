@@ -7,12 +7,14 @@ import (
 	"bytes"
 	"context"
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"log"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -21,13 +23,14 @@ import (
 type LiveMetricsProvider func() LiveStats
 
 type LiveStats struct {
-	Online        int   `json:"online"`
-	Android       int   `json:"android"`
-	PC            int   `json:"pc"`
-	Browser       int   `json:"browser"`
-	ActiveParties int   `json:"activeParties"`
-	ActiveSockets int   `json:"activeSockets"`
-	UpdatedAt     int64 `json:"updatedAt"`
+	Online            int   `json:"online"`
+	Android           int   `json:"android"`
+	PC                int   `json:"pc"`
+	Browser           int   `json:"browser"`
+	ActiveParties     int   `json:"activeParties"`
+	TotalPartyMembers int   `json:"totalPartyMembers"`
+	ActiveSockets     int   `json:"activeSockets"`
+	UpdatedAt         int64 `json:"updatedAt"`
 }
 
 type ErrorInput struct {
@@ -105,10 +108,11 @@ type HourlyBucket struct {
 }
 
 type VersionStat struct {
-	Version   string  `json:"version"`
-	Count     int     `json:"count"`
-	Active24h int     `json:"active24h"`
-	Pct       float64 `json:"pct"`
+	Version    string  `json:"version"`
+	Count      int     `json:"count"`
+	Active24h  int     `json:"active24h"`
+	ErrorCount int     `json:"errorCount"`
+	Pct        float64 `json:"pct"`
 }
 
 type PlatformStat struct {
@@ -209,8 +213,9 @@ func NewStore(ctx context.Context, databaseURL, serverVersion string, liveFn Liv
 	}
 
 	s.pool = pool
-	s.wg.Add(1)
+	s.wg.Add(2)
 	go s.worker()
+	go s.maintenanceLoop()
 	log.Printf("telemetry: PostgreSQL connected and schema ready")
 	return s, nil
 }
@@ -287,6 +292,23 @@ func (s *Store) worker() {
 	}
 }
 
+func (s *Store) maintenanceLoop() {
+	defer s.wg.Done()
+	ticker := time.NewTicker(6 * time.Hour)
+	defer ticker.Stop()
+	for {
+		select {
+		case <-s.closed:
+			return
+		case <-ticker.C:
+			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+			_, _ = s.pool.Exec(ctx, `DELETE FROM concurrency_snapshots WHERE recorded_at < NOW() - INTERVAL '90 days'`)
+			_, _ = s.pool.Exec(ctx, `DELETE FROM connection_events WHERE created_at < NOW() - INTERVAL '90 days'`)
+			cancel()
+		}
+	}
+}
+
 func (s *Store) enqueue(fn func(context.Context)) {
 	if s.pool == nil {
 		return
@@ -311,6 +333,13 @@ func (s *Store) Close() {
 
 func (s *Store) DatabaseEnabled() bool {
 	return s.pool != nil
+}
+
+func (s *Store) Live() LiveStats {
+	if s.liveFn == nil {
+		return LiveStats{}
+	}
+	return s.liveFn()
 }
 
 // RecordPresence records an install heartbeat or close event asynchronously.
@@ -503,7 +532,7 @@ FROM error_reports;`
 	// 2. Concurrency time series (bucketed)
 	seriesQ := fmt.Sprintf(`
 SELECT
-	to_timestamp(floor(extract(epoch FROM recorded_at) / extract(epoch FROM INTERVAL '%s')) * extract(epoch FROM INTERVAL '%s')) AT TIME ZONE 'UTC' AS bucket,
+	to_timestamp(floor(extract(epoch FROM recorded_at) / extract(epoch FROM INTERVAL '%s')) * extract(epoch FROM INTERVAL '%s')) AS bucket,
 	MAX(online_total)::INT,
 	MAX(android_count)::INT,
 	MAX(pc_count)::INT,
@@ -543,21 +572,36 @@ ORDER BY hr ASC;`
 		}
 	}
 
-	// 4. Version adoption
+	// 4. Version adoption & errors per version
 	const versionsQ = `
 SELECT
-	CASE WHEN app_version = '' THEN 'unknown' ELSE app_version END AS ver,
-	COUNT(*)::INT AS cnt,
-	COUNT(*) FILTER (WHERE last_seen_at >= NOW() - INTERVAL '24 hours')::INT AS act24
-FROM installs
-GROUP BY ver
+	ver,
+	cnt,
+	act24,
+	COALESCE(err_cnt, 0)::INT AS err_cnt
+FROM (
+	SELECT
+		CASE WHEN app_version = '' THEN 'unknown' ELSE app_version END AS ver,
+		COUNT(*)::INT AS cnt,
+		COUNT(*) FILTER (WHERE last_seen_at >= NOW() - INTERVAL '24 hours')::INT AS act24
+	FROM installs
+	GROUP BY ver
+) i
+LEFT JOIN (
+	SELECT
+		CASE WHEN app_version = '' THEN 'unknown' ELSE app_version END AS ever,
+		COUNT(*)::INT AS err_cnt
+	FROM error_reports
+	WHERE created_at >= $1
+	GROUP BY ever
+) e ON e.ever = i.ver
 ORDER BY cnt DESC, ver DESC
 LIMIT 15;`
-	if rows, err := s.pool.Query(ctx, versionsQ); err == nil {
+	if rows, err := s.pool.Query(ctx, versionsQ, since); err == nil {
 		defer rows.Close()
 		for rows.Next() {
 			var v VersionStat
-			if scanErr := rows.Scan(&v.Version, &v.Count, &v.Active24h); scanErr == nil {
+			if scanErr := rows.Scan(&v.Version, &v.Count, &v.Active24h, &v.ErrorCount); scanErr == nil {
 				if out.Summary.TotalInstalls > 0 {
 					v.Pct = float64(v.Count) * 100.0 / float64(out.Summary.TotalInstalls)
 				}
@@ -771,6 +815,232 @@ FROM error_reports ORDER BY created_at DESC LIMIT 5000;`)
 	}
 	w.Flush()
 	return buf.Bytes(), nil
+}
+
+func (s *Store) GetError(ctx context.Context, id int64) (ErrorReport, bool, error) {
+	var r ErrorReport
+	if s.pool == nil {
+		return r, false, nil
+	}
+	const q = `
+SELECT id, created_at, install_id, platform, app_version, error_type, error_message,
+       stacktrace, device_model, os_version, abi, resolved
+FROM error_reports WHERE id = $1;`
+	err := s.pool.QueryRow(ctx, q, id).Scan(
+		&r.ID, &r.CreatedAt, &r.InstallID, &r.Platform, &r.AppVersion,
+		&r.ErrorType, &r.ErrorMessage, &r.Stacktrace, &r.DeviceModel,
+		&r.OSVersion, &r.ABI, &r.Resolved,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return r, false, nil
+		}
+		return r, false, err
+	}
+	return r, true, nil
+}
+
+func (s *Store) BulkResolveByType(ctx context.Context, errorType string, resolved bool) (int64, error) {
+	if s.pool == nil {
+		return 0, nil
+	}
+	tag, err := s.pool.Exec(ctx, `UPDATE error_reports SET resolved = $2 WHERE error_type = $1`, errorType, resolved)
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
+}
+
+type InstallRecord struct {
+	InstallID    string    `json:"installId"`
+	Platform     string    `json:"platform"`
+	AppVersion   string    `json:"appVersion"`
+	FirstSeenAt  time.Time `json:"firstSeenAt"`
+	LastSeenAt   time.Time `json:"lastSeenAt"`
+	SessionCount int64     `json:"sessionCount"`
+	Status       string    `json:"status"`
+}
+
+type InstallFilter struct {
+	Platform string
+	Version  string
+	Status   string // "active24h" | "returning" | "lost" | "all"
+	Limit    int
+	Offset   int
+}
+
+type InstallListResponse struct {
+	Items    []InstallRecord `json:"items"`
+	Total    int             `json:"total"`
+	Versions []string        `json:"versions"`
+}
+
+func (s *Store) ListInstalls(ctx context.Context, f InstallFilter) (InstallListResponse, error) {
+	out := InstallListResponse{
+		Items:    []InstallRecord{},
+		Versions: []string{},
+	}
+	if s.pool == nil {
+		return out, nil
+	}
+	if f.Limit <= 0 || f.Limit > 200 {
+		f.Limit = 50
+	}
+	if f.Offset < 0 {
+		f.Offset = 0
+	}
+
+	var conds []string
+	var args []interface{}
+	addArg := func(v interface{}) string {
+		args = append(args, v)
+		return fmt.Sprintf("$%d", len(args))
+	}
+
+	if f.Platform != "" {
+		conds = append(conds, "platform = "+addArg(f.Platform))
+	}
+	if f.Version != "" {
+		conds = append(conds, "app_version = "+addArg(f.Version))
+	}
+	switch f.Status {
+	case "active24h":
+		conds = append(conds, "last_seen_at >= NOW() - INTERVAL '24 hours'")
+	case "returning":
+		conds = append(conds, "session_count > 1")
+	case "lost":
+		conds = append(conds, "last_seen_at < NOW() - INTERVAL '14 days'")
+	}
+
+	where := ""
+	if len(conds) > 0 {
+		where = "WHERE " + strings.Join(conds, " AND ")
+	}
+
+	if err := s.pool.QueryRow(ctx, "SELECT COUNT(*)::INT FROM installs "+where, args...).Scan(&out.Total); err != nil {
+		return out, err
+	}
+
+	limitArg := addArg(f.Limit)
+	offsetArg := addArg(f.Offset)
+	listQ := fmt.Sprintf(`
+SELECT install_id, platform, app_version, first_seen_at, last_seen_at, session_count,
+	CASE
+		WHEN last_seen_at >= NOW() - INTERVAL '24 hours' THEN 'active24h'
+		WHEN last_seen_at < NOW() - INTERVAL '14 days' THEN 'lost'
+		ELSE 'active'
+	END AS status
+FROM installs %s
+ORDER BY last_seen_at DESC
+LIMIT %s OFFSET %s;`, where, limitArg, offsetArg)
+
+	rows, err := s.pool.Query(ctx, listQ, args...)
+	if err != nil {
+		return out, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var rec InstallRecord
+		if rows.Scan(&rec.InstallID, &rec.Platform, &rec.AppVersion, &rec.FirstSeenAt, &rec.LastSeenAt, &rec.SessionCount, &rec.Status) == nil {
+			out.Items = append(out.Items, rec)
+		}
+	}
+
+	if vRows, err := s.pool.Query(ctx, `SELECT DISTINCT app_version FROM installs WHERE app_version <> '' ORDER BY app_version DESC LIMIT 30`); err == nil {
+		defer vRows.Close()
+		for vRows.Next() {
+			var v string
+			if vRows.Scan(&v) == nil {
+				out.Versions = append(out.Versions, v)
+			}
+		}
+	}
+	return out, nil
+}
+
+func (s *Store) FormatOverviewMarkdown(ctx context.Context, rangeStr string) (string, error) {
+	d, err := s.Overview(ctx, rangeStr)
+	if err != nil {
+		return "", err
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "# BitChord-X Telemetry Brief (%s)\n", d.Range)
+	fmt.Fprintf(&b, "- Generated: %s\n", d.GeneratedAt.Format(time.RFC3339))
+	fmt.Fprintf(&b, "- Server Version: %s | Uptime: %ds | DB Enabled: %v\n\n", d.ServerVersion, d.UptimeSec, d.DatabaseEnabled)
+
+	b.WriteString("## Live\n")
+	fmt.Fprintf(&b, "- Online Now: %d (android=%d, pc=%d, browser=%d)\n", d.Live.Online, d.Live.Android, d.Live.PC, d.Live.Browser)
+	fmt.Fprintf(&b, "- Listen Together: %d active parties, %d members, %d sockets\n\n", d.Live.ActiveParties, d.Live.TotalPartyMembers, d.Live.ActiveSockets)
+
+	b.WriteString("## Users & Retention\n")
+	fmt.Fprintf(&b, "- Total Installs: %d | DAU: %d | WAU: %d | MAU: %d\n", d.Summary.TotalInstalls, d.Summary.DAU, d.Summary.WAU, d.Summary.MAU)
+	fmt.Fprintf(&b, "- New (%s): %d | Returning (%s): %d | Lost (>14d): %d | Retention: %.1f%%\n", d.Range, d.Summary.NewInPeriod, d.Range, d.Summary.ReturningInPeriod, d.Summary.LostInstalls, d.Summary.RetentionRatePct)
+	fmt.Fprintf(&b, "- Peak Online (%s): %d | Total Sessions: %d\n\n", d.Range, d.Summary.PeakOnline, d.Summary.TotalSessions)
+
+	b.WriteString("## Version Adoption\n")
+	if len(d.Versions) == 0 {
+		b.WriteString("- (none)\n")
+	} else {
+		for _, v := range d.Versions {
+			fmt.Fprintf(&b, "- %s: %d installs (%.1f%%), %d active 24h, %d errors (%s)\n", v.Version, v.Count, v.Pct, v.Active24h, v.ErrorCount, d.Range)
+		}
+	}
+
+	b.WriteString("\n## Top Errors\n")
+	fmt.Fprintf(&b, "- Errors in %s: %d | Unresolved total: %d\n", d.Range, d.Summary.ErrorsInPeriod, d.Summary.UnresolvedErrors)
+	for _, e := range d.TopErrors {
+		fmt.Fprintf(&b, "- %s: %d total (%d unresolved), %d affected installs, last=%s\n", e.ErrorType, e.Count, e.Unresolved, e.AffectedInstalls, e.LastSeen.Format(time.RFC3339))
+	}
+
+	if len(d.ErrorDevices) > 0 {
+		b.WriteString("\n## Top Affected Devices\n")
+		for _, dev := range d.ErrorDevices {
+			fmt.Fprintf(&b, "- %s (%s): %d\n", dev.DeviceModel, dev.OSVersion, dev.Count)
+		}
+	}
+	return b.String(), nil
+}
+
+func (s *Store) FormatErrorsMarkdown(ctx context.Context, f ErrorFilter) (string, error) {
+	res, err := s.ListErrors(ctx, f)
+	if err != nil {
+		return "", err
+	}
+	var b strings.Builder
+	fmt.Fprintf(&b, "# BitChord-X Error Reports (%d matching, showing %d)\n\n", res.Total, len(res.Items))
+	for _, r := range res.Items {
+		status := "OPEN"
+		if r.Resolved {
+			status = "RESOLVED"
+		}
+		fmt.Fprintf(&b, "## #%d [%s] %s (%s / %s)\n", r.ID, status, r.ErrorType, r.AppVersion, r.Platform)
+		fmt.Fprintf(&b, "- Time: %s\n", r.CreatedAt.Format(time.RFC3339))
+		fmt.Fprintf(&b, "- Device: %s | OS: %s | ABI: %s\n", r.DeviceModel, r.OSVersion, r.ABI)
+		fmt.Fprintf(&b, "- Message: %s\n", r.ErrorMessage)
+		if r.Stacktrace != "" {
+			fmt.Fprintf(&b, "```\n%s\n```\n", truncate(r.Stacktrace, 1500))
+		}
+		b.WriteByte('\n')
+	}
+	return b.String(), nil
+}
+
+func FormatErrorDetailMarkdown(r ErrorReport) string {
+	var b strings.Builder
+	status := "OPEN"
+	if r.Resolved {
+		status = "RESOLVED"
+	}
+	fmt.Fprintf(&b, "# Error #%d [%s] %s\n", r.ID, status, r.ErrorType)
+	fmt.Fprintf(&b, "- Created: %s\n", r.CreatedAt.Format(time.RFC3339))
+	fmt.Fprintf(&b, "- Version: %s | Platform: %s\n", r.AppVersion, r.Platform)
+	fmt.Fprintf(&b, "- Device: %s | OS: %s | ABI: %s\n", r.DeviceModel, r.OSVersion, r.ABI)
+	fmt.Fprintf(&b, "- Install ID: %s\n", r.InstallID)
+	fmt.Fprintf(&b, "\n## Message\n```\n%s\n```\n", r.ErrorMessage)
+	if r.Stacktrace != "" {
+		fmt.Fprintf(&b, "\n## Stacktrace\n```\n%s\n```\n", r.Stacktrace)
+	}
+	return b.String()
 }
 
 func truncate(s string, maxLen int) string {

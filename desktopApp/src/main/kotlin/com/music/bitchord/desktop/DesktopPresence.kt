@@ -34,6 +34,7 @@ internal object DesktopPresence {
             installId = id,
             endpoint = "$base/api/presence",
             appVersion = appVersion,
+            useWebSocket = true,
         )
         TelemetryReporter.configure(
             serverBaseUrl = base,

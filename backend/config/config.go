@@ -154,8 +154,8 @@ func parseAppLinks(entries []string) []AppLink {
 // raised here under load without an app update. An install stays counted for
 // one interval plus the grace period after its last ping.
 var (
-	PresenceIntervalSec     = getInt("JAM_PRESENCE_INTERVAL_SEC", 300)
-	PresenceGraceSec        = getInt("JAM_PRESENCE_GRACE_SEC", 90)
+	PresenceIntervalSec     = getInt("JAM_PRESENCE_INTERVAL_SEC", 60)
+	PresenceGraceSec        = getInt("JAM_PRESENCE_GRACE_SEC", 30)
 	PresenceMaxEntries      = getInt("JAM_PRESENCE_MAX_ENTRIES", 200000)
 	PresencePingsPerMinute  = getInt("JAM_PRESENCE_PINGS_PER_MINUTE", 20)
 	PresenceRateLimitMaxIPs = getInt("JAM_PRESENCE_RATE_LIMIT_MAX_IPS", 100000)

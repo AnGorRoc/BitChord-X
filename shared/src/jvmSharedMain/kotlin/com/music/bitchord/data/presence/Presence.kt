@@ -2,6 +2,8 @@ package com.music.bitchord.data.presence
 
 import com.music.bitchord.data.DebugLog
 import com.music.bitchord.data.Http
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -18,6 +20,9 @@ import kotlinx.serialization.json.put
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
+import okhttp3.Response
+import okhttp3.WebSocket
+import okhttp3.WebSocketListener
 import java.util.concurrent.TimeUnit
 import kotlin.random.Random
 
@@ -42,24 +47,37 @@ class Presence(
     private val endpoint: String = ENDPOINT,
     private val appVersion: String = "",
     private val enabledProvider: () -> Boolean = { true },
+    private val useWebSocket: Boolean = false,
 ) {
     private val open = MutableStateFlow(false)
     @Volatile private var announced = false
     @Volatile private var intervalSec = DEFAULT_INTERVAL_SEC
+    @Volatile private var activeSocket: WebSocket? = null
 
     init {
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             // collectLatest: a change of state cancels whatever the last one was
-            // still doing, so a close cancels the ping loop and a quick reopen
-            // cancels a pending close.
+            // still doing, so a close cancels the socket/ping loop and a quick
+            // reopen cancels a pending close.
             open.collectLatest { isOpen ->
                 if (isOpen) {
+                    var wsUnsupported = !useWebSocket
                     while (true) {
+                        if (!wsUnsupported) {
+                            val supported = runWebSocketSession()
+                            if (!supported) {
+                                wsUnsupported = true
+                            } else {
+                                delay(WS_RECONNECT_DELAY_MS)
+                                continue
+                            }
+                        }
                         send(open = true)
                         delay(nextDelayMs())
                     }
                 } else if (announced) {
-                    // A window flicker or an activity restart is not a close.
+                    activeSocket?.close(1000, "closed")
+                    activeSocket = null
                     delay(CLOSE_DEBOUNCE_MS)
                     send(open = false)
                 }
@@ -72,12 +90,70 @@ class Presence(
     }
 
     /**
-     * For process exit, where nothing launched would get to run: sends the close
-     * on the calling thread, giving up after two seconds.
+     * For process exit, where nothing launched would get to run: closes the
+     * socket or sends the HTTP close on the calling thread within two seconds.
      */
     fun closeBlocking() {
         open.value = false
+        activeSocket?.close(1000, "exit")
+        activeSocket = null
         if (announced) send(open = false, timeoutSec = 2)
+    }
+
+    private fun wsEndpoint(): String? {
+        if (!endpoint.endsWith("/api/presence")) return null
+        val wsBase = when {
+            endpoint.startsWith("https://") -> "wss://" + endpoint.removePrefix("https://")
+            endpoint.startsWith("http://") -> "ws://" + endpoint.removePrefix("http://")
+            else -> return null
+        }
+        return wsBase.removeSuffix("/api/presence") + "/ws/presence"
+    }
+
+    /**
+     * Connects `/ws/presence`, sends the hello frame, and suspends until the
+     * socket drops or the coroutine is cancelled. Returns `false` only if the
+     * server explicitly rejected the upgrade with HTTP 404/405/501 (older server).
+     */
+    private suspend fun runWebSocketSession(): Boolean {
+        val url = wsEndpoint() ?: return false
+        if (!enabledProvider()) return true
+        val closed = CompletableDeferred<Boolean>()
+        val hello = buildJsonObject {
+            put("id", installId)
+            put("platform", platform.wire)
+            if (appVersion.isNotBlank()) put("version", appVersion)
+        }.toString()
+
+        val req = Request.Builder().url(url).build()
+        val ws = Http.client.newWebSocket(req, object : WebSocketListener() {
+            override fun onOpen(webSocket: WebSocket, response: Response) {
+                announced = true
+                webSocket.send(hello)
+            }
+
+            override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+                announced = false
+                closed.complete(true)
+            }
+
+            override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+                val code = response?.code
+                val unsupported = code == 404 || code == 405 || code == 501
+                DebugLog.d(TAG, "presence ws closed/failed (HTTP $code): ${t.message}")
+                closed.complete(!unsupported)
+            }
+        })
+        activeSocket = ws
+        return try {
+            closed.await()
+        } catch (c: CancellationException) {
+            ws.close(1000, "closed")
+            announced = false
+            throw c
+        } finally {
+            if (activeSocket === ws) activeSocket = null
+        }
     }
 
     private fun nextDelayMs(): Long {
@@ -123,10 +199,11 @@ class Presence(
     companion object {
         const val ENDPOINT = "https://api.bitchord.kushagrasingh.in/api/presence"
         private const val TAG = "Presence"
-        private const val DEFAULT_INTERVAL_SEC = 300
-        private const val MIN_INTERVAL_SEC = 60
+        private const val DEFAULT_INTERVAL_SEC = 60
+        private const val MIN_INTERVAL_SEC = 30
         private const val MAX_INTERVAL_SEC = 3600
         private const val CLOSE_DEBOUNCE_MS = 2_000L
+        private const val WS_RECONNECT_DELAY_MS = 5_000L
         private val JSON = "application/json".toMediaType()
     }
 }
