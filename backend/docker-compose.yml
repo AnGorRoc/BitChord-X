@@ -1,0 +1,42 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-bitchord}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-bitchord_change_me}
+      POSTGRES_DB: ${POSTGRES_DB:-bitchord_telemetry}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bitchord} -d ${POSTGRES_DB:-bitchord_telemetry}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  jam:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      # Public API + WebSocket (routed to Cloudflare)
+      - "${PUBLIC_PORT:-9500}:8000"
+      # Private LAN / Tailscale telemetry dashboard (never expose to Cloudflare)
+      - "${ADMIN_LISTEN_HOST:-0.0.0.0}:${ADMIN_HOST_PORT:-9501}:8001"
+    environment:
+      PORT: "8000"
+      ADMIN_PORT: "8001"
+      DATABASE_URL: "postgres://${POSTGRES_USER:-bitchord}:${POSTGRES_PASSWORD:-bitchord_change_me}@db:5432/${POSTGRES_DB:-bitchord_telemetry}?sslmode=disable"
+      ADMIN_SECRET: ${ADMIN_SECRET:-}
+      JAM_TRUST_PROXY: ${JAM_TRUST_PROXY:-true}
+      JAM_CLIENT_IP_HEADER: ${JAM_CLIENT_IP_HEADER:-CF-Connecting-IP}
+      JAM_PUBLIC_ORIGIN: ${JAM_PUBLIC_ORIGIN:-}
+      JAM_ALLOWED_ORIGINS: ${JAM_ALLOWED_ORIGINS:-}
+      JAM_VERSION: ${JAM_VERSION:-1.9.3}
+
+volumes:
+  pgdata:

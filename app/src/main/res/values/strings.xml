@@ -1519,4 +1519,6 @@
     <string name="share_app_release_text">Get BitChord X here: %1$s</string>
     <string name="tint_with_now_playing">Colours from what’s playing</string>
     <string name="tint_with_now_playing_subtitle">Tint the pages and bars with the cover of the song that’s playing</string>
+    <string name="telemetry_diagnostics">Anonymous telemetry &amp; error reports</string>
+    <string name="telemetry_diagnostics_subtitle">Sends: random install ID, app version, platform, connection times, and on errors: error details, basic device model and Android version. Never sends your account, IP, listening history or playlists.</string>
 </resources>

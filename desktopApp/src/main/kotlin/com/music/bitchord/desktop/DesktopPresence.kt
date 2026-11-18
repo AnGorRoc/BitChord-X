@@ -1,7 +1,9 @@
 package com.music.bitchord.desktop
 
+import com.music.bitchord.data.listentogether.PartyServers
 import com.music.bitchord.data.presence.Presence
 import com.music.bitchord.data.presence.PresencePlatform
+import com.music.bitchord.data.telemetry.TelemetryReporter
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -18,7 +20,31 @@ internal object DesktopPresence {
     private val preferences = Preferences.userRoot().node("com.music.bitchord.desktop")
 
     fun install() {
-        val presence = Presence(PresencePlatform.Pc, installId())
+        val id = installId()
+        val base = System.getProperty("bitchord.listentogether.server")
+            .orEmpty()
+            .trim()
+            .trimEnd('/')
+            .ifEmpty { PartyServers.ORIGINAL_OFFICIAL }
+        val appVersion = System.getProperty("jpackage.app-version")
+            ?.takeIf { it.isNotBlank() }
+            ?: "desktop"
+        val presence = Presence(
+            platform = PresencePlatform.Pc,
+            installId = id,
+            endpoint = "$base/api/presence",
+            appVersion = appVersion,
+        )
+        TelemetryReporter.configure(
+            serverBaseUrl = base,
+            installId = id,
+            platform = PresencePlatform.Pc,
+            appVersion = appVersion,
+            deviceModel = System.getProperty("os.name").orEmpty(),
+            osVersion = System.getProperty("os.version").orEmpty(),
+            abi = System.getProperty("os.arch").orEmpty(),
+        )
+        TelemetryReporter.installUncaughtHandler()
         CoroutineScope(Dispatchers.Default).launch {
             DesktopWindowVisibility.visible.collect(presence::setOpen)
         }

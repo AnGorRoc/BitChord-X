@@ -560,6 +560,9 @@ object AppSettings {
     /** Hides the "Playing from" / "Played by" caption at the top of the main player. */
     val hideSongStatus = MutableStateFlow(false)
 
+    /** Sends anonymous presence/version telemetry and opt-in error reports. Enabled by default. */
+    val telemetryEnabled = MutableStateFlow(true)
+
     val showQueueHistory = MutableStateFlow(false)
 
     /** Swiping a song row plays it next instead of adding it to the end of the queue. */
@@ -1226,6 +1229,7 @@ object AppSettings {
         hideVolumeBar.value = prefs.getBoolean(KEY_HIDE_VOLUME_BAR, true)
         hideStatusBarInPlayer.value = prefs.getBoolean(KEY_HIDE_STATUS_BAR_IN_PLAYER, false)
         hideSongStatus.value = prefs.getBoolean(KEY_HIDE_SONG_STATUS, false)
+        telemetryEnabled.value = prefs.getBoolean(KEY_TELEMETRY_ENABLED, true)
         showQueueHistory.value = prefs.getBoolean(KEY_SHOW_QUEUE_HISTORY, false)
         swipeToPlayNext.value = prefs.getBoolean(KEY_SWIPE_TO_PLAY_NEXT, false)
         swipeRightAction.value = prefs.getString(KEY_SWIPE_RIGHT_ACTION, null)
@@ -1736,6 +1740,11 @@ object AppSettings {
     fun setHideSongStatus(value: Boolean) {
         hideSongStatus.value = value
         prefs.edit().putBoolean(KEY_HIDE_SONG_STATUS, value).apply()
+    }
+
+    fun setTelemetryEnabled(value: Boolean) {
+        telemetryEnabled.value = value
+        prefs.edit().putBoolean(KEY_TELEMETRY_ENABLED, value).apply()
     }
 
     fun setShowQueueHistory(value: Boolean) {
@@ -2699,6 +2708,7 @@ object AppSettings {
     private const val KEY_HIDE_VOLUME_BAR = "hide_volume_bar"
     private const val KEY_HIDE_STATUS_BAR_IN_PLAYER = "hide_status_bar_in_player"
     private const val KEY_HIDE_SONG_STATUS = "hide_song_status"
+    private const val KEY_TELEMETRY_ENABLED = "telemetry_enabled"
     private const val KEY_SHOW_QUEUE_HISTORY = "show_queue_history"
     private const val KEY_SWIPE_TO_PLAY_NEXT = "swipe_to_play_next"
     private const val KEY_SWIPE_RIGHT_ACTION = "swipe_right_action"

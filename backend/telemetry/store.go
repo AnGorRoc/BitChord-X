@@ -1,0 +1,781 @@
+// Package telemetry stores anonymous install activity, concurrency history,
+// and opt-in error reports in PostgreSQL, and serves a local-network admin
+// dashboard on a dedicated port.
+package telemetry
+
+import (
+	"bytes"
+	"context"
+	"encoding/csv"
+	"fmt"
+	"log"
+	"strings"
+	"sync"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+)
+
+// LiveMetricsProvider returns current in-memory live stats so the dashboard
+// can combine real-time RAM counts with historical PostgreSQL metrics.
+type LiveMetricsProvider func() LiveStats
+
+type LiveStats struct {
+	Online        int   `json:"online"`
+	Android       int   `json:"android"`
+	PC            int   `json:"pc"`
+	Browser       int   `json:"browser"`
+	ActiveParties int   `json:"activeParties"`
+	ActiveSockets int   `json:"activeSockets"`
+	UpdatedAt     int64 `json:"updatedAt"`
+}
+
+type ErrorInput struct {
+	InstallID    string
+	Platform     string
+	AppVersion   string
+	ErrorType    string
+	ErrorMessage string
+	Stacktrace   string
+	DeviceModel  string
+	OSVersion    string
+	ABI          string
+}
+
+type ErrorReport struct {
+	ID           int64     `json:"id"`
+	CreatedAt    time.Time `json:"createdAt"`
+	InstallID    string    `json:"installId"`
+	Platform     string    `json:"platform"`
+	AppVersion   string    `json:"appVersion"`
+	ErrorType    string    `json:"errorType"`
+	ErrorMessage string    `json:"errorMessage"`
+	Stacktrace   string    `json:"stacktrace"`
+	DeviceModel  string    `json:"deviceModel"`
+	OSVersion    string    `json:"osVersion"`
+	ABI          string    `json:"abi"`
+	Resolved     bool      `json:"resolved"`
+}
+
+type ErrorFilter struct {
+	Version        string
+	Platform       string
+	ErrorType      string
+	UnresolvedOnly bool
+	Search         string
+	Limit          int
+	Offset         int
+}
+
+type ErrorListResponse struct {
+	Items      []ErrorReport `json:"items"`
+	Total      int           `json:"total"`
+	Versions   []string      `json:"versions"`
+	ErrorTypes []string      `json:"errorTypes"`
+}
+
+type SummaryStats struct {
+	TotalInstalls     int     `json:"totalInstalls"`
+	DAU               int     `json:"dau"`
+	WAU               int     `json:"wau"`
+	MAU               int     `json:"mau"`
+	NewInPeriod       int     `json:"newInPeriod"`
+	ReturningInPeriod int     `json:"returningInPeriod"`
+	LostInstalls      int     `json:"lostInstalls"`
+	RetentionRatePct  float64 `json:"retentionRatePct"`
+	TotalSessions     int64   `json:"totalSessions"`
+	ErrorsInPeriod    int     `json:"errorsInPeriod"`
+	UnresolvedErrors  int     `json:"unresolvedErrors"`
+	PeakOnline        int     `json:"peakOnline"`
+}
+
+type SnapshotPoint struct {
+	Timestamp     time.Time `json:"ts"`
+	Online        int       `json:"online"`
+	Android       int       `json:"android"`
+	PC            int       `json:"pc"`
+	Browser       int       `json:"browser"`
+	ActiveParties int       `json:"activeParties"`
+}
+
+type HourlyBucket struct {
+	Hour        int `json:"hour"`
+	Connections int `json:"connections"`
+	UniqueUsers int `json:"uniqueUsers"`
+}
+
+type VersionStat struct {
+	Version   string  `json:"version"`
+	Count     int     `json:"count"`
+	Active24h int     `json:"active24h"`
+	Pct       float64 `json:"pct"`
+}
+
+type PlatformStat struct {
+	Platform string  `json:"platform"`
+	Count    int     `json:"count"`
+	Pct      float64 `json:"pct"`
+}
+
+type ErrorGroupStat struct {
+	ErrorType        string    `json:"errorType"`
+	Count            int       `json:"count"`
+	Unresolved       int       `json:"unresolved"`
+	AffectedInstalls int       `json:"affectedInstalls"`
+	LastSeen         time.Time `json:"lastSeen"`
+}
+
+type DeviceStat struct {
+	DeviceModel string `json:"deviceModel"`
+	OSVersion   string `json:"osVersion"`
+	Count       int    `json:"count"`
+}
+
+type OverviewData struct {
+	Range             string           `json:"range"`
+	GeneratedAt       time.Time        `json:"generatedAt"`
+	ServerVersion     string           `json:"serverVersion"`
+	DatabaseEnabled   bool             `json:"databaseEnabled"`
+	UptimeSec         int64            `json:"uptimeSec"`
+	Live              LiveStats        `json:"live"`
+	Summary           SummaryStats     `json:"summary"`
+	ConcurrencySeries []SnapshotPoint  `json:"concurrencySeries"`
+	HourlyConnections []HourlyBucket   `json:"hourlyConnections"`
+	Versions          []VersionStat    `json:"versions"`
+	Platforms         []PlatformStat   `json:"platforms"`
+	TopErrors         []ErrorGroupStat `json:"topErrors"`
+	ErrorDevices      []DeviceStat     `json:"errorDevices"`
+}
+
+type Store struct {
+	pool      *pgxpool.Pool
+	startedAt time.Time
+	liveFn    LiveMetricsProvider
+	version   string
+
+	queue  chan func(context.Context)
+	wg     sync.WaitGroup
+	closed chan struct{}
+	once   sync.Once
+}
+
+// NewStore connects to PostgreSQL when databaseURL is non-empty and runs
+// idempotent schema migrations. When databaseURL is empty, it returns a no-op
+// store that still serves live in-memory metrics on the dashboard.
+func NewStore(ctx context.Context, databaseURL, serverVersion string, liveFn LiveMetricsProvider) (*Store, error) {
+	s := &Store{
+		startedAt: time.Now().UTC(),
+		liveFn:    liveFn,
+		version:   serverVersion,
+		queue:     make(chan func(context.Context), 2048),
+		closed:    make(chan struct{}),
+	}
+	if strings.TrimSpace(databaseURL) == "" {
+		log.Printf("telemetry: DATABASE_URL not set; running with live-only in-memory mode")
+		return s, nil
+	}
+
+	cfg, err := pgxpool.ParseConfig(databaseURL)
+	if err != nil {
+		return nil, fmt.Errorf("parse DATABASE_URL: %w", err)
+	}
+	cfg.MaxConns = 10
+	cfg.MinConns = 1
+
+	pool, err := pgxpool.NewWithConfig(ctx, cfg)
+	if err != nil {
+		return nil, fmt.Errorf("connect postgres: %w", err)
+	}
+
+	// Retry ping briefly on cold container startup so compose depends_on races never crash.
+	var pingErr error
+	for attempt := 0; attempt < 10; attempt++ {
+		pingCtx, cancel := context.WithTimeout(ctx, 3*time.Second)
+		pingErr = pool.Ping(pingCtx)
+		cancel()
+		if pingErr == nil {
+			break
+		}
+		time.Sleep(time.Second)
+	}
+	if pingErr != nil {
+		pool.Close()
+		return nil, fmt.Errorf("ping postgres: %w", pingErr)
+	}
+
+	if err := migrate(ctx, pool); err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("migrate telemetry schema: %w", err)
+	}
+
+	s.pool = pool
+	s.wg.Add(1)
+	go s.worker()
+	log.Printf("telemetry: PostgreSQL connected and schema ready")
+	return s, nil
+}
+
+func migrate(ctx context.Context, pool *pgxpool.Pool) error {
+	const ddl = `
+CREATE TABLE IF NOT EXISTS installs (
+	install_id       TEXT PRIMARY KEY,
+	platform         TEXT NOT NULL,
+	app_version      TEXT NOT NULL DEFAULT '',
+	first_seen_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	last_seen_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	session_count    BIGINT NOT NULL DEFAULT 1,
+	last_open_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_installs_last_seen ON installs (last_seen_at DESC);
+CREATE INDEX IF NOT EXISTS idx_installs_version ON installs (app_version);
+
+CREATE TABLE IF NOT EXISTS connection_events (
+	id          BIGSERIAL PRIMARY KEY,
+	install_id  TEXT NOT NULL,
+	platform    TEXT NOT NULL,
+	app_version TEXT NOT NULL DEFAULT '',
+	event_type  TEXT NOT NULL,
+	created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_conn_events_created ON connection_events (created_at DESC);
+
+CREATE TABLE IF NOT EXISTS concurrency_snapshots (
+	id             BIGSERIAL PRIMARY KEY,
+	recorded_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	online_total   INT NOT NULL,
+	android_count  INT NOT NULL,
+	pc_count       INT NOT NULL,
+	browser_count  INT NOT NULL,
+	active_parties INT NOT NULL,
+	active_sockets INT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_snapshots_recorded ON concurrency_snapshots (recorded_at DESC);
+
+CREATE TABLE IF NOT EXISTS error_reports (
+	id            BIGSERIAL PRIMARY KEY,
+	created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	install_id    TEXT NOT NULL DEFAULT '',
+	platform      TEXT NOT NULL,
+	app_version   TEXT NOT NULL DEFAULT '',
+	error_type    TEXT NOT NULL,
+	error_message TEXT NOT NULL,
+	stacktrace    TEXT NOT NULL DEFAULT '',
+	device_model  TEXT NOT NULL DEFAULT '',
+	os_version    TEXT NOT NULL DEFAULT '',
+	abi           TEXT NOT NULL DEFAULT '',
+	resolved      BOOLEAN NOT NULL DEFAULT FALSE
+);
+
+CREATE INDEX IF NOT EXISTS idx_errors_created ON error_reports (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_errors_resolved ON error_reports (resolved, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_errors_type ON error_reports (error_type);
+CREATE INDEX IF NOT EXISTS idx_errors_version ON error_reports (app_version);
+`
+	_, err := pool.Exec(ctx, ddl)
+	return err
+}
+
+func (s *Store) worker() {
+	defer s.wg.Done()
+	for fn := range s.queue {
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		fn(ctx)
+		cancel()
+	}
+}
+
+func (s *Store) enqueue(fn func(context.Context)) {
+	if s.pool == nil {
+		return
+	}
+	select {
+	case s.queue <- fn:
+	default:
+		// Drop if the DB queue is saturated so live traffic never blocks.
+	}
+}
+
+func (s *Store) Close() {
+	s.once.Do(func() {
+		close(s.closed)
+		close(s.queue)
+		s.wg.Wait()
+		if s.pool != nil {
+			s.pool.Close()
+		}
+	})
+}
+
+func (s *Store) DatabaseEnabled() bool {
+	return s.pool != nil
+}
+
+// RecordPresence records an install heartbeat or close event asynchronously.
+func (s *Store) RecordPresence(installID, platform, appVersion string, open bool) {
+	if s.pool == nil {
+		return
+	}
+	appVersion = truncate(strings.TrimSpace(appVersion), 32)
+	eventType := "close"
+	if open {
+		eventType = "open"
+	}
+
+	s.enqueue(func(ctx context.Context) {
+		if open {
+			// A new session is counted when the previous open was more than 10 minutes ago
+			// (a heartbeat is every ~5 minutes).
+			const upsertOpen = `
+INSERT INTO installs (install_id, platform, app_version, first_seen_at, last_seen_at, session_count, last_open_at)
+VALUES ($1, $2, $3, NOW(), NOW(), 1, NOW())
+ON CONFLICT (install_id) DO UPDATE SET
+	platform = EXCLUDED.platform,
+	app_version = CASE WHEN EXCLUDED.app_version <> '' THEN EXCLUDED.app_version ELSE installs.app_version END,
+	last_seen_at = NOW(),
+	session_count = CASE
+		WHEN installs.last_open_at IS NULL OR NOW() - installs.last_open_at > INTERVAL '10 minutes'
+		THEN installs.session_count + 1
+		ELSE installs.session_count
+	END,
+	last_open_at = NOW();`
+			if _, err := s.pool.Exec(ctx, upsertOpen, installID, platform, appVersion); err != nil {
+				log.Printf("telemetry: upsert install failed: %v", err)
+			}
+
+			// Log connection event only when starting a session (or once per 10m window)
+			// to keep connection_events compact and meaningful for hourly connection charts.
+			const insertEvent = `
+INSERT INTO connection_events (install_id, platform, app_version, event_type)
+SELECT $1, $2, $3, 'open'
+WHERE NOT EXISTS (
+	SELECT 1 FROM connection_events
+	WHERE install_id = $1 AND event_type = 'open' AND created_at > NOW() - INTERVAL '10 minutes'
+);`
+			if _, err := s.pool.Exec(ctx, insertEvent, installID, platform, appVersion); err != nil {
+				log.Printf("telemetry: insert open event failed: %v", err)
+			}
+		} else {
+			const upsertClose = `
+UPDATE installs SET
+	last_seen_at = NOW(),
+	app_version = CASE WHEN $2 <> '' THEN $2 ELSE app_version END
+WHERE install_id = $1;`
+			_, _ = s.pool.Exec(ctx, upsertClose, installID, appVersion)
+			_, _ = s.pool.Exec(ctx,
+				`INSERT INTO connection_events (install_id, platform, app_version, event_type) VALUES ($1, $2, $3, $4)`,
+				installID, platform, appVersion, eventType,
+			)
+		}
+	})
+}
+
+// RecordSnapshot persists a point-in-time concurrency sample.
+func (s *Store) RecordSnapshot(live LiveStats) {
+	if s.pool == nil {
+		return
+	}
+	s.enqueue(func(ctx context.Context) {
+		const q = `
+INSERT INTO concurrency_snapshots (online_total, android_count, pc_count, browser_count, active_parties, active_sockets)
+VALUES ($1, $2, $3, $4, $5, $6);`
+		if _, err := s.pool.Exec(ctx, q, live.Online, live.Android, live.PC, live.Browser, live.ActiveParties, live.ActiveSockets); err != nil {
+			log.Printf("telemetry: insert snapshot failed: %v", err)
+		}
+	})
+}
+
+// RecordError stores a client-reported error along with basic device metadata.
+func (s *Store) RecordError(ctx context.Context, in ErrorInput) (int64, error) {
+	if s.pool == nil {
+		return 0, nil
+	}
+	const q = `
+INSERT INTO error_reports (
+	install_id, platform, app_version, error_type, error_message,
+	stacktrace, device_model, os_version, abi
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+RETURNING id;`
+	var id int64
+	err := s.pool.QueryRow(
+		ctx, q,
+		truncate(strings.TrimSpace(in.InstallID), 64),
+		truncate(strings.TrimSpace(in.Platform), 24),
+		truncate(strings.TrimSpace(in.AppVersion), 32),
+		truncate(strings.TrimSpace(in.ErrorType), 64),
+		truncate(strings.TrimSpace(in.ErrorMessage), 1000),
+		truncate(strings.TrimSpace(in.Stacktrace), 8192),
+		truncate(strings.TrimSpace(in.DeviceModel), 120),
+		truncate(strings.TrimSpace(in.OSVersion), 64),
+		truncate(strings.TrimSpace(in.ABI), 32),
+	).Scan(&id)
+	return id, err
+}
+
+func parseRangeDuration(rangeStr string) (string, time.Duration, string) {
+	switch rangeStr {
+	case "24h":
+		return "24h", 24 * time.Hour, "15 minutes"
+	case "30d":
+		return "30d", 30 * 24 * time.Hour, "6 hours"
+	default:
+		return "7d", 7 * 24 * time.Hour, "1 hour"
+	}
+}
+
+func (s *Store) Overview(ctx context.Context, rangeStr string) (OverviewData, error) {
+	normRange, dur, bucket := parseRangeDuration(rangeStr)
+	live := LiveStats{}
+	if s.liveFn != nil {
+		live = s.liveFn()
+	}
+
+	out := OverviewData{
+		Range:             normRange,
+		GeneratedAt:       time.Now().UTC(),
+		ServerVersion:     s.version,
+		DatabaseEnabled:   s.pool != nil,
+		UptimeSec:         int64(time.Since(s.startedAt).Seconds()),
+		Live:              live,
+		ConcurrencySeries: []SnapshotPoint{},
+		HourlyConnections: make([]HourlyBucket, 24),
+		Versions:          []VersionStat{},
+		Platforms:         []PlatformStat{},
+		TopErrors:         []ErrorGroupStat{},
+		ErrorDevices:      []DeviceStat{},
+	}
+	for h := 0; h < 24; h++ {
+		out.HourlyConnections[h].Hour = h
+	}
+	if s.pool == nil {
+		return out, nil
+	}
+
+	since := time.Now().UTC().Add(-dur)
+
+	// 1. Summary KPIs
+	const summaryQ = `
+SELECT
+	COUNT(*)::INT AS total_installs,
+	COUNT(*) FILTER (WHERE last_seen_at >= NOW() - INTERVAL '24 hours')::INT AS dau,
+	COUNT(*) FILTER (WHERE last_seen_at >= NOW() - INTERVAL '7 days')::INT AS wau,
+	COUNT(*) FILTER (WHERE last_seen_at >= NOW() - INTERVAL '30 days')::INT AS mau,
+	COUNT(*) FILTER (WHERE first_seen_at >= $1)::INT AS new_in_period,
+	COUNT(*) FILTER (WHERE last_seen_at >= $1 AND first_seen_at < $1)::INT AS returning_in_period,
+	COUNT(*) FILTER (WHERE last_seen_at < NOW() - INTERVAL '14 days')::INT AS lost_installs,
+	COALESCE(SUM(session_count), 0)::BIGINT AS total_sessions
+FROM installs;`
+	err := s.pool.QueryRow(ctx, summaryQ, since).Scan(
+		&out.Summary.TotalInstalls,
+		&out.Summary.DAU,
+		&out.Summary.WAU,
+		&out.Summary.MAU,
+		&out.Summary.NewInPeriod,
+		&out.Summary.ReturningInPeriod,
+		&out.Summary.LostInstalls,
+		&out.Summary.TotalSessions,
+	)
+	if err != nil {
+		return out, err
+	}
+	if out.Summary.TotalInstalls > 0 {
+		active := out.Summary.TotalInstalls - out.Summary.LostInstalls
+		out.Summary.RetentionRatePct = float64(active) * 100.0 / float64(out.Summary.TotalInstalls)
+	}
+
+	const errSummaryQ = `
+SELECT
+	COUNT(*) FILTER (WHERE created_at >= $1)::INT,
+	COUNT(*) FILTER (WHERE NOT resolved)::INT
+FROM error_reports;`
+	if err := s.pool.QueryRow(ctx, errSummaryQ, since).Scan(&out.Summary.ErrorsInPeriod, &out.Summary.UnresolvedErrors); err != nil {
+		return out, err
+	}
+
+	const peakQ = `SELECT COALESCE(MAX(online_total), 0)::INT FROM concurrency_snapshots WHERE recorded_at >= $1;`
+	_ = s.pool.QueryRow(ctx, peakQ, since).Scan(&out.Summary.PeakOnline)
+	if live.Online > out.Summary.PeakOnline {
+		out.Summary.PeakOnline = live.Online
+	}
+
+	// 2. Concurrency time series (bucketed)
+	seriesQ := fmt.Sprintf(`
+SELECT
+	to_timestamp(floor(extract(epoch FROM recorded_at) / extract(epoch FROM INTERVAL '%s')) * extract(epoch FROM INTERVAL '%s')) AT TIME ZONE 'UTC' AS bucket,
+	MAX(online_total)::INT,
+	MAX(android_count)::INT,
+	MAX(pc_count)::INT,
+	MAX(browser_count)::INT,
+	MAX(active_parties)::INT
+FROM concurrency_snapshots
+WHERE recorded_at >= $1
+GROUP BY bucket
+ORDER BY bucket ASC;`, bucket, bucket)
+	if rows, err := s.pool.Query(ctx, seriesQ, since); err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var pt SnapshotPoint
+			if scanErr := rows.Scan(&pt.Timestamp, &pt.Online, &pt.Android, &pt.PC, &pt.Browser, &pt.ActiveParties); scanErr == nil {
+				out.ConcurrencySeries = append(out.ConcurrencySeries, pt)
+			}
+		}
+	}
+
+	// 3. Hourly connection moments (0..23 UTC)
+	const hourlyQ = `
+SELECT
+	EXTRACT(HOUR FROM created_at AT TIME ZONE 'UTC')::INT AS hr,
+	COUNT(*)::INT AS conns,
+	COUNT(DISTINCT install_id)::INT AS uniq
+FROM connection_events
+WHERE event_type = 'open' AND created_at >= $1
+GROUP BY hr
+ORDER BY hr ASC;`
+	if rows, err := s.pool.Query(ctx, hourlyQ, since); err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var hr, conns, uniq int
+			if scanErr := rows.Scan(&hr, &conns, &uniq); scanErr == nil && hr >= 0 && hr < 24 {
+				out.HourlyConnections[hr] = HourlyBucket{Hour: hr, Connections: conns, UniqueUsers: uniq}
+			}
+		}
+	}
+
+	// 4. Version adoption
+	const versionsQ = `
+SELECT
+	CASE WHEN app_version = '' THEN 'unknown' ELSE app_version END AS ver,
+	COUNT(*)::INT AS cnt,
+	COUNT(*) FILTER (WHERE last_seen_at >= NOW() - INTERVAL '24 hours')::INT AS act24
+FROM installs
+GROUP BY ver
+ORDER BY cnt DESC, ver DESC
+LIMIT 15;`
+	if rows, err := s.pool.Query(ctx, versionsQ); err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var v VersionStat
+			if scanErr := rows.Scan(&v.Version, &v.Count, &v.Active24h); scanErr == nil {
+				if out.Summary.TotalInstalls > 0 {
+					v.Pct = float64(v.Count) * 100.0 / float64(out.Summary.TotalInstalls)
+				}
+				out.Versions = append(out.Versions, v)
+			}
+		}
+	}
+
+	// 5. Platform split
+	const platformsQ = `SELECT platform, COUNT(*)::INT FROM installs GROUP BY platform ORDER BY COUNT(*) DESC;`
+	if rows, err := s.pool.Query(ctx, platformsQ); err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var p PlatformStat
+			if scanErr := rows.Scan(&p.Platform, &p.Count); scanErr == nil {
+				if out.Summary.TotalInstalls > 0 {
+					p.Pct = float64(p.Count) * 100.0 / float64(out.Summary.TotalInstalls)
+				}
+				out.Platforms = append(out.Platforms, p)
+			}
+		}
+	}
+
+	// 6. Top error types
+	const topErrorsQ = `
+SELECT
+	error_type,
+	COUNT(*)::INT AS cnt,
+	COUNT(*) FILTER (WHERE NOT resolved)::INT AS unres,
+	COUNT(DISTINCT NULLIF(install_id, ''))::INT AS affected,
+	MAX(created_at) AS last_seen
+FROM error_reports
+WHERE created_at >= $1
+GROUP BY error_type
+ORDER BY cnt DESC
+LIMIT 10;`
+	if rows, err := s.pool.Query(ctx, topErrorsQ, since); err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var g ErrorGroupStat
+			if scanErr := rows.Scan(&g.ErrorType, &g.Count, &g.Unresolved, &g.AffectedInstalls, &g.LastSeen); scanErr == nil {
+				out.TopErrors = append(out.TopErrors, g)
+			}
+		}
+	}
+
+	// 7. Affected devices
+	const devQ = `
+SELECT
+	CASE WHEN device_model = '' THEN 'Unknown device' ELSE device_model END AS dev,
+	CASE WHEN os_version = '' THEN 'Unknown OS' ELSE os_version END AS osv,
+	COUNT(*)::INT AS cnt
+FROM error_reports
+WHERE created_at >= $1
+GROUP BY dev, osv
+ORDER BY cnt DESC
+LIMIT 10;`
+	if rows, err := s.pool.Query(ctx, devQ, since); err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var d DeviceStat
+			if scanErr := rows.Scan(&d.DeviceModel, &d.OSVersion, &d.Count); scanErr == nil {
+				out.ErrorDevices = append(out.ErrorDevices, d)
+			}
+		}
+	}
+
+	return out, nil
+}
+
+func (s *Store) ListErrors(ctx context.Context, f ErrorFilter) (ErrorListResponse, error) {
+	out := ErrorListResponse{
+		Items:      []ErrorReport{},
+		Versions:   []string{},
+		ErrorTypes: []string{},
+	}
+	if s.pool == nil {
+		return out, nil
+	}
+
+	if f.Limit <= 0 || f.Limit > 200 {
+		f.Limit = 50
+	}
+	if f.Offset < 0 {
+		f.Offset = 0
+	}
+
+	var conds []string
+	var args []interface{}
+	addArg := func(v interface{}) string {
+		args = append(args, v)
+		return fmt.Sprintf("$%d", len(args))
+	}
+
+	if f.Version != "" {
+		conds = append(conds, "app_version = "+addArg(f.Version))
+	}
+	if f.Platform != "" {
+		conds = append(conds, "platform = "+addArg(f.Platform))
+	}
+	if f.ErrorType != "" {
+		conds = append(conds, "error_type = "+addArg(f.ErrorType))
+	}
+	if f.UnresolvedOnly {
+		conds = append(conds, "NOT resolved")
+	}
+	if f.Search != "" {
+		p := addArg("%" + f.Search + "%")
+		conds = append(conds, fmt.Sprintf("(error_message ILIKE %s OR device_model ILIKE %s OR error_type ILIKE %s)", p, p, p))
+	}
+
+	where := ""
+	if len(conds) > 0 {
+		where = "WHERE " + strings.Join(conds, " AND ")
+	}
+
+	countQ := "SELECT COUNT(*)::INT FROM error_reports " + where
+	if err := s.pool.QueryRow(ctx, countQ, args...).Scan(&out.Total); err != nil {
+		return out, err
+	}
+
+	limitArg := addArg(f.Limit)
+	offsetArg := addArg(f.Offset)
+	listQ := fmt.Sprintf(`
+SELECT id, created_at, install_id, platform, app_version, error_type, error_message,
+       stacktrace, device_model, os_version, abi, resolved
+FROM error_reports %s
+ORDER BY created_at DESC
+LIMIT %s OFFSET %s;`, where, limitArg, offsetArg)
+
+	rows, err := s.pool.Query(ctx, listQ, args...)
+	if err != nil {
+		return out, err
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var r ErrorReport
+		if err := rows.Scan(
+			&r.ID, &r.CreatedAt, &r.InstallID, &r.Platform, &r.AppVersion,
+			&r.ErrorType, &r.ErrorMessage, &r.Stacktrace, &r.DeviceModel,
+			&r.OSVersion, &r.ABI, &r.Resolved,
+		); err == nil {
+			out.Items = append(out.Items, r)
+		}
+	}
+
+	if vRows, err := s.pool.Query(ctx, `SELECT DISTINCT app_version FROM error_reports WHERE app_version <> '' ORDER BY app_version DESC LIMIT 30`); err == nil {
+		defer vRows.Close()
+		for vRows.Next() {
+			var v string
+			if vRows.Scan(&v) == nil {
+				out.Versions = append(out.Versions, v)
+			}
+		}
+	}
+	if tRows, err := s.pool.Query(ctx, `SELECT DISTINCT error_type FROM error_reports ORDER BY error_type ASC LIMIT 50`); err == nil {
+		defer tRows.Close()
+		for tRows.Next() {
+			var t string
+			if tRows.Scan(&t) == nil {
+				out.ErrorTypes = append(out.ErrorTypes, t)
+			}
+		}
+	}
+
+	return out, nil
+}
+
+func (s *Store) SetErrorResolved(ctx context.Context, id int64, resolved bool) error {
+	if s.pool == nil {
+		return nil
+	}
+	_, err := s.pool.Exec(ctx, `UPDATE error_reports SET resolved = $2 WHERE id = $1`, id, resolved)
+	return err
+}
+
+func (s *Store) DeleteError(ctx context.Context, id int64) error {
+	if s.pool == nil {
+		return nil
+	}
+	_, err := s.pool.Exec(ctx, `DELETE FROM error_reports WHERE id = $1`, id)
+	return err
+}
+
+func (s *Store) ExportErrorsCSV(ctx context.Context) ([]byte, error) {
+	var buf bytes.Buffer
+	w := csv.NewWriter(&buf)
+	_ = w.Write([]string{"id", "created_at", "platform", "app_version", "error_type", "error_message", "device_model", "os_version", "abi", "resolved"})
+	if s.pool != nil {
+		rows, err := s.pool.Query(ctx, `
+SELECT id, created_at, platform, app_version, error_type, error_message, device_model, os_version, abi, resolved
+FROM error_reports ORDER BY created_at DESC LIMIT 5000;`)
+		if err != nil {
+			return nil, err
+		}
+		defer rows.Close()
+		for rows.Next() {
+			var id int64
+			var createdAt time.Time
+			var platform, ver, etype, msg, dev, osVer, abi string
+			var resolved bool
+			if rows.Scan(&id, &createdAt, &platform, &ver, &etype, &msg, &dev, &osVer, &abi, &resolved) == nil {
+				_ = w.Write([]string{
+					fmt.Sprint(id),
+					createdAt.UTC().Format(time.RFC3339),
+					platform, ver, etype, msg, dev, osVer, abi,
+					fmt.Sprint(resolved),
+				})
+			}
+		}
+	}
+	w.Flush()
+	return buf.Bytes(), nil
+}
+
+func truncate(s string, maxLen int) string {
+	if len(s) <= maxLen {
+		return s
+	}
+	return s[:maxLen]
+}

@@ -6,10 +6,8 @@
 
 FROM golang:1.27-alpine AS build
 WORKDIR /src
-COPY go.mod go.sum ./
-RUN go mod download
 COPY . .
-RUN CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/server .
+RUN go mod tidy && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/server .
 
 FROM alpine:3.22
 RUN apk add --no-cache ca-certificates tzdata \
@@ -17,7 +15,8 @@ RUN apk add --no-cache ca-certificates tzdata \
 COPY --from=build /out/server /usr/local/bin/bitchord-jam
 USER jam
 ENV PORT=8000
-EXPOSE 8000
+ENV ADMIN_PORT=8001
+EXPOSE 8000 8001
 # busybox wget is in the base image; /healthz answers {"ok":true}.
 HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
     CMD wget -qO- "http://127.0.0.1:${PORT}/healthz" | grep -q '"ok":true' || exit 1

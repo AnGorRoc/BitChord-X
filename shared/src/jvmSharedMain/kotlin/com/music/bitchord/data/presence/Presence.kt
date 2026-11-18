@@ -40,6 +40,8 @@ class Presence(
     private val platform: PresencePlatform,
     private val installId: String,
     private val endpoint: String = ENDPOINT,
+    private val appVersion: String = "",
+    private val enabledProvider: () -> Boolean = { true },
 ) {
     private val open = MutableStateFlow(false)
     @Volatile private var announced = false
@@ -66,7 +68,7 @@ class Presence(
     }
 
     fun setOpen(isOpen: Boolean) {
-        open.value = isOpen
+        open.value = isOpen && enabledProvider()
     }
 
     /**
@@ -85,10 +87,14 @@ class Presence(
     }
 
     private fun send(open: Boolean, timeoutSec: Long = 15) {
+        if (open && !enabledProvider()) return
         val body = buildJsonObject {
             put("id", installId)
             put("platform", platform.wire)
             put("open", open)
+            if (appVersion.isNotBlank()) {
+                put("version", appVersion)
+            }
         }.toString().toRequestBody(JSON)
         val request = Request.Builder().url(endpoint).post(body).build()
         // Set before sending: a ping that times out may still have been counted,

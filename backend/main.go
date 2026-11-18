@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -25,20 +26,23 @@ import (
 	"github.com/KabirSinghBhatia/BitChord/backend/party"
 	"github.com/KabirSinghBhatia/BitChord/backend/presence"
 	"github.com/KabirSinghBhatia/BitChord/backend/protocol"
+	"github.com/KabirSinghBhatia/BitChord/backend/telemetry"
 )
 
 var (
-	store    = party.NewPartyStore()
-	hubInst  = hub.NewHub()
-	createLimiter = newIPRateLimiter(time.Minute, config.CreateRatePerMinute, config.RateLimitMaxEntries)
-	joinLimiter = newIPRateLimiter(time.Minute, config.JoinRatePerMinute, config.RateLimitMaxEntries)
-	previewLimiter = newIPRateLimiter(time.Minute, config.PreviewRatePerMinute, config.RateLimitMaxEntries)
+	store                 = party.NewPartyStore()
+	hubInst               = hub.NewHub()
+	createLimiter         = newIPRateLimiter(time.Minute, config.CreateRatePerMinute, config.RateLimitMaxEntries)
+	joinLimiter           = newIPRateLimiter(time.Minute, config.JoinRatePerMinute, config.RateLimitMaxEntries)
+	previewLimiter        = newIPRateLimiter(time.Minute, config.PreviewRatePerMinute, config.RateLimitMaxEntries)
 	accountConnectLimiter = newIPRateLimiter(time.Minute, config.AccountConnectRatePerMinute, config.RateLimitMaxEntries)
-	presenceTracker = presence.NewTracker(
+	presenceTracker       = presence.NewTracker(
 		time.Duration(config.PresenceIntervalSec+config.PresenceGraceSec)*time.Second,
 		config.PresenceMaxEntries,
 	)
-	presenceLimiter = newIPRateLimiter(time.Minute, config.PresencePingsPerMinute, config.PresenceRateLimitMaxIPs)
+	presenceLimiter  = newIPRateLimiter(time.Minute, config.PresencePingsPerMinute, config.PresenceRateLimitMaxIPs)
+	telemetryLimiter = newIPRateLimiter(time.Minute, config.TelemetryRatePerMin, config.RateLimitMaxEntries)
+	telemetryStore   *telemetry.Store
 	upgrader = websocket.Upgrader{
 		// Answered only to a browser that offered it with its token (see
 		// parseSocketToken); a native client offers no subprotocol and gets none.
@@ -50,10 +54,41 @@ var (
 	}
 )
 
+func liveTelemetryStats() telemetry.LiveStats {
+	c := presenceTracker.Counts()
+	return telemetry.LiveStats{
+		Online:        c.Online,
+		Android:       c.Android,
+		PC:            c.PC,
+		Browser:       c.Browser,
+		ActiveParties: store.Len(),
+		ActiveSockets: hubInst.Count(),
+		UpdatedAt:     c.UpdatedAt,
+	}
+}
+
+func startTelemetrySnapshotTicker() {
+	ticker := time.NewTicker(1 * time.Minute)
+	defer ticker.Stop()
+	for range ticker.C {
+		if telemetryStore != nil {
+			telemetryStore.RecordSnapshot(liveTelemetryStats())
+		}
+	}
+}
+
 func main() {
+	var err error
+	telemetryStore, err = telemetry.NewStore(context.Background(), config.DatabaseURL, config.Version, liveTelemetryStats)
+	if err != nil {
+		log.Fatalf("Telemetry init failed: %v", err)
+	}
+	defer telemetryStore.Close()
+
 	go startHeartbeatTicker()
 	go startPresenceSweeper()
 	go startAccountSweeper()
+	go startTelemetrySnapshotTicker()
 
 	mux := http.NewServeMux()
 
@@ -71,8 +106,9 @@ func main() {
 	mux.HandleFunc("GET /api/parties/{code}/preview", handlePreviewParty)
 	mux.HandleFunc("POST /api/parties/{code}/leave", handleLeaveParty)
 
-	// Open-app counter
+	// Open-app counter & opt-in error telemetry
 	mux.HandleFunc("POST /api/presence", handlePresence)
+	mux.HandleFunc("POST /api/telemetry/error", handleTelemetryError)
 	mux.HandleFunc("GET /api/stats/live", handleLiveStats)
 	mux.HandleFunc("GET /api/stats/live/badge.svg", handleLiveBadge)
 
@@ -81,6 +117,25 @@ func main() {
 
 	// WebSocket endpoint
 	mux.HandleFunc("GET /ws/parties/{code}", handleWebSocket)
+
+	// Private LAN/Tailscale admin dashboard server (never routed to Cloudflare)
+	if config.AdminPort > 0 {
+		adminAddr := fmt.Sprintf("0.0.0.0:%d", config.AdminPort)
+		adminSrv := &http.Server{
+			Addr:              adminAddr,
+			Handler:           telemetry.NewAdminHandler(telemetryStore, config.AdminSecret),
+			ReadHeaderTimeout: 10 * time.Second,
+			ReadTimeout:       20 * time.Second,
+			WriteTimeout:      20 * time.Second,
+			IdleTimeout:       60 * time.Second,
+		}
+		go func() {
+			log.Printf("BitChord Telemetry Dashboard listening on %s (private port)", adminAddr)
+			if err := adminSrv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+				log.Printf("Admin server stopped: %v", err)
+			}
+		}()
+	}
 
 	handler := corsMiddleware(mux)
 
@@ -361,7 +416,7 @@ func handleTime(w http.ResponseWriter, r *http.Request) {
 }
 
 // handlePresence takes the open apps' heartbeat:
-// {"id": "<install uuid>", "platform": "android"|"pc"|"browser", "open": true|false}.
+// {"id": "<install uuid>", "platform": "android"|"pc"|"browser", "open": true|false, "version": "1.9.3"}.
 func handlePresence(w http.ResponseWriter, r *http.Request) {
 	if !presenceLimiter.Allow(clientIP(r)) {
 		jsonError(w, http.StatusTooManyRequests, "rate_limited", "Too many presence pings from this address.")
@@ -371,6 +426,7 @@ func handlePresence(w http.ResponseWriter, r *http.Request) {
 		ID       string `json:"id"`
 		Platform string `json:"platform"`
 		Open     *bool  `json:"open"`
+		Version  string `json:"version"`
 	}
 	if !decodeJSONBody(w, r, &body) {
 		return
@@ -402,7 +458,69 @@ func handlePresence(w http.ResponseWriter, r *http.Request) {
 	} else {
 		presenceTracker.Close(id)
 	}
+	if telemetryStore != nil {
+		telemetryStore.RecordPresence(body.ID, body.Platform, body.Version, *body.Open)
+	}
 	jsonResponse(w, http.StatusOK, map[string]int{"intervalSec": config.PresenceIntervalSec})
+}
+
+// handleTelemetryError accepts opt-in error reports with basic device info.
+func handleTelemetryError(w http.ResponseWriter, r *http.Request) {
+	if !telemetryLimiter.Allow(clientIP(r)) {
+		jsonError(w, http.StatusTooManyRequests, "rate_limited", "Too many error reports from this address.")
+		return
+	}
+	var body struct {
+		ID           string `json:"id"`
+		Platform     string `json:"platform"`
+		AppVersion   string `json:"appVersion"`
+		ErrorType    string `json:"errorType"`
+		ErrorMessage string `json:"errorMessage"`
+		Stacktrace   string `json:"stacktrace"`
+		DeviceModel  string `json:"deviceModel"`
+		OSVersion    string `json:"osVersion"`
+		ABI          string `json:"abi"`
+	}
+	if !decodeJSONBody(w, r, &body) {
+		return
+	}
+	platform, ok := presence.ParsePlatform(body.Platform)
+	if !ok {
+		jsonError(w, http.StatusUnprocessableEntity, "invalid_platform", "platform must be android, pc or browser.")
+		return
+	}
+	origin := r.Header.Get("Origin")
+	if (platform == presence.Browser) != (origin != "") || (origin != "" && !config.IsAllowedOrigin(origin)) {
+		jsonError(w, http.StatusForbidden, "origin_not_allowed", "Telemetry is only accepted from the apps and the web player.")
+		return
+	}
+	if body.ID != "" {
+		if _, ok := presence.ParseID(body.ID); !ok {
+			jsonError(w, http.StatusUnprocessableEntity, "invalid_id", "id must be a UUID.")
+			return
+		}
+	}
+	if strings.TrimSpace(body.ErrorType) == "" || strings.TrimSpace(body.ErrorMessage) == "" {
+		jsonError(w, http.StatusUnprocessableEntity, "invalid_error", "errorType and errorMessage are required.")
+		return
+	}
+	if telemetryStore != nil {
+		if _, err := telemetryStore.RecordError(r.Context(), telemetry.ErrorInput{
+			InstallID:    body.ID,
+			Platform:     body.Platform,
+			AppVersion:   body.AppVersion,
+			ErrorType:    body.ErrorType,
+			ErrorMessage: body.ErrorMessage,
+			Stacktrace:   body.Stacktrace,
+			DeviceModel:  body.DeviceModel,
+			OSVersion:    body.OSVersion,
+			ABI:          body.ABI,
+		}); err != nil {
+			jsonError(w, http.StatusInternalServerError, "store_error", "Failed to store error report.")
+			return
+		}
+	}
+	jsonResponse(w, http.StatusAccepted, map[string]bool{"ok": true})
 }
 
 // handleLiveStats is public on purpose: anyone, including a README badge or
