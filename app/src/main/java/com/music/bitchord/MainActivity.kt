@@ -98,6 +98,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.Surface
@@ -3006,6 +3007,16 @@ private fun BitChordApp(
             // swipe doesn't drag a band of the theme's black across it.
             com.music.bitchord.ui.theme.LocalPageBackground provides
                 playingPalette.background.takeIf { appTinted },
+            // Settings' grouped cards: one deeper shade of that same wash.
+            com.music.bitchord.ui.theme.LocalCardSurface provides
+                if (appTinted) {
+                    com.music.bitchord.ui.theme.cardShadeOf(
+                        playingPalette.background,
+                        dark = MaterialTheme.colorScheme.background.luminance() < 0.5f,
+                    )
+                } else {
+                    null
+                },
         ) {
         Row(Modifier.fillMaxSize().snapshotBackdropSource(pageBackdrop)) {
             // Painted once, under every page that has no colour of its own —

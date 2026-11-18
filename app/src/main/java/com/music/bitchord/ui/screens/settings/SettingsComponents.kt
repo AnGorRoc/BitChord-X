@@ -524,7 +524,7 @@ internal fun SettingsGroup(
             .fillMaxWidth()
             .padding(horizontal = GROUP_INSET)
             .clip(GroupShape)
-            .background(MaterialTheme.colorScheme.surfaceVariant),
+            .background(com.music.bitchord.ui.theme.cardSurface()),
     ) {
         content()
     }
