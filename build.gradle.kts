@@ -85,7 +85,7 @@ tasks.register<Copy>("releaseAssets") {
     val abiPart = Regex("""-prod-(.+)-release\.apk$""")
 
     into(layout.buildDirectory.dir("release-assets"))
-    doFirst { delete(destinationDir) }
+    doFirst { destinationDir.deleteRecursively() }
 
     listOf("app" to "BitChord", "tv" to "BitChordTV").forEach { (module, prefix) ->
         from(project(":$module").layout.buildDirectory.dir("outputs/apk/prod/release")) {
