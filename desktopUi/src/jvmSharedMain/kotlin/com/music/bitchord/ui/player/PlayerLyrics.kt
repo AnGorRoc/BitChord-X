@@ -396,6 +396,10 @@ private const val SKELETON_PERIOD_MS = 1_400
 /** What a line reads at while the list is being scrolled by hand. */
 private const val BROWSING_ALPHA = 0.8f
 
+/** The share of the viewport, at each end, that stays lightly blurred while browsing. */
+private const val BROWSE_EDGE_BAND = 0.14f
+private val BROWSE_EDGE_BLUR = 1.6.dp
+
 /** The playing line sits at 1; the rest sit fractionally back from it. */
 private const val INACTIVE_SCALE = 0.98f
 
@@ -2057,6 +2061,20 @@ internal fun LyricsPanel(
     val lastVisibleIndex by remember(listState) {
         derivedStateOf { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1 }
     }
+    // Rows whose middle sits in the top or bottom stretch of the viewport. Read
+    // only while browsing, when the panel keeps a light blur there and nowhere
+    // else; structural equality so rows recompose only as one crosses a band.
+    val edgeRows by remember(listState) {
+        derivedStateOf(structuralEqualityPolicy()) {
+            val info = listState.layoutInfo
+            val span = info.viewportEndOffset - info.viewportStartOffset
+            val band = span * BROWSE_EDGE_BAND
+            info.visibleItemsInfo.filter {
+                val mid = it.offset + it.size / 2f - info.viewportStartOffset
+                mid < band || mid > span - band
+            }.map { it.index }.toSet()
+        }
+    }
 
     LazyColumn(
         state = listState,
@@ -2135,23 +2153,22 @@ internal fun LyricsPanel(
             // the same floor rather than fading to nothing.
             val falloff = if (centerFocus) LINE_FALLOFF_ALPHA else LINE_FALLOFF_ALPHA_PHONE
             val step = distance.coerceAtMost(falloff.lastIndex)
-            val isEdgeItem = index <= firstVisibleIndex || (lastVisibleIndex >= 0 && index >= lastVisibleIndex)
             val targetBlur = when {
                 !isSynced || reduceDynamicBlur || !lyricsBlur -> 0.dp
-                browsing -> if (isEdgeItem) 1.2.dp else 0.dp
+                browsing -> if (index in edgeRows) BROWSE_EDGE_BLUR else 0.dp
                 isActive -> 0.dp
                 else -> LINE_FALLOFF_BLUR[step.coerceAtMost(LINE_FALLOFF_BLUR.lastIndex)]
             }
             val blur by animateDpAsState(
                 targetValue = targetBlur,
-                animationSpec = tween(durationMillis = 600, easing = FastOutSlowInEasing),
+                animationSpec = tween(durationMillis = 450, easing = FastOutSlowInEasing),
                 label = "lyricBlur",
             )
             val lineAlpha by animateFloatAsState(
                 targetValue = when {
                     !isSynced -> 0.95f
                     isActive -> 1f
-                    browsing -> if (isEdgeItem) 0.65f else 0.95f
+                    browsing -> if (index in edgeRows) 0.65f else 0.95f
                     offset < 0 -> 0.92f
                     else -> falloff[step]
                 },
