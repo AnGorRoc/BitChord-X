@@ -651,7 +651,9 @@ fun ExploreScreen(
                         .map { it.first }
                 }
             }
-            val bentoRows = remember(allMoods) { buildBentoRows(allMoods) }
+            val isWideScreen = maxWidth >= 720.dp
+            val gridRows = remember(allMoods, columns) { allMoods.chunked(columns) }
+            val gridColors = remember(allMoods, columns) { buildGridColors(allMoods, columns) }
 
             val moodPairs = remember(allMoods) { allMoods.chunked(2) }
             val dailyTheme = remember { getDailyTheme() }
@@ -760,19 +762,45 @@ fun ExploreScreen(
 
                 when (chartsState) {
                     UiState.Loading -> item(key = "charts-loading") {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(horizontal = PAGE_GUTTER, vertical = 6.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            repeat(5) {
-                                ShimmerBox(
-                                    Modifier
-                                        .fillMaxWidth()
-                                        .height(56.dp),
-                                    RoundedCornerShape(12.dp),
-                                )
+                        if (isWideScreen) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = PAGE_GUTTER, vertical = 6.dp),
+                                horizontalArrangement = Arrangement.spacedBy(24.dp),
+                            ) {
+                                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    repeat(3) {
+                                        ShimmerBox(
+                                            Modifier.fillMaxWidth().height(56.dp),
+                                            RoundedCornerShape(12.dp),
+                                        )
+                                    }
+                                }
+                                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    repeat(3) {
+                                        ShimmerBox(
+                                            Modifier.fillMaxWidth().height(56.dp),
+                                            RoundedCornerShape(12.dp),
+                                        )
+                                    }
+                                }
+                            }
+                        } else {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = PAGE_GUTTER, vertical = 6.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                            ) {
+                                repeat(5) {
+                                    ShimmerBox(
+                                        Modifier
+                                            .fillMaxWidth()
+                                            .height(56.dp),
+                                        RoundedCornerShape(12.dp),
+                                    )
+                                }
                             }
                         }
                     }
@@ -800,29 +828,70 @@ fun ExploreScreen(
                                 }
                             }
                         } else {
-                            val hasMore = allTopSongs.size > 5
+                            val hasMore = allTopSongs.size > (if (isWideScreen) 6 else 5)
                             item(key = "charts-preview-container") {
                                 Box(
                                     modifier = if (hasMore) {
                                         Modifier
                                             .fillMaxWidth()
-                                            .height(365.5.dp)
+                                            .height(if (isWideScreen) 215.dp else 365.5.dp)
                                             .clip(RectangleShape)
                                     } else {
                                         Modifier.fillMaxWidth()
                                     },
                                 ) {
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .wrapContentHeight(align = Alignment.Top, unbounded = true),
-                                    ) {
-                                        previewTopSongs.forEachIndexed { index, item ->
-                                            Column(
-                                                modifier = Modifier
-                                                    .fillMaxWidth()
-                                                    .wrapContentHeight(align = Alignment.Top, unbounded = true),
-                                            ) {
+                                    if (isWideScreen && previewTopSongs.size > 1) {
+                                        val half = (previewTopSongs.size + 1) / 2
+                                        val leftCol = previewTopSongs.take(half)
+                                        val rightCol = previewTopSongs.drop(half)
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .padding(horizontal = PAGE_GUTTER),
+                                            horizontalArrangement = Arrangement.spacedBy(24.dp),
+                                        ) {
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                leftCol.forEachIndexed { index, item ->
+                                                    TopTrendingRow(
+                                                        rank = index + 1,
+                                                        item = item,
+                                                        onClick = { onSongClick?.invoke(item, allTopSongs) },
+                                                        onOptionsClick = { onSongOptionsClick?.invoke(item) },
+                                                    )
+                                                    if (index < leftCol.lastIndex) {
+                                                        HorizontalDivider(
+                                                            modifier = Modifier.padding(start = 48.dp),
+                                                            thickness = 0.5.dp,
+                                                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f),
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                rightCol.forEachIndexed { index, item ->
+                                                    TopTrendingRow(
+                                                        rank = half + index + 1,
+                                                        item = item,
+                                                        onClick = { onSongClick?.invoke(item, allTopSongs) },
+                                                        onOptionsClick = { onSongOptionsClick?.invoke(item) },
+                                                    )
+                                                    if (index < rightCol.lastIndex) {
+                                                        HorizontalDivider(
+                                                            modifier = Modifier.padding(start = 48.dp),
+                                                            thickness = 0.5.dp,
+                                                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f),
+                                                        )
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    } else {
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .wrapContentHeight(align = Alignment.Top, unbounded = true),
+                                        ) {
+                                            previewTopSongs.forEachIndexed { index, item ->
                                                 TopTrendingRow(
                                                     rank = index + 1,
                                                     item = item,
@@ -1040,13 +1109,35 @@ fun ExploreScreen(
                     }
                     is UiState.Success -> {
                         itemsIndexed(
-                            bentoRows,
-                            key = { index, _ -> "bento_row_$index" },
+                            gridRows,
+                            key = { index, row -> "explore_grid_row_${index}_${row.firstOrNull()?.browseId}" },
                         ) { rowIndex, row ->
-                            BentoRow(
-                                row = row,
-                                onCategoryClick = onCategoryClick,
-                            )
+                            Row(
+                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = PAGE_GUTTER)
+                                    .padding(bottom = 10.dp),
+                            ) {
+                                row.forEachIndexed { colIndex, item ->
+                                    val colorIndex = rowIndex * columns + colIndex
+                                    val color = gridColors.getOrElse(colorIndex) {
+                                        BENTO_PALETTE[(item.title.hashCode() and 0x7FFFFFFF) % BENTO_PALETTE.size]
+                                    }
+                                    BentoGlassCard(
+                                        item = item,
+                                        cardColor = color,
+                                        isWide = false,
+                                        onClick = { onCategoryClick(item) },
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                }
+                                if (row.size < columns) {
+                                    repeat(columns - row.size) {
+                                        Spacer(Modifier.weight(1f))
+                                    }
+                                }
+                            }
                         }
                     }
                 }
@@ -1154,12 +1245,12 @@ private fun NewReleaseCard(
 ) {
     Column(
         modifier = Modifier
-            .width(136.dp)
+            .width(152.dp)
             .clickable(onClick = onClick),
     ) {
         Box(
             modifier = Modifier
-                .size(136.dp)
+                .size(152.dp)
                 .clip(RoundedCornerShape(14.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant),
         ) {
@@ -1172,7 +1263,7 @@ private fun NewReleaseCard(
                 )
             }
         }
-        Spacer(Modifier.height(6.dp))
+        Spacer(Modifier.height(8.dp))
         Text(
             text = item.title,
             style = MaterialTheme.typography.bodyMedium,
@@ -1545,155 +1636,24 @@ private fun ChartOptionsModalContent(
     }
 }
 
-private sealed class BentoRowItem {
-    data class AsymmetricLeft(
-        val wide: MoodGenre,
-        val wideColor: Color,
-        val narrow: MoodGenre,
-        val narrowColor: Color,
-    ) : BentoRowItem()
-
-    data class AsymmetricRight(
-        val narrow: MoodGenre,
-        val narrowColor: Color,
-        val wide: MoodGenre,
-        val wideColor: Color,
-    ) : BentoRowItem()
-
-    data class Balanced(
-        val first: MoodGenre,
-        val firstColor: Color,
-        val second: MoodGenre,
-        val secondColor: Color,
-    ) : BentoRowItem()
-
-    data class Single(
-        val item: MoodGenre,
-        val color: Color,
-    ) : BentoRowItem()
-}
-
-private fun buildBentoRows(items: List<MoodGenre>): List<BentoRowItem> {
-    val result = mutableListOf<BentoRowItem>()
-    var i = 0
-    var rowIndex = 0
-    var prevCol0Idx = -1
-    var prevCol1Idx = -1
-
-    while (i < items.size) {
-        if (i + 1 < items.size) {
-            val item1 = items[i]
-            val item2 = items[i + 1]
-
-            val (color1, col0Idx) = assignRowColor(
-                item = item1,
-                rowIndex = rowIndex,
-                colIndex = 0,
-                conflictIndices = if (prevCol0Idx >= 0) setOf(prevCol0Idx) else emptySet(),
-            )
-            val (color2, col1Idx) = assignRowColor(
-                item = item2,
-                rowIndex = rowIndex,
-                colIndex = 1,
-                conflictIndices = setOfNotNull(col0Idx, if (prevCol1Idx >= 0) prevCol1Idx else null),
-            )
-
-            when (rowIndex % 3) {
-                0 -> result.add(BentoRowItem.AsymmetricLeft(item1, color1, item2, color2))
-                1 -> result.add(BentoRowItem.Balanced(item1, color1, item2, color2))
-                2 -> result.add(BentoRowItem.AsymmetricRight(item1, color1, item2, color2))
-            }
-            prevCol0Idx = col0Idx
-            prevCol1Idx = col1Idx
-            rowIndex++
-            i += 2
-        } else {
-            val item = items[i]
-            val (color, _) = assignRowColor(
-                item = item,
-                rowIndex = rowIndex,
-                colIndex = 0,
-                conflictIndices = if (prevCol0Idx >= 0) setOf(prevCol0Idx) else emptySet(),
-            )
-            result.add(BentoRowItem.Single(item, color))
-            i += 1
+private fun buildGridColors(items: List<MoodGenre>, columns: Int): List<Color> {
+    val result = ArrayList<Color>(items.size)
+    val colorIndices = ArrayList<Int>(items.size)
+    for (i in items.indices) {
+        val rowIndex = i / columns
+        val colIndex = i % columns
+        val conflictIndices = mutableSetOf<Int>()
+        if (colIndex > 0 && i - 1 < colorIndices.size) {
+            conflictIndices.add(colorIndices[i - 1])
         }
+        if (rowIndex > 0 && i - columns >= 0 && i - columns < colorIndices.size) {
+            conflictIndices.add(colorIndices[i - columns])
+        }
+        val (color, index) = assignRowColor(items[i], rowIndex, colIndex, conflictIndices)
+        result.add(color)
+        colorIndices.add(index)
     }
     return result
-}
-
-@Composable
-private fun BentoRow(
-    row: BentoRowItem,
-    onCategoryClick: (MoodGenre) -> Unit,
-) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = PAGE_GUTTER)
-            .padding(bottom = 10.dp),
-    ) {
-        when (row) {
-            is BentoRowItem.AsymmetricLeft -> {
-                BentoGlassCard(
-                    item = row.wide,
-                    cardColor = row.wideColor,
-                    isWide = true,
-                    onClick = { onCategoryClick(row.wide) },
-                    modifier = Modifier.weight(1.42f),
-                )
-                BentoGlassCard(
-                    item = row.narrow,
-                    cardColor = row.narrowColor,
-                    isWide = false,
-                    onClick = { onCategoryClick(row.narrow) },
-                    modifier = Modifier.weight(1f),
-                )
-            }
-            is BentoRowItem.AsymmetricRight -> {
-                BentoGlassCard(
-                    item = row.narrow,
-                    cardColor = row.narrowColor,
-                    isWide = false,
-                    onClick = { onCategoryClick(row.narrow) },
-                    modifier = Modifier.weight(1f),
-                )
-                BentoGlassCard(
-                    item = row.wide,
-                    cardColor = row.wideColor,
-                    isWide = true,
-                    onClick = { onCategoryClick(row.wide) },
-                    modifier = Modifier.weight(1.42f),
-                )
-            }
-            is BentoRowItem.Balanced -> {
-                BentoGlassCard(
-                    item = row.first,
-                    cardColor = row.firstColor,
-                    isWide = false,
-                    onClick = { onCategoryClick(row.first) },
-                    modifier = Modifier.weight(1f),
-                )
-                BentoGlassCard(
-                    item = row.second,
-                    cardColor = row.secondColor,
-                    isWide = false,
-                    onClick = { onCategoryClick(row.second) },
-                    modifier = Modifier.weight(1f),
-                )
-            }
-            is BentoRowItem.Single -> {
-                BentoGlassCard(
-                    item = row.item,
-                    cardColor = row.color,
-                    isWide = true,
-                    onClick = { onCategoryClick(row.item) },
-                    modifier = Modifier.weight(1f),
-                )
-            }
-        }
-    }
 }
 
 private fun formatBentoTitle(rawTitle: String): String {
@@ -1751,34 +1711,15 @@ fun BentoGlassCard(
     ) {
         // Portada nítida en el sector derecho sin velos opacos que tapen la imagen
         item.thumbnailUrl?.let { artwork ->
-            Box(
+            AsyncImage(
+                model = artwork,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxHeight()
                     .fillMaxWidth(if (isWide) 0.44f else 0.46f)
                     .align(Alignment.CenterEnd),
-            ) {
-                AsyncImage(
-                    model = artwork,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
-                // Difuminado sutil en el borde izquierdo de transición para garantizar legibilidad del texto
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .fillMaxWidth(0.50f)
-                        .align(Alignment.CenterStart)
-                        .background(
-                            Brush.horizontalGradient(
-                                colors = listOf(
-                                    cardColor.copy(alpha = 0.92f),
-                                    Color.Transparent,
-                                ),
-                            ),
-                        ),
-                )
-            }
+            )
         }
 
         // Título limpio alineado abajo a la izquierda sin romper palabras ni recortar texto
@@ -1917,13 +1858,18 @@ private fun moodColumns(available: Dp): Int {
 @Composable
 private fun ExploreSkeletonRows(columns: Int) {
     Column(Modifier.padding(horizontal = PAGE_GUTTER)) {
-        repeat(6) {
+        repeat(5) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(MOOD_SPACING),
-                modifier = Modifier.padding(bottom = MOOD_SPACING),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.padding(bottom = 10.dp),
             ) {
                 repeat(columns) {
-                    ShimmerBox(Modifier.weight(1f).aspectRatio(MOOD_CARD_ASPECT), MOOD_CARD_SHAPE)
+                    ShimmerBox(
+                        Modifier
+                            .weight(1f)
+                            .height(92.dp),
+                        RoundedCornerShape(16.dp),
+                    )
                 }
             }
         }

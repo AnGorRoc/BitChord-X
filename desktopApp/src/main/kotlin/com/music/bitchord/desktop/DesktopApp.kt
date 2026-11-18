@@ -664,6 +664,9 @@ fun BitChordDesktopApp() {
     var homeGeneration by remember { mutableStateOf(0) }
     var homeIdentity by remember { mutableStateOf<String?>(null) }
     var exploreState by remember { mutableStateOf<UiState<List<MoodGenreSection>>>(UiState.Loading) }
+    var chartsState by remember { mutableStateOf<UiState<List<HomeShelf>>>(UiState.Loading) }
+    var newReleasesState by remember { mutableStateOf<UiState<List<HomeShelf>>>(UiState.Loading) }
+    var chartsRegion by remember { mutableStateOf<String?>(null) }
     var selectedMoodGenre by remember { mutableStateOf<MoodGenre?>(null) }
     // Bumped by a retry so the loaders below re-run without the state they are keyed on having to
     // change to something and back again.
@@ -3263,11 +3266,35 @@ fun BitChordDesktopApp() {
         )
     }
 
+    suspend fun loadCharts(region: String? = chartsRegion, force: Boolean = false) {
+        if (!youtubeSourceEnabled) return
+        if (!force && chartsState is UiState.Success) return
+        chartsState = UiState.Loading
+        YtMusicRepository.charts(region, force).fold(
+            onSuccess = { shelves -> chartsState = UiState.Success(shelves) },
+            onFailure = { chartsState = UiState.Error(it.message ?: "Could not load charts") },
+        )
+    }
+
+    suspend fun loadNewReleases(region: String? = chartsRegion, force: Boolean = false) {
+        if (!youtubeSourceEnabled) return
+        if (!force && newReleasesState is UiState.Success) return
+        newReleasesState = UiState.Loading
+        YtMusicRepository.newReleases(region, force).fold(
+            onSuccess = { shelves -> newReleasesState = UiState.Success(shelves) },
+            onFailure = { newReleasesState = UiState.Error(it.message ?: "Could not load new releases") },
+        )
+    }
+
     LaunchedEffect(destination, exploreReloads) {
         if (destination == DesktopDestination.EXPLORE &&
             (exploreState is UiState.Loading || exploreReloads > 0)
         ) {
-            loadExplore()
+            coroutineScope {
+                launch { loadExplore() }
+                launch { loadCharts(force = exploreReloads > 0) }
+                launch { loadNewReleases(force = exploreReloads > 0) }
+            }
         }
     }
 
@@ -4997,6 +5024,46 @@ fun BitChordDesktopApp() {
                             pullState = rememberPullToRefreshState(),
                             contentPadding = sharedPagePadding,
                             showTitle = false,
+                            chartsState = chartsState,
+                            newReleasesState = newReleasesState,
+                            chartsRegion = chartsRegion,
+                            onRegionChange = { region ->
+                                chartsRegion = region
+                                scope.launch { loadCharts(region, force = true) }
+                            },
+                            onRefreshCharts = {
+                                scope.launch { loadCharts(chartsRegion, force = true) }
+                            },
+                            onSongClick = { item, allSongs ->
+                                openShelfItem(item, shelfTitle = "Charts", siblings = allSongs)
+                            },
+                            onSongOptionsClick = { item ->
+                                openMenu(item.toSong())
+                            },
+                            onItemClick = { item ->
+                                openShelfItem(item, shelfTitle = "Explore")
+                            },
+                            onPlayAll = { songs ->
+                                val playable = songs.filter { it.videoId != null }.map { it.toSong() }
+                                if (playable.isNotEmpty()) {
+                                    playSongs(playable, 0, DesktopQueueSource("Charts", PlaybackSourceType.BROWSE))
+                                }
+                            },
+                            onShufflePlay = { songs ->
+                                val playable = songs.filter { it.videoId != null }.map { it.toSong() }
+                                if (playable.isNotEmpty()) {
+                                    playSongs(playable.shuffled(), 0, DesktopQueueSource("Charts", PlaybackSourceType.BROWSE))
+                                }
+                            },
+                            onAddToQueue = { songs ->
+                                songs.filter { it.videoId != null }.map { it.toSong() }.forEach(::addToQueue)
+                            },
+                            onOpenTopicPlaylist = { _, searchQuery, _ ->
+                                query = searchQuery
+                                searchFilter = SearchFilter.ALL
+                                search()
+                                selectDestination(DesktopDestination.SEARCH)
+                            },
                         )
                         destination == DesktopDestination.SEARCH -> SearchScreen(
                             query = query,
