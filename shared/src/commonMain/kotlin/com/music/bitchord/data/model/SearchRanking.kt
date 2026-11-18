@@ -38,8 +38,11 @@ fun rankAllSearch(rows: List<SearchResult>, query: String): RankedSearch {
         .maxOfOrNull { browseCloseness(it.item, words) } ?: 0
     val topLeads = topTrack != null && topCloseness >= closestBrowse
 
+    // Songs keep YouTube's own order. It knows which recording is the popular,
+    // canonical one for a query; a title-closeness sort threw that away and put
+    // anonymous exact-title covers ahead of the original whenever the original's
+    // title carried an extra word. Closeness still places the section.
     fun songs(): List<SearchResult> = rows.filterIsInstance<SearchResult.Track>()
-        .sortedByDescending { songCloseness(it.song, words) }
 
     fun browse(type: BrowseType): List<SearchResult> =
         rows.filterIsInstance<SearchResult.Browse>()

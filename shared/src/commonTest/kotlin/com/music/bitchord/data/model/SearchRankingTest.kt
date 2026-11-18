@@ -102,6 +102,18 @@ class SearchRankingTest {
     }
 
     @Test
+    fun songsKeepTheOrderYouTubeGaveThem() {
+        val rows = listOf(
+            track("Sorry for Party Rocking (Explicit)", "LMFAO", "original"),
+            track("Sorry for Party Rocking", "Ultimate Party Jams", "cover"),
+            track("Sorry for Party Rocking (Remix)", "LMFAO", "remix"),
+        )
+        val songs = rankAllSearch(rows, "sorry for party rocking").sections.single().rows
+            .map { (it as SearchResult.Track).song.videoId }
+        assertEquals(listOf("original", "cover", "remix"), songs)
+    }
+
+    @Test
     fun aHalfTypedLastWordStillMatches() {
         val rows = listOf(track("Billie Jean", "Michael Jackson"), artist("Michael Jackson"))
         val ranked = rankAllSearch(rows, "michael jack")
