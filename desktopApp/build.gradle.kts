@@ -3,6 +3,8 @@ import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 import java.util.zip.ZipFile
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
+import NativeTools.cmakeBinary
+import NativeTools.findOnPath
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
 /** What the packages, the launcher and the settings footer all say. */
@@ -29,7 +31,7 @@ val isArm64 = hostArch == "aarch64" || hostArch == "arm64"
 // Windows installer metadata requires MAJOR.MINOR.BUILD even though the app's public version is
 // intentionally displayed without a patch number (1.7 rather than 1.7.0).
 // The build number is the desktop version code; it also keeps "-beta1" out of the numeric installer version.
-val desktopVersionCode = 37
+val desktopVersionCode = 38
 val nativePackageVersion = appVersion.substringBefore('-').split('.').take(2).joinToString(".") + ".$desktopVersionCode"
 
 // FFmpeg decodes audio; see DesktopAudioDecoder.
@@ -184,64 +186,13 @@ val windowNativeDir = layout.buildDirectory.dir("native-window/$targetOs")
  */
 val crossBuildingForWindows = targetOs == "windows" && !hostIsWindows
 
-/**
- * An executable's absolute path, from the PATH this build was invoked with.
- *
- * Resolved here rather than left to the child process. Gradle runs external
- * commands from the daemon, whose own PATH is whatever it was started with, so
- * a daemon reused from a shell that had no cmake cannot find the one the
- * current shell does — it fails with a bare "No such file or directory" while
- * `cmake --version` works fine in the terminal beside it.
- */
-/**
- * Whether a tool on the PATH can actually be started.
- *
- * A PATH entry can be a wrapper script whose own interpreter is gone; it is a file, it is
- * executable, and it fails only at exec time — which surfaces as a build failure rather than as the
- * missing-tool path this build already handles.
- */
-fun runs(tool: File): Boolean = runCatching {
-    val process = ProcessBuilder(tool.absolutePath, "--version")
-        .redirectOutput(ProcessBuilder.Redirect.DISCARD)
-        .redirectError(ProcessBuilder.Redirect.DISCARD)
-        .start()
-    if (!process.waitFor(10, TimeUnit.SECONDS)) {
-        process.destroyForcibly()
-        false
-    } else {
-        process.exitValue() == 0
-    }
-}.getOrDefault(false)
-
-fun findOnPath(tool: String): File? {
-    // Windows keeps the extension on the file and off the command line, so a bare name matches
-    // nothing on disk: PATHEXT is the list a shell would have tried.
-    val names = if (!hostIsWindows) {
-        listOf(tool)
-    } else {
-        val extensions = System.getenv("PATHEXT").orEmpty()
-            .ifBlank { ".COM;.EXE;.BAT;.CMD" }
-            .split(';')
-            .filter(String::isNotBlank)
-        listOf(tool) + extensions.map { tool + it.lowercase() }
-    }
-    return System.getenv("PATH").orEmpty()
-        .split(File.pathSeparator)
-        .filter(String::isNotBlank)
-        .flatMap { directory -> names.map { File(directory, it) } }
-        // A PATHEXT match is executable by definition, and Windows' own canExecute is unreliable.
-        .firstOrNull { it.isFile && (hostIsWindows || it.canExecute()) && runs(it) }
-}
-
-fun cmakeBinary(): String = findOnPath("cmake")?.absolutePath ?: "cmake"
-
 val buildAnalysisNative by tasks.registering {
-    // onlyIf / doLast call script-level helpers (findOnPath, cmakeBinary), which the configuration
-    // cache cannot serialise. Builds that include this task simply skip the cache.
-    notCompatibleWithConfigurationCache("uses script-level helpers at execution time")
     val cmakeSource = project.file("native")
     val outputDir = analysisNativeDir.get().asFile
     val crossing = crossBuildingForWindows
+    val os = targetOs
+    // Not `providers` in doLast: bare, that resolves to the script, which the cache cannot restore.
+    val execProviders = providers
     val toolchain = project.file("native/mingw-w64.cmake")
     inputs.dir(rootProject.file("native/analyzer"))
     inputs.dir(rootProject.file("app/src/main/cpp/jni"))
@@ -257,8 +208,8 @@ val buildAnalysisNative by tasks.registering {
             )
         }
         val compilerName = if (crossing) "x86_64-w64-mingw32-g++" else "g++"
-        val compiler = targetOs != "windows" || findOnPath(compilerName) != null
-        val ninja = targetOs != "windows" || findOnPath("ninja") != null
+        val compiler = os != "windows" || findOnPath(compilerName) != null
+        val ninja = os != "windows" || findOnPath("ninja") != null
         if (cmake != null && (!compiler || !ninja)) {
             logger.lifecycle(
                 "$compilerName or Ninja not found — the Windows build will have no Automix analyser. " +
@@ -269,23 +220,23 @@ val buildAnalysisNative by tasks.registering {
     }
     doLast {
         val javaHome = System.getProperty("java.home")
-        val compiler = if (targetOs == "windows") {
+        val compiler = if (os == "windows") {
             findOnPath(if (crossing) "x86_64-w64-mingw32-g++" else "g++")
                 ?: error("the Windows C++ compiler disappeared while building the analyser")
         } else {
             null
         }
-        val ninja = if (targetOs == "windows") {
+        val ninja = if (os == "windows") {
             findOnPath("ninja") ?: error("Ninja disappeared while building the analyser")
         } else {
             null
         }
         try {
-            providers.exec {
+            execProviders.exec {
                 commandLine(
                     buildList {
                         addAll(listOf(cmakeBinary(), "-S", cmakeSource.absolutePath, "-B", outputDir.absolutePath))
-                        if (targetOs == "windows") {
+                        if (os == "windows") {
                             // The host may not have Visual Studio/nmake. Select the MinGW toolchain we
                             // checked above and discard any generator cached by an earlier configure.
                             addAll(
@@ -303,7 +254,7 @@ val buildAnalysisNative by tasks.registering {
                 )
                 environment("JAVA_HOME", javaHome)
             }.result.get().assertNormalExitValue()
-            providers.exec {
+            execProviders.exec {
                 commandLine(cmakeBinary(), "--build", outputDir.absolutePath, "--config", "Release", "-j", "4")
                 environment("JAVA_HOME", javaHome)
             }.result.get().assertNormalExitValue()
@@ -319,18 +270,18 @@ val buildAnalysisNative by tasks.registering {
  * sole owner of decoration and behaviour.
  */
 val buildWindowNative by tasks.registering {
-    // onlyIf / doLast call script-level helpers (findOnPath, cmakeBinary), which the configuration
-    // cache cannot serialise. Builds that include this task simply skip the cache.
-    notCompatibleWithConfigurationCache("uses script-level helpers at execution time")
     val cmakeSource = project.file("native/window")
     val outputDir = windowNativeDir.get().asFile
     val crossing = crossBuildingForWindows
+    val os = targetOs
+    // Not `providers` in doLast: bare, that resolves to the script, which the cache cannot restore.
+    val execProviders = providers
     val toolchain = project.file("native/mingw-w64.cmake")
     inputs.dir(cmakeSource)
     inputs.property("target", targetOs)
     outputs.dir(outputDir)
     onlyIf {
-        if (targetOs != "windows") return@onlyIf false
+        if (os != "windows") return@onlyIf false
         val cmake = findOnPath("cmake")
         val compiler = findOnPath(if (crossing) "x86_64-w64-mingw32-g++" else "g++")
         val ninja = findOnPath("ninja")
@@ -349,7 +300,7 @@ val buildWindowNative by tasks.registering {
         val ninja = findOnPath("ninja")
             ?: error("Ninja disappeared while building the Windows frame")
         try {
-            providers.exec {
+            execProviders.exec {
                 commandLine(
                     buildList {
                         addAll(
@@ -368,7 +319,7 @@ val buildWindowNative by tasks.registering {
                 )
                 environment("JAVA_HOME", javaHome)
             }.result.get().assertNormalExitValue()
-            providers.exec {
+            execProviders.exec {
                 commandLine(cmakeBinary(), "--build", outputDir.absolutePath, "-j", "4")
                 environment("JAVA_HOME", javaHome)
             }.result.get().assertNormalExitValue()

@@ -1780,14 +1780,6 @@ fun BentoGlassCard(
             end = Offset(360f, 180f),
         )
     }
-    val scrimBrush = remember(cardColor) {
-        Brush.horizontalGradient(
-            colors = listOf(
-                cardColor.copy(alpha = 0.92f),
-                Color.Transparent,
-            ),
-        )
-    }
     Box(
         modifier = modifier
             .height(92.dp)
@@ -1798,27 +1790,15 @@ fun BentoGlassCard(
     ) {
         // Portada nítida en el sector derecho sin velos opacos que tapen la imagen
         item.thumbnailUrl?.let { artwork ->
-            Box(
+            AsyncImage(
+                model = artwork,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .fillMaxHeight()
                     .fillMaxWidth(if (isWide) 0.44f else 0.46f)
                     .align(Alignment.CenterEnd),
-            ) {
-                AsyncImage(
-                    model = artwork,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize(),
-                )
-                // Difuminado sutil en el borde izquierdo de transición para garantizar legibilidad del texto
-                Box(
-                    modifier = Modifier
-                        .fillMaxHeight()
-                        .fillMaxWidth(0.50f)
-                        .align(Alignment.CenterStart)
-                        .background(scrimBrush),
-                )
-            }
+            )
         }
 
         // Título limpio alineado abajo a la izquierda sin romper palabras ni recortar texto

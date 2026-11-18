@@ -248,8 +248,6 @@
     <string name="light">สว่าง</string>
     <string name="dark">มืด</string>
     <string name="full_screen_cover_art_subtitle">ขยายปกอัลบั้มเต็มขอบเครื่องเล่นแทนปกสี่เหลี่ยมจัตุรัส</string>
-    <string name="immersive_player_mode">โหมดเครื่องเล่นแบบสมจริง</string>
-    <string name="immersive_player_mode_subtitle">ภาพปกขยายที่ด้านบนพร้อมเงาสะท้อนบรรยากาศเหนือปุ่มควบคุม</string>
     <string name="animated_cover_art_subtitle">เล่นวิดีโอวนซ้ำที่บางผลงานมีให้แทนปกนิ่ง</string>
     <string name="dont_repeat_songs_subtitle">AutoPlay จะไม่แนะนำเพลงที่เล่นหรือแนะนำไปแล้วในเซสชันนี้</string>
     <string name="download_quality_subtitle">%1$s ต่อแทร็ก ไม่ว่าการเชื่อมต่อจะเป็นแบบใด</string>
@@ -749,47 +747,47 @@
 
 
 
-    <string name="auto_quick_picks">Quick picks</string>
+    <string name="auto_quick_picks">เลือกด่วน</string>
 
-    <string name="auto_recents">Recent</string>
+    <string name="auto_recents">ล่าสุด</string>
 
-    <string name="auto_liked">Liked songs</string>
+    <string name="auto_liked">เพลงที่ชอบ</string>
 
-    <string name="auto_login_title">Sign in to YouTube on your phone</string>
+    <string name="auto_login_title">ลงชื่อเข้าใช้ YouTube บนโทรศัพท์ของคุณ</string>
 
-    <string name="auto_login_subtitle">Open BitChord on your phone to sign in</string>
+    <string name="auto_login_subtitle">เปิด BitChord บนโทรศัพท์ของคุณเพื่อลงชื่อเข้าใช้</string>
 
-    <string name="auto_empty_recents_title">No recent songs</string>
+    <string name="auto_empty_recents_title">ไม่มีเพลงล่าสุด</string>
 
-    <string name="auto_empty_recents_subtitle">Songs you play will appear here</string>
+    <string name="auto_empty_recents_subtitle">เพลงที่คุณเล่นจะปรากฏที่นี่</string>
 
-    <string name="auto_empty_quick_picks_title">No suggestions</string>
+    <string name="auto_empty_quick_picks_title">ไม่มีคำแนะนำ</string>
 
-    <string name="auto_empty_quick_picks_subtitle">Check your connection and try again</string>
+    <string name="auto_empty_quick_picks_subtitle">ตรวจสอบการเชื่อมต่อของคุณแล้วลองอีกครั้ง</string>
 
-    <string name="auto_empty_playlists_title">No playlists available</string>
+    <string name="auto_empty_playlists_title">ไม่มีเพลย์ลิสต์ที่ใช้ได้</string>
 
-    <string name="auto_empty_playlists_subtitle">Check your connection and try again</string>
+    <string name="auto_empty_playlists_subtitle">ตรวจสอบการเชื่อมต่อของคุณแล้วลองอีกครั้ง</string>
 
-    <string name="auto_empty_liked_title">No liked songs</string>
+    <string name="auto_empty_liked_title">ไม่มีเพลงที่ชอบ</string>
 
-    <string name="auto_empty_liked_subtitle">Tap the heart on a song to save it here</string>
+    <string name="auto_empty_liked_subtitle">แตะรูปหัวใจบนเพลงเพื่อบันทึกไว้ที่นี่</string>
 
-    <string name="auto_empty_offline_title">No offline songs</string>
+    <string name="auto_empty_offline_title">ไม่มีเพลงออฟไลน์</string>
 
-    <string name="auto_empty_offline_subtitle">Download songs on your phone to listen here</string>
+    <string name="auto_empty_offline_subtitle">ดาวน์โหลดเพลงบนโทรศัพท์ของคุณเพื่อฟังที่นี่</string>
 
-    <string name="auto_unavailable_title">Content unavailable</string>
+    <string name="auto_unavailable_title">เนื้อหาไม่พร้อมใช้งาน</string>
 
-    <string name="auto_unavailable_subtitle">Reopen the folder and try again</string>
+    <string name="auto_unavailable_subtitle">เปิดโฟลเดอร์อีกครั้งแล้วลองใหม่</string>
 
     <string name="subscribe">Subscribe</string>
 
     <string name="unsubscribe">Unsubscribe</string>
 
-    <string name="settings_search_hint">Search settings</string>
+    <string name="settings_search_hint">ค้นหาการตั้งค่า</string>
 
-    <string name="settings_search_empty">No settings match “%1$s”</string>
+    <string name="settings_search_empty">ไม่มีการตั้งค่าที่ตรงกับ “%1$s”</string>
 
     <string name="source_unrecognised">BitChord could not tell what that link is</string>
 
@@ -809,7 +807,7 @@
     <string name="smart_version_alignment">จัดตำแหน่งเสียงอัจฉริยะ</string>
     <string name="smart_version_alignment_subtitle">วิเคราะห์รูปคลื่นเสียงเพื่อหาจุดเล่นที่ตรงกันพอดี</string>
 
-    <string name="equalizer_footer">Shapes the sound inside BitChord, before it reaches the system.</string>
+    <string name="equalizer_footer">ปรับแต่งเสียงภายใน BitChord ก่อนที่จะส่งไปยังระบบ</string>
 
     <string name="equalizer_dynamic">Dynamic</string>
 
@@ -825,17 +823,17 @@
 
     <string name="equalizer_focused">Focused</string>
 
-    <string name="equalizer_broad_footer">Drag left for a warmer sound and right for a brighter one; down scoops the middle, up brings it forward. Broad moves wide stretches of the spectrum at once.</string>
+    <string name="equalizer_broad_footer">ลากไปทางซ้ายเพื่อให้ได้เสียงที่อุ่นขึ้น และลากไปทางขวาเพื่อให้ได้เสียงที่สดใสขึ้น แบบกว้างจะปรับช่วงความถี่ที่กว้างพร้อมกัน</string>
 
-    <string name="equalizer_focused_footer">Drag left for a warmer sound and right for a brighter one; down scoops the middle, up brings it forward. Focused works on narrower stretches, so it changes less around what it moves.</string>
+    <string name="equalizer_focused_footer">แบบโฟกัสจะทำงานในช่วงความถี่ที่แคบกว่า จึงเปลี่ยนเสียงรอบข้างน้อยกว่า</string>
 
     <string name="equalizer_preset">Preset</string>
 
     <string name="equalizer_bands">Bands</string>
 
-    <string name="equalizer_bands_footer">Moving a band leaves the preset behind and the curve becomes your own.</string>
+    <string name="equalizer_bands_footer">การเลื่อนแถบความถี่จะยกเลิกค่าที่ตั้งไว้ล่วงหน้า และกลายเป็นเส้นโค้งของคุณเอง</string>
 
-    <string name="equalizer_reset">Reset all bands</string>
+    <string name="equalizer_reset">รีเซ็ตแถบความถี่ทั้งหมด</string>
 
     <string name="equalizer_balance">Balance</string>
 
@@ -843,34 +841,34 @@
 
     <string name="equalizer_balance_right">R</string>
 
-    <string name="equalizer_balance_footer">Shifts the sound towards one ear by quietening the other.</string>
+    <string name="equalizer_balance_footer">เลื่อนเสียงไปทางหูข้างหนึ่งโดยการลดเสียงอีกข้างหนึ่ง</string>
     <string name="equalizer_bitstream_title">ไม่ได้ทำงานในขณะนี้</string>
     <string name="equalizer_bitstream_subtitle">แทร็กนี้ถูกส่งไปยังเอาต์พุตโดยไม่ถอดรหัส</string>
     <string name="equalizer_bitstream_footer">อีควอไลเซอร์ทำงานกับเสียงที่ถอดรหัสแล้ว แทร็กนี้ถูกส่งผ่านเป็นบิตสตรีมให้อุปกรณ์ของคุณถอดรหัสเอง จึงไม่มีตัวอย่างเสียงให้กรองที่นี่</string>
 
-    <string name="system_equalizer">System equalizer</string>
+    <string name="system_equalizer">อีควอไลเซอร์ของระบบ</string>
 
-    <string name="system_equalizer_subtitle">Your device\'s own panel</string>
+    <string name="system_equalizer_subtitle">แผงควบคุมของอุปกรณ์คุณเอง</string>
 
-    <string name="system_equalizer_footer">Runs after BitChord\'s, on the whole audio session. Using both applies both.</string>
+    <string name="system_equalizer_footer">ทำงานหลังจาก BitChord ในเซสชันเสียงทั้งหมด การใช้ทั้งสองอย่างจะมีผลทั้งคู่</string>
 
     <string name="eq_preset_flat">Flat</string>
 
     <string name="eq_preset_acoustic">Acoustic</string>
 
-    <string name="eq_preset_bass_boost">Bass boost</string>
+    <string name="eq_preset_bass_boost">เพิ่มเสียงเบส</string>
 
-    <string name="eq_preset_bass_cut">Bass cut</string>
+    <string name="eq_preset_bass_cut">ตัดเสียงเบส</string>
 
     <string name="eq_preset_vocal">Vocal</string>
 
-    <string name="eq_preset_treble_boost">Treble boost</string>
+    <string name="eq_preset_treble_boost">เพิ่มเสียงแหลม</string>
 
-    <string name="eq_preset_treble_cut">Treble cut</string>
+    <string name="eq_preset_treble_cut">ตัดเสียงแหลม</string>
 
     <string name="eq_preset_loudness">Loudness</string>
 
-    <string name="eq_preset_spoken_word">Spoken word</string>
+    <string name="eq_preset_spoken_word">เสียงพูด</string>
 
     <string name="eq_preset_electronic">Electronic</string>
 
@@ -882,9 +880,9 @@
 
     <string name="eq_preset_classical">Classical</string>
 
-    <string name="eq_preset_small_speakers">Small speakers</string>
+    <string name="eq_preset_small_speakers">ลำโพงขนาดเล็ก</string>
 
-    <string name="eq_preset_late_night">Late night</string>
+    <string name="eq_preset_late_night">ยามดึก</string>
 
     <string name="eq_preset_custom">Custom</string>
 
@@ -896,33 +894,33 @@
 
     <string name="add_addon_detail">Point BitChord at an addon server you host or were given a link to</string>
 
-    <string name="translation_language">Translation language</string>
+    <string name="translation_language">ภาษาในการแปล</string>
 
-    <string name="translation_language_description">The language the translate button turns lyrics into.</string>
+    <string name="translation_language_description">ภาษาที่ปุ่มแปลภาษาจะแปลเนื้อเพลงเป็นภาษานั้น</string>
 
-    <string name="translation_language_app_default">App language</string>
+    <string name="translation_language_app_default">ภาษาของแอป</string>
 
-    <string name="translation_language_subtitle">Follows the app language</string>
+    <string name="translation_language_subtitle">ตามภาษาของแอป</string>
 
-    <string name="search_languages">Search languages</string>
+    <string name="search_languages">ค้นหาภาษา</string>
 
-    <string name="no_languages_match">No languages match</string>
+    <string name="no_languages_match">ไม่มีภาษาที่ตรงกัน</string>
 
 
 
     <string name="audio_pipeline">Audio Pipeline</string>
     <string name="cast_dialog_title">Cast</string>
-    <string name="cast_dialog_subtitle">Play on a Chromecast or Google Cast speaker</string>
-    <string name="cast_searching">Looking for devices…</string>
-    <string name="cast_searching_hint">Your phone and the receiver need to be on the same Wi-Fi network.</string>
+    <string name="cast_dialog_subtitle">เล่นบนลำโพง Chromecast หรือ Google Cast</string>
+    <string name="cast_searching">กำลังค้นหาอุปกรณ์…</string>
+    <string name="cast_searching_hint">โทรศัพท์และตัวรับสัญญาณของคุณต้องอยู่ในเครือข่าย Wi-Fi เดียวกัน</string>
     <string name="cast_device_connecting">Connecting…</string>
     <string name="cast_device_connected">Casting</string>
-    <string name="cast_stop">Stop casting</string>
-    <string name="cast_track_unsupported">This track can\'t be cast</string>
-    <string name="cast_connect_failed">Couldn\'t connect to the receiver</string>
+    <string name="cast_stop">หยุดแคสต์</string>
+    <string name="cast_track_unsupported">แทร็กนี้ไม่สามารถแคสต์ได้</string>
+    <string name="cast_connect_failed">ไม่สามารถเชื่อมต่อกับตัวรับสัญญาณได้</string>
     <string name="audio_pipeline_subtitle">เส้นทางสัญญาณแบบเรียลไทม์ จากตัวถอดรหัสถึงเอาต์พุต</string>
 
-    <string name="pipeline_track_info">Track Info</string>
+    <string name="pipeline_track_info">ข้อมูลแทร็ก</string>
 
     <string name="pipeline_decoder">Decoder</string>
 
@@ -930,23 +928,23 @@
 
     <string name="pipeline_dsp">DSP</string>
 
-    <string name="pipeline_output_device">Output Device</string>
+    <string name="pipeline_output_device">อุปกรณ์เอาต์พุต</string>
 
     <string name="pipeline_source">Source</string>
 
     <string name="pipeline_format">Format</string>
 
-    <string name="pipeline_bit_depth">Bit Depth</string>
+    <string name="pipeline_bit_depth">ความลึกของบิต</string>
 
-    <string name="pipeline_sample_rate">Sample Rate</string>
+    <string name="pipeline_sample_rate">อัตราการสุ่มตัวอย่าง</string>
 
     <string name="pipeline_bitrate">Bitrate</string>
 
     <string name="pipeline_channels">Channels</string>
 
-    <string name="pipeline_decoder_name">Decoder Name</string>
+    <string name="pipeline_decoder_name">ชื่อตัวถอดรหัส</string>
 
-    <string name="pipeline_io_rate">I/O Rate</string>
+    <string name="pipeline_io_rate">อัตรา I/O</string>
 
     <string name="pipeline_type">Type</string>
 
@@ -954,25 +952,25 @@
 
     <string name="pipeline_quality">Quality</string>
 
-    <string name="pipeline_pcm_format">PCM Format</string>
+    <string name="pipeline_pcm_format">รูปแบบ PCM</string>
 
-    <string name="pipeline_eq_preset">EQ Preset</string>
+    <string name="pipeline_eq_preset">พรีเซ็ต EQ</string>
 
-    <string name="pipeline_stereo_expand">Stereo Expand</string>
+    <string name="pipeline_stereo_expand">การขยายสเตอริโอ</string>
 
     <string name="pipeline_buffers">Buffers</string>
 
-    <string name="pipeline_output_api">Output API</string>
+    <string name="pipeline_output_api">API เอาต์พุต</string>
 
-    <string name="pipeline_device_name">Device Name</string>
+    <string name="pipeline_device_name">ชื่ออุปกรณ์</string>
 
 
 
-    <string name="shared_link">Shared link</string>
+    <string name="shared_link">ลิงก์ที่แชร์</string>
 
-    <string name="song_will_play_next">Song will play next</string>
+    <string name="song_will_play_next">เพลงจะเล่นเป็นลำดับถัดไป</string>
 
-    <string name="song_added_to_queue">Song added to queue</string>
+    <string name="song_added_to_queue">เพิ่มเพลงลงในคิวแล้ว</string>
     <string name="song_added_to_playlist">เพิ่มลงในเพลย์ลิสต์แล้ว</string>
     <string name="song_already_in_playlist">อยู่ในเพลย์ลิสต์แล้ว</string>
     <plurals name="add_to_playlists_count">
@@ -983,11 +981,11 @@
     </plurals>
     <string name="party_queue_full">คิวเต็มแล้ว (ปาร์ตี้มีได้สูงสุด %d เพลง)</string>
 
-    <string name="paxsenix_api_key">PaxSenix API key</string>
+    <string name="paxsenix_api_key">คีย์ PaxSenix API</string>
 
-    <string name="paxsenix_api_key_configured">PaxSenix API key — configured</string>
+    <string name="paxsenix_api_key_configured">คีย์ PaxSenix API — กำหนดค่าแล้ว</string>
 
-    <string name="paxsenix_api_key_missing">PaxSenix API key — optional, not configured</string>
+    <string name="paxsenix_api_key_missing">คีย์ PaxSenix API — ไม่บังคับ, ยังไม่ได้กำหนดค่า</string>
 
     <string name="addon_url_description">Paste the addon’s URL — either its root or its manifest.json. BitChord reads what it can search and stream, then asks it for tracks over plain HTTP.</string>
 
@@ -1284,9 +1282,9 @@
     <string name="song_info_unavailable">ไม่มีข้อมูล</string>
     <string name="song_info_error">ไม่สามารถโหลดข้อมูลบางส่วนได้</string>
     <string name="song_info_retry">ลองอีกครั้ง</string>
-    <string name="no_audio_version">No audio version found for this video</string>
-    <string name="no_video_version">No video version found for this song</string>
-    <string name="version_switch_in_party">Everyone in Listen Together hears the same version</string>
+    <string name="no_audio_version">ไม่พบเวอร์ชันเสียงสำหรับวิดีโอนี้</string>
+    <string name="no_video_version">ไม่พบเวอร์ชันวิดีโอสำหรับเพลงนี้</string>
+    <string name="version_switch_in_party">ทุกคนใน \'ฟังด้วยกัน\' จะได้ยินเวอร์ชันเดียวกัน</string>
     <string name="opened_file">ไฟล์ที่เปิด</string>
     <string name="folders">โฟลเดอร์</string>
     <string name="folder">โฟลเดอร์</string>
@@ -1500,46 +1498,46 @@
     <string name="spotify_sync_unmatched_title">แทร็กที่ข้าม</string>
     <string name="spotify_sync_unmatched_hint">ไม่พบเพลงเหล่านี้ใน YouTube Music:</string>
     <!-- Spotify Import & Sing Mode -->
-    <string name="spotify_import_intro_title">Import from Spotify</string>
-    <string name="spotify_import_intro_subtitle">Transfer to BitChord</string>
-    <string name="spotify_import_intro_desc">Transfer playlists and match songs automatically.</string>
-    <string name="spotify_import_destination_title">Save to</string>
-    <string name="spotify_import_destination_notice">Choose destination:</string>
-    <string name="spotify_import_target_local_title">On this device</string>
-    <string name="spotify_import_target_local_desc">Local · Offline ready</string>
-    <string name="spotify_import_target_youtube_title">In YouTube Music</string>
-    <string name="spotify_import_target_youtube_desc">Cloud · All devices</string>
-    <string name="spotify_import_target_youtube_login_req">Sign-in required</string>
-    <string name="spotify_import_continue">Continue</string>
-    <string name="spotify_import_paste_action">Paste</string>
-    <string name="spotify_import_advanced_options">Advanced options</string>
-    <string name="spotify_import_cancel">Cancel</string>
-    <string name="spotify_import_start">Import</string>
-    <string name="spotify_import_step_input_title">Playlist link</string>
-    <string name="spotify_import_step_matching_title">Importing…</string>
+    <string name="spotify_import_intro_title">นำเข้าจาก Spotify</string>
+    <string name="spotify_import_intro_subtitle">ถ่ายโอนไปยัง BitChord</string>
+    <string name="spotify_import_intro_desc">ถ่ายโอนเพลย์ลิสต์และจับคู่เพลงโดยอัตโนมัติ</string>
+    <string name="spotify_import_destination_title">บันทึกไปที่</string>
+    <string name="spotify_import_destination_notice">เลือกปลายทาง:</string>
+    <string name="spotify_import_target_local_title">ในอุปกรณ์นี้</string>
+    <string name="spotify_import_target_local_desc">ในเครื่อง · พร้อมใช้งานออฟไลน์</string>
+    <string name="spotify_import_target_youtube_title">ใน YouTube Music</string>
+    <string name="spotify_import_target_youtube_desc">คลาวด์ · ทุกอุปกรณ์</string>
+    <string name="spotify_import_target_youtube_login_req">ต้องลงชื่อเข้าใช้</string>
+    <string name="spotify_import_continue">ดำเนินการต่อ</string>
+    <string name="spotify_import_paste_action">วาง</string>
+    <string name="spotify_import_advanced_options">ตัวเลือกขั้นสูง</string>
+    <string name="spotify_import_cancel">ยกเลิก</string>
+    <string name="spotify_import_start">นำเข้า</string>
+    <string name="spotify_import_step_input_title">ลิงก์เพลย์ลิสต์</string>
+    <string name="spotify_import_step_matching_title">กำลังนำเข้า…</string>
     <string name="spotify_import_destination_tag_local">Local</string>
     <string name="spotify_import_destination_tag_youtube">YouTube</string>
-    <string name="spotify_import_clear_tooltip">Clear</string>
-    <string name="spotify_import_privacy_title">Visibility</string>
-    <string name="spotify_import_done_button">Done</string>
-    <string name="spotify_import_complete">Import completed</string>
-    <string name="spotify_library_intro_title">Import from Spotify</string>
-    <string name="spotify_library_intro_desc">Transfer playlists to your library.</string>
-    <string name="spotify_library_intro_start_selecting">Select playlists</string>
-    <string name="spotify_library_intro_link_action">Or import via link</string>
-    <string name="spotify_library_import_by_link">Import by link</string>
-    <string name="spotify_library_import_by_link_subtitle">Paste a playlist link</string>
-    <string name="spotify_library_selected_title">Select playlists to import</string>
-    <string name="sing_preset_karaoke">Karaoke</string>
-    <string name="sing_preset_duet">Duet</string>
-    <string name="sing_preset_original">Original</string>
-    <string name="sing_mode_original">Original Vocals</string>
-    <string name="sing_mode_duet">Duet (50%)</string>
-    <string name="sing_mode_karaoke">Karaoke (0%)</string>
-    <string name="sing_status_original">Original</string>
-    <string name="sing_status_duet">Duet (50%)</string>
-    <string name="sing_status_karaoke">Karaoke</string>
-    <string name="sing_engine_title">Acoustic Engine</string>
+    <string name="spotify_import_clear_tooltip">ล้าง</string>
+    <string name="spotify_import_privacy_title">การมองเห็น</string>
+    <string name="spotify_import_done_button">เสร็จสิ้น</string>
+    <string name="spotify_import_complete">การนำเข้าเสร็จสมบูรณ์</string>
+    <string name="spotify_library_intro_title">นำเข้าจาก Spotify</string>
+    <string name="spotify_library_intro_desc">ถ่ายโอนเพลย์ลิสต์ไปยังคลังของคุณ</string>
+    <string name="spotify_library_intro_start_selecting">เลือกเพลย์ลิสต์</string>
+    <string name="spotify_library_intro_link_action">หรือนำเข้าผ่านลิงก์</string>
+    <string name="spotify_library_import_by_link">นำเข้าผ่านลิงก์</string>
+    <string name="spotify_library_import_by_link_subtitle">วางลิงก์เพลย์ลิสต์</string>
+    <string name="spotify_library_selected_title">เลือกเพลย์ลิสต์ที่จะนำเข้า</string>
+    <string name="sing_preset_karaoke">คาราโอเกะ</string>
+    <string name="sing_preset_duet">ดูเอ็ต</string>
+    <string name="sing_preset_original">ต้นฉบับ</string>
+    <string name="sing_mode_original">เสียงร้องต้นฉบับ</string>
+    <string name="sing_mode_duet">ดูเอ็ต (50%)</string>
+    <string name="sing_mode_karaoke">คาราโอเกะ (0%)</string>
+    <string name="sing_status_original">ต้นฉบับ</string>
+    <string name="sing_status_duet">ดูเอ็ต (50%)</string>
+    <string name="sing_status_karaoke">คาราโอเกะ</string>
+    <string name="sing_engine_title">เอนจินอะคูสติก</string>
     <string name="sing_badge_dsp">BITCHORD SING</string>
     <string name="swipe_right_action">ปัดขวาที่เพลง</string>
     <string name="swipe_left_action">ปัดซ้ายที่เพลง</string>
@@ -1547,44 +1545,44 @@
     <string name="swipe_action_disabled">ปิด</string>
 
     <!-- Spotify Onboarding -->
-    <string name="onboarding_spotify_title">Connect your Spotify</string>
-    <string name="onboarding_spotify_body">Bring your playlists and favorite music with you. Songs are matched on YouTube Music.</string>
-    <string name="onboarding_sign_in_spotify">Connect with Spotify</string>
-    <string name="onboarding_spotify_connected">Spotify connected</string>
-    <string name="onboarding_spotify_finish">Get started</string>
-    <string name="onboarding_skip_spotify">Maybe later</string>
+    <string name="onboarding_spotify_title">เชื่อมต่อ Spotify ของคุณ</string>
+    <string name="onboarding_spotify_body">นำเพลย์ลิสต์และเพลงโปรดของคุณมาด้วย โดยเพลงจะจับคู่และเล่นผ่าน YouTube Music</string>
+    <string name="onboarding_sign_in_spotify">เชื่อมต่อด้วย Spotify</string>
+    <string name="onboarding_spotify_connected">เชื่อมต่อ Spotify แล้ว</string>
+    <string name="onboarding_spotify_finish">เริ่มต้นใช้งาน</string>
+    <string name="onboarding_skip_spotify">อาจจะภายหลัง</string>
 
     <string name="automix_overview">Automix overview</string>
-    <string name="content_preferences">Content Preferences</string>
-    <string name="hide_recents">Hide Recents</string>
-    <string name="hide_home_videos">Hide videos from Home</string>
-    <string name="hide_home_videos_subtitle">Shelves of only videos go too. Search, artists and playlists still show them</string>
-    <string name="hide_top_picks">Hide Top Picks for You</string>
-    <string name="hide_home_moods">Hide Find Your Mood</string>
-    <string name="square_video_thumbnails">Square video thumbnails</string>
-    <string name="square_video_thumbnails_subtitle">Show music videos as squares everywhere, including the player</string>
-    <string name="prefer_music_only">Prefer music-only version</string>
-    <string name="prefer_music_only_subtitle">Music videos play as their audio version, and the next track in the queue is converted ahead of time so Automix and crossfade work</string>
-    <string name="glass_performance">Better Performance for Glass</string>
-    <string name="full_screen_detail_cover">Full-screen album/playlist cover</string>
-    <string name="full_screen_detail_cover_subtitle">Runs album and playlist covers to the edges of the page instead of a framed sleeve</string>
-    <string name="listen_together_scan_qr_action">Scan QR code</string>
-    <string name="listen_together_camera_permission_title">Camera permission needed</string>
-    <string name="listen_together_camera_permission_desc">To scan party or Spotify Jam QR codes directly, allow camera access.</string>
-    <string name="listen_together_grant_permission">Grant permission</string>
-    <string name="listen_together_scan_qr_prompt">Point the camera at a BitChord or Spotify Jam QR code</string>
-    <string name="listen_together_gallery_qr">Scan from gallery</string>
-    <string name="listen_together_paste_link">Paste link from clipboard</string>
-    <string name="listen_together_invalid_qr">No valid party code or Spotify Jam link found</string>
-    <string name="listen_together_spotify_jam_title">Spotify Jam bridge</string>
-    <string name="listen_together_spotify_jam_premium_subtitle">Spotify Premium connected. Friends on Spotify can join your Jam directly.</string>
-    <string name="listen_together_spotify_jam_free_subtitle">Spotify Free account. You can join existing Jams; host Jam creation requires Premium.</string>
-    <string name="listen_together_spotify_jam_disconnected_subtitle">Connect Spotify in Settings to sync and host Spotify Jams.</string>
-    <string name="listen_together_share_spotify_jam">Share Spotify Jam link</string>
-    <string name="listen_together_share_spotify_jam_text">Join my Spotify Jam via BitChord</string>
-    <string name="listen_together_scan_spotify_jam_qr">Scan Spotify Jam QR</string>
-    <string name="listen_together_scan_spotify_jam_subtitle">Spotify users can scan this code using the Spotify app camera</string>
-    <string name="listen_together_spotify_members">Spotify Jam members</string>
+    <string name="content_preferences">ค่ากำหนดเนื้อหา</string>
+    <string name="hide_recents">ซ่อนล่าสุด</string>
+    <string name="hide_home_videos">ซ่อนวิดีโอจากหน้าแรก</string>
+    <string name="hide_home_videos_subtitle">แถวที่มีเฉพาะวิดีโอก็จะหายไปด้วย การค้นหา ศิลปิน และเพลย์ลิสต์จะยังคงแสดงอยู่</string>
+    <string name="hide_top_picks">ซ่อน \'เพลงเด่นสำหรับคุณ\'</string>
+    <string name="hide_home_moods">ซ่อน \'ค้นหาอารมณ์ของคุณ\'</string>
+    <string name="square_video_thumbnails">ภาพขนาดย่อวิดีโอทรงสี่เหลี่ยมจัตุรัส</string>
+    <string name="square_video_thumbnails_subtitle">แสดงมิวสิกวิดีโอเป็นสี่เหลี่ยมจัตุรัสทุกที่ รวมถึงในเครื่องเล่นด้วย</string>
+    <string name="prefer_music_only">ต้องการเวอร์ชันเพลงเท่านั้น</string>
+    <string name="prefer_music_only_subtitle">มิวสิกวิดีโอจะเล่นเป็นเวอร์ชันเสียง และแทร็กถัดไปในคิวจะถูกแปลงล่วงหน้าเพื่อให้ Automix และครอสเฟดทำงานได้</string>
+    <string name="glass_performance">ประสิทธิภาพที่ดีขึ้นสำหรับ Glass</string>
+    <string name="full_screen_detail_cover">ภาพปกอัลบั้ม/เพลย์ลิสต์แบบเต็มหน้าจอ</string>
+    <string name="full_screen_detail_cover_subtitle">ขยายภาพปกอัลบั้มและเพลย์ลิสต์ไปจนสุดขอบหน้าแทนที่จะเป็นกรอบ</string>
+    <string name="listen_together_scan_qr_action">สแกนรหัส QR</string>
+    <string name="listen_together_camera_permission_title">ต้องได้รับอนุญาตให้ใช้กล้อง</string>
+    <string name="listen_together_camera_permission_desc">หากต้องการสแกนรหัส QR ปาร์ตี้หรือ Spotify Jam โดยตรง โปรดอนุญาตการเข้าถึงกล้อง</string>
+    <string name="listen_together_grant_permission">ให้สิทธิ์</string>
+    <string name="listen_together_scan_qr_prompt">หันกล้องไปที่รหัส QR ของ BitChord หรือ Spotify Jam</string>
+    <string name="listen_together_gallery_qr">สแกนจากแกลเลอรี</string>
+    <string name="listen_together_paste_link">วางลิงก์จากคลิปบอร์ด</string>
+    <string name="listen_together_invalid_qr">ไม่พบรหัสปาร์ตี้หรือลิงก์ Spotify Jam ที่ถูกต้อง</string>
+    <string name="listen_together_spotify_jam_title">บริดจ์ Spotify Jam</string>
+    <string name="listen_together_spotify_jam_premium_subtitle">เชื่อมต่อ Spotify Premium แล้ว เพื่อนๆ ใน Spotify สามารถเข้าร่วม Jam ของคุณได้โดยตรง</string>
+    <string name="listen_together_spotify_jam_free_subtitle">บัญชี Spotify Free คุณสามารถเข้าร่วม Jam ที่มีอยู่แล้วได้ แต่การเป็นโฮสต์ Jam ต้องใช้ Premium</string>
+    <string name="listen_together_spotify_jam_disconnected_subtitle">เชื่อมต่อ Spotify ในการตั้งค่าเพื่อซิงค์และเป็นโฮสต์ Spotify Jam</string>
+    <string name="listen_together_share_spotify_jam">แชร์ลิงก์ Spotify Jam</string>
+    <string name="listen_together_share_spotify_jam_text">เข้าร่วม Spotify Jam ของฉันผ่าน BitChord</string>
+    <string name="listen_together_scan_spotify_jam_qr">สแกน QR ของ Spotify Jam</string>
+    <string name="listen_together_scan_spotify_jam_subtitle">ผู้ใช้ Spotify สามารถสแกนรหัสนี้ได้โดยใช้กล้องในแอป Spotify</string>
+    <string name="listen_together_spotify_members">สมาชิก Spotify Jam</string>
     <string name="created_by_bitchord">Created by BitChord</string>
     <string name="trending_title">Trending</string>
     <string name="region_global">Global</string>
@@ -1665,4 +1663,6 @@
     <plurals name="listen_together_people_count">
         <item quantity="other">%1$d คนกำลังฟัง</item>
     </plurals>
+    <string name="filter_music_videos_autoplay">กรองมิวสิกวิดีโอในการเล่นอัตโนมัติ</string>
+    <string name="filter_music_videos_autoplay_subtitle">จัดคิวเฉพาะแทร็กเสียงในการเล่นอัตโนมัติและคำแนะนำวิทยุเท่านั้น ไม่รวมมิวสิกวิดีโอ</string>
 </resources>

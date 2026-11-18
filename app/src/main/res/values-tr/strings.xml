@@ -252,8 +252,6 @@
     <string name="light">Açık</string>
     <string name="dark">Koyu</string>
     <string name="full_screen_cover_art_subtitle">Kapağı kare bir kılıf yerine oynatıcının kenarlarına kadar uzatır</string>
-    <string name="immersive_player_mode">Sürükleyici oynatıcı modu</string>
-    <string name="immersive_player_mode_subtitle">Kapak, kontrollerin üzerinde ortam yansımasıyla üst kısımda genişler</string>
     <string name="animated_cover_art_subtitle">Bazı sürümlerin geldiği döngülü videoyu sabit bir kılıf yerine oynatır</string>
     <string name="dont_repeat_songs_subtitle">AutoPlay bu oturumda zaten çalınmış veya önerilmiş bir şarkıyı önermez</string>
     <string name="download_quality_subtitle">Bağlantı ne olursa olsun parça başına %1$s</string>
@@ -906,13 +904,13 @@
 
     <string name="auto_quick_picks">Hızlı seçimler</string>
 
-    <string name="auto_recents">Son dinlenenler</string>
+    <string name="auto_recents">Son oynatılanlar</string>
 
     <string name="auto_liked">Beğenilen şarkılar</string>
 
-    <string name="auto_login_title">Telefonunuzda YouTube\'a giriş yapın</string>
+    <string name="auto_login_title">Telefonunuzda YouTube\'da oturum açın</string>
 
-    <string name="auto_login_subtitle">Giriş yapmak için telefonunuzda BitChord\'u açın</string>
+    <string name="auto_login_subtitle">Oturum açmak için telefonunuzda BitChord\'u açın</string>
 
     <string name="auto_empty_recents_title">Son çalınan şarkı yok</string>
 
@@ -928,13 +926,13 @@
 
     <string name="auto_empty_liked_title">Beğenilen şarkı yok</string>
 
-    <string name="auto_empty_liked_subtitle">Bir şarkıyı buraya kaydetmek için kalbe dokunun</string>
+    <string name="auto_empty_liked_subtitle">Bir şarkıyı buraya kaydetmek için kalp simgesine dokunun</string>
 
     <string name="auto_empty_offline_title">Çevrimdışı şarkı yok</string>
 
-    <string name="auto_empty_offline_subtitle">Burada dinlemek için telefonunuzdan şarkı indirin</string>
+    <string name="auto_empty_offline_subtitle">Burada dinlemek için telefonunuza şarkı indirin</string>
 
-    <string name="auto_unavailable_title">İçerik kullanılamıyor</string>
+    <string name="auto_unavailable_title">İçerik mevcut değil</string>
 
     <string name="auto_unavailable_subtitle">Klasörü yeniden açıp tekrar deneyin</string>
 
@@ -946,7 +944,7 @@
     <string name="smart_version_alignment">Akıllı ses hizalama</string>
     <string name="smart_version_alignment_subtitle">Tam karşılık gelen çalma anını bulmak için ses dalga biçimlerini analiz eder</string>
 
-    <string name="equalizer_footer">BitChord içindeki sesi, sisteme ulaşmadan önce şekillendirir.</string>
+    <string name="equalizer_footer">Sesi sisteme ulaşmadan önce BitChord içinde şekillendirir.</string>
 
     <string name="equalizer_dynamic">Dinamik</string>
 
@@ -962,15 +960,15 @@
 
     <string name="equalizer_focused">Odaklı</string>
 
-    <string name="equalizer_broad_footer">Daha sıcak bir ses için sola, daha parlak bir ses için sağa sürükleyin; aşağı orta frekansları kısar, yukarı öne çıkarır. Geniş mod, spektrumun geniş aralıklarını aynı anda kaydırır.</string>
+    <string name="equalizer_broad_footer">Daha sıcak bir ses için sola, daha parlak bir ses için sağa sürükleyin. Geniş, frekans aralığının geniş bölümlerini aynı anda ayarlar.</string>
 
-    <string name="equalizer_focused_footer">Daha sıcak bir ses için sola, daha parlak bir ses için sağa sürükleyin; aşağı orta frekansları kısar, yukarı öne çıkarır. Odaklı mod daha dar aralıklarda çalışır, bu yüzden dokunduğu bölgenin çevresini daha az etkiler.</string>
+    <string name="equalizer_focused_footer">Odaklanmış mod daha dar aralıklarda çalışır ve etraftaki frekansları daha az değiştirir.</string>
 
     <string name="equalizer_preset">Ön ayar</string>
 
     <string name="equalizer_bands">Bantlar</string>
 
-    <string name="equalizer_bands_footer">Bir bandı oynattığınızda ön ayar devre dışı kalır ve eğri size özel olur.</string>
+    <string name="equalizer_bands_footer">Bir bandı hareket ettirmek önayardan çıkar ve eğriyi size özel yapar.</string>
 
     <string name="equalizer_reset">Tüm bantları sıfırla</string>
 
@@ -980,7 +978,7 @@
 
     <string name="equalizer_balance_right">R</string>
 
-    <string name="equalizer_balance_footer">Diğer kulağı kısarak sesi bir kulağa doğru kaydırır.</string>
+    <string name="equalizer_balance_footer">Diğerini kısarak sesi tek bir kulağa doğru kaydırır.</string>
     <string name="equalizer_bitstream_title">Şu anda çalışmıyor</string>
     <string name="equalizer_bitstream_subtitle">Bu parça çıkışa çözülmeden gönderiliyor</string>
     <string name="equalizer_bitstream_footer">Ekolayzır çözülmüş ses üzerinde çalışır. Bu parça, cihazının çözmesi için bitstream olarak aktarılıyor; bu yüzden burada filtrelenecek örnek yok.</string>
@@ -989,21 +987,21 @@
 
     <string name="system_equalizer_subtitle">Cihazınızın kendi paneli</string>
 
-    <string name="system_equalizer_footer">BitChord\'unkinden sonra, tüm ses oturumunda çalışır. İkisini birden kullanmak ikisini de uygular.</string>
+    <string name="system_equalizer_footer">Tüm ses oturumunda BitChord\'unkinden sonra çalışır. İkisini birden kullanmak her ikisini de uygular.</string>
 
     <string name="eq_preset_flat">Düz</string>
 
     <string name="eq_preset_acoustic">Akustik</string>
 
-    <string name="eq_preset_bass_boost">Bas artırma</string>
+    <string name="eq_preset_bass_boost">Bas güçlendirme</string>
 
-    <string name="eq_preset_bass_cut">Bas kısma</string>
+    <string name="eq_preset_bass_cut">Bas azaltma</string>
 
     <string name="eq_preset_vocal">Vokal</string>
 
-    <string name="eq_preset_treble_boost">Tiz artırma</string>
+    <string name="eq_preset_treble_boost">Tiz güçlendirme</string>
 
-    <string name="eq_preset_treble_cut">Tiz kısma</string>
+    <string name="eq_preset_treble_cut">Tiz azaltma</string>
 
     <string name="eq_preset_loudness">Loudness</string>
 
@@ -1021,19 +1019,19 @@
 
     <string name="eq_preset_small_speakers">Küçük hoparlörler</string>
 
-    <string name="eq_preset_late_night">Gece dinlemesi</string>
+    <string name="eq_preset_late_night">Gece geç saat</string>
 
     <string name="eq_preset_custom">Özel</string>
 
     <string name="translation_language">Çeviri dili</string>
 
-    <string name="translation_language_description">Çeviri düğmesinin sözleri çevirdiği dil.</string>
+    <string name="translation_language_description">Çevir düğmesinin şarkı sözlerini çevireceği dil.</string>
 
     <string name="translation_language_app_default">Uygulama dili</string>
 
-    <string name="translation_language_subtitle">Uygulama dilini izler</string>
+    <string name="translation_language_subtitle">Uygulama dilini takip eder</string>
 
-    <string name="search_languages">Dil ara</string>
+    <string name="search_languages">Dilleri ara</string>
 
     <string name="no_languages_match">Eşleşen dil yok</string>
 
@@ -1043,17 +1041,17 @@
 
     <string name="audio_pipeline">Ses Hattı</string>
     <string name="cast_dialog_title">Cast</string>
-    <string name="cast_dialog_subtitle">Play on a Chromecast or Google Cast speaker</string>
-    <string name="cast_searching">Looking for devices…</string>
-    <string name="cast_searching_hint">Your phone and the receiver need to be on the same Wi-Fi network.</string>
+    <string name="cast_dialog_subtitle">Bir Chromecast veya Google Cast hoparlöründe çalın</string>
+    <string name="cast_searching">Cihazlar aranıyor…</string>
+    <string name="cast_searching_hint">Telefonunuz ve alıcı aynı kablosuz ağda olmalıdır.</string>
     <string name="cast_device_connecting">Connecting…</string>
     <string name="cast_device_connected">Casting</string>
-    <string name="cast_stop">Stop casting</string>
-    <string name="cast_track_unsupported">This track can\'t be cast</string>
-    <string name="cast_connect_failed">Couldn\'t connect to the receiver</string>
+    <string name="cast_stop">Yayını durdur</string>
+    <string name="cast_track_unsupported">Bu parça yayınlanamaz</string>
+    <string name="cast_connect_failed">Alıcıya bağlanılamadı</string>
     <string name="audio_pipeline_subtitle">Kod çözücüden çıkışa canlı sinyal yolu</string>
 
-    <string name="pipeline_track_info">Parça Bilgisi</string>
+    <string name="pipeline_track_info">Parça bilgisi</string>
 
     <string name="pipeline_decoder">Kod Çözücü</string>
 
@@ -1061,23 +1059,23 @@
 
     <string name="pipeline_dsp">DSP</string>
 
-    <string name="pipeline_output_device">Çıkış Cihazı</string>
+    <string name="pipeline_output_device">Çıkış cihazı</string>
 
     <string name="pipeline_source">Kaynak</string>
 
     <string name="pipeline_format">Biçim</string>
 
-    <string name="pipeline_bit_depth">Bit Derinliği</string>
+    <string name="pipeline_bit_depth">Bit derinliği</string>
 
-    <string name="pipeline_sample_rate">Örnekleme Oranı</string>
+    <string name="pipeline_sample_rate">Örnekleme hızı</string>
 
     <string name="pipeline_bitrate">Bit Hızı</string>
 
     <string name="pipeline_channels">Kanallar</string>
 
-    <string name="pipeline_decoder_name">Kod Çözücü Adı</string>
+    <string name="pipeline_decoder_name">Kod çözücü adı</string>
 
-    <string name="pipeline_io_rate">G/Ç Hızı</string>
+    <string name="pipeline_io_rate">G/Ç hızı</string>
 
     <string name="pipeline_type">Tür</string>
 
@@ -1085,23 +1083,23 @@
 
     <string name="pipeline_quality">Kalite</string>
 
-    <string name="pipeline_pcm_format">PCM Biçimi</string>
+    <string name="pipeline_pcm_format">PCM formatı</string>
 
-    <string name="pipeline_eq_preset">EQ Ön Ayarı</string>
+    <string name="pipeline_eq_preset">EQ önayarı</string>
 
-    <string name="pipeline_stereo_expand">Stereo Genişletme</string>
+    <string name="pipeline_stereo_expand">Stereo genişletme</string>
 
     <string name="pipeline_buffers">Tamponlar</string>
 
     <string name="pipeline_output_api">Çıkış API\'si</string>
 
-    <string name="pipeline_device_name">Cihaz Adı</string>
+    <string name="pipeline_device_name">Cihaz adı</string>
 
 
 
     <string name="shared_link">Paylaşılan bağlantı</string>
 
-    <string name="song_will_play_next">Şarkı sonra çalacak</string>
+    <string name="song_will_play_next">Şarkı bir sonraki olarak çalınacak</string>
 
     <string name="song_added_to_queue">Şarkı sıraya eklendi</string>
     <string name="song_added_to_playlist">Çalma listesine eklendi</string>
@@ -1255,9 +1253,9 @@
     <string name="wear_os_code_hint">Eşleme kodu</string>
     <string name="wear_os_done">Bitti</string>
     <string name="signed_by">%1$s tarafından imzalandı</string>
-    <string name="no_audio_version">No audio version found for this video</string>
-    <string name="no_video_version">No video version found for this song</string>
-    <string name="version_switch_in_party">Everyone in Listen Together hears the same version</string>
+    <string name="no_audio_version">Bu video için ses sürümü bulunamadı</string>
+    <string name="no_video_version">Bu şarkı için video sürümü bulunamadı</string>
+    <string name="version_switch_in_party">\'Birlikte Dinle\'deki herkes aynı sürümü duyar</string>
     <string name="opened_file">Açılan dosya</string>
     <string name="folders">Klasörler</string>
     <string name="folder">Klasör</string>
@@ -1471,46 +1469,46 @@
     <string name="spotify_sync_unmatched_title">Atlanan parçalar</string>
     <string name="spotify_sync_unmatched_hint">Bu şarkılar YouTube Music\'te bulunamadı:</string>
     <!-- Spotify Import & Sing Mode -->
-    <string name="spotify_import_intro_title">Import from Spotify</string>
-    <string name="spotify_import_intro_subtitle">Transfer to BitChord</string>
-    <string name="spotify_import_intro_desc">Transfer playlists and match songs automatically.</string>
-    <string name="spotify_import_destination_title">Save to</string>
-    <string name="spotify_import_destination_notice">Choose destination:</string>
-    <string name="spotify_import_target_local_title">On this device</string>
-    <string name="spotify_import_target_local_desc">Local · Offline ready</string>
-    <string name="spotify_import_target_youtube_title">In YouTube Music</string>
-    <string name="spotify_import_target_youtube_desc">Cloud · All devices</string>
-    <string name="spotify_import_target_youtube_login_req">Sign-in required</string>
-    <string name="spotify_import_continue">Continue</string>
-    <string name="spotify_import_paste_action">Paste</string>
-    <string name="spotify_import_advanced_options">Advanced options</string>
-    <string name="spotify_import_cancel">Cancel</string>
-    <string name="spotify_import_start">Import</string>
-    <string name="spotify_import_step_input_title">Playlist link</string>
-    <string name="spotify_import_step_matching_title">Importing…</string>
+    <string name="spotify_import_intro_title">Spotify\'dan içe aktar</string>
+    <string name="spotify_import_intro_subtitle">BitChord\'a aktar</string>
+    <string name="spotify_import_intro_desc">Çalma listelerini aktarın ve şarkıları otomatik olarak eşleştirin.</string>
+    <string name="spotify_import_destination_title">Şuraya kaydet</string>
+    <string name="spotify_import_destination_notice">Hedefi seçin:</string>
+    <string name="spotify_import_target_local_title">Bu cihazda</string>
+    <string name="spotify_import_target_local_desc">Yerel · Çevrimdışı hazır</string>
+    <string name="spotify_import_target_youtube_title">YouTube Music içinde</string>
+    <string name="spotify_import_target_youtube_desc">Bulut · Tüm cihazlar</string>
+    <string name="spotify_import_target_youtube_login_req">Giriş yapılması gerekiyor</string>
+    <string name="spotify_import_continue">Devam et</string>
+    <string name="spotify_import_paste_action">Yapıştır</string>
+    <string name="spotify_import_advanced_options">Gelişmiş seçenekler</string>
+    <string name="spotify_import_cancel">İptal</string>
+    <string name="spotify_import_start">İçe aktar</string>
+    <string name="spotify_import_step_input_title">Çalma listesi bağlantısı</string>
+    <string name="spotify_import_step_matching_title">İçe aktarılıyor…</string>
     <string name="spotify_import_destination_tag_local">Local</string>
     <string name="spotify_import_destination_tag_youtube">YouTube</string>
-    <string name="spotify_import_clear_tooltip">Clear</string>
-    <string name="spotify_import_privacy_title">Visibility</string>
-    <string name="spotify_import_done_button">Done</string>
-    <string name="spotify_import_complete">Import completed</string>
-    <string name="spotify_library_intro_title">Import from Spotify</string>
-    <string name="spotify_library_intro_desc">Transfer playlists to your library.</string>
-    <string name="spotify_library_intro_start_selecting">Select playlists</string>
-    <string name="spotify_library_intro_link_action">Or import via link</string>
-    <string name="spotify_library_import_by_link">Import by link</string>
-    <string name="spotify_library_import_by_link_subtitle">Paste a playlist link</string>
-    <string name="spotify_library_selected_title">Select playlists to import</string>
+    <string name="spotify_import_clear_tooltip">Temizle</string>
+    <string name="spotify_import_privacy_title">Görünürlük</string>
+    <string name="spotify_import_done_button">Bitti</string>
+    <string name="spotify_import_complete">İçe aktarma tamamlandı</string>
+    <string name="spotify_library_intro_title">Spotify\'dan içe aktar</string>
+    <string name="spotify_library_intro_desc">Çalma listelerini kitaplığınıza aktarın.</string>
+    <string name="spotify_library_intro_start_selecting">Çalma listelerini seç</string>
+    <string name="spotify_library_intro_link_action">Veya bağlantıyla içe aktar</string>
+    <string name="spotify_library_import_by_link">Bağlantıyla içe aktar</string>
+    <string name="spotify_library_import_by_link_subtitle">Bir çalma listesi bağlantısı yapıştırın</string>
+    <string name="spotify_library_selected_title">İçe aktarılacak çalma listelerini seçin</string>
     <string name="sing_preset_karaoke">Karaoke</string>
-    <string name="sing_preset_duet">Duet</string>
-    <string name="sing_preset_original">Original</string>
-    <string name="sing_mode_original">Original Vocals</string>
-    <string name="sing_mode_duet">Duet (50%)</string>
-    <string name="sing_mode_karaoke">Karaoke (0%)</string>
-    <string name="sing_status_original">Original</string>
-    <string name="sing_status_duet">Duet (50%)</string>
+    <string name="sing_preset_duet">Düet</string>
+    <string name="sing_preset_original">Orijinal</string>
+    <string name="sing_mode_original">Orijinal vokal</string>
+    <string name="sing_mode_duet">Düet (%50)</string>
+    <string name="sing_mode_karaoke">Karaoke (%0)</string>
+    <string name="sing_status_original">Orijinal</string>
+    <string name="sing_status_duet">Düet (%50)</string>
     <string name="sing_status_karaoke">Karaoke</string>
-    <string name="sing_engine_title">Acoustic Engine</string>
+    <string name="sing_engine_title">Akustik motor</string>
     <string name="sing_badge_dsp">BITCHORD SING</string>
     <string name="swipe_right_action">Şarkıyı sağa kaydır</string>
     <string name="swipe_left_action">Şarkıyı sola kaydır</string>
@@ -1518,44 +1516,44 @@
     <string name="swipe_action_disabled">Kapalı</string>
 
     <!-- Spotify Onboarding -->
-    <string name="onboarding_spotify_title">Connect your Spotify</string>
-    <string name="onboarding_spotify_body">Bring your playlists and favorite music with you. Songs are matched on YouTube Music.</string>
-    <string name="onboarding_sign_in_spotify">Connect with Spotify</string>
-    <string name="onboarding_spotify_connected">Spotify connected</string>
-    <string name="onboarding_spotify_finish">Get started</string>
-    <string name="onboarding_skip_spotify">Maybe later</string>
+    <string name="onboarding_spotify_title">Spotify\'ınızı bağlayın</string>
+    <string name="onboarding_spotify_body">Çalma listelerinizi ve favori şarkılarınızı getirin. Şarkılar YouTube Music üzerinden çalınır.</string>
+    <string name="onboarding_sign_in_spotify">Spotify ile bağlan</string>
+    <string name="onboarding_spotify_connected">Spotify bağlandı</string>
+    <string name="onboarding_spotify_finish">Başlayın</string>
+    <string name="onboarding_skip_spotify">Belki daha sonra</string>
 
     <string name="automix_overview">Automix overview</string>
-    <string name="content_preferences">Content Preferences</string>
-    <string name="hide_recents">Hide Recents</string>
-    <string name="hide_home_videos">Hide videos from Home</string>
-    <string name="hide_home_videos_subtitle">Shelves of only videos go too. Search, artists and playlists still show them</string>
-    <string name="hide_top_picks">Hide Top Picks for You</string>
-    <string name="hide_home_moods">Hide Find Your Mood</string>
-    <string name="square_video_thumbnails">Square video thumbnails</string>
-    <string name="square_video_thumbnails_subtitle">Show music videos as squares everywhere, including the player</string>
-    <string name="prefer_music_only">Prefer music-only version</string>
-    <string name="prefer_music_only_subtitle">Music videos play as their audio version, and the next track in the queue is converted ahead of time so Automix and crossfade work</string>
-    <string name="glass_performance">Better Performance for Glass</string>
-    <string name="full_screen_detail_cover">Full-screen album/playlist cover</string>
-    <string name="full_screen_detail_cover_subtitle">Runs album and playlist covers to the edges of the page instead of a framed sleeve</string>
-    <string name="listen_together_scan_qr_action">Scan QR code</string>
-    <string name="listen_together_camera_permission_title">Camera permission needed</string>
-    <string name="listen_together_camera_permission_desc">To scan party or Spotify Jam QR codes directly, allow camera access.</string>
-    <string name="listen_together_grant_permission">Grant permission</string>
-    <string name="listen_together_scan_qr_prompt">Point the camera at a BitChord or Spotify Jam QR code</string>
-    <string name="listen_together_gallery_qr">Scan from gallery</string>
-    <string name="listen_together_paste_link">Paste link from clipboard</string>
-    <string name="listen_together_invalid_qr">No valid party code or Spotify Jam link found</string>
-    <string name="listen_together_spotify_jam_title">Spotify Jam bridge</string>
-    <string name="listen_together_spotify_jam_premium_subtitle">Spotify Premium connected. Friends on Spotify can join your Jam directly.</string>
-    <string name="listen_together_spotify_jam_free_subtitle">Spotify Free account. You can join existing Jams; host Jam creation requires Premium.</string>
-    <string name="listen_together_spotify_jam_disconnected_subtitle">Connect Spotify in Settings to sync and host Spotify Jams.</string>
-    <string name="listen_together_share_spotify_jam">Share Spotify Jam link</string>
-    <string name="listen_together_share_spotify_jam_text">Join my Spotify Jam via BitChord</string>
-    <string name="listen_together_scan_spotify_jam_qr">Scan Spotify Jam QR</string>
-    <string name="listen_together_scan_spotify_jam_subtitle">Spotify users can scan this code using the Spotify app camera</string>
-    <string name="listen_together_spotify_members">Spotify Jam members</string>
+    <string name="content_preferences">İçerik tercihleri</string>
+    <string name="hide_recents">Son çalınanları gizle</string>
+    <string name="hide_home_videos">Videoları Ana Sayfadan Gizle</string>
+    <string name="hide_home_videos_subtitle">Yalnızca video içeren raflar da kaldırılır. Arama, sanatçılar ve çalma listeleri bunları göstermeye devam eder</string>
+    <string name="hide_top_picks">\'Sizin İçin En Çok Seçilenler\'i Gizle</string>
+    <string name="hide_home_moods">\'Ruh Halini Bul\'u Gizle</string>
+    <string name="square_video_thumbnails">Kare video küçük resimleri</string>
+    <string name="square_video_thumbnails_subtitle">Müzik videolarını oynatıcı dahil her yerde kare olarak göster</string>
+    <string name="prefer_music_only">Yalnızca müzik sürümünü tercih et</string>
+    <string name="prefer_music_only_subtitle">Müzik videoları ses sürümü olarak oynatılır ve Automix ile çapraz geçişin çalışması için sıradaki sonraki parça önceden dönüştürülür</string>
+    <string name="glass_performance">Cam Efekti İçin Daha İyi Performans</string>
+    <string name="full_screen_detail_cover">Tam ekran albüm/çalma listesi kapağı</string>
+    <string name="full_screen_detail_cover_subtitle">Albüm ve çalma listesi kapaklarını çerçeveli kılıf yerine sayfanın kenarlarına kadar uzatır</string>
+    <string name="listen_together_scan_qr_action">QR kodunu tara</string>
+    <string name="listen_together_camera_permission_title">Kamera izni gerekiyor</string>
+    <string name="listen_together_camera_permission_desc">Parti veya Spotify Jam QR kodlarını doğrudan taramak için kamera erişimine izin verin.</string>
+    <string name="listen_together_grant_permission">İzin ver</string>
+    <string name="listen_together_scan_qr_prompt">Kamerayı bir BitChord veya Spotify Jam QR koduna doğrultun</string>
+    <string name="listen_together_gallery_qr">Galeriden tara</string>
+    <string name="listen_together_paste_link">Panodan bağlantı yapıştır</string>
+    <string name="listen_together_invalid_qr">Geçerli bir parti kodu veya Spotify Jam bağlantısı bulunamadı</string>
+    <string name="listen_together_spotify_jam_title">Spotify Jam köprüsü</string>
+    <string name="listen_together_spotify_jam_premium_subtitle">Spotify Premium bağlandı. Spotify\'daki arkadaşlarınız doğrudan Jam\'inize katılabilir.</string>
+    <string name="listen_together_spotify_jam_free_subtitle">Spotify Free hesabı. Mevcut Jam\'lere katılabilirsiniz; Jam başlatmak için Premium gerekir.</string>
+    <string name="listen_together_spotify_jam_disconnected_subtitle">Spotify Jam\'leri senkronize etmek ve barındırmak için Ayarlar\'dan Spotify\'ı bağlayın.</string>
+    <string name="listen_together_share_spotify_jam">Spotify Jam bağlantısını paylaş</string>
+    <string name="listen_together_share_spotify_jam_text">BitChord üzerinden Spotify Jam\'ime katılın</string>
+    <string name="listen_together_scan_spotify_jam_qr">Spotify Jam QR kodunu tara</string>
+    <string name="listen_together_scan_spotify_jam_subtitle">Spotify kullanıcıları bu kodu Spotify uygulama kamerasını kullanarak tarayabilir</string>
+    <string name="listen_together_spotify_members">Spotify Jam üyeleri</string>
     <string name="created_by_bitchord">Created by BitChord</string>
     <string name="trending_title">Trending</string>
     <string name="region_global">Global</string>
@@ -1637,4 +1635,6 @@
         <item quantity="one">%1$d kişi dinliyor</item>
         <item quantity="other">%1$d kişi dinliyor</item>
     </plurals>
+    <string name="filter_music_videos_autoplay">Otomatik oynatmada müzik videolarını filtrele</string>
+    <string name="filter_music_videos_autoplay_subtitle">Otomatik oynatma ve radyo önerilerinde yalnızca ses parçalarını sıraya ekle, asla müzik videolarını ekleme</string>
 </resources>

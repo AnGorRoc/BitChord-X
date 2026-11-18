@@ -41,8 +41,8 @@ buildscript {
  * No "v" in the name — the in-app updater reads it as a number; the "v" is the
  * release tag's alone.
  */
-extra["bitchordVersionCode"] = 37
-extra["bitchordVersionName"] = "1.9.2"
+extra["bitchordVersionCode"] = 38
+extra["bitchordVersionName"] = "1.9.3"
 
 /*
  * Bump this by hand before cutting each sideloaded test build ("beta2",
@@ -63,7 +63,7 @@ extra["bitchordVersionName"] = "1.9.2"
  * the phone compares the watch's installed APK with the one it carries, so a
  * beta watch app shows "Update available" as soon as the phone has the release.
  */
-extra["bitchordBetaSuffix"] = ""
+extra["bitchordBetaSuffix"] = "beta1"
 
 /*
  * The release assets, named the way AppUpdateChecker.apkAssetUrl looks for

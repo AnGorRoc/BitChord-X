@@ -120,6 +120,10 @@ class DesktopMacFrameTest {
     @Test
     fun testDesktopWindowVisibilityLifecycle() {
         DesktopWindowVisibility.install()
+        DesktopWindowVisibility.keepRunningWhenClosed = false
+        val defaultCloseResult = DesktopWindowVisibility.onCloseRequest()
+        assertTrue(defaultCloseResult, "onCloseRequest must return true when keepRunningWhenClosed is false")
+
         DesktopWindowVisibility.keepRunningWhenClosed = true
 
         val closeResult = DesktopWindowVisibility.onCloseRequest()

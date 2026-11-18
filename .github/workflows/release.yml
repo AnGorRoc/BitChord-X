@@ -301,6 +301,13 @@ jobs:
         tag="${{ needs.check.outputs.tag }}"
         flags=""
         case "$tag" in *-*) flags="--prerelease" ;; esac
+        # Hand-written notes, when the repo has them for this version (a beta uses its release's file),
+        # go first; GitHub's list of changes follows.
+        version="${tag#v}"
+        notes=""
+        for candidate in "docs/release-notes/$version.md" "docs/release-notes/${version%%-*}.md"; do
+          if [ -f "$candidate" ]; then notes="--notes-file $candidate"; break; fi
+        done
         gh release create "$tag" release-dist/* \
           --repo "$GH_REPO" \
-          --title "BitChord-X $tag" --generate-notes $flags
+          --title "BitChord-X $tag" $notes --generate-notes $flags
