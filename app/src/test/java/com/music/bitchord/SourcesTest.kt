@@ -778,6 +778,15 @@ class SourcesTest {
     }
 
     @Test
+    fun `artist names tolerate a spelling slip but not a different person`() {
+        assertTrue(TrackMatcher.sharesArtist("Ruben Rada", "Rubén Rrada"))
+        assertTrue(TrackMatcher.sharesArtist("Jose Gonzalez", "José Gonzales"))
+        assertFalse(TrackMatcher.sharesArtist("Adele", "Adela"))
+        assertFalse(TrackMatcher.sharesArtist("Ruben Rada", "Ruben Gonzalez"))
+        assertFalse(TrackMatcher.sharesArtist("Ruben Rada", "Romina Lopez"))
+    }
+
+    @Test
     fun `manual video audio switch accepts the official song despite a long visual intro`() {
         val target = TrackMatcher.Target(
             "Big Dawgs",

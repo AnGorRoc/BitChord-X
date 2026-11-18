@@ -758,7 +758,38 @@ object TrackMatcher {
         return have.any { sameArtist(wantLead, it) } && want.any { sameArtist(haveLead, it) }
     }
 
-    private fun sameArtist(a: List<String>, b: List<String>) = runOf(a, b) || runOf(b, a)
+    /**
+     * One artist, allowing for a spelling slip between catalogues
+     * ("Ruben Rrada", "Jose Gonzales"): whole-word containment as before, or a
+     * very high text similarity. The bar is deliberately steep and kept off
+     * short names, where a single letter is a different person ("Adele" and
+     * "Adela" must never meet).
+     */
+    private fun sameArtist(a: List<String>, b: List<String>) =
+        runOf(a, b) || runOf(b, a) || closeSpelling(a.joinToString(""), b.joinToString(""))
+
+    private fun closeSpelling(a: String, b: String): Boolean {
+        if (a.length < FUZZY_MIN_LETTERS || b.length < FUZZY_MIN_LETTERS) return false
+        val longest = maxOf(a.length, b.length)
+        if (abs(a.length - b.length) * 100 > (100 - FUZZY_SIMILARITY_PCT) * longest) return false
+        return 100 - editDistance(a, b) * 100 / longest >= FUZZY_SIMILARITY_PCT
+    }
+
+    private fun editDistance(a: String, b: String): Int {
+        var previous = IntArray(b.length + 1) { it }
+        for (i in 1..a.length) {
+            val current = IntArray(b.length + 1).also { it[0] = i }
+            for (j in 1..b.length) {
+                val substitution = previous[j - 1] + if (a[i - 1] == b[j - 1]) 0 else 1
+                current[j] = minOf(substitution, previous[j] + 1, current[j - 1] + 1)
+            }
+            previous = current
+        }
+        return previous[b.length]
+    }
+
+    private const val FUZZY_MIN_LETTERS = 7
+    private const val FUZZY_SIMILARITY_PCT = 85
 
     /** Whether [outer] contains [inner] as a run of whole words. */
     private fun runOf(outer: List<String>, inner: List<String>): Boolean {
