@@ -63,7 +63,7 @@ extra["bitchordVersionName"] = "1.9.3"
  * the phone compares the watch's installed APK with the one it carries, so a
  * beta watch app shows "Update available" as soon as the phone has the release.
  */
-extra["bitchordBetaSuffix"] = ""
+extra["bitchordBetaSuffix"] = "beta1"
 
 /*
  * The release assets, named the way AppUpdateChecker.apkAssetUrl looks for
