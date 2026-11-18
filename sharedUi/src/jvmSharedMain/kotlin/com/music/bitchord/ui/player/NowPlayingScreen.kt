@@ -147,6 +147,7 @@ import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.unit.sp
 import coil3.compose.AsyncImage
+import coil3.compose.AsyncImagePainter
 import com.music.bitchord.ui.components.ExplicitBadge
 import com.music.bitchord.ui.components.VideoThumbnails
 import com.music.bitchord.ui.components.menuAnchor
@@ -887,7 +888,7 @@ fun NowPlayingScreen(
     // The old cover stays drawn underneath ([CoverSwap.under]) while the new one
     // fades in over it, so nothing in between shows the placeholder card.
     val swap = remember { CoverSwap() }
-    if (swap.url != art.url) swap.onNewCover(art.url, art.request)
+    if (swap.url != art.url) swap.onNewCover(art.url)
     // Sticky: once any cover has been shown the sleeve keeps its photo styling
     // (clip, shadow, no placeholder icon) through the next one's load, instead of
     // dropping to the small placeholder card and jumping back.
@@ -899,7 +900,6 @@ fun NowPlayingScreen(
         }
         if (!art.loaded) return@LaunchedEffect
         artShown = true
-        swap.cur = art.request
         if (swap.alpha < 1f) {
             animate(
                 initialValue = swap.alpha,
@@ -1876,6 +1876,7 @@ fun NowPlayingScreen(
                         alpha = {
                             if (spotifyCanvasPresentation || fullArtworkBackdropAlpha >= 1f) 0f else 1f
                         },
+                        sharedProgress = { swap.alpha },
                     )
                 }
                 fullArtworkBlurContent(
@@ -2824,8 +2825,8 @@ fun NowPlayingScreen(
                             // The cover going out, held under the incoming one for the
                             // length of the dissolve and skipped outright after it.
                             swap.under?.let { outgoing ->
-                                AsyncImage(
-                                    model = outgoing,
+                                androidx.compose.foundation.Image(
+                                    painter = outgoing,
                                     contentDescription = null,
                                     contentScale = ContentScale.Crop,
                                     modifier = Modifier
@@ -2854,7 +2855,10 @@ fun NowPlayingScreen(
                                 // Video thumbnails are 16:9; letterboxing them inside
                                 // the square sleeve looks like a broken frame.
                                 contentScale = ContentScale.Crop,
-                                onState = art::onState,
+                                onState = { state ->
+                                    art.onState(state)
+                                    if (state is AsyncImagePainter.State.Success) swap.cur = state.painter
+                                },
                                 // TextureView-backed canvas frames can arrive
                                 // before Coil has decoded the sleeve. Alpha alone
                                 // doesn't hide this layer for that window: a

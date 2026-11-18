@@ -15,6 +15,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.first
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -303,6 +305,12 @@ fun ArtworkMeshBackdrop(
     seam: () -> Dp = { 0.dp },
     /** What the surface is before any artwork has been read. */
     fallback: Color = FallbackBackdrop,
+    /**
+     * The cover dissolve's own progress, 0 to 1. When a new mesh arrives just as that
+     * dissolve begins, the backdrop is driven by it instead of a clock of its own, so
+     * the cover and the background move as one.
+     */
+    sharedProgress: (() -> Float)? = null,
 ) {
     val reduceAnimation by PlayerSettings.reduceAnimation.collectAsStateWithLifecycle()
 
@@ -313,6 +321,7 @@ fun ArtworkMeshBackdrop(
     var shown by remember { mutableStateOf(mesh) }
     var incoming by remember { mutableStateOf<ArtworkMesh?>(null) }
     val fade = remember { Animatable(0f) }
+    var useShared by remember { mutableStateOf(false) }
 
     LaunchedEffect(mesh) {
         val next = mesh ?: return@LaunchedEffect
@@ -332,6 +341,15 @@ fun ArtworkMeshBackdrop(
             return@LaunchedEffect
         }
         incoming = next
+        if (sharedProgress != null && sharedProgress() < 0.05f) {
+            useShared = true
+            snapshotFlow { sharedProgress() }.first { it >= 1f }
+            useShared = false
+            shown = next
+            incoming = null
+            return@LaunchedEffect
+        }
+        useShared = false
         fade.snapTo(0f)
         fade.animateTo(1f, tween(MESH_FADE_MS, easing = FastOutSlowInEasing))
         shown = next
@@ -349,7 +367,7 @@ fun ArtworkMeshBackdrop(
         shown?.let { drawMesh(it, seamY, alpha = 1f) }
         // Read here rather than in composition: an Animatable read inside a
         // draw lambda invalidates the drawing and leaves composition out of it.
-        incoming?.let { drawMesh(it, seamY, alpha = fade.value) }
+        incoming?.let { drawMesh(it, seamY, alpha = if (useShared) sharedProgress?.invoke() ?: 1f else fade.value) }
 
         // Enough of a scrim to keep white text off a bright sleeve, and no
         // more. The old backdrop needed a heavier one because it lightened

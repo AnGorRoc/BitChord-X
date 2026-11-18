@@ -207,6 +207,7 @@ internal fun PlayerMeshBackdrop(
     canvasFrame: () -> ImageBitmap?,
     seamTarget: () -> Dp,
     alpha: () -> Float,
+    sharedProgress: (() -> Float)? = null,
 ) {
     val mesh = key(trackKey) { rememberArtworkMesh(imageUrl, canvasFrame(), ART_PX) }
     val currentSeamTarget by rememberUpdatedState(seamTarget)
@@ -225,6 +226,7 @@ internal fun PlayerMeshBackdrop(
     ArtworkMeshBackdrop(
         mesh = mesh,
         seam = { seam.value },
+        sharedProgress = sharedProgress,
         modifier = Modifier.graphicsLayer { this.alpha = alpha() },
     )
 }

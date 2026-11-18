@@ -343,7 +343,7 @@ internal const val COVER_SWAP_MS = 300
 
 /**
  * The cover on its way out and the cover on its way in, for the dissolve between
- * two tracks. [under] is the previous cover's request (served from Coil's memory
+ * two tracks. [under] is the previous cover's painter (kept, never reloaded, so it cannot blink out)
  * cache) drawn beneath the new one while [alpha] — the new cover's opacity —
  * climbs from 0 to 1 over [COVER_SWAP_MS].
  */
@@ -351,13 +351,13 @@ internal const val COVER_SWAP_MS = 300
 internal class CoverSwap {
     var url: String? = null
         private set
-    var cur: ImageRequest? = null
-    var under: ImageRequest? = null
+    var cur: androidx.compose.ui.graphics.painter.Painter? = null
+    var under: androidx.compose.ui.graphics.painter.Painter? = null
         private set
     var alpha by mutableFloatStateOf(1f)
 
     /** Called in composition the moment the artwork changes, so no frame shows the new cover un-faded. */
-    fun onNewCover(newUrl: String?, request: ImageRequest) {
+    fun onNewCover(newUrl: String?) {
         val previous = cur
         if (previous != null && newUrl != null) {
             under = previous
@@ -367,6 +367,6 @@ internal class CoverSwap {
             alpha = 1f
         }
         url = newUrl
-        cur = if (newUrl != null) request else null
+        if (newUrl == null) cur = null
     }
 }
