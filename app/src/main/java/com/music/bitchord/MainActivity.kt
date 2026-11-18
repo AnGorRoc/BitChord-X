@@ -4413,7 +4413,10 @@ private fun BitChordApp(
                                             },
                                             controlsLocked = controlsLocked,
                                             onBlockedControl = showHostOnlyNotice,
-                                            dock = activeDock,
+                                            // No dock, as in portrait: the player rises
+                                            // as one curtain rather than flying its
+                                            // artwork out of this cover.
+                                            dock = null,
                                             pull = playerSheetMotion.takeIf { !reducePlayerMotion },
                                             modifier = Modifier.fillMaxWidth(),
                                         )
@@ -4621,7 +4624,10 @@ private fun BitChordApp(
                                         },
                                         controlsLocked = controlsLocked,
                                         onBlockedControl = showHostOnlyNotice,
-                                        dock = activeDock,
+                                        // No dock: the player rises over the bars as one
+                                        // curtain, the same as it does from the folded bar,
+                                        // rather than flying its artwork out of this cover.
+                                        dock = null,
                                         pull = playerSheetMotion.takeIf { !reducePlayerMotion },
                                         modifier = Modifier.fillMaxWidth(),
                                     )
