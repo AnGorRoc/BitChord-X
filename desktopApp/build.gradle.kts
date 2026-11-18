@@ -1,3 +1,5 @@
+import java.nio.file.Files
+import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
 import java.util.zip.ZipFile
 import org.jetbrains.compose.desktop.application.dsl.TargetFormat
@@ -511,6 +513,79 @@ val windowsPortable by tasks.registering(Zip::class) {
 
 val composeMainClass = "com.music.bitchord.desktop.MainKt"
 
+/**
+ * The Windows build's class-data-sharing archive: every class the app loads on a start, parsed and
+ * verified once at build time instead of on every launch. Opening the window takes about two
+ * seconds less with it.
+ *
+ * The archive records the class path it was built against and the JVM only trusts it when the
+ * installed jars are named and ordered the same way. jpackage names each jar after a checksum that
+ * changes on every packaging run, so the archive cannot be predicted ahead of it: it is made from
+ * the finished app image, reading the class path out of the image's own `BitChord.cfg`, and the
+ * installer is then wrapped around that image rather than assembled again from the jars.
+ */
+val startupClassList = project.file("packaging/startup.classlist")
+val startupArchiveEnabled = targetOs == "windows" && hostIsWindows
+val runtimeProbeDir = layout.buildDirectory.dir("startup-cds/runtime-probe")
+val appImageDir = layout.buildDirectory.dir("compose/binaries/main/app/BitChord")
+
+fun buildStartupArchive(image: File, probe: File, work: File, logger: org.gradle.api.logging.Logger) {
+    val app = File(image, "app")
+    val classPath = File(app, "BitChord.cfg").readLines()
+        .filter { it.startsWith("app.classpath=") }
+        .map { it.removePrefix("app.classpath=").replace("\$APPDIR", app.absolutePath) }
+    check(classPath.isNotEmpty()) { "startupArchive: no class path in ${File(app, "BitChord.cfg")}" }
+    val launcher = File(probe, "bin/java.exe")
+    check(launcher.isFile) { "startupArchive: the runtime probe is missing; createRuntimeImage has to run first" }
+
+    work.deleteRecursively()
+    work.mkdirs()
+    // The JVM refuses a whole list over one line longer than 4096 characters (a few huge Compose
+    // lambdas produce them), so those are left out.
+    val list = File(work, "startup.classlist")
+    list.writeText(startupClassList.readLines().filter { it.length < 4000 }.joinToString("\n") + "\n")
+
+    val resources = File(app, "resources").apply { mkdirs() }
+    val archive = File(resources, "startup.jsa")
+    archive.delete()
+    val log = File(work, "dump.log")
+    val process = ProcessBuilder(
+        launcher.absolutePath,
+        "-Xshare:dump",
+        "-Xlog:disable",
+        "-XX:SharedClassListFile=${list.absolutePath}",
+        "-XX:SharedArchiveFile=${archive.absolutePath}",
+        "-cp", classPath.joinToString(File.pathSeparator),
+    ).redirectErrorStream(true).redirectOutput(log).start()
+    if (!process.waitFor(10, TimeUnit.MINUTES)) {
+        process.destroyForcibly()
+        archive.delete()
+        logger.warn("startupArchive: the dump took over 10 minutes and was stopped; shipping without it.")
+    } else if (process.exitValue() != 0 || !archive.isFile) {
+        archive.delete()
+        logger.warn("startupArchive: the dump failed (${log.absolutePath}); shipping without it.")
+    } else {
+        logger.lifecycle("startupArchive: ${archive.length() / (1024 * 1024)} MB over ${classPath.size} jars")
+    }
+}
+
+if (startupArchiveEnabled && startupClassList.isFile) {
+    tasks.matching { it.name == "createDistributable" }.configureEach {
+        val probe = runtimeProbeDir
+        val image = appImageDir
+        val work = layout.buildDirectory.dir("startup-cds/work")
+        inputs.file(startupClassList).withPropertyName("startupClassList")
+        inputs.files(probe.map { it.file("lib/modules") }).withPropertyName("runtimeModules").optional()
+        doLast { buildStartupArchive(image.get().asFile, probe.get().asFile, work.get().asFile, logger) }
+    }
+    // The installer is wrapped around the image the archive was made for. Naming the type is
+    // enough: Compose passes `--app-image` instead of `--input` when the property is set.
+    tasks.matching { it.name == "packageExe" }.configureEach {
+        dependsOn("createDistributable")
+        (this as org.jetbrains.compose.desktop.application.tasks.AbstractJPackageTask).appImage.set(appImageDir)
+    }
+}
+
 compose.desktop {
     application {
         javaHome = javaToolchains.launcherFor(java.toolchain).map {
@@ -520,6 +595,12 @@ compose.desktop {
         jvmArgs("-Xmx512m")
         jvmArgs("-XX:+UseG1GC", "-XX:G1PeriodicGCInterval=20000", "-XX:G1PeriodicGCSystemLoadThreshold=0")
         jvmArgs("-Dbitchord.version=$appVersion")
+        if (startupArchiveEnabled && startupClassList.isFile) {
+            // `-Xshare:auto` (the default) makes a missing or mismatched archive a silent fallback.
+            // In a dev run `$APPDIR` is not expanded, so the file is simply not found.
+            // Forward slashes: jpackage reads a backslash followed by a letter in a java-option as an escape.
+            jvmArgs("-XX:SharedArchiveFile=\$APPDIR/resources/startup.jsa")
+        }
         if (desktopModuleIndexUrl.isNotBlank()) {
             jvmArgs("-Dbitchord.module.index=$desktopModuleIndexUrl")
         }
@@ -605,4 +686,44 @@ compose.desktop {
         }
     }
 
+}
+
+// jpackage's runtime image is made with `jlink --strip-native-commands`, which removes the java
+// launcher, and with it the only way jlink has to generate the default class-data-sharing
+// archive (`--generate-cds-archive`). Without one the JVM parses and verifies every JDK class on
+// each start.
+//
+// The JVM only accepts an archive made against the very `lib/modules` it runs on (it compares the
+// file's size), so one cannot be borrowed from the toolchain JDK: it is made here, by the
+// toolchain's launcher run on a link-farm copy of the runtime image. The same probe is what
+// [startupArchive] dumps the app's archive with.
+tasks.matching { it.name == "createRuntimeImage" }.configureEach {
+    if (!startupArchiveEnabled) return@configureEach
+    val toolchainHome = javaToolchains.launcherFor(java.toolchain).map { it.metadata.installationPath.asFile }
+    val probe = runtimeProbeDir
+    outputs.dir(probe)
+    doLast {
+        val image = outputs.files.files.firstOrNull { File(it, "release").isFile } ?: return@doLast
+        val into = probe.get().asFile
+        into.deleteRecursively()
+        // Hard links where the volume allows, so the 100 MB module image is not copied.
+        image.walkTopDown().filter { it.isFile && it.name != "classes.jsa" }.forEach { file ->
+            val target = File(into, file.relativeTo(image).path).apply { parentFile.mkdirs() }
+            runCatching { Files.createLink(target.toPath(), file.toPath()) }
+                .getOrElse { file.copyTo(target, overwrite = true) }
+        }
+        val launcher = File(toolchainHome.get(), "bin/java.exe")
+        launcher.copyTo(File(into, "bin/java.exe"), overwrite = true)
+        val log = File(into.parentFile, "runtime-dump.log")
+        val process = ProcessBuilder(File(into, "bin/java.exe").absolutePath, "-Xshare:dump", "-Xlog:disable")
+            .redirectErrorStream(true).redirectOutput(log).start()
+        val archive = File(into, "bin/server/classes.jsa")
+        if (!process.waitFor(5, TimeUnit.MINUTES) || process.exitValue() != 0 || !archive.isFile) {
+            process.destroyForcibly()
+            logger.warn("createRuntimeImage: no default CDS archive could be made (${log.absolutePath}); the runtime starts without one.")
+            return@doLast
+        }
+        archive.copyTo(File(image, "bin/server/classes.jsa"), overwrite = true)
+        logger.lifecycle("createRuntimeImage: default CDS archive made for this runtime (${archive.length() / (1024 * 1024)} MB)")
+    }
 }

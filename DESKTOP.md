@@ -102,3 +102,43 @@ gradlew.bat :desktopApp:createDistributable
 
 Pass `-Pbitchord.version=1.2.3` to stamp a version other than the one in
 `desktopApp/build.gradle.kts`; a release build takes it from the tag.
+
+## Start-up time on Windows
+
+A cold JVM spends most of a launch loading and verifying about 14,000 classes, so the Windows
+build ships two class-data-sharing archives that turn that into a memory map. Opening the window
+went from about 7.5 s to about 3.2 s on a Ryzen 7 with the app's jars already in the disk cache.
+
+- **The JDK's own** (`runtime/bin/server/classes.jsa`). jpackage's runtime image is made with
+  `jlink --strip-native-commands`, which removes the launcher jlink needs to generate it. The
+  `createRuntimeImage` task makes it afterwards, with the toolchain's `java.exe` run on a
+  hard-linked copy of the runtime (`build/startup-cds/runtime-probe`). It cannot be borrowed from
+  the toolchain JDK: the JVM only accepts an archive made against the very `lib/modules` it runs on.
+- **The app's** (`app/resources/startup.jsa`, about 100 MB on disk), made at the end of
+  `createDistributable` from `desktopApp/packaging/startup.classlist`, with the same probe. The JVM
+  only trusts it when the installed class path is named and ordered exactly as it was at dump time,
+  and jpackage names a jar after a checksum that changes on every run (even the empty Skiko stub
+  jar), so the archive is made from the finished image, reading the class path from its own
+  `BitChord.cfg`. `packageExe` is then wrapped around that image (`--app-image`) instead of
+  assembling the jars again.
+
+If the archive is missing or does not fit, the JVM runs without any class-data sharing: slower, never
+broken. Check with `-Xlog:cds=info` (look for "Unable to map shared spaces" or "shared class paths
+mismatch").
+
+The class list is a snapshot of what a start loads. Classes that no longer exist are skipped and new
+ones are loaded the ordinary way, so it ages gracefully, but it is worth regenerating after big
+changes. With a JDK 21 and a throwaway home, so the real profile is untouched:
+
+```powershell
+$env:JAVA_TOOL_OPTIONS = "-XX:DumpLoadedClassList=$PWD\startup.classlist -Duser.home=$env:TEMP\bitchord-cds"
+& "$env:LOCALAPPDATA\BitChord\BitChord.exe"   # let the window open, wait ~30 s, then close it
+```
+
+(The Windows launcher honours `JAVA_TOOL_OPTIONS`; the list was originally captured by running the
+app's class path with `java -XX:DumpLoadedClassList=…`.) Then drop lines longer than 4000 characters
+(a few huge Compose lambdas; the JVM rejects the whole list otherwise, and the build also filters
+them), put the four `#` comment lines back on top, and replace the file.
+
+Do not use `-XX:+AutoCreateSharedArchive` instead: recording a dynamic archive at run time made this
+app several times slower to start in testing.
