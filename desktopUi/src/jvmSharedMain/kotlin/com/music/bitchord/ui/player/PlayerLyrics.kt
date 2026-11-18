@@ -1893,7 +1893,10 @@ internal fun LyricsPanel(
     // line lands, and that is not somebody reading on.
     val controlsOnScroll = rememberPlayerControlsOnScroll(
         onUserScroll = { browsingByDrag = true },
-        onReveal = { if (!picking) onRevealControls() },
+        // Only at the very top. Anywhere else a small reversal of the finger
+        // brought the deck back and the panel shrank in the middle of reading;
+        // a tap on the lower half still brings it back on purpose.
+        onReveal = { if (!picking && !listState.canScrollBackward) onRevealControls() },
         onHide = onHideControls,
     )
 
@@ -2034,6 +2037,27 @@ internal fun LyricsPanel(
                     }
                 }
             }
+        }
+    }
+
+    // Tapping a line is the clearest way of saying "this is where I am": the
+    // panel takes that line, whatever it was browsing. It waits for the song to
+    // arrive there rather than following at once, otherwise it would first
+    // scroll back to the line it was on before the seek had landed.
+    var followLine by remember { mutableStateOf(-1) }
+    val seekToLine: (Int, Long) -> Unit = { index, timeMs ->
+        followLine = index
+        onSeekToLine(timeMs)
+    }
+    LaunchedEffect(followLine, focusLine) {
+        if (followLine < 0) return@LaunchedEffect
+        if (focusLine in followLine..followLine + 1) {
+            browsingByDrag = false
+            followLine = -1
+        } else {
+            delay(900)
+            browsingByDrag = false
+            followLine = -1
         }
     }
 
@@ -2220,7 +2244,7 @@ internal fun LyricsPanel(
                         // A gap is nothing to pick, so it only ever seeks — and
                         // not even that while a pick is open, where a stray tap
                         // in the silence would jump the song.
-                        .clickable(enabled = isSynced && !picking) { onSeekToLine(line.timeMs) }
+                        .clickable(enabled = isSynced && !picking) { seekToLine(index, line.timeMs) }
                         // Matches the inset every sung line carries, so the
                         // rhythm of the list doesn't break at a break.
                         .padding(GLOW_ROOM)
@@ -2390,7 +2414,7 @@ internal fun LyricsPanel(
                                     if (picking) {
                                         onTogglePick(index)
                                     } else {
-                                        onSeekToLine(line.timeMs)
+                                        seekToLine(index, line.timeMs)
                                     }
                                 },
                             )
@@ -2403,7 +2427,7 @@ internal fun LyricsPanel(
                                 enabled = isSynced,
                                 interactionSource = interaction,
                                 indication = LocalIndication.current,
-                            ) { onSeekToLine(line.timeMs) }
+                            ) { seekToLine(index, line.timeMs) }
                         },
                     )
                 // Lead and answering vocal are one row: they are one line of
