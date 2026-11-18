@@ -764,7 +764,7 @@ fun BitChordDesktopApp() {
     var crossfadeSeconds by remember { mutableStateOf(persistence.string("crossfade_seconds", "0").toIntOrNull()?.coerceIn(0, 12) ?: 0) }
     var downloadQuality by remember { mutableStateOf(persistence.string("download_quality", "LOSSLESS")) }
     var trayIconEnabled by remember { mutableStateOf(persistence.boolean("tray_icon", true)) }
-    var closeToTray by remember { mutableStateOf(persistence.boolean("close_to_tray", true)) }
+    var closeToTray by remember { mutableStateOf(persistence.boolean("close_to_tray", false)) }
     // The three the FFmpeg engine unlocked: none of them could exist while JavaFX owned the decode,
     // because none of them can be done without the samples themselves.
     var spatialAudio by remember { mutableStateOf(persistence.boolean("spatial_audio", false)) }
@@ -8428,16 +8428,18 @@ private fun DesktopSettingsScreen(
                             trayIconEnabled,
                             onTrayIconChange,
                         )
-                        if (trayIconEnabled) {
-                            SettingsToggle(
-                                DesktopStrings["d_keep_playing_when_closed", "Keep playing when closed"],
-                                DesktopStrings[
-                                    "d_closing_the_window_leaves_bitchord_in_the_tray_instead_o",
-                                    "Closing the window leaves BitChord in the tray instead of quitting",
-                                ],
-                                closeToTray,
-                                onCloseToTrayChange,
-                            )
+                        SettingsToggle(
+                            DesktopStrings["d_keep_playing_when_closed", "Keep running in background when closed"],
+                            DesktopStrings[
+                                "d_closing_the_window_leaves_bitchord_in_the_tray_instead_o",
+                                "Closing the window leaves BitChord running in the background in the tray instead of quitting",
+                            ],
+                            closeToTray,
+                        ) { enabled ->
+                            if (enabled && !trayIconEnabled) {
+                                onTrayIconChange(true)
+                            }
+                            onCloseToTrayChange(enabled)
                         }
                         val hideVolumeBar by DesktopAppearanceSettings.hideVolumeBar.collectAsState()
                         SettingsToggle(
