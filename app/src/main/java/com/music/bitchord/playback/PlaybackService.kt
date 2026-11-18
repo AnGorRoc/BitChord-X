@@ -3592,10 +3592,10 @@ class PlaybackService : MediaLibraryService() {
                     val stillWaiting = partyAutoplayWaiting(latestParty, current.videoId)
                         ?: (latestPlayer.currentMediaItemIndex + 1 until latestPlayer.mediaItemCount)
                             .count { latestPlayer.getMediaItemAt(it).fromAutoplay }
-                    remaining = MAX_QUEUED_AUTOPLAY - stillWaiting
+                    remaining = AutoplayRefill.missing(stillWaiting)
                     if (remaining <= 0) return@launch
                     delay(AUTOPLAY_EMPTY_REFRESH_DELAY_MS)
-                    seedBack = if (latestPlayer.currentMediaItemIndex - (seedBack + 1) >= 0) seedBack + 1 else 0
+                    seedBack = AutoplayRefill.nextSeedBack(latestPlayer.currentMediaItemIndex, seedBack)
                     continue
                 }
 
@@ -3616,7 +3616,7 @@ class PlaybackService : MediaLibraryService() {
                     // Paused: wait for play rather than asking on behalf of nobody.
                     while (isActive && player?.playWhenReady == false) delay(AUTOPLAY_WATCHDOG_MS)
                     // This song's radio came back with nothing new: seed from an earlier one.
-                    seedBack = if (at - (seedBack + 1) >= 0) seedBack + 1 else 0
+                    seedBack = AutoplayRefill.nextSeedBack(at, seedBack)
                 }
                 remaining = MAX_QUEUED_AUTOPLAY -
                     ((at + 1 until latestPlayer.mediaItemCount).count { latestPlayer.getMediaItemAt(it).fromAutoplay })

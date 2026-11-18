@@ -49,6 +49,7 @@ import com.music.bitchord.data.model.TopPick
 import com.music.bitchord.data.model.TopPickKind
 import com.music.bitchord.data.model.TopPickMood
 import com.music.bitchord.data.spotify.ExportState
+import com.music.bitchord.playback.AutoplayRefill
 import com.music.bitchord.playback.MusicLinkParser
 import com.music.bitchord.playback.ParsedMusicLink
 import com.music.bitchord.playback.PlaybackPosition
@@ -473,9 +474,6 @@ private const val SKIP_MIX_ON_SKIP_SECONDS = 15
 
 /** How long the supplier waits for the server to echo an AutoPlay queue addition. */
 private const val PARTY_AUTOPLAY_ECHO_TIMEOUT_MS = 5_000L
-
-/** The phone gives one empty station response a delayed second chance. */
-private const val AUTOPLAY_EMPTY_REFRESH_DELAY_MS = 2_000L
 
 /** The phone's dark scheme, which the shared pages are drawn against. */
 internal fun desktopColorScheme() = darkColorScheme(
@@ -1485,6 +1483,9 @@ fun BitChordDesktopApp() {
         autoplayJob = scope.launch {
             var remaining = needed.coerceAtLeast(1)
             var emptyRefreshesRemaining = 1
+            // Which song seeds the station: this one first, then — when its station has nothing new
+            // left — the songs before it, one further back each time, as the phone does.
+            var seedBack = 0
             while (isActive) {
                 DesktopTrackLog.log("autoplay: building a station from '${current.title}'")
                 val at = liveQueue.songs.size
@@ -1498,7 +1499,11 @@ fun BitChordDesktopApp() {
                     } else {
                         liveQueue.songs + partyQueue
                     },
-                    seedSong = current,
+                    seedSong = if (seedBack == 0) {
+                        current
+                    } else {
+                        liveQueue.songs.getOrNull(liveQueue.index - seedBack) ?: current
+                    },
                     limit = remaining,
                 ).getOrElse { failure ->
                     DesktopTrackLog.log("autoplay: could not build a station: ${failure.message}")
@@ -1513,12 +1518,18 @@ fun BitChordDesktopApp() {
                 ) return@launch
                 if (suggestions.isEmpty()) {
                     DesktopTrackLog.log("autoplay: no station came back for '${current.title}'")
-                    // Match the phone's bounded recovery: retry once after a short delay, but only
-                    // while the current track genuinely has no tail to play next.
-                    if (liveQueue.index < 0 || liveQueue.index != liveQueue.songs.lastIndex) return@launch
-                    if (emptyRefreshesRemaining-- <= 0) return@launch
-                    delay(AUTOPLAY_EMPTY_REFRESH_DELAY_MS)
-                    remaining = MAX_QUEUED_AUTOPLAY
+                    // The tail must stay full: ask again, from an earlier seed once the quick
+                    // retry is spent, for as long as this track is the one playing.
+                    if (liveQueue.index < 0) return@launch
+                    if (emptyRefreshesRemaining-- > 0) {
+                        delay(AutoplayRefill.RETRY_DELAY_MS)
+                    } else {
+                        delay(AutoplayRefill.WATCHDOG_MS)
+                        seedBack = AutoplayRefill.nextSeedBack(liveQueue.index, seedBack)
+                    }
+                    remaining = AutoplayRefill.missing(
+                        liveQueue.songs.drop(liveQueue.index + 1).count { it.fromAutoplay },
+                    ).coerceAtLeast(1)
                     continue
                 }
                 // The station carries on from what was playing, so it keeps that queue's origin —
@@ -1548,7 +1559,15 @@ fun BitChordDesktopApp() {
                 DesktopTrackLog.log(
                     "autoplay: queued ${suggestions.size} after '${current.title}'",
                 )
-                return@launch
+                // A batch can come back short; keep asking, from an earlier seed, until full.
+                if (latestParty.inParty || playFirst) return@launch
+                val stillMissing = AutoplayRefill.missing(
+                    liveQueue.songs.drop(liveQueue.index + 1).count { it.fromAutoplay },
+                )
+                if (stillMissing <= 0) return@launch
+                remaining = stillMissing
+                delay(AutoplayRefill.RETRY_DELAY_MS)
+                seedBack = AutoplayRefill.nextSeedBack(liveQueue.index, seedBack)
             }
         }
     }
