@@ -105,8 +105,8 @@ escribirlo: búsqueda en el catálogo de Spotify con el mismo `TrackMatcher` (t�
 
 | Fase | Contenido | Cómo se prueba | Estado |
 |---|---|---|---|
-| **S0 Sonda** | Con una cuenta Premium real: crear jam, ver los mensajes del Dealer, probar `add_to_queue`, `skip_next`, `resume/pause`, `seek_to` con posición, "reproducir URI", y comprobar **si hace falta un dispositivo real de Spotify activo** o si basta con el dispositivo web del puente. | A mano, con registro (ver §6). **Necesita a una persona con su cuenta.** | ⛔ No hecha |
-| **S1 Reglas** | `JamBridgeRules` (§2.3, §2.4). | `JamBridgeRulesTest`, automática | ✅ ver resultado abajo |
+| **S0 Sonda** | Con una cuenta Premium real: crear jam, ver los mensajes del Dealer, probar `add_to_queue`, `skip_next`, `resume/pause`, `seek_to` con posición, "reproducir URI", y comprobar **si hace falta un dispositivo real de Spotify activo** o si basta con el dispositivo web del puente. | A mano, con registro (ver §6). **Necesita a una persona con su cuenta.** | No hecha |
+| **S1 Reglas** | `JamBridgeRules` (§2.3, §2.4). | `JamBridgeRulesTest`, automática | Hecho, ver resultado abajo |
 | **S2 Resolutor** | BitChord→Spotify (búsqueda + caché + negativos) y Spotify→BitChord con la misma caché. | Pruebas JVM con un catálogo falso | Pendiente |
 | **S3 Planificador** | Estado de autoridad + cola de comandos serializada, con un `FakeSpotify` y un `FakeParty` que registran lo que reciben. Cubre todos los casos de §3. | Pruebas JVM, sin red | Pendiente |
 | **S4 Conexión** | Sustituir los puntos de entrada del puente actual; arreglar el seek y el eco; guardar/leer `next_tracks`. | Pruebas JVM del lector del Dealer con mensajes grabados en S0 + manual | Pendiente (necesita S0) |
@@ -128,24 +128,24 @@ escribirlo: búsqueda en el catálogo de Spotify con el mismo `TrackMatcher` (t�
 
 ## 4b. Resultados de S0 (probado en un teléfono real, cuenta Premium familiar)
 
-Hecho por adb con la consola de pruebas de la build dev. Lo marcado ✅ está **verificado**; lo marcado
-❓ sigue sin probar.
+Hecho por adb con la consola de pruebas de la build dev. Las filas que empiezan por **Verificado** están comprobadas; las que empiezan por **Sin probar**
+siguen pendientes y las que empiezan por **Rechazado** no funcionan.
 
 | Pregunta | Respuesta |
 |---|---|
-| ¿Se detecta bien Premium? | ✅ `/v1/me` da **429** (límite de peticiones) con este token; el plan se lee de `melody/v1/product_state` (`product: premium`, `FAMILY_MANAGER`). Corregido. |
-| ¿Cómo se crea la jam? | ✅ `GET /social-connect/v2/sessions/current_or_new?local_device_id=<id>` (solo GET, **sin** `type`: cualquier `type` da 400 "not supported"). Devuelve `session_id`, `join_session_token`, miembros, `session_owner_id`. Corregido en `SpotifyJamApi`. |
-| ¿Se cierra? | ✅ `DELETE /social-connect/v2/sessions/<session_id>` → 200 y `current` pasa a 404. |
-| ¿Dónde está el enlace/QR? | ✅ `https://open.spotify.com/socialsession/<join_session_token>`. Cada jam tiene token nuevo. |
-| ¿Hay dispositivo activo en la jam recién creada? | ✅ No: `hostActiveDeviceId` viene vacío. La jam existe pero **no reproduce nada** hasta que un dispositivo la sirva. |
-| ¿Sirve la API web (`api.spotify.com/v1/me/player/*`) para cola y control? | ✅ **No**: 429 siempre con este token. El puente actual dependía de ella. |
-| ¿Sirven los comandos `connect-state/v1/player/command/<cmd>` sin destino? | ✅ **No**: 404 todos (add_to_queue, resume, pause, seek_to, skip_next, skip_prev, play). El puente actual dependía de ellos. |
-| ¿Puede la app registrarse como dispositivo de Spotify Connect? | ✅ **Sí**: `PUT /connect-state/v1/devices/hobs_<sha1 del id>` con la cabecera `X-Spotify-Connection-Id` (se obtiene del primer mensaje del Dealer) → 200, y la respuesta trae el **estado completo del clúster** (pista, `next_tracks`, modos). |
-| ¿Quién añadió una canción / cómo se ven los cambios de invitados? | ❓ No probado: hacía falta un segundo participante en la jam. |
-| ¿Puede nuestro dispositivo registrado hacerse el dispositivo activo y publicar su estado? | ✅ **Sí para el clúster**: al publicar `is_active` con un `player_state`, el clúster pasa a `active_device_id: hobs_<id>` con nuestra canción. ❌ **Pero la jam muere**: en cuanto publicamos "reproduciendo", Spotify cierra la jam (404), tanto si registramos antes como después de crearla. Con el dispositivo registrado y **en pausa** la jam sobrevive, y su `hostActiveDeviceId` sigue vacío (no nos adopta). |
-| ¿Se puede evitar que muera declarando la jam como contexto y `modes.jam`? | ❌ Spotify rechaza ese JSON (`400 INVALID_ENTITY "Invalid json"`). Sin la especificación del mensaje no se puede adivinar el formato. |
-| ¿Suenan los dos a la vez en el teléfono si Spotify está abierto? | ❓ No probado. |
-| ¿Se puede cerrar la jam al cerrar la app? | ❓ No probado; el cierre es una sola petición DELETE, pero hay que lanzarla antes de que muera el proceso. |
+| ¿Se detecta bien Premium? | Verificado: `/v1/me` da **429** (límite de peticiones) con este token; el plan se lee de `melody/v1/product_state` (`product: premium`, `FAMILY_MANAGER`). Corregido. |
+| ¿Cómo se crea la jam? | Verificado: `GET /social-connect/v2/sessions/current_or_new?local_device_id=<id>` (solo GET, **sin** `type`: cualquier `type` da 400 "not supported"). Devuelve `session_id`, `join_session_token`, miembros, `session_owner_id`. Corregido en `SpotifyJamApi`. |
+| ¿Se cierra? | Verificado: `DELETE /social-connect/v2/sessions/<session_id>` → 200 y `current` pasa a 404. |
+| ¿Dónde está el enlace/QR? | Verificado: `https://open.spotify.com/socialsession/<join_session_token>`. Cada jam tiene token nuevo. |
+| ¿Hay dispositivo activo en la jam recién creada? | Verificado: No: `hostActiveDeviceId` viene vacío. La jam existe pero **no reproduce nada** hasta que un dispositivo la sirva. |
+| ¿Sirve la API web (`api.spotify.com/v1/me/player/*`) para cola y control? | Verificado: **No**: 429 siempre con este token. El puente actual dependía de ella. |
+| ¿Sirven los comandos `connect-state/v1/player/command/<cmd>` sin destino? | Verificado: **No**: 404 todos (add_to_queue, resume, pause, seek_to, skip_next, skip_prev, play). El puente actual dependía de ellos. |
+| ¿Puede la app registrarse como dispositivo de Spotify Connect? | Verificado: **Sí**: `PUT /connect-state/v1/devices/hobs_<sha1 del id>` con la cabecera `X-Spotify-Connection-Id` (se obtiene del primer mensaje del Dealer) → 200, y la respuesta trae el **estado completo del clúster** (pista, `next_tracks`, modos). |
+| ¿Quién añadió una canción / cómo se ven los cambios de invitados? | Sin probar: No probado: hacía falta un segundo participante en la jam. |
+| ¿Puede nuestro dispositivo registrado hacerse el dispositivo activo y publicar su estado? | Verificado: **Sí para el clúster**: al publicar `is_active` con un `player_state`, el clúster pasa a `active_device_id: hobs_<id>` con nuestra canción. Rechazado: **pero la jam muere**: en cuanto publicamos "reproduciendo", Spotify cierra la jam (404), tanto si registramos antes como después de crearla. Con el dispositivo registrado y **en pausa** la jam sobrevive, y su `hostActiveDeviceId` sigue vacío (no nos adopta). |
+| ¿Se puede evitar que muera declarando la jam como contexto y `modes.jam`? | Rechazado: Spotify rechaza ese JSON (`400 INVALID_ENTITY "Invalid json"`). Sin la especificación del mensaje no se puede adivinar el formato. |
+| ¿Suenan los dos a la vez en el teléfono si Spotify está abierto? | Sin probar: No probado. |
+| ¿Se puede cerrar la jam al cerrar la app? | Sin probar: No probado; el cierre es una sola petición DELETE, pero hay que lanzarla antes de que muera el proceso. |
 
 ### Qué cambia en el diseño
 El puente **no puede ser** "mandar comandos a Spotify": esa vía está cerrada. Para que una jam suene,
