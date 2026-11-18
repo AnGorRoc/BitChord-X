@@ -382,6 +382,9 @@ data class PartyUi(
 /** What the Connect sheet can ask of the party page. */
 enum class PartyAction { START, JOIN }
 
+/** A panel of the full player that its song menu can ask for. */
+enum class PlayerPanel { OUTPUT, CONNECT }
+
 /** The person who queued a song. */
 data class AddedByUi(val name: String, val avatarUrl: String?)
 

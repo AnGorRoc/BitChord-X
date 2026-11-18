@@ -2192,6 +2192,23 @@ private fun BitChordApp(
     }
 
     /**
+     * A song tapped on a shelf — Recents, Quick picks, a chart — queues the
+     * shelf around it, the way an album does: the rest of the list follows the
+     * tapped song, behind whatever the listener queued by hand, and AutoPlay
+     * only comes in once that list runs out. A shelf with nothing else to play
+     * still gets the station [playRadio] starts.
+     */
+    val playFromShelf: (ShelfItem, List<ShelfItem>?, QueueSource) -> Unit = { item, siblings, source ->
+        val songs = siblings.orEmpty().mapNotNull(shelfSong)
+        val index = songs.indexOfFirst { it.videoId == item.videoId }
+        if (index >= 0 && songs.size > 1) {
+            playFrom(songs, index, source)
+        } else {
+            shelfSong(item)?.let { playRadio(it, source) }
+        }
+    }
+
+    /**
      * Holding a card on a feed whose shelves mix tracks with collections —
      * Quick picks and Recently played are songs, Listen again is either.
      *
@@ -3706,7 +3723,7 @@ private fun BitChordApp(
                                 artworkMotion = artworkMotion,
                                 shelfSong = shelfSong,
                                 onSignIn = { webSession = WebSessionMode.SIGN_IN },
-                                onPlayRadio = playRadio,
+                                onPlayFromShelf = playFromShelf,
                                 onShelfLongPress = onShelfLongPress,
                                 onOpenTopPick = openTopPick,
                                 onPlayMood = playMood,
@@ -3723,6 +3740,7 @@ private fun BitChordApp(
                                 contentPadding = listPadding,
                                 shelfSong = shelfSong,
                                 onPlayRadio = playRadio,
+                                onPlayFromShelf = playFromShelf,
                                 onPlayFrom = ::playFrom,
                                 onAddToQueue = addToQueue,
                                 onShelfLongPress = onShelfLongPress,

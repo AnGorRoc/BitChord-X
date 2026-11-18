@@ -532,7 +532,7 @@ fun ExploreScreen(
     chartsRegion: String? = null,
     onRegionChange: (String?) -> Unit = {},
     onRefreshCharts: () -> Unit = {},
-    onSongClick: ((ShelfItem) -> Unit)? = null,
+    onSongClick: ((ShelfItem, List<ShelfItem>) -> Unit)? = null,
     onSongOptionsClick: ((ShelfItem) -> Unit)? = null,
     onItemClick: ((ShelfItem) -> Unit)? = null,
     onPlayAll: ((List<ShelfItem>) -> Unit)? = null,
@@ -859,7 +859,7 @@ fun ExploreScreen(
                                                 TopTrendingRow(
                                                     rank = index + 1,
                                                     item = item,
-                                                    onClick = { onSongClick?.invoke(item) },
+                                                    onClick = { onSongClick?.invoke(item, allTopSongs) },
                                                     onOptionsClick = { onSongOptionsClick?.invoke(item) },
                                                     modifier = Modifier.padding(horizontal = PAGE_GUTTER),
                                                 )

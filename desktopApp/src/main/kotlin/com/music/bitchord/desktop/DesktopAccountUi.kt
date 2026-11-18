@@ -150,10 +150,7 @@ internal fun DesktopAccountSelector(
                     .widthIn(max = if (compact) 380.dp else 340.dp)
                     .fillMaxWidth()
                     .clip(shape)
-                    // The same frosted pane the floating bars are made of, sampling the page underneath
-                    // rather than sitting on a flat fill.
-                    .desktopBarGlass(shape)
-                    .border(1.dp, Color.White.copy(alpha = 0.10f), shape),
+                    .desktopPlayerGlass(shape),
             ) {
                 Row(
                     Modifier.fillMaxWidth().padding(start = 20.dp, end = 20.dp, top = 18.dp, bottom = 8.dp),
@@ -334,7 +331,7 @@ internal fun DesktopSignInDialog(
                 .widthIn(max = 520.dp)
                 .fillMaxWidth()
                 .clip(shape)
-                .desktopBarGlass(shape)
+                .desktopPlayerGlass(shape)
                 .padding(bottom = 8.dp),
         ) {
             Row(

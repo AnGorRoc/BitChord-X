@@ -312,6 +312,7 @@ object ArtistFacts {
                     .sortedByDescending { maxOf(it.cardAt, it.genresAt) }
                     .take(MAX_ARTISTS),
             )
+            file.parentFile?.mkdirs()
             file.writeText(json.encodeToString(Stored.serializer(), stored))
         }.onFailure { logWarning( "Could not write artist cache", it) }
     }

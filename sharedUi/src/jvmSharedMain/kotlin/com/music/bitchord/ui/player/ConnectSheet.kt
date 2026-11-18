@@ -145,6 +145,13 @@ internal fun ConnectSheet(
                 it.deviceId != account.controlled?.deviceId && (it.connected || nowMs - it.lastSeenMs < FORGET_AWAY_MS) &&
                 // Asked not to be offered, unless it is part of a link this device is in.
                 (!it.hidden || it.controlledBy != null || it.controlling != null)
+            }.let { shown ->
+                // A reinstalled app is a new device with the old name; its predecessors are not news. One
+                // entry per name and kind: the live one, or else the one seen last.
+                val key = { d: AccountDevice -> d.name.trim().lowercase() to d.type }
+                val live = shown.filter { it.connected }.map(key).toSet()
+                val newestAway = shown.filter { !it.connected }.groupBy(key).mapValues { (_, same) -> same.maxOf { it.lastSeenMs } }
+                shown.filter { it.connected || (key(it) !in live && it.lastSeenMs == newestAway[key(it)]) }
             }
             val nameOf = { id: String -> account.devices.firstOrNull { it.deviceId == id }?.name.orEmpty() }
             val blocked = { d: AccountDevice -> HandoffRules.blockedBy(d, party.code?.takeIf { party.inParty }) != null }

@@ -765,31 +765,34 @@ internal class DesktopDeviceLink(
 }
 
 /**
- * What the person is told about handing the sound around. The desktop app's own messages are
- * English throughout, so this is too; the facts themselves ([DeviceNotice]) carry no wording.
+ * What the person is told about handing the sound around, in the language in force. The facts
+ * themselves ([DeviceNotice]) carry no wording.
  */
-internal fun DeviceNotice.english(): String = when (this) {
-    DeviceNotice.Unavailable -> "That device is not available."
-    DeviceNotice.PartyOnThisDevice ->
-        "You're in a party on this device. Leave it, or turn off “Play on this device”, first."
-    is DeviceNotice.TargetInParty -> "$name is in a party. Leave it there first."
-    is DeviceNotice.TargetIsRemote ->
-        if (name != null) "$name is controlling another device." else "That device is controlling another device."
-    is DeviceNotice.TargetNotAllowed ->
-        if (name != null) "$name doesn't accept control from your other devices." else "That device doesn't accept control from your other devices."
-    is DeviceNotice.TargetNotReachable ->
-        if (name != null) "Open BitChord on $name first." else "Open BitChord on that device first."
-    DeviceNotice.LocalFile -> "This song is a file on this device, so it can't be played on another one."
-    DeviceNotice.NoAnswer -> "The other device did not answer."
-    DeviceNotice.NoStart -> "The other device did not start playing."
-    is DeviceNotice.Disconnected -> if (name != null) "$name disconnected." else "The other device disconnected."
-    is DeviceNotice.PlayingOn -> if (name != null) "Now playing on $name." else "Now playing on the other device."
-    is DeviceNotice.Controlling -> if (name != null) "Controlling $name." else "Controlling the other device."
-    is DeviceNotice.BroughtHere -> if (name != null) "Brought $name's music here." else "Brought the music here."
-    DeviceNotice.BackHere -> "Back on this device."
-    is DeviceNotice.PartyOn -> if (name != null) "The party now plays on $name." else "The party now plays on the other device."
-    DeviceNotice.PartyHere -> "The party plays on this device again."
-    DeviceNotice.TooManySongs -> "Too many songs to hand over at once."
-    DeviceNotice.NotLinked -> "That device is no longer connected to this one."
-    is DeviceNotice.Refused -> message?.takeIf { it.isNotBlank() } ?: "The other device refused that."
+internal fun DeviceNotice.english(): String {
+    fun t(key: String, fallback: String) = DesktopStrings[key, fallback]
+    fun t(key: String, fallback: String, name: String) = DesktopStrings.format(key, name, fallback = fallback)
+    fun named(name: String?, key: String, fallback: String, generic: String, genericFallback: String) =
+        if (name != null) t(key, fallback, name) else t(generic, genericFallback)
+    return when (this) {
+        DeviceNotice.Unavailable -> t("device_notice_unavailable", "That device is not available.")
+        DeviceNotice.PartyOnThisDevice ->
+            t("device_notice_party_here", "You’re in a party on this device. Leave it, or turn off “Play on this device”, first.")
+        is DeviceNotice.TargetInParty -> t("device_notice_target_in_party", "%1\$s is in a party. Leave it there first.", name.orEmpty())
+        is DeviceNotice.TargetIsRemote -> named(name, "device_notice_target_remote", "%1\$s is controlling another device.", "device_notice_target_remote_generic", "That device is controlling another device.")
+        is DeviceNotice.TargetNotAllowed -> named(name, "device_notice_target_not_allowed", "%1\$s doesn't accept control from your other devices.", "device_notice_target_not_allowed_generic", "That device doesn't accept control from your other devices.")
+        is DeviceNotice.TargetNotReachable -> named(name, "device_notice_target_not_reachable", "Open BitChord on %1\$s first.", "device_notice_target_not_reachable_generic", "Open BitChord on that device first.")
+        DeviceNotice.LocalFile -> t("device_notice_local_file", "This song is a file on this device, so it can’t be played on another one.")
+        DeviceNotice.NoAnswer -> t("device_notice_no_answer", "The other device did not answer.")
+        DeviceNotice.NoStart -> t("device_notice_no_start", "The other device did not start playing.")
+        is DeviceNotice.Disconnected -> named(name, "device_notice_disconnected", "%1\$s disconnected.", "device_notice_disconnected_generic", "The other device disconnected.")
+        is DeviceNotice.PlayingOn -> named(name, "device_notice_playing_on", "Now playing on %1\$s", "device_notice_playing_on_generic", "Now playing on the other device")
+        is DeviceNotice.Controlling -> named(name, "device_notice_controlling", "Controlling %1\$s", "device_notice_controlling_generic", "Controlling the other device")
+        is DeviceNotice.BroughtHere -> named(name, "device_notice_brought_here", "Brought %1\$s’s music here", "device_notice_brought_here_generic", "Brought the music here")
+        DeviceNotice.BackHere -> t("device_notice_back_here", "Back on this device")
+        is DeviceNotice.PartyOn -> named(name, "device_notice_party_on", "The party now plays on %1\$s", "device_notice_party_on_generic", "The party now plays on the other device")
+        DeviceNotice.PartyHere -> t("device_notice_party_here_again", "The party plays on this device again")
+        DeviceNotice.TooManySongs -> t("device_notice_too_many", "Too many songs to hand over at once.")
+        DeviceNotice.NotLinked -> t("device_notice_not_linked", "That device is no longer connected to this one.")
+        is DeviceNotice.Refused -> message?.takeIf { it.isNotBlank() } ?: t("device_notice_refused", "The other device refused that.")
+    }
 }

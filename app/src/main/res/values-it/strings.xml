@@ -1595,4 +1595,28 @@
     <string name="share_app_release_text">Scarica BitChord X qui: %1$s</string>
     <string name="tint_with_now_playing">Colori del brano in riproduzione</string>
     <string name="tint_with_now_playing_subtitle">Colora pagine e barre con la copertina del brano in riproduzione</string>
+    <string name="device_notice_playing_on">Ora in riproduzione su %1$s</string>
+    <string name="device_notice_playing_on_generic">Ora in riproduzione sull’altro dispositivo</string>
+    <string name="device_notice_controlling">Controllo di %1$s</string>
+    <string name="device_notice_controlling_generic">Controllo dell’altro dispositivo</string>
+    <string name="device_notice_brought_here">La musica di %1$s ora suona qui</string>
+    <string name="device_notice_brought_here_generic">La musica ora suona qui</string>
+    <string name="device_notice_back_here">Di nuovo su questo dispositivo</string>
+    <string name="device_notice_party_on">Il party ora suona su %1$s</string>
+    <string name="device_notice_party_on_generic">Il party ora suona sull’altro dispositivo</string>
+    <string name="device_notice_party_here_again">Il party suona di nuovo su questo dispositivo</string>
+    <string name="listen_together_msg_created">Party avviato · codice %1$s</string>
+    <string name="listen_together_msg_joined">Sei entrato nel party</string>
+    <string name="listen_together_msg_joined_host">Sei entrato nel party di %1$s</string>
+    <string name="listen_together_msg_left">Hai lasciato il party</string>
+    <string name="listen_together_people">Persone</string>
+    <string name="listen_together_room_settings">Impostazioni della stanza</string>
+    <string name="listen_together_code_hint_short">Comunica questo codice o condividi il link</string>
+    <string name="listen_together_show_qr">Mostra codice QR</string>
+    <string name="listen_together_hide_qr">Nascondi codice QR</string>
+    <string name="listen_together_copy_link">Copia link</string>
+    <plurals name="listen_together_people_count">
+        <item quantity="one">%1$d persona in ascolto</item>
+        <item quantity="other">%1$d persone in ascolto</item>
+    </plurals>
 </resources>

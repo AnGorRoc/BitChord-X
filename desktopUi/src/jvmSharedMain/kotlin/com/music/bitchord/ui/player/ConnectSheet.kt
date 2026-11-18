@@ -8,6 +8,11 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.draw.shadow
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -63,6 +68,7 @@ import com.music.bitchord.sharedui.resources.*
 import com.music.bitchord.ui.haptics.Haptic
 import com.music.bitchord.ui.haptics.rememberHaptics
 import com.music.bitchord.ui.icons.BitChordIcons
+import com.music.bitchord.ui.components.liveMenuFrost
 import dev.chrisbanes.haze.HazeState
 import org.jetbrains.compose.resources.stringResource
 
@@ -85,6 +91,87 @@ internal fun ConnectSheet(
     onStartParty: () -> Unit = onOpenParty,
     onJoinParty: () -> Unit = onOpenParty,
     modifier: Modifier = Modifier,
+) {
+    // Not the phone's drawer glued to the bottom edge: a floating card in the app's own glass, lifted
+    // off the edge by the same air the mini player keeps, over a light scrim that closes it.
+    val none = remember { MutableInteractionSource() }
+    Box(
+        modifier
+            .fillMaxSize()
+            .background(SCRIM_COLOR)
+            .clickable(interactionSource = none, indication = null, onClick = onDismiss),
+        contentAlignment = Alignment.BottomCenter,
+    ) {
+        Box(
+            Modifier
+                .padding(bottom = FLOATING_PANEL_GAP)
+                .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = {}),
+        ) {
+            ConnectPopover(
+                onDismiss = onDismiss,
+                onOpenParty = onOpenParty,
+                onStartParty = onStartParty,
+                onJoinParty = onJoinParty,
+            )
+        }
+    }
+}
+
+/**
+ * The one material every floating panel on the desktop is made of: the phone drawer's charcoal with no
+ * edge or shadow. The phone blurs what is behind it and so can let 20% through; a pop-up window cannot
+ * blur, and the same 20% would let the page's text read through, so the fill is nearly solid.
+ */
+val FloatingPanelFill = com.music.bitchord.ui.components.MenuFrostDark.copy(alpha = 0.985f)
+
+/** The material floating panels are made of; the window provides the mini player's glass, this is the fallback. */
+val LocalFloatingPanelSurface = androidx.compose.runtime.compositionLocalOf<@Composable Modifier.() -> Modifier> {
+    { background(FloatingPanelFill) }
+}
+
+/** The corner radius shared by every floating panel. */
+val FloatingPanelShape = RoundedCornerShape(20.dp)
+
+/** Air between a floating panel and the window edge, the same as around the mini player. */
+val FLOATING_PANEL_GAP = 16.dp
+
+/**
+ * The same Connect, as a panel hung under a button in the desktop's top bar instead of a drawer
+ * rising over the player: a computer has a pointer and room, so the devices are one click from
+ * wherever the person is, without opening the player first.
+ */
+@Composable
+fun ConnectPopover(
+    onDismiss: () -> Unit,
+    onOpenParty: () -> Unit,
+    onStartParty: () -> Unit = onOpenParty,
+    onJoinParty: () -> Unit = onOpenParty,
+) {
+    val shape = FloatingPanelShape
+    // Made where the panel is drawn, so the glass samples the page behind this very panel.
+    val glass = LocalFloatingPanelSurface.current
+    val frame = Modifier.width(400.dp).heightIn(max = 620.dp).clip(shape)
+    Column(
+        frame.glass()
+            .verticalScroll(rememberScrollState())
+            .padding(16.dp),
+    ) {
+        Text(
+            text = stringResource(Res.string.connect_title),
+            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+            color = Color.White,
+        )
+        Spacer(Modifier.height(12.dp))
+        ConnectContent(onDismiss, onOpenParty, onStartParty, onJoinParty)
+    }
+}
+
+@Composable
+internal fun ConnectContent(
+    onDismiss: () -> Unit,
+    onOpenParty: () -> Unit,
+    onStartParty: () -> Unit,
+    onJoinParty: () -> Unit,
 ) {
     val host = PlayerPlatform.host
     val account by host.devices.collectAsStateWithLifecycle()
@@ -113,12 +200,7 @@ internal fun ConnectSheet(
         }
     }
 
-    PlayerDrawer(
-        hazeState = hazeState,
-        title = stringResource(Res.string.connect_title),
-        onDismiss = onDismiss,
-        modifier = modifier,
-    ) {
+    run {
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             account.soundingDevice?.let { SoundingCard(it, isSelf = it.deviceId == account.selfId) }
 
@@ -145,6 +227,13 @@ internal fun ConnectSheet(
                 it.deviceId != account.controlled?.deviceId && (it.connected || nowMs - it.lastSeenMs < FORGET_AWAY_MS) &&
                 // Asked not to be offered, unless it is part of a link this device is in.
                 (!it.hidden || it.controlledBy != null || it.controlling != null)
+            }.let { shown ->
+                // A reinstalled app is a new device with the old name; its predecessors are not news. One
+                // entry per name and kind: the live one, or else the one seen last.
+                val key = { d: AccountDevice -> d.name.trim().lowercase() to d.type }
+                val live = shown.filter { it.connected }.map(key).toSet()
+                val newestAway = shown.filter { !it.connected }.groupBy(key).mapValues { (_, same) -> same.maxOf { it.lastSeenMs } }
+                shown.filter { it.connected || (key(it) !in live && it.lastSeenMs == newestAway[key(it)]) }
             }
             val nameOf = { id: String -> account.devices.firstOrNull { it.deviceId == id }?.name.orEmpty() }
             val blocked = { d: AccountDevice -> HandoffRules.blockedBy(d, party.code?.takeIf { party.inParty }) != null }

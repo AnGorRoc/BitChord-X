@@ -418,6 +418,9 @@ internal fun JoinPartySheet(
             enabled = enabled && !busy,
             onSubmit = onSubmit,
         )
+        // Right under the code it is about: below the buttons the keyboard covered it, and a refused join
+        // looked like a button that did nothing.
+        SheetError(error)
         Spacer(Modifier.height(20.dp))
         Button(
             onClick = onSubmit,
@@ -454,7 +457,6 @@ internal fun JoinPartySheet(
                 fontWeight = FontWeight.Medium,
             )
         }
-        SheetError(error)
         Spacer(Modifier.height(16.dp))
     }
 }

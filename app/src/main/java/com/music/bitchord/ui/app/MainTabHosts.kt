@@ -51,7 +51,7 @@ internal fun HomeTabHost(
     artworkMotion: Boolean,
     shelfSong: (ShelfItem) -> Song?,
     onSignIn: () -> Unit,
-    onPlayRadio: (Song, QueueSource) -> Unit,
+    onPlayFromShelf: (ShelfItem, List<ShelfItem>?, QueueSource) -> Unit,
     onShelfLongPress: (ShelfItem) -> Unit,
     onOpenTopPick: (TopPick, String) -> Unit,
     onPlayMood: (TopPickMood, String) -> Unit,
@@ -95,8 +95,10 @@ internal fun HomeTabHost(
             // property declared in another module.
             val browseId = item.browseId
             when {
-                song != null -> onPlayRadio(
-                    song,
+                song != null -> onPlayFromShelf(
+                    item,
+                    (visibleHomeState as? UiState.Success)?.data
+                        ?.firstOrNull { shelf -> item in shelf.items }?.items,
                     QueueSource(shelfTitle, PlaybackSourceType.HOME),
                 )
                 browseId != null -> viewModel.openDetail(
@@ -153,6 +155,7 @@ internal fun ExploreTabHost(
     contentPadding: PaddingValues,
     shelfSong: (ShelfItem) -> Song?,
     onPlayRadio: (Song, QueueSource) -> Unit,
+    onPlayFromShelf: (ShelfItem, List<ShelfItem>?, QueueSource) -> Unit,
     onPlayFrom: (List<Song>, Int, QueueSource) -> Unit,
     onAddToQueue: (Song) -> Unit,
     onShelfLongPress: (ShelfItem) -> Unit,
@@ -164,15 +167,11 @@ internal fun ExploreTabHost(
             state = moodGenreShelves,
             listState = moodGenreListState,
             onItemClick = { item ->
-                item.videoId?.let { videoId ->
-                    onPlayRadio(
-                        Song(
-                            videoId = videoId,
-                            title = item.title,
-                            artist = InnertubeParser.artistFromSubtitle(item.subtitle),
-                            thumbnailUrl = item.thumbnailUrl,
-                            isVideo = item.isVideo,
-                        ),
+                item.videoId?.let {
+                    onPlayFromShelf(
+                        item,
+                        (moodGenreShelves as? UiState.Success)?.data
+                            ?.firstOrNull { shelf -> item in shelf.items }?.items,
                         QueueSource(
                             selectedMoodGenre.title,
                             PlaybackSourceType.EXPLORE,
@@ -211,27 +210,22 @@ internal fun ExploreTabHost(
             chartsRegion = chartsRegion,
             onRegionChange = viewModel::setChartsRegion,
             onRefreshCharts = viewModel::refreshCharts,
-            onSongClick = { item ->
-                item.videoId?.let { videoId ->
-                    onPlayRadio(
-                        Song(
-                            videoId = videoId,
-                            title = item.title,
-                            artist = InnertubeParser.artistFromSubtitle(item.subtitle),
-                            thumbnailUrl = item.thumbnailUrl,
-                            isVideo = item.isVideo,
-                        ),
-                        QueueSource("Charts", PlaybackSourceType.BROWSE, "FEmusic_charts"),
-                    )
-                }
+            onSongClick = { item, chart ->
+                onPlayFromShelf(
+                    item,
+                    chart,
+                    QueueSource("Charts", PlaybackSourceType.BROWSE, "FEmusic_charts"),
+                )
             },
             onSongOptionsClick = onShelfLongPress,
             onItemClick = { item ->
                 val song = shelfSong(item)
                 val browseId = item.browseId
                 when {
-                    song != null -> onPlayRadio(
-                        song,
+                    song != null -> onPlayFromShelf(
+                        item,
+                        (newReleasesState as? UiState.Success)?.data
+                            ?.firstOrNull { shelf -> item in shelf.items }?.items,
                         QueueSource("Explore", PlaybackSourceType.EXPLORE),
                     )
                     browseId != null -> viewModel.openDetail(

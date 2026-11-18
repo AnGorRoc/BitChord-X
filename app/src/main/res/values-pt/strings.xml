@@ -1661,4 +1661,28 @@
     <string name="share_app_release_text">Baixe o BitChord X aqui: %1$s</string>
     <string name="tint_with_now_playing">Cores do que está tocando</string>
     <string name="tint_with_now_playing_subtitle">Colore as páginas e as barras com a capa da música que está tocando</string>
+    <string name="device_notice_playing_on">Tocando agora em %1$s</string>
+    <string name="device_notice_playing_on_generic">Tocando agora no outro dispositivo</string>
+    <string name="device_notice_controlling">Controlando %1$s</string>
+    <string name="device_notice_controlling_generic">Controlando o outro dispositivo</string>
+    <string name="device_notice_brought_here">A música de %1$s agora toca aqui</string>
+    <string name="device_notice_brought_here_generic">A música agora toca aqui</string>
+    <string name="device_notice_back_here">De volta a este dispositivo</string>
+    <string name="device_notice_party_on">A festa agora toca em %1$s</string>
+    <string name="device_notice_party_on_generic">A festa agora toca no outro dispositivo</string>
+    <string name="device_notice_party_here_again">A festa voltou a tocar neste dispositivo</string>
+    <string name="listen_together_msg_created">Festa iniciada · código %1$s</string>
+    <string name="listen_together_msg_joined">Você entrou na festa</string>
+    <string name="listen_together_msg_joined_host">Você entrou na festa de %1$s</string>
+    <string name="listen_together_msg_left">Você saiu da festa</string>
+    <string name="listen_together_people">Pessoas</string>
+    <string name="listen_together_room_settings">Configurações da sala</string>
+    <string name="listen_together_code_hint_short">Passe este código ou compartilhe o link</string>
+    <string name="listen_together_show_qr">Mostrar código QR</string>
+    <string name="listen_together_hide_qr">Ocultar código QR</string>
+    <string name="listen_together_copy_link">Copiar link</string>
+    <plurals name="listen_together_people_count">
+        <item quantity="one">%1$d pessoa ouvindo</item>
+        <item quantity="other">%1$d pessoas ouvindo</item>
+    </plurals>
 </resources>

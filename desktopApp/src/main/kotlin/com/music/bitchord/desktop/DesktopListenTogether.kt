@@ -570,7 +570,7 @@ internal object DesktopListenTogether {
     private suspend fun accountProof(use: DeviceGroup.ProofUse, serverBase: String): String? {
         // A test seam: a development run can be put in an account by environment, without a Google
         // sign-in. An ordinary run never has it set.
-        System.getenv("BITCHORD_DEBUG_ACCOUNT_PROOF")?.takeIf { it.length == 64 }?.let { return DeviceGroup.proofFor(it, use, serverBase) }
+        (System.getenv("BITCHORD_DEBUG_ACCOUNT_PROOF") ?: System.getProperty("bitchord.debug.accountProof"))?.takeIf { it.length == 64 }?.let { return DeviceGroup.proofFor(it, use, serverBase) }
         val who = signedInIdentity() ?: return null
         val key = KEY_ACCOUNT_SECRET + who.userId
         persistence.string(key).takeIf { it.isNotBlank() }?.let { cached ->

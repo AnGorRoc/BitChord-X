@@ -228,6 +228,17 @@ internal object DesktopPlayerHost : PlayerHost {
         messages.value = message
     }
 
+    /** Opens the Listen Together page; set by the window, which owns the overlays. */
+    @Volatile
+    var openListenTogether: () -> Unit = {}
+
+    /** What the Connect sheet asked the party page to do; the page takes it and clears it. */
+    val pendingPartyAction = MutableStateFlow<com.music.bitchord.ui.player.PartyAction?>(null)
+
+    override fun requestPartyAction(action: com.music.bitchord.ui.player.PartyAction) {
+        pendingPartyAction.value = action
+    }
+
     /** The desktop's signal-chain readout, supplied by the window that has the engine. */
     @Volatile
     var pipelineDialog: (@Composable (onDismiss: () -> Unit) -> Unit)? = null

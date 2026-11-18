@@ -175,6 +175,11 @@ internal fun LandscapePlayerLayout(
     /** The row under the sleeve, emitted into its column. */
     actions: @Composable () -> Unit,
     /**
+     * Where the sound is coming out, under the desktop controls. The desktop player has no
+     * capsule row, so without this nothing on the page says the music is on another device.
+     */
+    outputCaption: @Composable () -> Unit = {},
+    /**
      * Credits, scrubber, transport and volume. On a desktop window this sits
      * directly under the sleeve in the left column and is always visible, so
      * the right column is free for the lyric sheet; on a phone-height window it
@@ -333,6 +338,8 @@ internal fun LandscapePlayerLayout(
                             }
                             Spacer(Modifier.height(24.dp))
                             controls(false)
+                            Spacer(Modifier.height(10.dp))
+                            outputCaption()
                         }
                     }
 

@@ -500,7 +500,12 @@ val replacedByTv: Set<String> = fileTree(tvJava) { include("**/*.kt") }.files
     .filter { File(phoneJava, it).isFile }
     .toSet()
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+    // Plain locals, not the script's properties: with the configuration cache on,
+    // the exclude spec is restored without the script object, so reading
+    // phoneJava/replacedByTv through it failed with "this$0 is null".
+    val phoneRoot: File = phoneJava
+    val replaced: Set<String> = replacedByTv
     exclude { el ->
-        el.file.startsWith(phoneJava) && el.relativePath.pathString in replacedByTv
+        el.file.startsWith(phoneRoot) && el.relativePath.pathString in replaced
     }
 }

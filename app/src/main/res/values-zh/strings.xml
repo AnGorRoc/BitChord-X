@@ -1636,4 +1636,27 @@
     <string name="share_app_release_text">在这里下载 BitChord X：%1$s</string>
     <string name="tint_with_now_playing">随播放内容变色</string>
     <string name="tint_with_now_playing_subtitle">用正在播放歌曲的封面颜色为页面和栏着色</string>
+    <string name="device_notice_playing_on">正在 %1$s 上播放</string>
+    <string name="device_notice_playing_on_generic">正在另一台设备上播放</string>
+    <string name="device_notice_controlling">正在控制 %1$s</string>
+    <string name="device_notice_controlling_generic">正在控制另一台设备</string>
+    <string name="device_notice_brought_here">已将 %1$s 的音乐转到这里</string>
+    <string name="device_notice_brought_here_generic">已将音乐转到这里</string>
+    <string name="device_notice_back_here">已回到此设备</string>
+    <string name="device_notice_party_on">派对现在在 %1$s 上播放</string>
+    <string name="device_notice_party_on_generic">派对现在在另一台设备上播放</string>
+    <string name="device_notice_party_here_again">派对重新在此设备上播放</string>
+    <string name="listen_together_msg_created">派对已开始 · 代码 %1$s</string>
+    <string name="listen_together_msg_joined">你已加入派对</string>
+    <string name="listen_together_msg_joined_host">你已加入 %1$s 的派对</string>
+    <string name="listen_together_msg_left">你已离开派对</string>
+    <string name="listen_together_people">成员</string>
+    <string name="listen_together_room_settings">房间设置</string>
+    <string name="listen_together_code_hint_short">告诉大家这个代码，或分享链接</string>
+    <string name="listen_together_show_qr">显示二维码</string>
+    <string name="listen_together_hide_qr">隐藏二维码</string>
+    <string name="listen_together_copy_link">复制链接</string>
+    <plurals name="listen_together_people_count">
+        <item quantity="other">%1$d 人正在收听</item>
+    </plurals>
 </resources>

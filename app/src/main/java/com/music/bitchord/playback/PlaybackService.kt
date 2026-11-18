@@ -3505,10 +3505,12 @@ class PlaybackService : MediaLibraryService() {
         autoplayLoadJob = scope.launch {
             var remaining = needed
             var emptyRefreshesRemaining = MAX_AUTOPLAY_EMPTY_REFRESHES
-            // Which song seeds the radio: this one first, then — when its radio
-            // has nothing new left — the songs before it, one further back each
-            // time, as the web player's watchdog does.
-            var seedBack = 0
+            // Which song seeds the radio: this one first, then the last one
+            // queued, then others from the queue. A radio seeded on music that
+            // is already queued (Recents, say) often offers nothing new, so each
+            // pass tries several seeds back to back before it waits.
+            var attempt = 0
+            var passAttempts = 0
             while (isActive) {
                 val activePlayer = player ?: return@launch
                 val activeParty = ListenTogether.state.value
@@ -3527,11 +3529,13 @@ class PlaybackService : MediaLibraryService() {
                 } else {
                     queueSongs
                 }
-                val seedSong = if (seedBack == 0) {
+                val currentAt = activePlayer.currentMediaItemIndex
+                val seedOrder = AutoplayRefill.seedOrder(currentAt, activePlayer.mediaItemCount)
+                val seedAt = seedOrder.getOrNull(attempt % seedOrder.size.coerceAtLeast(1)) ?: currentAt
+                val seedSong = if (seedAt == currentAt || seedAt !in 0 until activePlayer.mediaItemCount) {
                     current
                 } else {
-                    val at = activePlayer.currentMediaItemIndex - seedBack
-                    if (at >= 0) activePlayer.getMediaItemAt(at).toSong() else current
+                    activePlayer.getMediaItemAt(seedAt).toSong()
                 }
                 val result = loadAutoplayTracks(existing, seedSong, remaining)
                 val resolved = result.getOrElse {
@@ -3585,29 +3589,41 @@ class PlaybackService : MediaLibraryService() {
                         if (fresh.isNotEmpty()) latestPlayer.addMediaItems(fresh.map { it.toMediaItem() })
                     }
                     if (AppSettings.dontRepeatSuggestions.value) sessionSongHistory += resolved
-                    return@launch
+                    // A batch can come back short (duplicates filtered, the radio
+                    // running thin): below, ask again until the tail is full.
+                    remaining = AutoplayRefill.missing(
+                        partyAutoplayWaiting(latestParty, current.videoId)
+                            ?: (latestPlayer.currentMediaItemIndex + 1 until latestPlayer.mediaItemCount)
+                                .count { latestPlayer.getMediaItemAt(it).fromAutoplay },
+                    )
+                    if (remaining <= 0) return@launch
                 }
 
-                // Empty and failed responses used to leave [autoplaySeed]
-                // latched to this track, suppressing every later callback and
-                // leaving AutoPlay visibly on with no queue. While the current
-                // item is genuinely the end of the queue, make a delayed fresh
-                // request. Keep it bounded: a radio with no usable unique songs
-                // must not turn into a permanent background polling loop: it
-                // asks again every [AUTOPLAY_WATCHDOG_MS] only while this song
-                // plays at the end of the queue, and stops with it.
-                val at = latestPlayer.currentMediaItemIndex
-                if (at < 0 || at != latestPlayer.mediaItemCount - 1) return@launch
-                if (emptyRefreshesRemaining-- > 0) {
-                    delay(AUTOPLAY_EMPTY_REFRESH_DELAY_MS)
+                // Empty, failed and short responses must not leave the queue
+                // to run dry. Try the next seed straight away, a few per pass;
+                // when a pass finds nothing, wait and go again — for as long as
+                // this song plays with a short tail.
+                if (latestPlayer.currentMediaItemIndex < 0) return@launch
+                attempt++
+                if (++passAttempts < AutoplayRefill.SEEDS_PER_PASS) {
+                    delay(AutoplayRefill.NEXT_SEED_DELAY_MS)
                 } else {
-                    delay(AUTOPLAY_WATCHDOG_MS)
-                    // Paused: wait for play rather than asking on behalf of nobody.
-                    while (isActive && player?.playWhenReady == false) delay(AUTOPLAY_WATCHDOG_MS)
-                    // This song's radio came back with nothing new: seed from an earlier one.
-                    seedBack = if (at - (seedBack + 1) >= 0) seedBack + 1 else 0
+                    passAttempts = 0
+                    if (emptyRefreshesRemaining-- > 0) {
+                        delay(AUTOPLAY_EMPTY_REFRESH_DELAY_MS)
+                    } else {
+                        delay(AUTOPLAY_WATCHDOG_MS)
+                        // Paused: wait for play rather than asking on behalf of nobody.
+                        while (isActive && player?.playWhenReady == false) delay(AUTOPLAY_WATCHDOG_MS)
+                    }
                 }
-                remaining = MAX_QUEUED_AUTOPLAY
+                val nowPlayer = player ?: return@launch
+                remaining = AutoplayRefill.missing(
+                    partyAutoplayWaiting(ListenTogether.state.value, current.videoId)
+                        ?: (nowPlayer.currentMediaItemIndex + 1 until nowPlayer.mediaItemCount)
+                            .count { nowPlayer.getMediaItemAt(it).fromAutoplay },
+                )
+                if (remaining <= 0) return@launch
             }
         }
     }

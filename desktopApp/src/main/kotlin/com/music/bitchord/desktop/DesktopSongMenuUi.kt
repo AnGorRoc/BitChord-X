@@ -36,6 +36,8 @@ import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material.icons.rounded.Share
+import androidx.compose.material.icons.rounded.Devices
+import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.ThumbDown
 import androidx.compose.material.icons.rounded.ThumbDownOffAlt
 import androidx.compose.material.icons.rounded.Translate
@@ -145,13 +147,13 @@ internal fun DesktopSongMenuFor(
     onRevertToOriginal: (() -> Unit)?,
     onUpgradeQuality: (() -> Unit)?,
     onDismiss: () -> Unit,
-    /**
-     * Opens the player's own overflow — the volume bar, the lyrics/output/queue
-     * row and the lyric-sheet footer, which a desktop player hides behind this
-     * menu rather than showing on the sleeve column. Only the player's menu
-     * passes it; a song menu raised from a list has no player to overflow into.
-     */
-    onMore: (() -> Unit)? = null,
+    /** Opens the audio output picker; only the player's menu passes it. */
+    onAudioOutput: (() -> Unit)? = null,
+    /** Opens Connect (the person's devices and the party); only the player's menu passes it. */
+    onConnect: (() -> Unit)? = null,
+    /** Whether autoplay is on, and the way to change it; null on a menu raised from a list. */
+    autoplayEnabled: Boolean? = null,
+    onToggleAutoplay: (() -> Unit)? = null,
     /**
      * Switches the player's content column between the lyric sheet and the queue.
      * One row, labelled with whichever of the two is not showing — see
@@ -225,7 +227,10 @@ internal fun DesktopSongMenuFor(
         onSleepAfterTrack = { actions.onSleepAfterTrack(); close() },
         onShare = { actions.onShare(song); close() },
         onOpenEqualizer = actions.onOpenEqualizer?.let { { it(); close() } },
-        onMore = onMore,
+        onAudioOutput = onAudioOutput?.let { { it(); close() } },
+        onConnect = onConnect?.let { { it(); close() } },
+        autoplayEnabled = autoplayEnabled,
+        onToggleAutoplay = onToggleAutoplay,
         onSwitchLyricsQueue = onSwitchLyricsQueue?.let { { it(); close() } },
         queueShowing = queueShowing,
         onTranslate = onTranslate?.let { { it(); close() } },
@@ -270,8 +275,10 @@ internal fun DesktopSongMenu(
     onSleepAfterTrack: () -> Unit,
     onShare: () -> Unit,
     onOpenEqualizer: (() -> Unit)? = null,
-    /** Opens the player's own overflow; null on a menu raised from a list. */
-    onMore: (() -> Unit)? = null,
+    onAudioOutput: (() -> Unit)? = null,
+    onConnect: (() -> Unit)? = null,
+    autoplayEnabled: Boolean? = null,
+    onToggleAutoplay: (() -> Unit)? = null,
     /** Switch the player between lyrics and queue; null when there is no player. */
     onSwitchLyricsQueue: (() -> Unit)? = null,
     queueShowing: Boolean = false,
@@ -483,9 +490,23 @@ internal fun DesktopSongMenu(
         if (!isOffline) {
             DesktopMenuRow(Icons.Rounded.Share, DesktopStrings["share", "Share"], onClick = onShare)
         }
-        onMore?.let {
+        if (onAudioOutput != null || onConnect != null || onToggleAutoplay != null) {
             DesktopMenuDivider()
-            DesktopMenuRow(Icons.Rounded.Tune, DesktopStrings["d_more", "More…"], onClick = it)
+            onAudioOutput?.let {
+                DesktopMenuRow(Icons.Rounded.Headphones, DesktopStrings["audio_output", "Audio output"], onClick = it)
+            }
+            onConnect?.let {
+                DesktopMenuRow(Icons.Rounded.Devices, DesktopStrings["d_connect", "Connect"], onClick = it)
+            }
+            if (onToggleAutoplay != null && autoplayEnabled != null) {
+                DesktopMenuRow(
+                    BitChordIcons.Infinity,
+                    DesktopStrings["d_autoplay", "Autoplay"],
+                    value = if (autoplayEnabled) DesktopStrings["d_on", "On"] else DesktopStrings["d_off", "Off"],
+                    selected = autoplayEnabled,
+                    onClick = onToggleAutoplay,
+                )
+            }
         }
     }
 }
@@ -618,12 +639,13 @@ private fun DesktopMenuSurface(onDismiss: () -> Unit, content: @Composable () ->
         onDismissRequest = onDismiss,
         properties = PopupProperties(focusable = true),
     ) {
-        val shape = RoundedCornerShape(12.dp)
+        // The mini player's own glass and edge, like every other panel that opens from it.
+        val shape = com.music.bitchord.ui.player.FloatingPanelShape
         Column(
             Modifier
                 .widthIn(min = 232.dp, max = 300.dp)
                 .clip(shape)
-                .desktopCard(shape)
+                .desktopPlayerGlass(shape)
                 .padding(vertical = 6.dp)
                 // A menu with every optional row on it is taller than a small window; capped and
                 // scrolled rather than run off the screen.
@@ -669,7 +691,7 @@ private class DesktopMenuPosition : PopupPositionProvider {
 }
 
 /** Air kept between a menu and the window's edges. */
-private const val MENU_MARGIN = 12
+private const val MENU_MARGIN = FLOATING_PANEL_GAP_PX
 
 /** A submenu's title, and the way back out of it. */
 @Composable

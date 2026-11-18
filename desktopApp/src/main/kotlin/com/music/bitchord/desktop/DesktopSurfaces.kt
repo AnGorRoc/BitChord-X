@@ -166,7 +166,8 @@ internal fun DesktopDialogPanel(
             Modifier
                 .widthIn(max = maxWidth.dp)
                 .fillMaxWidth()
-                .desktopCard(shape),
+                .clip(shape)
+                .desktopPlayerGlass(shape),
         ) {
             // Behind the content rather than around it, so it swallows clicks on the panel's own
             // background without eating the rows' own.

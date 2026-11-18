@@ -49,6 +49,7 @@ import com.music.bitchord.data.model.TopPick
 import com.music.bitchord.data.model.TopPickKind
 import com.music.bitchord.data.model.TopPickMood
 import com.music.bitchord.data.spotify.ExportState
+import com.music.bitchord.playback.AutoplayRefill
 import com.music.bitchord.playback.MusicLinkParser
 import com.music.bitchord.playback.ParsedMusicLink
 import com.music.bitchord.playback.PlaybackPosition
@@ -65,6 +66,7 @@ import com.music.bitchord.ui.LyricsProviderState
 import com.music.bitchord.data.lyrics.LyricsSource
 import com.music.bitchord.ui.player.LyricsSidePanel
 import com.music.bitchord.ui.player.NowPlayingScreen
+import com.music.bitchord.ui.player.PlayerPanel
 import com.music.bitchord.ui.player.QueueSidePanel
 import com.music.bitchord.ui.player.PlayerBack
 import com.music.bitchord.ui.player.RepeatModes
@@ -399,7 +401,10 @@ internal val DesktopGlassStrong = Color(0xCC0D0D0F)
 private val DesktopBarGlass = Color(0xB324242A)
 
 /** The backdrop the floating bars blur. */
-private val LocalDesktopHaze = staticCompositionLocalOf<HazeState?> { null }
+internal val LocalDesktopHaze = staticCompositionLocalOf<HazeState?> { null }
+
+/** The full player's own blur source (its blurred cover and lyrics); panels opened from it blur that, not the page. */
+internal val DesktopPlayerHaze = HazeState()
 
 /** How much a page's scrollable should keep clear of the floating bars. */
 private val LocalDesktopBottomInset = staticCompositionLocalOf { 0.dp }
@@ -469,9 +474,6 @@ private const val SKIP_MIX_ON_SKIP_SECONDS = 15
 
 /** How long the supplier waits for the server to echo an AutoPlay queue addition. */
 private const val PARTY_AUTOPLAY_ECHO_TIMEOUT_MS = 5_000L
-
-/** The phone gives one empty station response a delayed second chance. */
-private const val AUTOPLAY_EMPTY_REFRESH_DELAY_MS = 2_000L
 
 /** The phone's dark scheme, which the shared pages are drawn against. */
 internal fun desktopColorScheme() = darkColorScheme(
@@ -693,6 +695,8 @@ fun BitChordDesktopApp() {
     var likedSyncJob by remember { mutableStateOf<Job?>(null) }
     var dislikedIds by remember { mutableStateOf(persistence.dislikedIds()) }
     val overlays = remember { DesktopOverlays() }
+    // The top bar's Connect button opens the party page through this; the bar has no overlays of its own.
+    DesktopPlayerHost.openListenTogether = { overlays.nowPlaying = false; overlays.listenTogether = true }
     var downloads by remember { mutableStateOf(persistence.downloads()) }
     var localSongs by remember { mutableStateOf<List<Song>>(emptyList()) }
     val downloadQueue by DesktopDownloadQueue.active.collectAsState()
@@ -1479,6 +1483,11 @@ fun BitChordDesktopApp() {
         autoplayJob = scope.launch {
             var remaining = needed.coerceAtLeast(1)
             var emptyRefreshesRemaining = 1
+            // Which song seeds the station, as on the phone: this one, the last one queued, then the
+            // rest. Music already queued (Recents, say) often has nothing new in its station, so a
+            // pass tries several seeds back to back before it waits.
+            var attempt = 0
+            var passAttempts = 0
             while (isActive) {
                 DesktopTrackLog.log("autoplay: building a station from '${current.title}'")
                 val at = liveQueue.songs.size
@@ -1492,7 +1501,10 @@ fun BitChordDesktopApp() {
                     } else {
                         liveQueue.songs + partyQueue
                     },
-                    seedSong = current,
+                    seedSong = AutoplayRefill.seedOrder(liveQueue.index, liveQueue.songs.size)
+                        .let { order -> order.getOrNull(attempt % order.size.coerceAtLeast(1)) }
+                        ?.let { liveQueue.songs.getOrNull(it) }
+                        ?.takeIf { attempt > 0 } ?: current,
                     limit = remaining,
                 ).getOrElse { failure ->
                     DesktopTrackLog.log("autoplay: could not build a station: ${failure.message}")
@@ -1507,12 +1519,19 @@ fun BitChordDesktopApp() {
                 ) return@launch
                 if (suggestions.isEmpty()) {
                     DesktopTrackLog.log("autoplay: no station came back for '${current.title}'")
-                    // Match the phone's bounded recovery: retry once after a short delay, but only
-                    // while the current track genuinely has no tail to play next.
-                    if (liveQueue.index < 0 || liveQueue.index != liveQueue.songs.lastIndex) return@launch
-                    if (emptyRefreshesRemaining-- <= 0) return@launch
-                    delay(AUTOPLAY_EMPTY_REFRESH_DELAY_MS)
-                    remaining = MAX_QUEUED_AUTOPLAY
+                    if (liveQueue.index < 0) return@launch
+                    // The tail must stay full: try the next seed at once, a few per pass, then
+                    // wait and go again for as long as this track is the one playing.
+                    attempt++
+                    if (++passAttempts < AutoplayRefill.SEEDS_PER_PASS) {
+                        delay(AutoplayRefill.NEXT_SEED_DELAY_MS)
+                    } else {
+                        passAttempts = 0
+                        delay(if (emptyRefreshesRemaining-- > 0) AutoplayRefill.RETRY_DELAY_MS else AutoplayRefill.WATCHDOG_MS)
+                    }
+                    remaining = AutoplayRefill.missing(
+                        liveQueue.songs.drop(liveQueue.index + 1).count { it.fromAutoplay },
+                    ).coerceAtLeast(1)
                     continue
                 }
                 // The station carries on from what was playing, so it keeps that queue's origin —
@@ -1542,7 +1561,15 @@ fun BitChordDesktopApp() {
                 DesktopTrackLog.log(
                     "autoplay: queued ${suggestions.size} after '${current.title}'",
                 )
-                return@launch
+                // A batch can come back short; keep asking, from an earlier seed, until full.
+                if (latestParty.inParty || playFirst) return@launch
+                val stillMissing = AutoplayRefill.missing(
+                    liveQueue.songs.drop(liveQueue.index + 1).count { it.fromAutoplay },
+                )
+                if (stillMissing <= 0) return@launch
+                remaining = stillMissing
+                delay(AutoplayRefill.NEXT_SEED_DELAY_MS)
+                attempt++
             }
         }
     }
@@ -2214,14 +2241,18 @@ fun BitChordDesktopApp() {
     // The shared player reads the playhead off this one object, and only where it
     // draws it — see PlaybackPosition — so a tick never recomposes the player.
     val playerPosition = remember { PlaybackPosition() }
-    LaunchedEffect(playbackEngine) {
-        playbackEngine.state.collect {
-            // The audio thread's own timestamp, not this collector's: it runs on the UI thread and
-            // gets to a reading as late as the UI is busy.
-            playerPosition.report(it.positionMs, it.positionSampledAtNanos)
-            playerPosition.seeks = it.seeks
-            playerPosition.advancing = !it.awaitingAudio
-        }
+    LaunchedEffect(playbackEngine, deviceLink) {
+        // While another device is the speaker the bar follows its clock, not this computer's own
+        // (which is paused at wherever the hand-over left it).
+        kotlinx.coroutines.flow.combine(playbackEngine.state, deviceLink.overlay) { own, remote -> own to remote }
+            .collect { (own, remote) ->
+                // The audio thread's own timestamp, not this collector's: it runs on the UI thread and
+                // gets to a reading as late as the UI is busy.
+                val shown = remote ?: own
+                playerPosition.report(shown.positionMs, shown.positionSampledAtNanos)
+                playerPosition.seeks = shown.seeks
+                playerPosition.advancing = if (remote != null) remote.isPlaying && !remote.isLoading else !own.awaitingAudio
+            }
     }
 
     // Lyrics and motion artwork follow whatever is *playing*, not whatever page happens to be open.
@@ -2541,13 +2572,25 @@ fun BitChordDesktopApp() {
         }
     }
 
-    fun openShelfItem(item: ShelfItem, shelfTitle: String? = null) {
+    /** The shelf of [shelves] that holds [item], so a tap can queue its neighbours. */
+    fun shelfOf(item: ShelfItem, shelves: UiState<List<HomeShelf>>): List<ShelfItem>? =
+        (shelves as? UiState.Success)?.data?.firstOrNull { shelf -> item in shelf.items }?.items
+
+    fun openShelfItem(item: ShelfItem, shelfTitle: String? = null, siblings: List<ShelfItem>? = null) {
         val videoId = item.videoId
         val browseId = item.browseId
         when {
             videoId != null -> {
                 val source = shelfTitle?.let { DesktopQueueSource(it, PlaybackSourceType.HOME) }
-                playSong(item.toSong(), source = source)
+                // The shelf around the song queues behind it, the way an album does; AutoPlay
+                // only comes in once it runs out. A shelf with nothing else to play stays a lone song.
+                val songs = siblings.orEmpty().filter { it.videoId != null }.map { it.toSong() }
+                val at = songs.indexOfFirst { it.videoId == videoId }
+                if (at >= 0 && songs.size > 1) {
+                    playSongs(songs, at, source)
+                } else {
+                    playSong(item.toSong(), source = source)
+                }
             }
             // An artist is a page of its own, not a list of tracks with a photograph on top.
             browseTypeOf(browseId.orEmpty()) == BrowseType.ARTIST ->
@@ -3547,7 +3590,7 @@ fun BitChordDesktopApp() {
     // The player's own overflow (volume, the lyrics/output/queue row, the lyric
     // footer), raised from the song menu's "More…" and drawn by the shared
     // player. Held here so the desktop song menu can open it.
-    val playerOverflowOpen = remember(selectedSong?.videoId) { mutableStateOf(false) }
+    val playerPanelRequest = remember(selectedSong?.videoId) { mutableStateOf<PlayerPanel?>(null) }
     // Requests the song menu sends the player (switch lyrics/queue, translate),
     // flipped here and consumed by it, and the player's state mirrored back so the
     // menu's rows say what is on screen. Not keyed to the track: the player's own
@@ -4154,7 +4197,8 @@ fun BitChordDesktopApp() {
                             onDismissLyricsOffset = {},
                             windowWidth = windowWidth,
                             windowHeight = windowHeight,
-                            playerOverflowOpen = playerOverflowOpen,
+                            playerPanelRequest = playerPanelRequest,
+                            playerHazeState = DesktopPlayerHaze,
                             playerQueueToggle = playerQueueToggle,
                             playerQueueShowing = playerQueueShowing,
                             playerMenuAnchor = playerMenuAnchor,
@@ -4209,9 +4253,18 @@ fun BitChordDesktopApp() {
                                         DesktopOriginalVersion.clear(current.videoId)
                                         playbackEngine.reloadCurrent(forceSourceRefresh = true)
                                     }.takeIf { DesktopOriginalVersion.isPinned(current.videoId) },
-                                    onMore = {
+                                    onAudioOutput = {
                                         playerMenuOpen = false
-                                        playerOverflowOpen.value = true
+                                        playerPanelRequest.value = PlayerPanel.OUTPUT
+                                    },
+                                    onConnect = {
+                                        playerMenuOpen = false
+                                        playerPanelRequest.value = PlayerPanel.CONNECT
+                                    },
+                                    autoplayEnabled = autoplay,
+                                    onToggleAutoplay = {
+                                        autoplay = !autoplay
+                                        persistence.saveBoolean("autoplay", autoplay)
                                     },
                                     onSwitchLyricsQueue = {
                                         playerMenuOpen = false
@@ -4874,7 +4927,7 @@ fun BitChordDesktopApp() {
                         destination == DesktopDestination.LISTEN_NOW -> HomeScreen(
                             state = homeState,
                             listState = homeListState,
-                            onItemClick = { item, shelfTitle -> openShelfItem(item, shelfTitle) },
+                            onItemClick = { item, shelfTitle -> openShelfItem(item, shelfTitle, shelfOf(item, homeState)) },
                             onRetry = ::loadHome,
                             refreshing = false,
                             onRefresh = ::loadHome,
@@ -4909,7 +4962,7 @@ fun BitChordDesktopApp() {
                                 title = selectedMoodGenre!!.title,
                                 state = moodGenreShelves,
                                 listState = moodGenreListState,
-                                onItemClick = { item -> openShelfItem(item, selectedMoodGenre?.title) },
+                                onItemClick = { item -> openShelfItem(item, selectedMoodGenre?.title, shelfOf(item, moodGenreShelves)) },
                                 onRetry = {
                                     moodGenreShelves = UiState.Loading
                                     moodGenreReloads++
@@ -5418,6 +5471,7 @@ private fun DesktopTopBar(
                         modifier = Modifier.width(78.dp),
                     )
                     Spacer(Modifier.width(5.dp))
+                    DesktopConnectButton()
                     DesktopToolbarButton(onClick = onOpenAudioOutput, size = 32.dp) {
                         Icon(
                             Icons.Rounded.Headphones,
@@ -5541,12 +5595,7 @@ private fun DesktopPlayerCapsule(
                 .fillMaxWidth()
                 .height(52.dp)
                 .clip(shape)
-                .desktopBarGlass(
-                    shape = shape,
-                    tintAlpha = 0.25f,
-                    opaque = Color(0x5216161C),
-                    borderAlpha = 0.10f,
-                )
+                .desktopPlayerGlass(shape)
                 .padding(horizontal = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -5815,6 +5864,7 @@ private fun DesktopPlayerCapsule(
                         modifier = Modifier.size(17.dp),
                     )
                 }
+                DesktopConnectButton()
 
                 // Volume control with expandable hover slider without gray wash
                 Row(
@@ -9361,6 +9411,26 @@ internal fun Modifier.desktopBarGlass(
     borderAlpha: Float = 0.10f,
 ): Modifier = desktopFrosted(opaque, tintAlpha = tintAlpha)
     .border(0.75.dp, Color.White.copy(alpha = borderAlpha), shape)
+
+/**
+ * The mini player's own glass, to the letter: its tint, its fill and its edge. Every panel that opens from
+ * it (menus, Connect, the account switcher, modals) is made of this, so they read as one family.
+ */
+@Composable
+internal fun Modifier.desktopPlayerGlass(shape: Shape): Modifier {
+    return desktopBarGlass(shape = shape, tintAlpha = 0.25f, opaque = Color(0x5216161C), borderAlpha = 0.10f)
+}
+
+/** Whether the composition is inside the full player, whose panels need a backing under the glass. */
+internal val LocalOverPlayer = androidx.compose.runtime.compositionLocalOf { false }
+
+/** [desktopPlayerGlass] in the shape every floating panel has, for the places that only take a modifier recipe. */
+internal val DesktopFloatingGlass: @Composable Modifier.() -> Modifier = {
+    desktopPlayerGlass(androidx.compose.foundation.shape.RoundedCornerShape(20.dp))
+}
+
+/** Air between a floating panel and what it hangs from or the window edge: the mini player's own margin. */
+internal const val FLOATING_PANEL_GAP_PX = 20
 
 /** The edge of a chrome pane that meets the page, and so has to dissolve into it. */
 internal enum class DesktopChromeEdge { NONE, BOTTOM, END }

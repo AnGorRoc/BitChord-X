@@ -67,6 +67,10 @@ internal class DesktopPartySync(
     private var loadingVideoId: String? = null
     private var alignedSeq = -1L
     private var driftStrikes = 0
+
+    /** The drift at the last correction, and how many in a row left it no smaller: see [reconcile]. */
+    private var lastCorrectedDrift = 0L
+    private var futileCorrections = 0
     private var driftCooldownUntilMs = 0L
     /**
      * The seqs the party reaches once every control this device last sent has come back round.
@@ -138,6 +142,8 @@ internal class DesktopPartySync(
         loadingVideoId = null
         alignedSeq = -1L
         driftStrikes = 0
+        futileCorrections = 0
+        lastCorrectedDrift = 0L
         awaitPlaybackSeq = Long.MAX_VALUE
         awaitQueueSeq = Long.MAX_VALUE
         locallyPaused = false
@@ -305,6 +311,29 @@ internal class DesktopPartySync(
         driftStrikes = decision.strikes
         if (decision.cooldownUntilMs > 0) driftCooldownUntilMs = decision.cooldownUntilMs
         if (decision.seek) {
+            // A seek that does not bring the position any closer means the engine is not playing at all
+            // (no output, a stream that never opened). Seeking again every few seconds would only
+            // repeat it for as long as the party runs, so after a few such tries it stops and says so.
+            val kind = decision.reason
+            if (kind == "correcting") {
+                futileCorrections = if (abs(drift) >= abs(lastCorrectedDrift) - FUTILE_PROGRESS_MS && lastCorrectedDrift != 0L) {
+                    futileCorrections + 1
+                } else {
+                    0
+                }
+                lastCorrectedDrift = drift
+                if (futileCorrections >= FUTILE_LIMIT) {
+                    if (futileCorrections == FUTILE_LIMIT) {
+                        DesktopTrackLog.log("party: corrections are not taking (drift ${drift}ms); leaving the position alone")
+                    }
+                    futileCorrections++
+                    driftCooldownUntilMs = now + FUTILE_COOLDOWN_MS
+                    return
+                }
+            } else {
+                futileCorrections = 0
+                lastCorrectedDrift = 0L
+            }
             DesktopTrackLog.log("party: ${decision.reason} ${drift}ms")
             engine.seekTo(want)
         }
@@ -451,6 +480,11 @@ internal class DesktopPartySync(
         /** Readings in a row before a correction fires, so one stall does not cause a seek. */
         const val DRIFT_STRIKES = 2
         const val DRIFT_COOLDOWN_MS = 6_000L
+
+        /** Corrections in a row that leave the drift no smaller before they are given up on. */
+        const val FUTILE_LIMIT = 3
+        const val FUTILE_PROGRESS_MS = 500L
+        const val FUTILE_COOLDOWN_MS = 60_000L
         const val PAUSED_TOLERANCE_MS = 400L
         const val ALIGN_TOLERANCE_MS = 120L
         const val SEEK_REPORT_FLOOR_MS = 1_000L
