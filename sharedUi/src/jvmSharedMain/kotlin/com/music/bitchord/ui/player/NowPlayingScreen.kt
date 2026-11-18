@@ -2799,10 +2799,14 @@ fun NowPlayingScreen(
                                         shape = TileShape
                                         clip = share > 0f
                                     }
-                                    .background(Color.Black.copy(alpha = 0.18f)),
+                                    // Only when there is no cover to wait for: while one is merely
+                                    // loading, a dark card sat centred behind it until it arrived.
+                                    .background(
+                                        if (art.url == null || art.failed) Color.Black.copy(alpha = 0.18f) else Color.Transparent,
+                                    ),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                if (!artShown && !canvasRendered) {
+                                if (!artShown && !canvasRendered && (art.url == null || art.failed)) {
                                     Icon(
                                         imageVector = BitChordIcons.MusicNote,
                                         contentDescription = null,
