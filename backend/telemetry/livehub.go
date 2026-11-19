@@ -3,6 +3,8 @@ package telemetry
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -66,8 +68,15 @@ var adminUpgrader = websocket.Upgrader{
 	ReadBufferSize:  1024,
 	WriteBufferSize: 4096,
 	CheckOrigin: func(r *http.Request) bool {
-		// Served exclusively on the private LAN/Tailscale admin port.
-		return true
+		origin := r.Header.Get("Origin")
+		if origin == "" {
+			return true
+		}
+		u, err := url.Parse(origin)
+		if err != nil {
+			return false
+		}
+		return strings.EqualFold(u.Host, r.Host)
 	},
 }
 
@@ -76,6 +85,7 @@ func (h *LiveHub) ServeWS(w http.ResponseWriter, r *http.Request, initial LiveSt
 	if err != nil {
 		return
 	}
+	conn.SetReadLimit(1024)
 	sendCh := make(chan []byte, 32)
 
 	h.mu.Lock()

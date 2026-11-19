@@ -4,9 +4,12 @@ import (
 	"crypto/subtle"
 	_ "embed"
 	"encoding/json"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
+	"time"
 )
 
 //go:embed dashboard.html
@@ -299,7 +302,7 @@ func NewAdminHandler(store *Store, liveHub *LiveHub, adminSecret string) http.Ha
 		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 	})
 
-	return authMiddleware(adminSecret, mux)
+	return adminSecurityHeadersMiddleware(authMiddleware(adminSecret, mux))
 }
 
 func parseErrorFilter(r *http.Request) ErrorFilter {
@@ -386,13 +389,76 @@ func serveAISchema(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, schema)
 }
 
+type adminAuthLimiter struct {
+	mu      sync.Mutex
+	entries map[string]adminFailEntry
+}
+
+type adminFailEntry struct {
+	started time.Time
+	count   int
+}
+
+func newAdminAuthLimiter() *adminAuthLimiter {
+	return &adminAuthLimiter{entries: make(map[string]adminFailEntry)}
+}
+
+func (l *adminAuthLimiter) isBlocked(ip string) bool {
+	now := time.Now()
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	e, ok := l.entries[ip]
+	if !ok || now.Sub(e.started) >= time.Minute {
+		return false
+	}
+	return e.count >= 10
+}
+
+func (l *adminAuthLimiter) recordFailure(ip string) {
+	now := time.Now()
+	l.mu.Lock()
+	defer l.mu.Unlock()
+	if len(l.entries) > 1000 {
+		for k, v := range l.entries {
+			if now.Sub(v.started) >= time.Minute {
+				delete(l.entries, k)
+			}
+		}
+	}
+	e := l.entries[ip]
+	if e.started.IsZero() || now.Sub(e.started) >= time.Minute {
+		l.entries[ip] = adminFailEntry{started: now, count: 1}
+		return
+	}
+	e.count++
+	l.entries[ip] = e
+}
+
+func adminSecurityHeadersMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Referrer-Policy", "no-referrer")
+		next.ServeHTTP(w, r)
+	})
+}
+
 func authMiddleware(secret string, next http.Handler) http.Handler {
 	if secret == "" {
 		return next
 	}
+	limiter := newAdminAuthLimiter()
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/healthz" {
 			next.ServeHTTP(w, r)
+			return
+		}
+		ip, _, err := net.SplitHostPort(r.RemoteAddr)
+		if err != nil {
+			ip = r.RemoteAddr
+		}
+		if limiter.isBlocked(ip) {
+			http.Error(w, "Too Many Requests", http.StatusTooManyRequests)
 			return
 		}
 		if auth := r.Header.Get("Authorization"); strings.HasPrefix(auth, "Bearer ") {
@@ -408,6 +474,7 @@ func authMiddleware(secret string, next http.Handler) http.Handler {
 				return
 			}
 		}
+		limiter.recordFailure(ip)
 		w.Header().Set("WWW-Authenticate", `Basic realm="BitChord Telemetry"`)
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 	})

@@ -2,8 +2,10 @@ package protocol
 
 import (
 	"errors"
+	"net/url"
 	"regexp"
 	"strings"
+	"unicode"
 )
 
 // Server -> Client frame types
@@ -87,41 +89,60 @@ type JoinRequest struct {
 
 var accountProofPattern = regexp.MustCompile(`^[0-9a-f]{64}$`)
 
+// sanitizeText removes ASCII/Unicode control characters and directional overrides
+// so user-supplied strings cannot spoof UI layout or corrupt logs.
+func sanitizeText(s string) string {
+	var b strings.Builder
+	b.Grow(len(s))
+	for _, r := range s {
+		if unicode.IsControl(r) || (r >= 0x202A && r <= 0x202E) || (r >= 0x2066 && r <= 0x2069) {
+			continue
+		}
+		b.WriteRune(r)
+	}
+	return strings.TrimSpace(b.String())
+}
+
 // Validate ensures all required identity fields are present and safe.
 func (r *JoinRequest) Validate() error {
-	r.UserId = strings.TrimSpace(r.UserId)
+	r.UserId = sanitizeText(r.UserId)
 	if r.UserId == "" || len(r.UserId) > 128 {
 		return errors.New("userId must be between 1 and 128 characters")
 	}
 
-	r.DeviceId = strings.TrimSpace(r.DeviceId)
+	r.DeviceId = sanitizeText(r.DeviceId)
 	if r.DeviceId == "" || len(r.DeviceId) > 128 {
 		return errors.New("deviceId must be between 1 and 128 characters")
 	}
 
-	r.DisplayName = strings.TrimSpace(r.DisplayName)
+	r.DisplayName = sanitizeText(r.DisplayName)
 	if r.DisplayName == "" || len(r.DisplayName) > 80 {
 		return errors.New("displayName must be between 1 and 80 characters")
 	}
 
 	if r.AvatarUrl != nil {
-		trimmed := strings.TrimSpace(*r.AvatarUrl)
+		trimmed := sanitizeText(*r.AvatarUrl)
 		if trimmed == "" {
 			r.AvatarUrl = nil
 		} else if len(trimmed) > 1000 {
 			return errors.New("avatarUrl must not exceed 1000 characters")
-		} else if !strings.HasPrefix(trimmed, "http://") && !strings.HasPrefix(trimmed, "https://") {
-			return errors.New("avatarUrl must be an http(s) URL")
 		} else {
+			u, err := url.Parse(trimmed)
+			if err != nil || (u.Scheme != "http" && u.Scheme != "https") || u.Host == "" {
+				return errors.New("avatarUrl must be an http(s) URL")
+			}
 			r.AvatarUrl = &trimmed
 		}
 	}
 	if !accountProofPattern.MatchString(r.AccountProof) {
 		r.AccountProof = ""
 	}
-	r.DeviceName = strings.TrimSpace(r.DeviceName)
+	r.DeviceName = sanitizeText(r.DeviceName)
 	if len(r.DeviceName) > 60 {
-		r.DeviceName = r.DeviceName[:60]
+		runes := []rune(r.DeviceName)
+		if len(runes) > 60 {
+			r.DeviceName = string(runes[:60])
+		}
 	}
 	if r.MaxMembers != nil && (*r.MaxMembers < 2 || *r.MaxMembers > 10) {
 		return errors.New("maxMembers must be between 2 and 10")

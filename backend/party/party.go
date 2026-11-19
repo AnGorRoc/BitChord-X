@@ -4,8 +4,11 @@ import (
 	"crypto/rand"
 	"crypto/subtle"
 	"encoding/hex"
+	"net/url"
 	"sort"
+	"strings"
 	"sync"
+	"unicode"
 
 	"github.com/KabirSinghBhatia/BitChord/backend/clock"
 	"github.com/KabirSinghBhatia/BitChord/backend/codes"
@@ -44,39 +47,55 @@ type Track struct {
 	AddedByAvatar *string `json:"addedByAvatar,omitempty"`
 }
 
+const maxTrackDurationMs int64 = 24 * 60 * 60 * 1000
+
+func cleanAndTruncate(s string, maxRunes int) string {
+	var b strings.Builder
+	b.Grow(len(s))
+	count := 0
+	for _, r := range s {
+		if unicode.IsControl(r) || (r >= 0x202A && r <= 0x202E) || (r >= 0x2066 && r <= 0x2069) {
+			continue
+		}
+		if count >= maxRunes {
+			break
+		}
+		b.WriteRune(r)
+		count++
+	}
+	return strings.TrimSpace(b.String())
+}
+
 func TrackFromWire(raw map[string]interface{}) *Track {
 	if raw == nil {
 		return nil
 	}
-	vid, _ := raw["videoId"].(string)
+	vidRaw, _ := raw["videoId"].(string)
+	vid := cleanAndTruncate(vidRaw, 128)
 	if vid == "" {
 		return nil
 	}
-	if len(vid) > 128 {
-		vid = vid[:128]
-	}
 
-	title, _ := raw["title"].(string)
-	if len(title) > 300 {
-		title = title[:300]
-	}
+	titleRaw, _ := raw["title"].(string)
+	title := cleanAndTruncate(titleRaw, 300)
 
-	artist, _ := raw["artist"].(string)
-	if len(artist) > 300 {
-		artist = artist[:300]
-	}
+	artistRaw, _ := raw["artist"].(string)
+	artist := cleanAndTruncate(artistRaw, 300)
 
 	var thumbPtr *string
 	if t, ok := raw["thumbnailUrl"].(string); ok && t != "" {
-		if len(t) > 1000 {
-			t = t[:1000]
+		t = cleanAndTruncate(t, 1000)
+		if u, err := url.Parse(t); err == nil && (u.Scheme == "http" || u.Scheme == "https") && u.Host != "" {
+			thumbPtr = &t
 		}
-		thumbPtr = &t
 	}
 
 	var durPtr *int64
 	if d, ok := raw["durationMs"].(float64); ok && d > 0 {
 		dur := int64(d)
+		if dur > maxTrackDurationMs {
+			dur = maxTrackDurationMs
+		}
 		durPtr = &dur
 	}
 
