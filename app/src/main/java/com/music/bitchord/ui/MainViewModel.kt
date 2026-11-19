@@ -1624,6 +1624,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (_library.value is UiState.Success) refresh(Feed.LIBRARY)
     }
 
+    /**
+     * A first look read off disk and not yet shown. Declared before [init] so
+     * [loadHome] cannot race against constructor field initialization on cold start.
+     */
+    private val pendingFirstLook = java.util.concurrent.atomic.AtomicReference<HomeFirstLook?>(null)
+
     init {
         startSearchPipeline()
         startSuggestPipeline()
@@ -2192,15 +2198,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val cached: CachedHomeFeed?,
         val picks: StoredTopPicks,
     )
-
-    /**
-     * A first look read off disk and not yet shown. At launch the main thread
-     * is busy building the app for far longer than the read takes, so the
-     * coroutine that would show it only gets back after the first frame has
-     * gone out with the skeleton; [showPendingHomeNow] lets the activity put
-     * it on screen from inside that first frame instead.
-     */
-    private val pendingFirstLook = java.util.concurrent.atomic.AtomicReference<HomeFirstLook?>(null)
 
     /** Main thread only. Shows [look] unless it has been shown already or a newer load took over. */
     private fun showFirstLook(look: HomeFirstLook) {
