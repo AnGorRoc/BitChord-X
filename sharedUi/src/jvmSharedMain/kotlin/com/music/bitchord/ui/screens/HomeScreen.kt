@@ -72,9 +72,8 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Storage
 import com.music.bitchord.ui.icons.BitChordIcons
 import coil3.compose.AsyncImage
-import coil3.compose.LocalPlatformContext
 import com.music.bitchord.ui.components.PrefetchVerticalArtworkAhead
-import com.music.bitchord.ui.components.prefetchArtwork
+import com.music.bitchord.ui.components.ShimmerBox
 import com.music.bitchord.data.model.CARD_ART_PX
 import com.music.bitchord.data.model.HEADER_ART_PX
 import com.music.bitchord.data.model.HomeShelf
@@ -109,6 +108,33 @@ import com.music.bitchord.ui.player.MeshPalette
 private val HOME_TITLE_LIFT = 28.dp
 
 private const val RECENTS_TITLE = "Recents"
+
+/** The spotlight billboard's size, shared with the placeholder that holds its place. */
+private val SPOTLIGHT_HEIGHT = 210.dp
+private val SPOTLIGHT_CORNER = 24.dp
+private val SPOTLIGHT_GAP = 20.dp
+
+/** Holds the spotlight billboard's place while the feed loads. */
+private fun androidx.compose.foundation.lazy.LazyListScope.spotlightSkeleton() {
+    item(key = "skeleton:spotlight") {
+        ShimmerBox(
+            modifier = Modifier
+                .padding(start = PAGE_GUTTER, end = PAGE_GUTTER, bottom = SPOTLIGHT_GAP)
+                .fillMaxWidth()
+                .height(SPOTLIGHT_HEIGHT),
+            shape = RoundedCornerShape(SPOTLIGHT_CORNER),
+        )
+    }
+}
+
+/** The cover a shelf's card loads, at the size it loads it, so a prefetch is a cache hit. */
+private fun shelfArtwork(shelf: HomeShelf, index: Int, item: ShelfItem): String? = when {
+    shelf.layout == ShelfLayout.VIDEO -> item.thumbnailUrl
+    shelf.layout == ShelfLayout.LIST ||
+        (index == 0 && shelf.title.equals(RECENTS_TITLE, ignoreCase = true)) -> item.thumbnailUrl.artworkAt(ROW_ART_PX)
+    index == 0 && shelf.layout == ShelfLayout.CARDS -> item.thumbnailUrl.artworkAt(HEADER_ART_PX)
+    else -> item.thumbnailUrl.artworkAt(CARD_ART_PX)
+}
 private const val RECENT_TRACKS_PER_COLUMN = 4
 
 private fun List<ShelfItem>.playingItemMatcher(song: Song?): (ShelfItem) -> Boolean {
@@ -176,6 +202,22 @@ fun HomeScreen(
     artworkMotion: Boolean = true,
     onOpenDownloads: (() -> Unit)? = null,
 ) {
+    // The billboard keeps the card it opened with while the feed still holds
+    // it: a revalidated feed whose first card shelf now leads with another
+    // would otherwise swap the biggest picture on the page under the reader.
+    val heldSpotlight = remember { arrayOfNulls<ShelfItem>(1) }
+    val spotlightItem = remember(state) {
+        val shelves = (state as? UiState.Success)?.data ?: return@remember null
+        val held = heldSpotlight[0]
+        val kept = held?.let { previous ->
+            shelves.firstNotNullOfOrNull { shelf ->
+                shelf.items.firstOrNull { it.videoId == previous.videoId && it.browseId == previous.browseId }
+            }
+        }
+        (kept ?: shelves.firstOrNull { it.layout == ShelfLayout.CARDS && it.items.isNotEmpty() }
+            ?.items?.firstOrNull())
+            .also { heldSpotlight[0] = it }
+    }
     // Top Picks' pictures and motion wait for the feed — see LocalArtworkImages.
     val feedReady = state !is UiState.Loading
     CompositionLocalProvider(
@@ -208,11 +250,6 @@ fun HomeScreen(
                 }
             }
         }
-        val spotlightItem = remember(state) {
-            (state as? UiState.Success)?.data
-                ?.firstOrNull { it.layout == ShelfLayout.CARDS && it.items.isNotEmpty() }
-                ?.items?.firstOrNull()
-        }
         LazyColumn(
             state = listState,
             modifier = Modifier.fillMaxSize(),
@@ -244,18 +281,24 @@ fun HomeScreen(
             if (onTopPickClick != null) {
                 when {
                     !topPicks.isNullOrEmpty() -> item(key = "top-picks") {
-                        TopPicksShelf(
-                            picks = topPicks,
-                            listenerName = listenerName,
-                            onClick = onTopPickClick,
-                            onLongPress = onTopPickLongPress,
-                        )
+                        Box(Modifier.animateItem()) {
+                            TopPicksShelf(
+                                picks = topPicks,
+                                listenerName = listenerName,
+                                onClick = onTopPickClick,
+                                onLongPress = onTopPickLongPress,
+                            )
+                        }
                     }
                     topPicks == null && topPicksLoading -> topPicksSkeleton()
                 }
             }
             when (state) {
                 is UiState.Loading -> {
+                    // In the order the real page lays them out: the billboard,
+                    // then Recents, then the shelves. Each lands in its own
+                    // place rather than pushing the others about.
+                    spotlightSkeleton()
                     if (recentlyPlayedLoading) {
                         recentlyPlayedSkeleton()
                         // Recents owns the leading layout while its request is
@@ -276,22 +319,22 @@ fun HomeScreen(
                     )
                 }
                 is UiState.Success -> {
-                    if (recentlyPlayedLoading) {
-                        recentlyPlayedSkeleton()
-                    }
                     if (spotlightItem != null) {
                         item(key = "home-hero-spotlight-billboard") {
                             HeroBillboardSpotlight(
                                 item = spotlightItem,
                                 onClick = { onItemClick(spotlightItem, "Spotlight") },
                                 onLongPress = onItemLongPress?.let { { it(spotlightItem) } },
-                                modifier = Modifier.padding(
-                                    start = PAGE_GUTTER,
-                                    end = PAGE_GUTTER,
-                                    bottom = 20.dp,
-                                ),
+                                modifier = Modifier
+                                    .animateItem()
+                                    .padding(start = PAGE_GUTTER, end = PAGE_GUTTER, bottom = SPOTLIGHT_GAP),
                             )
                         }
+                    }
+                    // Below the billboard, where Recents itself lands: Recents
+                    // is the feed's first shelf, which comes after it.
+                    if (recentlyPlayedLoading) {
+                        recentlyPlayedSkeleton()
                     }
                     // The loading skeleton already owns the hero slot. Until
                     // Recently Played lands, every real shelf must retain its
@@ -316,27 +359,31 @@ fun HomeScreen(
     }
 
     if (state is UiState.Success) {
-        val verticalShelvesArtwork = remember(state.data) {
-            state.data.map { shelf ->
-                val count = minOf(shelf.items.size, 6)
-                shelf.items.take(count).map { item ->
-                    if (shelf.layout == ShelfLayout.VIDEO) item.thumbnailUrl
-                    else if (shelf.layout == ShelfLayout.CARDS && shelf == state.data.firstOrNull()) item.thumbnailUrl.artworkAt(HEADER_ART_PX)
-                    else item.thumbnailUrl.artworkAt(CARD_ART_PX)
+        // One entry per item of the list above, so "the next few items" lands
+        // on the right shelves: the rows ahead of the feed's first shelf have
+        // no covers of their own here (Top Picks fetches its own), and Find
+        // Your Mood sits between the first shelf and the second. The covers of
+        // the first screen are asked for by the view model as the feed lands.
+        val leadingItems = (if (title != null) 1 else 0) +
+            (if (!signedIn && onSignIn != null) 1 else 0) +
+            (if (onTopPickClick != null && (!topPicks.isNullOrEmpty() || (topPicks == null && topPicksLoading))) 1 else 0) +
+            (if (spotlightItem != null) 1 else 0) +
+            (if (recentlyPlayedLoading) 1 else 0)
+        val hasMoods = onMoodClick != null
+        val artworkByItem = remember(state.data, leadingItems, hasMoods) {
+            buildList {
+                repeat(leadingItems) { add(emptyList()) }
+                state.data.forEachIndexed { index, shelf ->
+                    if (index == 1 && hasMoods) add(emptyList())
+                    add(shelf.items.take(6).map { item -> shelfArtwork(shelf, index, item) })
                 }
             }
         }
         PrefetchVerticalArtworkAhead(
             state = listState,
-            artworkByItem = verticalShelvesArtwork,
+            artworkByItem = artworkByItem,
             ahead = 3,
         )
-        val context = LocalPlatformContext.current
-        LaunchedEffect(verticalShelvesArtwork) {
-            if (verticalShelvesArtwork.isNotEmpty()) {
-                prefetchArtwork(context, verticalShelvesArtwork.take(3).flatten())
-            }
-        }
     }
 
     if (onLoadMore != null && state is UiState.Success) {
@@ -373,14 +420,28 @@ private fun androidx.compose.foundation.lazy.LazyListScope.itemsIndexedShelves(
     onMoodClick: ((TopPickMood, String) -> Unit)? = null,
     onMoodsShowAll: () -> Unit = {},
 ) {
+    // Keyed by title, not by position: Recents arriving at the top used to
+    // shift every index, so every shelf was thrown away and built again (and
+    // lost its horizontal scroll). Titles are kept unique by the view model;
+    // a repeat that slips through still gets a key of its own.
+    val seen = HashMap<String, Int>()
+    val keys = shelves.map { shelf ->
+        val base = "shelf:" + shelf.title.lowercase(Locale.ROOT)
+        val n = (seen[base] ?: 0) + 1
+        seen[base] = n
+        if (n == 1) base else "$base#$n"
+    }
     shelves.forEachIndexed { index, shelf ->
         // Find Your Mood follows the lead shelf, as on Apple Music's Home.
         if (index == 1 && onMoodClick != null) {
             item(key = "find-your-mood") {
-                FindYourMoodShelf(onMoodClick, onMoodsShowAll)
+                Box(Modifier.animateItem()) {
+                    FindYourMoodShelf(onMoodClick, onMoodsShowAll)
+                }
             }
         }
-        item(key = shelf.title + index) {
+        item(key = keys[index]) {
+            Box(Modifier.animateItem()) {
             val openItem: (ShelfItem) -> Unit = { item -> onItemClick(item, shelf.title) }
             // Listen again and Quick picks are lists on the web player, as
             // Recents is here: one pager for all three.
@@ -410,6 +471,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.itemsIndexedShelves(
                     currentSong = currentSong,
                     isPlaying = isPlaying,
                 )
+            }
             }
         }
     }
@@ -885,8 +947,8 @@ private fun HeroBillboardSpotlight(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(210.dp)
-            .clip(RoundedCornerShape(24.dp))
+            .height(SPOTLIGHT_HEIGHT)
+            .clip(RoundedCornerShape(SPOTLIGHT_CORNER))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
             .alpha(if (offlineBlocked) 0.38f else 1f)
             .then(if (offlineBlocked) Modifier else Modifier.clickable(onClick = onClick)),

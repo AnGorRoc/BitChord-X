@@ -431,6 +431,12 @@ private const val TOP_FADE_RAMP = 0.3f
 
 private const val INITIAL_RADIO_TRACKS = 24
 
+/** The longest the launch screen waits on Home's first look; see [MainActivity.holdFirstFrameForHome]. */
+private const val FIRST_FRAME_HOLD_MS = 400L
+
+/** Frames the first one waits once Home is ready, for its state to reach the composition and be laid out. */
+private const val FIRST_FRAME_SETTLE_FRAMES = 2
+
 internal fun shouldSkipAfterDislike(
     previousStatus: LikeStatus,
     targetVideoId: String,
@@ -439,9 +445,66 @@ internal fun shouldSkipAfterDislike(
 
 
 class MainActivity : AppCompatActivity() {
+    /**
+     * The window's own colour, under the first frame and any gap in it, in the
+     * theme the app is set to rather than the system's: a light app opening on
+     * the black of the theme XML flashed black before its first frame.
+     */
+    private fun paintWindowForTheme() {
+        val dark = when (AppSettings.themeMode.value) {
+            ThemeMode.SYSTEM -> (resources.configuration.uiMode and
+                android.content.res.Configuration.UI_MODE_NIGHT_MASK) ==
+                android.content.res.Configuration.UI_MODE_NIGHT_YES
+            ThemeMode.LIGHT -> false
+            ThemeMode.DARK -> true
+        }
+        window.setBackgroundDrawable(
+            android.graphics.drawable.ColorDrawable(
+                if (dark) android.graphics.Color.BLACK else android.graphics.Color.WHITE,
+            ),
+        )
+    }
+
+    /**
+     * Keeps the launch screen up until Home knows what it is showing — the
+     * saved feed and Top Picks, read together, or the skeleton when nothing is
+     * saved — so its first frame is the page whole and not a skeleton that
+     * gives way to it a few frames later.
+     *
+     * The read is done long before the first frame, but the main thread is
+     * busy building the app until then, so the first look is put on screen
+     * from here rather than waiting its turn behind that frame; the frame
+     * then waits a couple more vsyncs for the composition to take it in.
+     * Never longer than [FIRST_FRAME_HOLD_MS] from the first frame it holds:
+     * a slow disk gets the skeleton, not a frozen launch. The same view model
+     * the composition asks for: same owner, same key.
+     */
+    private fun holdFirstFrameForHome() {
+        val viewModel = androidx.lifecycle.ViewModelProvider(this)[MainViewModel::class.java]
+        if (viewModel.homeReady.value) return
+        val content = findViewById<View>(android.R.id.content)
+        content.viewTreeObserver.addOnPreDrawListener(
+            object : android.view.ViewTreeObserver.OnPreDrawListener {
+                private var heldSince = 0L
+                private var readyFrames = 0
+
+                override fun onPreDraw(): Boolean {
+                    val now = android.os.SystemClock.uptimeMillis()
+                    if (heldSince == 0L) heldSince = now
+                    if (viewModel.showPendingHomeNow()) readyFrames++
+                    val draw = readyFrames >= FIRST_FRAME_SETTLE_FRAMES || now - heldSince > FIRST_FRAME_HOLD_MS
+                    if (draw) content.viewTreeObserver.removeOnPreDrawListener(this)
+                    return draw
+                }
+            },
+        )
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        paintWindowForTheme()
+        holdFirstFrameForHome()
         // Before the composition, so a cold launch from a widget's artwork has
         // the request already standing by the time BitChordApp first reads it.
         PlayerDeepLink.consume(intent)
