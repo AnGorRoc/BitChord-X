@@ -1466,6 +1466,7 @@ object AppSettings {
         val manager = context.getSystemService(ConnectivityManager::class.java) ?: return
         var pendingCheck: Job? = null
         var probing: Job? = null
+        val lock = Any()
 
         val reach = {
             runCatching {
@@ -1486,49 +1487,76 @@ object AppSettings {
             streamingAvailableFlow.value = true
         }
 
-        val refresh = {
-            when (reach()) {
-                NetworkReach.VALIDATED -> markStreaming()
-                NetworkReach.UNCONFIRMED -> {
-                    // The system has not vouched for this network, which says nothing about whether it
-                    // works. Ask the internet directly, and keep asking while it stays unconfirmed, so
-                    // a connection that is up is never left reading as offline.
-                    pendingCheck?.cancel()
-                    pendingCheck = null
-                    if (probing?.isActive != true) {
-                        probing = networkScope.launch {
-                            while (isActive && reach() == NetworkReach.UNCONFIRMED) {
-                                if (streamingAvailable(NetworkReach.UNCONFIRMED, probeInternet())) {
-                                    streamingAvailableFlow.value = true
-                                    return@launch
+        fun refresh(lostNetwork: Network? = null) {
+            synchronized(lock) {
+                // ConnectivityManager.onLost can fire before activeNetwork clears the lost
+                // network, so treat activeNetwork == lostNetwork as NONE until the grace check.
+                val currentReach = if (
+                    lostNetwork != null &&
+                    runCatching {
+                        val active = manager.activeNetwork
+                        active == null || active == lostNetwork
+                    }.getOrDefault(true)
+                ) {
+                    NetworkReach.NONE
+                } else {
+                    reach()
+                }
+                when (currentReach) {
+                    NetworkReach.VALIDATED -> markStreaming()
+                    NetworkReach.UNCONFIRMED -> {
+                        // The system has not vouched for this network, which says nothing about whether it
+                        // works. Ask the internet directly, and keep asking while it stays unconfirmed, so
+                        // a connection that is up is never left reading as offline.
+                        pendingCheck?.cancel()
+                        pendingCheck = null
+                        if (probing?.isActive != true) {
+                            probing = networkScope.launch {
+                                while (isActive && reach() == NetworkReach.UNCONFIRMED) {
+                                    if (streamingAvailable(NetworkReach.UNCONFIRMED, probeInternet())) {
+                                        synchronized(lock) { streamingAvailableFlow.value = true }
+                                        return@launch
+                                    }
+                                    synchronized(lock) { streamingAvailableFlow.value = false }
+                                    delay(CONNECTION_REPROBE_MS)
                                 }
-                                streamingAvailableFlow.value = false
-                                delay(CONNECTION_REPROBE_MS)
                             }
                         }
                     }
-                }
-                NetworkReach.NONE -> {
-                    probing?.cancel()
-                    probing = null
-                    pendingCheck?.cancel()
-                    pendingCheck = networkScope.launch {
-                        delay(NETWORK_LOST_GRACE_MS)
-                        if (reach() == NetworkReach.NONE) streamingAvailableFlow.value = false
-                        pendingCheck = null
+                    NetworkReach.NONE -> {
+                        probing?.cancel()
+                        probing = null
+                        pendingCheck?.cancel()
+                        pendingCheck = networkScope.launch {
+                            delay(NETWORK_LOST_GRACE_MS)
+                            var shouldReprobe = false
+                            synchronized(lock) {
+                                pendingCheck = null
+                                when (reach()) {
+                                    NetworkReach.NONE -> streamingAvailableFlow.value = false
+                                    NetworkReach.VALIDATED -> streamingAvailableFlow.value = true
+                                    NetworkReach.UNCONFIRMED -> shouldReprobe = true
+                                }
+                            }
+                            if (shouldReprobe) refresh(lostNetwork = null)
+                        }
                     }
                 }
+                meteredConnection.value = if (currentReach == NetworkReach.NONE) {
+                    null
+                } else {
+                    runCatching {
+                        if (manager.activeNetwork == null) null else manager.isActiveNetworkMetered
+                    }.getOrNull()
+                }
             }
-            meteredConnection.value = runCatching {
-                if (manager.activeNetwork == null) null else manager.isActiveNetworkMetered
-            }.getOrNull()
         }
         refresh()
         runCatching {
             manager.registerDefaultNetworkCallback(
                 object : ConnectivityManager.NetworkCallback() {
                     override fun onAvailable(network: Network) = refresh()
-                    override fun onLost(network: Network) = refresh()
+                    override fun onLost(network: Network) = refresh(lostNetwork = network)
                     override fun onCapabilitiesChanged(
                         network: Network,
                         capabilities: NetworkCapabilities,

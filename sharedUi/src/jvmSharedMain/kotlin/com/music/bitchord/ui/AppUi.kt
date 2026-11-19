@@ -50,6 +50,20 @@ interface AppUiHost {
     fun unplayableOffline(song: Song): Boolean = false
 
     /**
+     * True while the app is offline and a feed/history item ([videoId] or [browseId])
+     * is not saved or cached on the phone.
+     */
+    @Composable
+    fun unplayableOffline(videoId: String?, browseId: String?): Boolean = false
+
+    /**
+     * Up to 4 artwork URLs from offline-available songs, used to build the
+     * 2x2 collage cover of the generated Offline music playlist.
+     */
+    @Composable
+    fun offlineCoverArtworks(): List<String> = emptyList()
+
+    /**
      * A release's motion cover, for Home's Top Picks — the same lookup the
      * album page makes. Null is the normal answer, and the only one where the
      * user has animated artwork off or the platform has no lookup.

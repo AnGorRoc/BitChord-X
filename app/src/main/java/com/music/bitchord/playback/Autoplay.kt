@@ -134,3 +134,76 @@ suspend fun loadAutoplayTracks(
         ).asQueueEntry(QueueTier.AUTOPLAY)
     })
 }
+
+/**
+ * Selects up to [limit] offline-available tracks for AutoPlay when there is no network.
+ * Ranks tracks related to [seed] (same artist, same album, or sharing a downloaded
+ * collection) first, and falls back to any remaining offline tracks so AutoPlay still
+ * keeps playing even when no metadata match exists.
+ */
+fun selectOfflineAutoplayTracks(
+    seed: Song,
+    offlinePool: List<Song>,
+    queuedIds: Set<String>,
+    sessionHistoryIds: Set<String>,
+    sharedCollectionIds: Set<String>,
+    limit: Int = MAX_QUEUED_AUTOPLAY,
+): List<Song> {
+    if (limit <= 0 || offlinePool.isEmpty()) return emptyList()
+
+    val baseCandidates = offlinePool
+        .distinctBy { it.videoId }
+        .filter { it.videoId != seed.videoId && it.videoId !in queuedIds }
+    if (baseCandidates.isEmpty()) return emptyList()
+
+    val freshCandidates = if (sessionHistoryIds.isNotEmpty()) {
+        baseCandidates.filter { it.videoId !in sessionHistoryIds }.ifEmpty { baseCandidates }
+    } else {
+        baseCandidates
+    }
+
+    val seedArtists = normalizedArtists(seed)
+    val seedAlbum = seed.albumName?.trim()?.lowercase()?.takeIf { it.isNotBlank() }
+    val seedAlbumId = seed.albumId?.takeIf { it.isNotBlank() }
+
+    val scored = freshCandidates.map { candidate ->
+        var score = 0
+        val candidateArtists = normalizedArtists(candidate)
+        if (seedArtists.isNotEmpty() && candidateArtists.any { it in seedArtists }) {
+            score += 30
+        }
+        val sameAlbum = (seedAlbumId != null && candidate.albumId == seedAlbumId) ||
+            (seedAlbum != null && candidate.albumName?.trim()?.lowercase() == seedAlbum)
+        if (sameAlbum) {
+            score += 20
+        }
+        if (candidate.videoId in sharedCollectionIds) {
+            score += 15
+        }
+        score to candidate
+    }
+
+    return scored
+        .groupBy({ it.first }, { it.second })
+        .toSortedMap(compareByDescending { it })
+        .values
+        .flatMap { it.shuffled() }
+        .take(limit)
+        .map {
+            it.copy(
+                radioName = seed.radioName,
+                playbackSource = seed.playbackSource,
+                playbackSourceType = seed.playbackSourceType,
+                playbackSourceId = seed.playbackSourceId,
+            ).asQueueEntry(QueueTier.AUTOPLAY)
+        }
+}
+
+private fun normalizedArtists(song: Song): Set<String> = buildSet {
+    song.artists.forEach { artist ->
+        artist.name.trim().lowercase().takeIf { it.isNotBlank() }?.let(::add)
+    }
+    song.artist.split(',', '&', '\u2022', '/').forEach { part ->
+        part.trim().lowercase().takeIf { it.isNotBlank() }?.let(::add)
+    }
+}

@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -52,6 +53,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.flow.first
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -493,15 +495,17 @@ private fun RecentTrackRow(
     isCurrent: Boolean,
     isPlaying: Boolean,
 ) {
+    val offlineBlocked = AppUi.host.unplayableOffline(videoId = item.videoId, browseId = item.browseId)
     CompactTrackRow(
         title = item.title,
         subtitle = item.subtitle,
         thumbnailUrl = item.thumbnailUrl,
-        onClick = onClick,
-        onLongPress = onLongPress,
+        onClick = if (offlineBlocked) ({}) else onClick,
+        onLongPress = onLongPress.takeUnless { offlineBlocked },
         isCurrent = isCurrent,
         isPlaying = isPlaying,
         isVideo = item.isVideo,
+        dimmed = offlineBlocked,
     )
 }
 
@@ -521,12 +525,21 @@ fun CompactTrackRow(
     isPlaying: Boolean = false,
     /** A music video: its thumbnail at 16:9 rather than squared off. */
     isVideo: Boolean = false,
+    dimmed: Boolean = false,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .longPressMenuClickable(onClick = onClick, onLongClick = onLongPress)
-            .contextClick(onLongPress)
+            .then(
+                if (dimmed) {
+                    Modifier
+                } else {
+                    Modifier
+                        .longPressMenuClickable(onClick = onClick, onLongClick = onLongPress)
+                        .contextClick(onLongPress)
+                },
+            )
+            .alpha(if (dimmed) 0.38f else 1f)
             .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -868,13 +881,15 @@ private fun HeroBillboardSpotlight(
     onLongPress: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
+    val offlineBlocked = AppUi.host.unplayableOffline(videoId = item.videoId, browseId = item.browseId)
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(210.dp)
             .clip(RoundedCornerShape(24.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-            .clickable(onClick = onClick),
+            .alpha(if (offlineBlocked) 0.38f else 1f)
+            .then(if (offlineBlocked) Modifier else Modifier.clickable(onClick = onClick)),
     ) {
         AsyncImage(
             model = item.thumbnailUrl.artworkAt(HEADER_ART_PX),
@@ -1248,10 +1263,19 @@ internal fun ShelfCard(
     isCurrent: Boolean = false,
     isPlaying: Boolean = false,
 ) {
+    val offlineBlocked = AppUi.host.unplayableOffline(videoId = item.videoId, browseId = item.browseId)
     Column(
         modifier = modifier
-            .longPressMenuClickable(onClick = onClick, onLongClick = onLongPress)
-            .contextClick(onLongPress),
+            .then(
+                if (offlineBlocked) {
+                    Modifier
+                } else {
+                    Modifier
+                        .longPressMenuClickable(onClick = onClick, onLongClick = onLongPress)
+                        .contextClick(onLongPress)
+                },
+            )
+            .alpha(if (offlineBlocked) 0.38f else 1f),
     ) {
         when (item.browseId) {
             "local:downloads" -> {
@@ -1282,11 +1306,71 @@ internal fun ShelfCard(
                 trackKey = "local:all",
                 icon = Icons.Rounded.LibraryMusic,
             )
-            "local:offlinemusic" -> ServiceCard(
-                colors = listOf(Color(0xFF232526), Color(0xFF414345)),
-                trackKey = "local:offlinemusic",
-                icon = Icons.Rounded.CloudOff,
-            )
+            "local:offlinemusic" -> {
+                val artworks = AppUi.host.offlineCoverArtworks()
+                if (artworks.isNotEmpty()) {
+                    val tiles = if (artworks.size >= 4) artworks.take(4) else List(4) { artworks[it % artworks.size] }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .aspectRatio(1f)
+                            .clip(RoundedCornerShape(12.dp))
+                            .thumbnailBorder(RoundedCornerShape(12.dp))
+                            .background(MaterialTheme.colorScheme.surfaceVariant),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Column(Modifier.fillMaxSize()) {
+                            Row(Modifier.weight(1f)) {
+                                AsyncImage(
+                                    model = tiles[0].artworkAt(CARD_ART_PX / 2),
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                                )
+                                AsyncImage(
+                                    model = tiles[1].artworkAt(CARD_ART_PX / 2),
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                                )
+                            }
+                            Row(Modifier.weight(1f)) {
+                                AsyncImage(
+                                    model = tiles[2].artworkAt(CARD_ART_PX / 2),
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                                )
+                                AsyncImage(
+                                    model = tiles[3].artworkAt(CARD_ART_PX / 2),
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.weight(1f).fillMaxHeight(),
+                                )
+                            }
+                        }
+                        Box(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .background(Color.Black.copy(alpha = 0.30f)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.CloudOff,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(40.dp),
+                            )
+                        }
+                    }
+                } else {
+                    ServiceCard(
+                        colors = listOf(Color(0xFF232526), Color(0xFF414345)),
+                        trackKey = "local:offlinemusic",
+                        icon = Icons.Rounded.CloudOff,
+                    )
+                }
+            }
             "local:cache" -> ServiceCard(
                 colors = listOf(Color(0xFF42275A), Color(0xFF734B6D)),
                 trackKey = "local:cache",
@@ -1368,12 +1452,21 @@ internal fun ShelfListRow(
     modifier: Modifier = Modifier,
     isPinned: Boolean = false,
 ) {
+    val offlineBlocked = AppUi.host.unplayableOffline(videoId = item.videoId, browseId = item.browseId)
     val shape = if (item.browseId?.startsWith("UC") == true) CircleShape else RoundedCornerShape(LIST_COVER_RADIUS)
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .longPressMenuClickable(onClick = onClick, onLongClick = onLongPress)
-            .contextClick(onLongPress)
+            .then(
+                if (offlineBlocked) {
+                    Modifier
+                } else {
+                    Modifier
+                        .longPressMenuClickable(onClick = onClick, onLongClick = onLongPress)
+                        .contextClick(onLongPress)
+                },
+            )
+            .alpha(if (offlineBlocked) 0.38f else 1f)
             .padding(horizontal = PAGE_GUTTER, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

@@ -43,6 +43,8 @@ import androidx.compose.material3.pulltorefresh.PullToRefreshState
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import com.music.bitchord.ui.AppUi
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.geometry.Offset
@@ -1095,6 +1097,7 @@ private fun TopTrendingRow(
     onOptionsClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
+    val offlineBlocked = AppUi.host.unplayableOffline(videoId = item.videoId, browseId = item.browseId)
     val rankColor = when (rank) {
         1 -> Color(0xFFFFB800)
         2 -> Color(0xFFCBD5E1)
@@ -1106,7 +1109,8 @@ private fun TopTrendingRow(
         modifier = modifier
             .fillMaxWidth()
             .requiredHeight(66.dp)
-            .clickable(onClick = onClick),
+            .alpha(if (offlineBlocked) 0.38f else 1f)
+            .then(if (offlineBlocked) Modifier else Modifier.clickable(onClick = onClick)),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // Numeración sin fondo y más chica
@@ -1166,7 +1170,8 @@ private fun TopTrendingRow(
 
         // Botón de 3 puntos que abre el modal estándar de track
         IconButton(
-            onClick = { onOptionsClick?.invoke() },
+            onClick = { if (!offlineBlocked) onOptionsClick?.invoke() },
+            enabled = !offlineBlocked,
             modifier = Modifier.size(36.dp).menuAnchor(),
         ) {
             Icon(
@@ -1184,10 +1189,12 @@ private fun NewReleaseCard(
     item: ShelfItem,
     onClick: () -> Unit,
 ) {
+    val offlineBlocked = AppUi.host.unplayableOffline(videoId = item.videoId, browseId = item.browseId)
     Column(
         modifier = Modifier
             .width(136.dp)
-            .clickable(onClick = onClick),
+            .alpha(if (offlineBlocked) 0.38f else 1f)
+            .then(if (offlineBlocked) Modifier else Modifier.clickable(onClick = onClick)),
     ) {
         Box(
             modifier = Modifier
@@ -1240,6 +1247,7 @@ fun DailyTopicGlassCard(
             end = Offset(420f, 210f),
         )
     }
+    val offlineBlocked = AppUi.host.unplayableOffline(videoId = null, browseId = "topic:${topic.searchQuery}")
     Box(
         modifier = modifier
             .width(210.dp)
@@ -1247,7 +1255,8 @@ fun DailyTopicGlassCard(
             .clip(EXPLORE_CARD_SHAPE)
             .background(backgroundBrush)
             .border(DAILY_CARD_BORDER, EXPLORE_CARD_SHAPE)
-            .clickable(onClick = onClick),
+            .alpha(if (offlineBlocked) 0.38f else 1f)
+            .then(if (offlineBlocked) Modifier else Modifier.clickable(onClick = onClick)),
     ) {
         Column(
             modifier = Modifier

@@ -865,6 +865,7 @@ class PlaybackService : MediaLibraryService() {
     /** The upcoming ids read-ahead was last asked to warm, so an unchanged queue isn't asked again. */
     private var preferredPrefetchRequest: List<String>? = null
     private var autoplaySeed: String? = null
+    private var offlineAutoplaySeeded: Boolean = false
 
     /**
      * AutoPlay tracks fetched but not queued yet — the part of the [AUTOPLAY_STOCK] beyond what the
@@ -3527,6 +3528,7 @@ class PlaybackService : MediaLibraryService() {
             autoplayLoadJob?.cancel()
             autoplayLoadJob = null
             autoplaySeed = null
+            offlineAutoplaySeeded = false
             dropAutoplayTracksFromQueue()
         }
         val aheadOf = { p: ExoPlayer ->
@@ -3547,8 +3549,59 @@ class PlaybackService : MediaLibraryService() {
                 if (take.isNotEmpty()) exoPlayer.addMediaItems(take.map { it.toMediaItem() })
             }
         }
-        // A station is asked for from the network; with none there is nothing to add.
-        if (AppSettings.effectiveOffline.value) return
+        if (AppSettings.effectiveOffline.value) {
+            if (party.inParty) return
+            val offlineNeeded = MAX_QUEUED_AUTOPLAY - aheadOf(exoPlayer)
+            if (offlineNeeded <= 0) return
+            if (autoplaySeed == current.videoId) return
+            autoplaySeed = current.videoId
+            autoplayLoadJob?.cancel()
+            autoplayLoadJob = scope.launch {
+                val offlinePool = withContext(Dispatchers.IO) {
+                    com.music.bitchord.data.offline.OfflineLibrary.offlineMusic(this@PlaybackService)
+                }
+                val sharedCollectionIds = Downloads.collections.value.values
+                    .asSequence()
+                    .filter { current.videoId in it.videoIds }
+                    .flatMap { it.videoIds.asSequence() }
+                    .toSet()
+                withContext(Dispatchers.Main) {
+                    val activePlayer = player ?: return@withContext
+                    val activeParty = ListenTogether.state.value
+                    if (!AppSettings.effectiveOffline.value ||
+                        activeParty.inParty ||
+                        !autoplayEnabled(activeParty) ||
+                        activePlayer.repeatMode == Player.REPEAT_MODE_ALL ||
+                        activePlayer.currentMediaItem?.mediaId != current.videoId
+                    ) {
+                        return@withContext
+                    }
+                    val room = MAX_QUEUED_AUTOPLAY - aheadOf(activePlayer)
+                    if (room <= 0) return@withContext
+                    val queuedIds = (0 until activePlayer.mediaItemCount)
+                        .mapTo(HashSet()) { activePlayer.getMediaItemAt(it).mediaId }
+                    val historyIds = if (AppSettings.dontRepeatSuggestions.value) {
+                        sessionSongHistory.mapTo(HashSet()) { it.videoId }
+                    } else {
+                        emptySet()
+                    }
+                    val picks = selectOfflineAutoplayTracks(
+                        seed = current,
+                        offlinePool = offlinePool,
+                        queuedIds = queuedIds,
+                        sessionHistoryIds = historyIds,
+                        sharedCollectionIds = sharedCollectionIds,
+                        limit = room,
+                    )
+                    if (picks.isNotEmpty()) {
+                        offlineAutoplaySeeded = true
+                        activePlayer.addMediaItems(picks.map { it.toMediaItem() })
+                    }
+                }
+            }
+            return
+        }
+        offlineAutoplaySeeded = false
         // In a party the server's queue is the one being topped up, and this
         // player's copy of it lags behind by however long reconcile is held off
         // — read from the copy, a batch that had already landed counted as
@@ -8837,8 +8890,23 @@ class PlaybackService : MediaLibraryService() {
         scope.launch {
             var wasOffline = AppSettings.effectiveOffline.value
             AppSettings.effectiveOffline.collect { offline ->
-                if (wasOffline && !offline) rebuildLocalQueueItems("back online")
-                if (!wasOffline && offline) rebuildLocalQueueItems("offline")
+                if (wasOffline && !offline) {
+                    rebuildLocalQueueItems("back online")
+                    withContext(Dispatchers.Main) {
+                        if (offlineAutoplaySeeded) {
+                            dropAutoplayTracksFromQueue()
+                            offlineAutoplaySeeded = false
+                        }
+                        autoplaySeed = null
+                        loadAutoplayForCurrentTrack()
+                    }
+                } else if (!wasOffline && offline) {
+                    rebuildLocalQueueItems("offline")
+                    withContext(Dispatchers.Main) {
+                        autoplaySeed = null
+                        loadAutoplayForCurrentTrack()
+                    }
+                }
                 wasOffline = offline
             }
         }

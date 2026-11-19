@@ -15,6 +15,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
@@ -1005,10 +1006,22 @@ private fun ReleaseHeader(
     // the first one speaks for the whole page, the same source the rows'
     // own long-press "Open artist" already reads from.
     val artist = songs.firstOrNull()
-    val top4Artworks = remember(page.songs) {
-        (page.songs as? UiState.Success)?.data?.mapNotNull { it.thumbnailUrl }?.distinct()?.take(4).orEmpty()
+    val isOfflineMusicPage = page.browseId == OFFLINE_MUSIC_BROWSE_ID
+    val top4Artworks = remember(page.songs, isOfflineMusicPage) {
+        val list = (page.songs as? UiState.Success)?.data.orEmpty()
+        val distinct = list.mapNotNull { it.thumbnailUrl?.takeIf(String::isNotBlank) }.distinct().take(4)
+        if (isOfflineMusicPage && distinct.isNotEmpty() && distinct.size < 4) {
+            val all = list.mapNotNull { it.thumbnailUrl?.takeIf(String::isNotBlank) }.take(4)
+            if (all.size >= 4) all else List(4) { distinct[it % distinct.size] }
+        } else {
+            distinct
+        }
     }
-    val isGridCover = (page.browseId.startsWith("charts:trending") || (page.browseId.startsWith("topic:") && page.thumbnailUrl == null)) && top4Artworks.size >= 4
+    val isGridCover = (
+        isOfflineMusicPage ||
+            page.browseId.startsWith("charts:trending") ||
+            (page.browseId.startsWith("topic:") && page.thumbnailUrl == null)
+        ) && top4Artworks.size >= 4
     var artFailed by remember(page.thumbnailUrl) { mutableStateOf(false) }
     val bleed = fullBleed && page.thumbnailUrl != null && !artFailed && !isGridCover
 
@@ -1107,6 +1120,21 @@ private fun ReleaseHeader(
                             contentDescription = null,
                             contentScale = ContentScale.Crop,
                             modifier = Modifier.weight(1f).fillMaxHeight(),
+                        )
+                    }
+                }
+                if (isOfflineMusicPage) {
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .background(Color.Black.copy(alpha = 0.30f)),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.CloudOff,
+                            contentDescription = null,
+                            tint = Color.White,
+                            modifier = Modifier.size(56.dp),
                         )
                     }
                 }

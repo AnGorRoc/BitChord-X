@@ -59,6 +59,7 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import com.music.bitchord.ui.AppUi
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.style.TextOverflow
@@ -909,26 +910,39 @@ private fun RecentSearchEntityRow(
     onSwipeAction: ((SongSwipeAction) -> Unit)? = null,
     onSwipeHoldPlaylist: (() -> Unit)? = null,
 ) {
+    val offlineBlocked = when (entity.entityType) {
+        EntityType.TRACK -> AppUi.host.unplayableOffline(videoId = entity.id, browseId = null)
+        EntityType.ALBUM, EntityType.PLAYLIST, EntityType.ARTIST ->
+            AppUi.host.unplayableOffline(videoId = null, browseId = entity.id)
+        EntityType.OTHER -> false
+    }
     SwipeToQueueBox(
-        onSwipeToQueue = onSwipeToQueue,
-        onSwipeAction = onSwipeAction,
-        onSwipeHoldPlaylist = onSwipeHoldPlaylist,
+        onSwipeToQueue = onSwipeToQueue.takeUnless { offlineBlocked },
+        onSwipeAction = onSwipeAction.takeUnless { offlineBlocked },
+        onSwipeHoldPlaylist = onSwipeHoldPlaylist.takeUnless { offlineBlocked },
         modifier = Modifier.fillMaxWidth(),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(com.music.bitchord.ui.theme.pageBackground())
-                .longPressMenuClickable(
-                    onClick = onClick,
-                    onLongClick = onLongPress,
-                    liftPadding = PaddingValues(start = PAGE_GUTTER, end = 8.dp),
+                .then(
+                    if (offlineBlocked) {
+                        Modifier
+                    } else {
+                        Modifier
+                            .longPressMenuClickable(
+                                onClick = onClick,
+                                onLongClick = onLongPress,
+                                liftPadding = PaddingValues(start = PAGE_GUTTER, end = 8.dp),
+                            )
+                            .contextClick(onLongPress)
+                    },
                 )
-                .contextClick(onLongPress)
                 .padding(start = PAGE_GUTTER, end = 8.dp, top = 6.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(Modifier.size(52.dp)) {
+            Box(Modifier.size(52.dp).alpha(if (offlineBlocked) 0.38f else 1f)) {
                 AsyncImage(
                     model = entity.artworkUrl,
                     contentDescription = null,
@@ -943,7 +957,7 @@ private fun RecentSearchEntityRow(
                 }
             }
             Spacer(Modifier.width(14.dp))
-            Column(Modifier.weight(1f)) {
+            Column(Modifier.weight(1f).alpha(if (offlineBlocked) 0.38f else 1f)) {
                 Text(
                     text = entity.title,
                     style = MaterialTheme.typography.titleMedium,

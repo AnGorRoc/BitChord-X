@@ -12,6 +12,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutLinearInEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearOutSlowInEasing
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.scaleIn
@@ -562,9 +563,9 @@ fun TopBarActions(
     modifier: Modifier = Modifier,
 ) {
     ActionsRow(modifier = modifier) {
-        // Up to 3 auxiliary slots to the left of the anchor:
-        // Slot 2 (outermost left), Slot 1 (middle), Slot 0 (adjacent to anchor)
-        val maxSlots = 3
+        // Up to 4 auxiliary slots to the left of the anchor:
+        // Slot 3 (outermost left), Slot 2, Slot 1, Slot 0 (adjacent to anchor)
+        val maxSlots = 4
         for (slotIndex in (maxSlots - 1) downTo 0) {
             val item = auxiliary.getOrNull(slotIndex)
             TopBarAuxiliarySlot(
@@ -584,6 +585,10 @@ internal fun TopBarAuxiliarySlot(
     slotIndex: Int,
     modifier: Modifier = Modifier,
 ) {
+    var lastKey by remember { mutableStateOf(item?.key) }
+    if (item != null) lastKey = item.key
+    val slowExit = lastKey == "offline"
+
     AnimatedVisibility(
         visible = item != null,
         modifier = modifier,
@@ -612,31 +617,59 @@ internal fun TopBarAuxiliarySlot(
                 stiffness = Spring.StiffnessMediumLow,
             ),
         ),
-        exit = fadeOut(
-            animationSpec = tween(
-                durationMillis = 180,
-                easing = FastOutLinearInEasing,
-            ),
-        ) + scaleOut(
-            targetScale = 0.62f,
-            animationSpec = tween(
-                durationMillis = 180,
-                easing = FastOutLinearInEasing,
-            ),
-        ) + slideOutHorizontally(
-            animationSpec = tween(
-                durationMillis = 220,
-                easing = FastOutLinearInEasing,
-            ),
-        ) { fullWidth -> (fullWidth * 0.75f).toInt() } + shrinkHorizontally(
-            animationSpec = tween(
-                durationMillis = 300,
-                delayMillis = 50,
-                easing = CubicBezierEasing(0.3f, 0.0f, 0.2f, 1.0f),
-            ),
-            shrinkTowards = Alignment.End,
-            clip = false,
-        ),
+        exit = if (slowExit) {
+            fadeOut(
+                animationSpec = tween(
+                    durationMillis = 460,
+                    easing = FastOutSlowInEasing,
+                ),
+            ) + scaleOut(
+                targetScale = 0.62f,
+                animationSpec = tween(
+                    durationMillis = 460,
+                    easing = FastOutSlowInEasing,
+                ),
+            ) + slideOutHorizontally(
+                animationSpec = tween(
+                    durationMillis = 500,
+                    easing = FastOutSlowInEasing,
+                ),
+            ) { fullWidth -> (fullWidth * 0.75f).toInt() } + shrinkHorizontally(
+                animationSpec = tween(
+                    durationMillis = 560,
+                    delayMillis = 70,
+                    easing = CubicBezierEasing(0.22f, 1.0f, 0.36f, 1.0f),
+                ),
+                shrinkTowards = Alignment.End,
+                clip = false,
+            )
+        } else {
+            fadeOut(
+                animationSpec = tween(
+                    durationMillis = 180,
+                    easing = FastOutLinearInEasing,
+                ),
+            ) + scaleOut(
+                targetScale = 0.62f,
+                animationSpec = tween(
+                    durationMillis = 180,
+                    easing = FastOutLinearInEasing,
+                ),
+            ) + slideOutHorizontally(
+                animationSpec = tween(
+                    durationMillis = 220,
+                    easing = FastOutLinearInEasing,
+                ),
+            ) { fullWidth -> (fullWidth * 0.75f).toInt() } + shrinkHorizontally(
+                animationSpec = tween(
+                    durationMillis = 300,
+                    delayMillis = 50,
+                    easing = CubicBezierEasing(0.3f, 0.0f, 0.2f, 1.0f),
+                ),
+                shrinkTowards = Alignment.End,
+                clip = false,
+            )
+        },
     ) {
         AnimatedContent(
             targetState = item,

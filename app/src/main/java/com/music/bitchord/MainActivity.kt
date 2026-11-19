@@ -3902,6 +3902,7 @@ private fun BitChordApp(
                     }
                 }
                 val offlineBannerActive by AppSettings.effectiveOffline.collectAsStateWithLifecycle()
+                val manualOffline by AppSettings.offlineMode.collectAsStateWithLifecycle()
                 val topBarOnBack: (() -> Unit)? = when {
                     route != null || detail != null || selectedMoodGenre != null -> goBack
                     selectedTab == TAB_SEARCH -> ({ selectedTab = lastNonSearchTab })
@@ -4254,6 +4255,37 @@ private fun BitChordApp(
                                 },
                             )
                         }
+
+                        // Offline indicator (always at the outermost end of the dynamic pill).
+                        // Clicking disables manual offline mode; network-detected offline is read-only.
+                        if (offlineBannerActive) {
+                            add(
+                                TopBarActionItem(key = "offline") {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(TOP_CONTROL_SIZE)
+                                            .clip(CircleShape)
+                                            .then(
+                                                if (manualOffline) {
+                                                    Modifier.clickable(
+                                                        onClickLabel = stringResource(R.string.offline_mode),
+                                                        onClick = { AppSettings.setOfflineMode(false) },
+                                                    )
+                                                } else {
+                                                    Modifier
+                                                },
+                                            ),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Icon(
+                                            Icons.Rounded.CloudOff,
+                                            contentDescription = stringResource(R.string.offline_mode),
+                                            tint = MaterialTheme.colorScheme.onSurface,
+                                        )
+                                    }
+                                },
+                            )
+                        }
                     }
                 }
                 val dismissSearch: () -> Unit = {
@@ -4288,12 +4320,6 @@ private fun BitChordApp(
                     }
                 }
                 if (isLandscapeChrome) {
-                    com.music.bitchord.ui.components.OfflineBanner(
-                        visible = offlineBannerActive,
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .padding(top = com.music.bitchord.ui.components.topBarHeight()),
-                    )
                     if (selectedTab == TAB_SEARCH && route == null && detail == null && selectedMoodGenre == null) {
                         SearchSourceSwitcher(
                             searchSource = searchSource,
@@ -4456,13 +4482,6 @@ private fun BitChordApp(
                         )
                         }
                     }
-                    com.music.bitchord.ui.components.OfflineBanner(
-                        visible = offlineBannerActive,
-                        modifier = Modifier
-                            .align(Alignment.TopCenter)
-                            .padding(top = com.music.bitchord.ui.components.topBarHeight()),
-                    )
-    
                     FrostedTopBar(
                         title = when (route) {
                             AppRoute.Spotify -> stringResource(R.string.spotify)

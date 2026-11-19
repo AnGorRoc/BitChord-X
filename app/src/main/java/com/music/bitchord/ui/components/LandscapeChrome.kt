@@ -245,7 +245,7 @@ private fun LandscapeVerticalActionsPill(
     if (presence <= 0.001f && !visible) return
 
     val orderedAux = remember(auxiliary, anchorAtTop) {
-        val slots = (2 downTo 0).mapNotNull { auxiliary.getOrNull(it) }
+        val slots = (3 downTo 0).mapNotNull { auxiliary.getOrNull(it) }
         if (anchorAtTop) slots.reversed() else slots
     }
 

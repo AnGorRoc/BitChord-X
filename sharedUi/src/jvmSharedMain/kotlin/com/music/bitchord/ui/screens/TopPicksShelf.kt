@@ -1,6 +1,7 @@
 package com.music.bitchord.ui.screens
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -285,14 +286,23 @@ private fun TopPickCard(
 ) {
     val text = cardText(pick, listenerName)
     val longPress = onLongPress?.let { { it(pick) } }
+    val offlineBlocked = AppUi.host.unplayableOffline(videoId = null, browseId = pick.browseId)
     Box(
         modifier = modifier
             .aspectRatio(TOP_PICK_RATIO)
             .clip(TopPickShape)
             .thumbnailBorder(TopPickShape)
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .longPressMenuClickable(onClick = { onClick(pick, text.title) }, onLongClick = longPress)
-            .contextClick(longPress),
+            .alpha(if (offlineBlocked) 0.38f else 1f)
+            .then(
+                if (offlineBlocked) {
+                    Modifier
+                } else {
+                    Modifier
+                        .longPressMenuClickable(onClick = { onClick(pick, text.title) }, onLongClick = longPress)
+                        .contextClick(longPress)
+                },
+            ),
     ) {
         val eyebrowColor: Color
         val branded: Boolean
