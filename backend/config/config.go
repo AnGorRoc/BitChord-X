@@ -2,6 +2,7 @@ package config
 
 import (
 	"log"
+	"net"
 	"net/url"
 	"os"
 	"strconv"
@@ -122,9 +123,81 @@ var (
 	Port                 = getInt("PORT", 8000)
 	AdminPort            = getInt("ADMIN_PORT", 8001)
 	AdminSecret          = strings.TrimSpace(os.Getenv("ADMIN_SECRET"))
+	AdminTailscaleOnly   = getBool("ADMIN_TAILSCALE_ONLY", false)
 	DatabaseURL          = strings.TrimSpace(os.Getenv("DATABASE_URL"))
 	TelemetryRatePerMin  = getInt("JAM_TELEMETRY_RATE_PER_MINUTE", 20)
+	TrustedProxyNets     = parseCIDRs(getCSV("JAM_TRUSTED_PROXY_CIDRS", defaultTrustedProxyCIDRs))
+	tailscaleNets        = parseCIDRs([]string{"127.0.0.0/8", "::1/128", "100.64.0.0/10", "fd7a:115c:a1e0::/48"})
 )
+
+// Default trusted proxy CIDRs: loopback, RFC1918/Docker bridges (cloudflared/Caddy),
+// and Cloudflare's published IPv4/IPv6 edge ranges.
+const defaultTrustedProxyCIDRs = "127.0.0.0/8,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16,fc00::/7," +
+	"173.245.48.0/20,103.21.244.0/22,103.22.200.0/22,103.31.4.0/22," +
+	"141.101.64.0/18,108.162.192.0/18,190.93.240.0/20,188.114.96.0/20," +
+	"197.234.240.0/22,198.41.128.0/17,162.158.0.0/15,104.16.0.0/13," +
+	"104.24.0.0/14,172.64.0.0/13,131.0.72.0/22," +
+	"2400:cb00::/32,2606:4700::/32,2803:f800::/32,2405:b500::/32," +
+	"2405:8100::/32,2a06:98c0::/29,2c0f:f248::/32"
+
+func parseCIDRs(entries []string) []*net.IPNet {
+	var nets []*net.IPNet
+	for _, entry := range entries {
+		if !strings.Contains(entry, "/") {
+			if ip := net.ParseIP(entry); ip != nil {
+				bits := 32
+				if ip.To4() == nil {
+					bits = 128
+				}
+				nets = append(nets, &net.IPNet{IP: ip, Mask: net.CIDRMask(bits, bits)})
+				continue
+			}
+		}
+		_, ipNet, err := net.ParseCIDR(entry)
+		if err != nil {
+			log.Printf("Invalid CIDR %q; ignoring", entry)
+			continue
+		}
+		nets = append(nets, ipNet)
+	}
+	return nets
+}
+
+func extractRemoteIP(remoteAddr string) net.IP {
+	host, _, err := net.SplitHostPort(remoteAddr)
+	if err != nil {
+		host = remoteAddr
+	}
+	return net.ParseIP(strings.TrimSpace(host))
+}
+
+// IsTrustedProxy reports whether remoteAddr belongs to a configured trusted proxy CIDR.
+func IsTrustedProxy(remoteAddr string) bool {
+	ip := extractRemoteIP(remoteAddr)
+	if ip == nil {
+		return false
+	}
+	for _, ipNet := range TrustedProxyNets {
+		if ipNet.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
+
+// IsTailscaleOrLoopback reports whether remoteAddr is loopback or within Tailscale's CGNAT/ULA ranges.
+func IsTailscaleOrLoopback(remoteAddr string) bool {
+	ip := extractRemoteIP(remoteAddr)
+	if ip == nil {
+		return false
+	}
+	for _, ipNet := range tailscaleNets {
+		if ipNet.Contains(ip) {
+			return true
+		}
+	}
+	return false
+}
 
 // AppLink is one Android app allowed to open this server's invite links.
 type AppLink struct {

@@ -9,6 +9,7 @@ import (
 	"html/template"
 	"io"
 	"log"
+	"math"
 	"net"
 	"net/http"
 	"net/url"
@@ -35,6 +36,7 @@ var (
 	createLimiter         = newIPRateLimiter(time.Minute, config.CreateRatePerMinute, config.RateLimitMaxEntries)
 	joinLimiter           = newIPRateLimiter(time.Minute, config.JoinRatePerMinute, config.RateLimitMaxEntries)
 	previewLimiter        = newIPRateLimiter(time.Minute, config.PreviewRatePerMinute, config.RateLimitMaxEntries)
+	failedLookupLimiter   = newIPRateLimiter(time.Minute, 10, config.RateLimitMaxEntries)
 	accountConnectLimiter = newIPRateLimiter(time.Minute, config.AccountConnectRatePerMinute, config.RateLimitMaxEntries)
 	presenceTracker       = presence.NewTracker(
 		time.Duration(config.PresenceIntervalSec+config.PresenceGraceSec)*time.Second,
@@ -42,6 +44,7 @@ var (
 	)
 	presenceLimiter  = newIPRateLimiter(time.Minute, config.PresencePingsPerMinute, config.PresenceRateLimitMaxIPs)
 	telemetryLimiter = newIPRateLimiter(time.Minute, config.TelemetryRatePerMin, config.RateLimitMaxEntries)
+	errorDedupCache  = newIPRateLimiter(time.Minute, 1, config.RateLimitMaxEntries)
 	telemetryStore   *telemetry.Store
 	telemetryHub     = telemetry.NewLiveHub()
 	upgrader = websocket.Upgrader{
@@ -135,9 +138,13 @@ func main() {
 	// Private LAN/Tailscale admin dashboard server (never routed to Cloudflare)
 	if config.AdminPort > 0 {
 		adminAddr := fmt.Sprintf("0.0.0.0:%d", config.AdminPort)
+		adminHandler := telemetry.NewAdminHandler(telemetryStore, telemetryHub, config.AdminSecret)
+		if config.AdminTailscaleOnly {
+			adminHandler = tailscaleOnlyMiddleware(adminHandler)
+		}
 		adminSrv := &http.Server{
 			Addr:              adminAddr,
-			Handler:           telemetry.NewAdminHandler(telemetryStore, telemetryHub, config.AdminSecret),
+			Handler:           adminHandler,
 			ReadHeaderTimeout: 10 * time.Second,
 			ReadTimeout:       20 * time.Second,
 			WriteTimeout:      20 * time.Second,
@@ -151,7 +158,7 @@ func main() {
 		}()
 	}
 
-	handler := corsMiddleware(mux)
+	handler := securityHeadersMiddleware(corsMiddleware(mux))
 
 	addr := fmt.Sprintf("0.0.0.0:%d", config.Port)
 	log.Printf("BitChord Listen Together (Go) starting on %s...", addr)
@@ -166,6 +173,29 @@ func main() {
 	if err := server.ListenAndServe(); err != nil {
 		log.Fatalf("Server stopped: %v", err)
 	}
+}
+
+func securityHeadersMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		w.Header().Set("Permissions-Policy", "geolocation=(), microphone=(), camera=()")
+		if r.TLS != nil || (config.TrustProxy && config.IsTrustedProxy(r.RemoteAddr) && strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")) {
+			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains")
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func tailscaleOnlyMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !config.IsTailscaleOrLoopback(r.RemoteAddr) {
+			http.Error(w, "Forbidden", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func corsMiddleware(next http.Handler) http.Handler {
@@ -241,14 +271,18 @@ func (l *ipRateLimiter) Allow(ip string) bool {
 }
 
 func clientIP(r *http.Request) string {
-	if config.TrustProxy {
+	if config.TrustProxy && config.IsTrustedProxy(r.RemoteAddr) {
 		if config.ClientIPHeader != "" {
-			if ip := strings.TrimSpace(r.Header.Get(config.ClientIPHeader)); ip != "" {
-				return ip
+			if raw := strings.TrimSpace(r.Header.Get(config.ClientIPHeader)); raw != "" {
+				if ip := net.ParseIP(raw); ip != nil {
+					return ip.String()
+				}
 			}
 		}
-		if forwarded := strings.TrimSpace(strings.Split(r.Header.Get("X-Forwarded-For"), ",")[0]); forwarded != "" {
-			return forwarded
+		if raw := strings.TrimSpace(strings.Split(r.Header.Get("X-Forwarded-For"), ",")[0]); raw != "" {
+			if ip := net.ParseIP(raw); ip != nil {
+				return ip.String()
+			}
 		}
 	}
 	host, _, err := net.SplitHostPort(r.RemoteAddr)
@@ -582,9 +616,27 @@ func handlePresenceWS(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func stripNullBytes(s string) string {
+	return strings.ReplaceAll(s, "\x00", "")
+}
+
+func isValidAppVersion(v string) bool {
+	if len(v) > 32 {
+		return false
+	}
+	for i := 0; i < len(v); i++ {
+		c := v[i]
+		if !((c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '.' || c == '-' || c == '_' || c == '+') {
+			return false
+		}
+	}
+	return true
+}
+
 // handleTelemetryError accepts opt-in error reports with basic device info.
 func handleTelemetryError(w http.ResponseWriter, r *http.Request) {
-	if !telemetryLimiter.Allow(clientIP(r)) {
+	ip := clientIP(r)
+	if !telemetryLimiter.Allow(ip) {
 		jsonError(w, http.StatusTooManyRequests, "rate_limited", "Too many error reports from this address.")
 		return
 	}
@@ -613,11 +665,23 @@ func handleTelemetryError(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, http.StatusForbidden, "origin_not_allowed", "Telemetry is only accepted from the apps and the web player.")
 		return
 	}
+	body.AppVersion = strings.TrimSpace(stripNullBytes(body.AppVersion))
+	if !isValidAppVersion(body.AppVersion) {
+		jsonError(w, http.StatusUnprocessableEntity, "invalid_version", "appVersion contains invalid characters.")
+		return
+	}
+	body.ErrorType = strings.TrimSpace(stripNullBytes(body.ErrorType))
+	body.ErrorMessage = strings.TrimSpace(stripNullBytes(body.ErrorMessage))
+	body.Stacktrace = stripNullBytes(body.Stacktrace)
+	body.DeviceModel = stripNullBytes(body.DeviceModel)
+	body.OSVersion = stripNullBytes(body.OSVersion)
+	body.ABI = stripNullBytes(body.ABI)
+
 	// A minimal report is counted by its type and nothing else is read from it:
 	// whatever else the body carries (an ID, a message, a stack trace, a device)
 	// is ignored, so the promise does not depend on the client keeping it.
 	if telemetry.ParseLevel(body.Level) == telemetry.Minimal {
-		if strings.TrimSpace(body.ErrorType) == "" {
+		if body.ErrorType == "" {
 			jsonError(w, http.StatusUnprocessableEntity, "invalid_error", "errorType is required.")
 			return
 		}
@@ -636,8 +700,13 @@ func handleTelemetryError(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	if strings.TrimSpace(body.ErrorType) == "" || strings.TrimSpace(body.ErrorMessage) == "" {
+	if body.ErrorType == "" || body.ErrorMessage == "" {
 		jsonError(w, http.StatusUnprocessableEntity, "invalid_error", "errorType and errorMessage are required.")
+		return
+	}
+	dedupKey := ip + "|" + body.ErrorType + "|" + body.AppVersion
+	if !errorDedupCache.Allow(dedupKey) {
+		jsonResponse(w, http.StatusAccepted, map[string]bool{"ok": true})
 		return
 	}
 	if telemetryStore != nil {
@@ -774,6 +843,10 @@ func handleJoinParty(w http.ResponseWriter, r *http.Request) {
 			jsonError(w, pe.Status, pe.Code, pe.Message)
 			return
 		}
+		if !failedLookupLimiter.Allow(clientIP(r)) {
+			jsonError(w, http.StatusTooManyRequests, "join_rate_limited", "Too many attempts. Please try again shortly.")
+			return
+		}
 		jsonError(w, http.StatusNotFound, "no_such_party", "No party with that code.")
 		return
 	}
@@ -849,6 +922,10 @@ func handlePreviewParty(w http.ResponseWriter, r *http.Request) {
 			jsonError(w, pe.Status, pe.Code, pe.Message)
 			return
 		}
+		if !failedLookupLimiter.Allow(clientIP(r)) {
+			jsonError(w, http.StatusTooManyRequests, "join_rate_limited", "Too many attempts. Please try again shortly.")
+			return
+		}
 		jsonError(w, http.StatusNotFound, "no_such_party", "No party with that code.")
 		return
 	}
@@ -908,6 +985,10 @@ func handleGetParty(w http.ResponseWriter, r *http.Request) {
 			jsonError(w, pe.Status, pe.Code, pe.Message)
 			return
 		}
+		if !failedLookupLimiter.Allow(clientIP(r)) {
+			jsonError(w, http.StatusTooManyRequests, "join_rate_limited", "Too many attempts. Please try again shortly.")
+			return
+		}
 		jsonError(w, http.StatusNotFound, "no_such_party", "No party with that code.")
 		return
 	}
@@ -941,6 +1022,10 @@ func handleLeaveParty(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		if pe, ok := err.(*party.PartyError); ok {
 			jsonError(w, pe.Status, pe.Code, pe.Message)
+			return
+		}
+		if !failedLookupLimiter.Allow(clientIP(r)) {
+			jsonError(w, http.StatusTooManyRequests, "join_rate_limited", "Too many attempts. Please try again shortly.")
 			return
 		}
 		jsonError(w, http.StatusNotFound, "no_such_party", "No party with that code.")
@@ -1180,9 +1265,9 @@ func requestOrigin(r *http.Request) string {
 	if r.TLS != nil {
 		proto = "https"
 	}
-	if config.TrustProxy {
-		if forwardedProto := r.Header.Get("X-Forwarded-Proto"); forwardedProto != "" {
-			proto = strings.TrimSpace(strings.Split(forwardedProto, ",")[0])
+	if config.TrustProxy && config.IsTrustedProxy(r.RemoteAddr) {
+		if forwardedProto := strings.TrimSpace(strings.Split(r.Header.Get("X-Forwarded-Proto"), ",")[0]); forwardedProto == "http" || forwardedProto == "https" {
+			proto = forwardedProto
 		}
 	}
 	host := r.Host
@@ -1196,6 +1281,7 @@ func handleInviteLanding(w http.ResponseWriter, r *http.Request) {
 	code := codes.Normalise(r.PathValue("code"))
 	origin := requestOrigin(r)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")
 
 	if len(code) != codes.CodeLength {
 		w.WriteHeader(http.StatusBadRequest)
@@ -1342,9 +1428,13 @@ func handleSocketFrame(p *party.Party, member *party.Member, sc *hub.SafeConn, f
 
 	switch kind {
 	case protocol.FramePing:
+		var clientMs interface{}
+		if v, ok := frame["clientMs"].(float64); ok && !math.IsNaN(v) && !math.IsInf(v, 0) {
+			clientMs = int64(v)
+		}
 		_ = sc.WriteJSON(map[string]interface{}{
 			"type":     protocol.FramePong,
-			"clientMs": frame["clientMs"],
+			"clientMs": clientMs,
 			"serverMs": clock.NowMs(),
 		})
 
@@ -1409,9 +1499,15 @@ func applyControl(p *party.Party, member *party.Member, action string, frame map
 		return false, "host_only", "Only the host can control the music in this party."
 	}
 
+	const maxPositionMs int64 = 24 * 60 * 60 * 1000
 	var posPtr *int64
-	if pos, ok := frame["positionMs"].(float64); ok {
+	if pos, ok := frame["positionMs"].(float64); ok && !math.IsNaN(pos) && !math.IsInf(pos, 0) {
 		pVal := int64(pos)
+		if pVal < 0 {
+			pVal = 0
+		} else if pVal > maxPositionMs {
+			pVal = maxPositionMs
+		}
 		posPtr = &pVal
 	}
 
@@ -1458,6 +1554,9 @@ func applyControl(p *party.Party, member *party.Member, action string, frame map
 		itemsRaw, _ := frame["queue"].([]interface{})
 		var tracks []*party.Track
 		for _, item := range itemsRaw {
+			if len(tracks) >= config.MaxQueueLength {
+				break
+			}
 			if m, ok := item.(map[string]interface{}); ok {
 				if tr := party.TrackFromWire(m); tr != nil {
 					tracks = append(tracks, tr)
