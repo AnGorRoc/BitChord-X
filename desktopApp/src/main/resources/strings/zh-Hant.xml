@@ -672,4 +672,6 @@
     <string name="miscellaneous_footer">啟用後，從最近任務介面關閉應用也會停止音樂播放。</string>
     <string name="lyrics_original_title">用原標題搜歌詞</string>
     <string name="lyrics_original_title_desc">先還原 YouTube 原標題再搜歌詞，翻譯過的標題也能找到</string>
+    <string name="telemetry_diagnostics">匿名遙測與錯誤報告</string>
+    <string name="telemetry_diagnostics_subtitle">傳送穩定的安裝 ID（已雜湊，絕不傳送裝置的真實 ID）、應用程式版本、平台、連線時間，發生錯誤時還包括錯誤詳情、裝置型號和作業系統版本。絕不傳送你的帳號、IP 位址、收聽記錄或播放清單。</string>
 </resources>

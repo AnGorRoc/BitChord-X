@@ -714,4 +714,6 @@
     <string name="listen_together_jam_unnamed">กำลังฟังด้วยกัน</string>
     <string name="listen_together_open">ฟังด้วยกัน</string>
     <string name="listen_together_open_count">กำลังฟังด้วยกัน · %1$d</string>
+    <string name="telemetry_diagnostics">เทเลเมทรีแบบไม่ระบุตัวตนและรายงานข้อผิดพลาด</string>
+    <string name="telemetry_diagnostics_subtitle">ส่ง ID การติดตั้งที่คงที่ (แฮชแล้ว ไม่ใช่ ID จริงของอุปกรณ์) เวอร์ชันแอป แพลตฟอร์ม เวลาที่เชื่อมต่อ และเมื่อเกิดข้อผิดพลาด จะส่งรายละเอียดพร้อมรุ่นอุปกรณ์และเวอร์ชันระบบ จะไม่ส่งบัญชี IP ประวัติการฟัง หรือเพลย์ลิสต์ของคุณ</string>
 </resources>

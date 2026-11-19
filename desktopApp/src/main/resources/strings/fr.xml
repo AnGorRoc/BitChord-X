@@ -686,4 +686,6 @@
     <string name="listen_together_open">Écouter ensemble</string>
     <string name="listen_together_open_count">Écoute commune · %1$d</string>
     <string name="miscellaneous_footer">Une fois activé, fermer l\'application depuis les applications récentes arrête aussi la musique.</string>
+    <string name="telemetry_diagnostics">Télémétrie anonyme et rapports d\'erreurs</string>
+    <string name="telemetry_diagnostics_subtitle">Envoie un ID d\'installation stable (haché, jamais l\'ID réel de l\'appareil), la version de l\'app, la plateforme, les moments de connexion et, en cas d\'erreur, le détail de l\'erreur avec le modèle de l\'appareil et la version du système. N\'envoie jamais votre compte, votre IP, votre historique d\'écoute ni vos playlists.</string>
 </resources>

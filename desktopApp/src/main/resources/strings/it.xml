@@ -751,4 +751,6 @@
     <string name="listen_together_open">Ascolta insieme</string>
     <string name="listen_together_open_count">Ascolto insieme · %1$d</string>
     <string name="miscellaneous_footer">Quando attivo, chiudere l\'app dalla schermata delle app recenti interrompe anche la riproduzione musicale.</string>
+    <string name="telemetry_diagnostics">Telemetria anonima e segnalazioni di errori</string>
+    <string name="telemetry_diagnostics_subtitle">Invia un ID di installazione stabile (con hash, mai l\'ID reale del dispositivo), la versione dell\'app, la piattaforma, i momenti di connessione e, in caso di errore, i dettagli con il modello del dispositivo e la versione del sistema. Non invia mai il tuo account, l\'IP, la cronologia di ascolto o le playlist.</string>
 </resources>

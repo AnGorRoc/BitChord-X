@@ -670,4 +670,6 @@
     <string name="listen_together_open">一起听</string>
     <string name="listen_together_open_count">一起听 · %1$d</string>
     <string name="miscellaneous_footer">启用后，从最近任务界面关闭应用也会停止音乐播放。</string>
+    <string name="telemetry_diagnostics">匿名遥测与错误报告</string>
+    <string name="telemetry_diagnostics_subtitle">发送稳定的安装 ID（已哈希，绝不发送设备的真实 ID）、应用版本、平台、连接时间，出错时还包括错误详情、设备型号和系统版本。绝不发送你的账号、IP 地址、收听历史或播放列表。</string>
 </resources>

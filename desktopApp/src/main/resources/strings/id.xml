@@ -668,4 +668,6 @@
     <string name="listen_together_open">Dengar bersama</string>
     <string name="listen_together_open_count">Mendengar bersama · %1$d</string>
     <string name="miscellaneous_footer">Jika diaktifkan, menutup aplikasi dari layar aplikasi terbaru juga akan menghentikan pemutaran musik.</string>
+    <string name="telemetry_diagnostics">Telemetri anonim dan laporan kesalahan</string>
+    <string name="telemetry_diagnostics_subtitle">Mengirim ID instalasi yang stabil (di-hash, bukan ID perangkat asli), versi aplikasi, platform, waktu koneksi, dan jika terjadi kesalahan: detail kesalahan dengan model perangkat dan versi sistem. Tidak pernah mengirim akun, IP, riwayat pemutaran, atau playlist Anda.</string>
 </resources>

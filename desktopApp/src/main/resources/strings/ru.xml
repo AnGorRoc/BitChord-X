@@ -708,4 +708,6 @@
     <string name="listen_together_open">Слушать вместе</string>
     <string name="listen_together_open_count">Слушаем вместе · %1$d</string>
     <string name="miscellaneous_footer">При включении закрытие приложения из недавних также останавливает воспроизведение музыки.</string>
+    <string name="telemetry_diagnostics">Анонимная телеметрия и отчёты об ошибках</string>
+    <string name="telemetry_diagnostics_subtitle">Отправляет постоянный идентификатор установки (хеш, а не реальный ID устройства), версию приложения, платформу, время подключения, а при ошибке — её подробности с моделью устройства и версией системы. Никогда не отправляет аккаунт, IP-адрес, историю прослушивания и плейлисты.</string>
 </resources>

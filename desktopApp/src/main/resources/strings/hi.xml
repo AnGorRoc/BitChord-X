@@ -686,4 +686,6 @@
     <string name="listen_together_open">साथ में सुनें</string>
     <string name="listen_together_open_count">साथ में सुन रहे हैं · %1$d</string>
     <string name="miscellaneous_footer">चालू होने पर, हाल के ऐप्स स्क्रीन से ऐप बंद करने पर संगीत प्लेबैक भी रुक जाएगा।</string>
+    <string name="telemetry_diagnostics">गुमनाम टेलीमेट्री और त्रुटि रिपोर्ट</string>
+    <string name="telemetry_diagnostics_subtitle">एक स्थिर इंस्टॉल आईडी (हैश की हुई, डिवाइस की असली आईडी कभी नहीं), ऐप का संस्करण, प्लेटफ़ॉर्म, कनेक्शन के समय और त्रुटि होने पर त्रुटि का विवरण, डिवाइस मॉडल और सिस्टम संस्करण के साथ भेजता है। आपका खाता, IP, सुनने का इतिहास या प्लेलिस्ट कभी नहीं भेजता।</string>
 </resources>

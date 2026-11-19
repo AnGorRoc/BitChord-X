@@ -690,4 +690,6 @@
     <string name="listen_together_open">להאזין ביחד</string>
     <string name="listen_together_open_count">מאזינים ביחד · %1$d</string>
     <string name="miscellaneous_footer">כשמופעל, סגירת האפליקציה ממסך האפליקציות האחרונות תעצור גם את השמעת המוזיקה.</string>
+    <string name="telemetry_diagnostics">טלמטריה אנונימית ודוחות שגיאה</string>
+    <string name="telemetry_diagnostics_subtitle">שולח מזהה התקנה יציב (מגובב, לעולם לא המזהה האמיתי של המכשיר), גרסת האפליקציה, הפלטפורמה, זמני חיבור, ובמקרה של שגיאה את פרטיה עם דגם המכשיר וגרסת מערכת ההפעלה. אף פעם לא שולח את החשבון שלך, כתובת IP, היסטוריית האזנה או פלייליסטים.</string>
 </resources>

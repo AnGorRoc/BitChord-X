@@ -1657,4 +1657,6 @@
     </plurals>
     <string name="filter_music_videos_autoplay">在自動播放中過濾音樂影片</string>
     <string name="filter_music_videos_autoplay_subtitle">僅在自動播放和電台推薦中將音訊曲目排入佇列，絕不包含音樂影片</string>
+    <string name="telemetry_diagnostics">匿名遙測與錯誤報告</string>
+    <string name="telemetry_diagnostics_subtitle">傳送：穩定的安裝 ID（已雜湊，絕不傳送裝置的真實 ID）、應用程式版本、平台、連線時間，發生錯誤時還包括錯誤詳情、裝置型號和 Android 版本。絕不傳送你的帳號、IP 位址、收聽記錄或播放清單。</string>
 </resources>

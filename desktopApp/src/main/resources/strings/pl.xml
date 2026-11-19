@@ -718,4 +718,6 @@
     <string name="listen_together_open">Słuchajcie razem</string>
     <string name="listen_together_open_count">Wspólne słuchanie · %1$d</string>
     <string name="miscellaneous_footer">Po włączeniu, zamknięcie aplikacji z listy ostatnio używanych aplikacji zatrzyma odtwarzanie muzyki.</string>
+    <string name="telemetry_diagnostics">Anonimowa telemetria i raporty błędów</string>
+    <string name="telemetry_diagnostics_subtitle">Wysyła stabilny identyfikator instalacji (zahaszowany, nigdy prawdziwy identyfikator urządzenia), wersję aplikacji, platformę, czasy połączenia, a w razie błędu jego szczegóły z modelem urządzenia i wersją systemu. Nigdy nie wysyła konta, adresu IP, historii odtwarzania ani playlist.</string>
 </resources>

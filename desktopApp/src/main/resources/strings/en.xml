@@ -870,4 +870,6 @@
     <string name="listen_together_open_count">Listening together · %1$d</string>
     <string name="miscellaneous_footer">When enabled, closing the app from the recent apps screen will also stop music playback.</string>
     <string name="translate">Translate</string>
+    <string name="telemetry_diagnostics">Anonymous telemetry and error reports</string>
+    <string name="telemetry_diagnostics_subtitle">Sends a stable install ID (hashed, never the raw device ID), app version, platform, connection times and, on errors, the error details with the device model and OS version. Never your account, IP address, listening history or playlists.</string>
 </resources>

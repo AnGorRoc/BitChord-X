@@ -668,4 +668,6 @@
     <string name="listen_together_open">一緒に聴く</string>
     <string name="listen_together_open_count">一緒に聴いています · %1$d</string>
     <string name="miscellaneous_footer">オンにすると、最近のアプリ画面からアプリを終了した際に音楽の再生も停止します。</string>
+    <string name="telemetry_diagnostics">匿名テレメトリとエラーレポート</string>
+    <string name="telemetry_diagnostics_subtitle">安定したインストールID（ハッシュ化済みで、端末の実IDは送りません）、アプリのバージョン、プラットフォーム、接続時刻、エラー発生時はエラーの詳細と端末のモデル、OSのバージョンを送信します。アカウント、IPアドレス、再生履歴、プレイリストは一切送信しません。</string>
 </resources>

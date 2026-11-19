@@ -8557,7 +8557,7 @@ private fun DesktopSettingsScreen(
                             DesktopStrings["telemetry_diagnostics", "Anonymous telemetry and error reports"],
                             DesktopStrings[
                                 "telemetry_diagnostics_subtitle",
-                                "Sends a stable install ID, app version, platform, when the app is open and, if something fails, the error details with the OS name and version. Never your account, IP address, listening history or playlists.",
+                                "Sends a stable install ID (hashed, never the raw device ID), app version, platform, connection times and, on errors, the error details with the device model and OS version. Never your account, IP address, listening history or playlists.",
                             ],
                             telemetryEnabled,
                             DesktopPresence::setTelemetryEnabled,

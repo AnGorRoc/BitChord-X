@@ -734,4 +734,6 @@
     <string name="listen_together_open">Birlikte dinle</string>
     <string name="listen_together_open_count">Birlikte dinleme · %1$d</string>
     <string name="miscellaneous_footer">Etkinleştirildiğinde, uygulamayı son kullanılanlar ekranından kapatmak müzik çalmayı da durdurur.</string>
+    <string name="telemetry_diagnostics">Anonim telemetri ve hata raporları</string>
+    <string name="telemetry_diagnostics_subtitle">Kararlı bir kurulum kimliği (karma, cihazın gerçek kimliği asla değil), uygulama sürümü, platform, bağlantı zamanları ve hata olursa hata ayrıntılarını cihaz modeli ve sistem sürümüyle birlikte gönderir. Hesabınızı, IP adresinizi, dinleme geçmişinizi veya çalma listelerinizi asla göndermez.</string>
 </resources>

@@ -715,4 +715,6 @@
     <string name="listen_together_open">Escuchar juntos</string>
     <string name="listen_together_open_count">Escuchando juntos · %1$d</string>
     <string name="miscellaneous_footer">Al activarlo, cerrar la app desde recientes también detiene la música.</string>
+    <string name="telemetry_diagnostics">Telemetría anónima y reporte de errores</string>
+    <string name="telemetry_diagnostics_subtitle">Envía un ID de instalación estable (con hash, nunca el ID real del dispositivo), la versión de la app, la plataforma, los momentos de conexión y, si hay un error, su detalle con el modelo del equipo y la versión del sistema. Nunca envía tu cuenta, IP, historial ni playlists.</string>
 </resources>

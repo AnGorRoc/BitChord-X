@@ -686,4 +686,6 @@
     <string name="listen_together_open">Gemeinsam hören</string>
     <string name="listen_together_open_count">Gemeinsam hören · %1$d</string>
     <string name="miscellaneous_footer">Wenn aktiviert, stoppt das Schließen der App aus den letzten Apps auch die Musikwiedergabe.</string>
+    <string name="telemetry_diagnostics">Anonyme Telemetrie und Fehlerberichte</string>
+    <string name="telemetry_diagnostics_subtitle">Sendet eine stabile Installations-ID (gehasht, nie die echte Geräte-ID), App-Version, Plattform, Verbindungszeiten und bei Fehlern die Fehlerdetails mit Gerätemodell und Betriebssystemversion. Sendet nie dein Konto, deine IP, deinen Hörverlauf oder deine Playlists.</string>
 </resources>
