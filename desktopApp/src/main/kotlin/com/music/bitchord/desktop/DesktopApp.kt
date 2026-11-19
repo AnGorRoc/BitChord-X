@@ -344,6 +344,7 @@ import com.music.bitchord.data.model.isSameTrackAs
 import com.music.bitchord.data.model.playingRowMatcher
 import com.music.bitchord.data.model.isUnresolvedSpotify
 import com.music.bitchord.data.spotify.SPOTIFY_PAGE_PREFIX
+import com.music.bitchord.data.BrowsePrefetcher
 import com.music.bitchord.data.spotify.SpotifyLibrary
 import com.music.bitchord.sharedui.resources.Res as SharedRes
 import com.music.bitchord.sharedui.resources.spotify_logo
@@ -895,6 +896,8 @@ fun BitChordDesktopApp() {
     var openedArtist by remember { mutableStateOf<DesktopArtistTarget?>(null) }
     var artistState by remember { mutableStateOf<UiState<ArtistPage>>(UiState.Loading) }
     var artistReloads by remember { mutableStateOf(0) }
+    /** Spotify playlists read this run: a kept one is checked for changes once, not on every visit. */
+    val spotifyChecked = remember { mutableSetOf<String>() }
 
     fun canonicalSong(song: Song): Song {
         val homeSong = (homeState as? UiState.Success)?.data.orEmpty()
@@ -1270,6 +1273,22 @@ fun BitChordDesktopApp() {
             showCollection(current)
             return
         }
+        // Read before: every row goes up at once, and the page is read again behind it, changing
+        // only if YouTube's copy did.
+        val kept = DesktopSearchClient.cachedCollection(browseId, fallback)
+        if (kept != null) {
+            showCollection(kept)
+            scope.launch {
+                DesktopSearchClient.collectionFull(browseId, fallback).onSuccess { fresh ->
+                    val shown = openedCollection?.takeIf { it.browseId == browseId && !it.loading } ?: return@onSuccess
+                    if (fresh.songs != shown.songs || fresh.owned != shown.owned || fresh.title != shown.title) {
+                        // The carousels stay as drawn: the artist's were added on top of the album's own.
+                        openedCollection = fresh.copy(sections = shown.sections.ifEmpty { fresh.sections })
+                    }
+                }
+            }
+            return
+        }
         showCollection(
             DesktopCollection(
                 browseId = browseId,
@@ -1365,12 +1384,20 @@ fun BitChordDesktopApp() {
     LaunchedEffect(openedCollection?.browseId, collectionReloads) {
         val page = openedCollection?.takeIf { it.browseId.startsWith(SPOTIFY_PAGE_PREFIX) }
             ?: return@LaunchedEffect
-        if (!page.loading && page.songs.none { it.isMatchPending }) return@LaunchedEffect
+        // A kept list fully matched is still read once a run, for songs added or taken out since.
+        if (!page.loading && page.songs.none { it.isMatchPending } && page.browseId in spotifyChecked) return@LaunchedEffect
         collectionError = null
+        val playlistId = page.browseId.removePrefix(SPOTIFY_PAGE_PREFIX)
         fun update(change: (DesktopCollection) -> DesktopCollection) {
             openedCollection?.takeIf { it.browseId == page.browseId }?.let { openedCollection = change(it) }
         }
-        runCatching { loadSpotifyPlaylist(page.browseId.removePrefix(SPOTIFY_PAGE_PREFIX), ::update) }
+        runCatching { loadSpotifyPlaylist(playlistId, ::update) }
+            .onSuccess {
+                spotifyChecked += page.browseId
+                openedCollection?.takeIf { it.browseId == page.browseId }?.let {
+                    DesktopSpotifyCache.savePlaylistRows(playlistId, it.songs)
+                }
+            }
             .onFailure { failure ->
                 if (failure is kotlinx.coroutines.CancellationException) throw failure
                 DesktopTrackLog.log("spotify: playlist ${page.title} failed: ${failure.message}")
@@ -2643,13 +2670,44 @@ fun BitChordDesktopApp() {
         }
     }
 
+    // An artist's page opens on what is kept of it, at any age, and is read again behind it once
+    // that is no longer current. One never read opens on its landing (one request) and fills in
+    // with every song and release as they arrive.
     LaunchedEffect(openedArtist, artistReloads) {
         val target = openedArtist ?: return@LaunchedEffect
         if (artistState !is UiState.Loading) return@LaunchedEffect
-        DesktopSearchClient.artistPage(target.browseId).fold(
-            onSuccess = { artistState = UiState.Success(it) },
-            onFailure = { artistState = UiState.Error(it.message ?: "Could not open ${target.name}") },
+        val kept = DesktopSearchClient.cachedArtist(target.browseId)
+        if (kept != null) artistState = UiState.Success(kept.value)
+        if (kept != null && kept.complete && kept.ageMs() < YtMusicRepository.ARTIST_FRESH_MS) return@LaunchedEffect
+        // A whole page, if old, is not traded for a landing that has a fraction of its songs.
+        val takesLanding = kept?.complete != true
+        DesktopSearchClient.artistPage(target.browseId) { landing ->
+            if (takesLanding && openedArtist == target) artistState = UiState.Success(landing)
+        }.fold(
+            onSuccess = { if (openedArtist == target) artistState = UiState.Success(it) },
+            onFailure = {
+                // Whatever is up stays up; only an empty page says it failed.
+                if (openedArtist == target && artistState !is UiState.Success) {
+                    artistState = UiState.Error(it.message ?: "Could not open ${target.name}")
+                }
+            },
         )
+    }
+
+    // The pages the player's credits lead to are the likeliest next: read ahead, once per track.
+    LaunchedEffect(liveQueue.current?.videoId) {
+        val song = liveQueue.current ?: return@LaunchedEffect
+        song.artistId?.let(BrowsePrefetcher::warmArtistNow)
+        song.albumId?.let(BrowsePrefetcher::warmCollectionNow)
+    }
+
+    // The Spotify library is read ahead whenever there is an account to read it from.
+    LaunchedEffect(spotifyCanvasCookie) {
+        if (spotifyCanvasCookie.isBlank()) {
+            DesktopSpotifyPrefetch.stop()
+        } else {
+            DesktopSpotifyPrefetch.start { playlistId -> openedCollection?.browseId == SPOTIFY_PAGE_PREFIX + playlistId }
+        }
     }
 
     fun toggleSubscription(subscription: SubscriptionState) {
@@ -3003,11 +3061,14 @@ fun BitChordDesktopApp() {
 
     /** The Spotify account's playlists, as a Library grid; Liked Songs first, as on the phone. */
     fun openSpotifyLibrary() {
-        libraryShowAll = HomeShelf(SPOTIFY_SHELF, emptyList())
-        spotifyLibraryStatus = "Loading your Spotify playlists…"
+        // The list kept from the last read goes up at once; the read below only changes it.
+        val kept = DesktopSpotifyCache.playlists().orEmpty()
+        libraryShowAll = HomeShelf(SPOTIFY_SHELF, kept.map { it.toShelfItem() })
+        spotifyLibraryStatus = if (kept.isEmpty()) "Loading your Spotify playlists…" else null
         scope.launch {
             runCatching { SpotifyLibrary.playlists() }
                 .onSuccess { found ->
+                    DesktopSpotifyCache.savePlaylists(found)
                     spotifyLibraryStatus = null
                     if (libraryShowAll?.title == SPOTIFY_SHELF) {
                         libraryShowAll = HomeShelf(SPOTIFY_SHELF, found.map { it.toShelfItem() })
@@ -3015,7 +3076,9 @@ fun BitChordDesktopApp() {
                 }
                 .onFailure {
                     DesktopTrackLog.log("spotify: playlists failed: ${it.message}")
-                    spotifyLibraryStatus = "Could not load your Spotify playlists: ${it.message}"
+                    if (libraryShowAll?.items.isNullOrEmpty()) {
+                        spotifyLibraryStatus = "Could not load your Spotify playlists: ${it.message}"
+                    }
                 }
         }
     }
@@ -3058,17 +3121,21 @@ fun BitChordDesktopApp() {
             browseId == "remote:smb" -> selectDestination(DesktopDestination.SMB)
             browseId == SPOTIFY_LIBRARY_ID -> openSpotifyLibrary()
             // Spotify's tracks fill in below, as they are read and matched.
-            browseId.startsWith(SPOTIFY_PAGE_PREFIX) -> showCollection(
-                DesktopCollection(
-                    browseId = browseId,
-                    title = item.title,
-                    subtitle = item.subtitle,
-                    thumbnailUrl = item.thumbnailUrl,
-                    type = BrowseType.PLAYLIST,
-                    songs = emptyList(),
-                    loading = true,
-                ),
-            )
+            browseId.startsWith(SPOTIFY_PAGE_PREFIX) -> {
+                // Kept from the last read: up at once, and checked behind for added or removed songs.
+                val kept = DesktopSpotifyCache.playlistRows(browseId.removePrefix(SPOTIFY_PAGE_PREFIX))
+                showCollection(
+                    DesktopCollection(
+                        browseId = browseId,
+                        title = item.title,
+                        subtitle = item.subtitle,
+                        thumbnailUrl = item.thumbnailUrl,
+                        type = BrowseType.PLAYLIST,
+                        songs = kept.orEmpty(),
+                        loading = kept.isNullOrEmpty(),
+                    ),
+                )
+            }
             browseId.startsWith(LOCAL_PLAYLIST_PREFIX) ->
                 playlists.firstOrNull { it.id == browseId.removePrefix(LOCAL_PLAYLIST_PREFIX) }?.let(::openPlaylist)
             browseId.startsWith(DOWNLOAD_PLAYLIST_PREFIX) -> {
@@ -4976,6 +5043,7 @@ fun BitChordDesktopApp() {
                                         onPasteCookie = { overlays.settingsPage = DesktopSettingsPage.SPOTIFY_CANVAS },
                                         onDisconnect = {
                                             DesktopSpotifyToken.setCookie("")
+                                            DesktopSpotifyCache.clearPlaylists()
                                             spotifyCanvasCookie = ""
                                         },
                                     ),

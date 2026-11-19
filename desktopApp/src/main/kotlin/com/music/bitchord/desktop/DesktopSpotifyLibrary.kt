@@ -4,6 +4,7 @@ import com.music.bitchord.data.model.SPOTIFY_MISSING_PREFIX
 import com.music.bitchord.data.model.SPOTIFY_PENDING_PREFIX
 import com.music.bitchord.data.model.ShelfItem
 import com.music.bitchord.data.model.Song
+import com.music.bitchord.data.model.isMatchPending
 import com.music.bitchord.data.model.isUnresolvedSpotify
 import com.music.bitchord.data.spotify.SPOTIFY_PAGE_PREFIX
 import com.music.bitchord.data.spotify.SpotifyImporter
@@ -130,6 +131,51 @@ internal object DesktopSpotifyCache {
         matches[trackId] = song
     }
 
+    // ---- Playlists, kept so the library and each playlist open at once --------------------
+
+    @Serializable
+    private data class KeptPlaylist(val id: String, val name: String, val owner: String? = null, val imageUrl: String? = null)
+
+    private val folder: java.io.File by lazy {
+        DesktopMediaCache.directory.parent.resolve("spotify_cache").toFile().apply { mkdirs() }
+    }
+
+    private fun safeName(id: String) = id.replace(Regex("[^A-Za-z0-9_-]"), "_")
+
+    /** The account's playlists as last read, or null when never read. */
+    fun playlists(): List<SpotifyPlaylist>? = runCatching {
+        val file = java.io.File(folder, "playlists.json")
+        if (!file.isFile) return null
+        json.decodeFromString<List<KeptPlaylist>>(file.readText()).map { SpotifyPlaylist(it.id, it.name, it.owner, it.imageUrl) }
+    }.getOrNull()
+
+    fun savePlaylists(playlists: List<SpotifyPlaylist>) {
+        runCatching {
+            val kept = playlists.map { KeptPlaylist(it.id, it.name, it.owner, it.imageUrl) }
+            java.io.File(folder, "playlists.json").writeText(json.encodeToString(kept))
+        }
+    }
+
+    /** One playlist's rows as last shown — matched songs, and those still waiting — or null. */
+    fun playlistRows(playlistId: String): List<Song>? = runCatching {
+        val file = java.io.File(folder, "playlist_${safeName(playlistId)}.json")
+        if (!file.isFile) return null
+        json.decodeFromString<List<CachedMatch>>(file.readText()).map { it.toSong() }
+    }.getOrNull()
+
+    fun savePlaylistRows(playlistId: String, rows: List<Song>) {
+        if (rows.isEmpty()) return
+        runCatching {
+            val kept = rows.map(CachedMatch::fromSong)
+            java.io.File(folder, "playlist_${safeName(playlistId)}.json").writeText(json.encodeToString(kept))
+        }
+        flush()
+    }
+
+    fun clearPlaylists() {
+        folder.listFiles()?.forEach { it.delete() }
+    }
+
     fun flush() {
         if (!loaded) return
         val snapshot = synchronized(matches) {
@@ -168,6 +214,8 @@ internal suspend fun loadSpotifyPlaylist(
         update { it.copy(songs = initialRows, loading = false) }
     }
     check(tracks.isNotEmpty()) { "This Spotify playlist has no tracks." }
+    // Matches found before the page is left are worth keeping, not only those of a finished run.
+    coroutineContext[kotlinx.coroutines.Job]?.invokeOnCompletion { DesktopSpotifyCache.flush() }
     val gate = Semaphore(MATCH_PARALLELISM)
     var dirty = false
     tracks.forEachIndexed { index, track ->
@@ -205,5 +253,92 @@ internal suspend fun loadSpotifyPlaylist(
     }
     if (dirty) {
         DesktopSpotifyCache.flush()
+    }
+}
+
+/**
+ * Reads the Spotify library ahead of the listener, the desktop's counterpart of the phone's
+ * `SpotifyPrefetch`: once per run, a moment after start, the playlist list is read and kept, every
+ * playlist with nothing kept has its tracks kept (matched where a lookup already found them), and
+ * the most recent ones are matched within a budget — every match is a YouTube Music search.
+ * A playlist open on screen ([isOpen]) is left to its page.
+ */
+internal object DesktopSpotifyPrefetch {
+    private const val SETTLE_MS = 6_000L
+    private const val MATCH_PLAYLISTS = 10
+    private const val MATCH_BUDGET = 500
+    private const val MAX_PLAYLISTS = 50
+    private const val SAVE_EVERY = 20
+
+    private val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.IO)
+    private var job: kotlinx.coroutines.Job? = null
+
+    fun start(isOpen: (String) -> Boolean) {
+        if (job?.isActive == true) return
+        job = scope.launch {
+            kotlinx.coroutines.delay(SETTLE_MS)
+            try {
+                run(isOpen)
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                DesktopTrackLog.log("spotify prefetch stopped: ${e.message}")
+            } finally {
+                DesktopSpotifyCache.flush()
+            }
+        }
+    }
+
+    fun stop() {
+        job?.cancel()
+        job = null
+    }
+
+    private suspend fun run(isOpen: (String) -> Boolean) {
+        val playlists = runCatching { SpotifyLibrary.playlists() }.getOrNull()
+            ?.also(DesktopSpotifyCache::savePlaylists)
+            ?: DesktopSpotifyCache.playlists()
+            ?: return
+        val budget = java.util.concurrent.atomic.AtomicInteger(MATCH_BUDGET)
+        playlists.take(MAX_PLAYLISTS).forEachIndexed { index, playlist ->
+            if (isOpen(playlist.id)) return@forEachIndexed
+            val kept = DesktopSpotifyCache.playlistRows(playlist.id)
+            val matchThis = index < MATCH_PLAYLISTS && budget.get() > 0
+            if (!kept.isNullOrEmpty() && (!matchThis || kept.none { it.isMatchPending })) return@forEachIndexed
+            val tracks = runCatching { SpotifyLibrary.tracks(playlist.id) }.getOrNull() ?: return@forEachIndexed
+            if (tracks.isEmpty()) return@forEachIndexed
+            val rows = tracks.map { track ->
+                DesktopSpotifyCache.getMatch(track.id)
+                    ?.let { it.copy(thumbnailUrl = it.thumbnailUrl ?: track.imageUrl) }
+                    ?: track.asPendingSong()
+            }.toMutableList()
+            fun save() {
+                if (isOpen(playlist.id)) return
+                DesktopSpotifyCache.savePlaylistRows(playlist.id, synchronized(rows) { rows.toList() })
+            }
+            save()
+            if (!matchThis) return@forEachIndexed
+            val gate = Semaphore(2)
+            val done = java.util.concurrent.atomic.AtomicInteger()
+            coroutineScope {
+                rows.indices.filter { rows[it].isMatchPending }.forEach { i ->
+                    launch {
+                        gate.withPermit {
+                            if (isOpen(playlist.id) || budget.decrementAndGet() < 0) return@withPermit
+                            val track = tracks[i]
+                            val match = runCatching { spotifyTrackMatcher.match(track) }.getOrNull()
+                                .let { it as? TrackMatch.Found }?.song
+                                ?.takeIf { !it.isUnresolvedSpotify }
+                            match?.let { DesktopSpotifyCache.putMatch(track.id, it) }
+                            val row = match?.copy(thumbnailUrl = match.thumbnailUrl ?: track.imageUrl)
+                                ?: track.asPendingSong().copy(videoId = SPOTIFY_MISSING_PREFIX + track.id)
+                            synchronized(rows) { rows[i] = row }
+                            if (done.incrementAndGet() % SAVE_EVERY == 0) save()
+                        }
+                    }
+                }
+            }
+            save()
+        }
     }
 }

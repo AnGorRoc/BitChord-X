@@ -1,5 +1,7 @@
 package com.music.bitchord.desktop
 
+import com.music.bitchord.data.BrowseCache
+import com.music.bitchord.data.BrowsePrefetcher
 import com.music.bitchord.data.YtMusicRepository
 import com.music.bitchord.data.innertube.Innertube
 import com.music.bitchord.data.model.ArtistPage
@@ -57,23 +59,38 @@ object DesktopSearchClient {
     /** An album, playlist or artist song list, in the shape the desktop's collection page draws. */
     suspend fun browse(browseId: String, fallback: BrowseItem? = null): Result<DesktopCollection> =
         YtMusicRepository.browseSongs(browseId).map { page ->
-            val header = page.header
-            val type = fallback?.type?.takeIf { it != BrowseType.OTHER } ?: browseTypeOf(browseId)
-            DesktopCollection(
-                browseId = browseId,
-                title = header?.title?.takeIf(String::isNotBlank)
-                    ?: fallback?.title?.takeIf(String::isNotBlank)
-                    ?: "Collection",
-                subtitle = header?.subtitle?.takeIf(String::isNotBlank) ?: fallback?.subtitle.orEmpty(),
-                thumbnailUrl = header?.thumbnailUrl ?: fallback?.thumbnailUrl,
-                type = type,
-                songs = page.songs,
-                continuation = page.continuation,
-                owned = page.owned,
-                // An album page names other releases and similar artists; the page itself is not one.
-                sections = if (type == BrowseType.ALBUM) page.sections.withoutRelease(browseId) else emptyList(),
-            )
+            // Longer than one response: read whole behind the page, once, so the next open has
+            // every row at once instead of paging again.
+            if (page.continuation != null) BrowsePrefetcher.warmCollectionNow(browseId)
+            collectionOf(browseId, page, fallback)
         }
+
+    /** The album or playlist kept from an earlier read, every row of it, at any age — see [BrowseCache]. */
+    fun cachedCollection(browseId: String, fallback: BrowseItem? = null): DesktopCollection? =
+        YtMusicRepository.cachedCollection(browseId)?.let { collectionOf(browseId, it.value, fallback) }
+
+    /** The album or playlist read whole and kept: what checks a page opened from [cachedCollection]. */
+    suspend fun collectionFull(browseId: String, fallback: BrowseItem? = null): Result<DesktopCollection> =
+        YtMusicRepository.collectionFull(browseId).map { collectionOf(browseId, it, fallback) }
+
+    private fun collectionOf(browseId: String, page: YtMusicRepository.SongPage, fallback: BrowseItem?): DesktopCollection {
+        val header = page.header
+        val type = fallback?.type?.takeIf { it != BrowseType.OTHER } ?: browseTypeOf(browseId)
+        return DesktopCollection(
+            browseId = browseId,
+            title = header?.title?.takeIf(String::isNotBlank)
+                ?: fallback?.title?.takeIf(String::isNotBlank)
+                ?: "Collection",
+            subtitle = header?.subtitle?.takeIf(String::isNotBlank) ?: fallback?.subtitle.orEmpty(),
+            thumbnailUrl = header?.thumbnailUrl ?: fallback?.thumbnailUrl,
+            type = type,
+            songs = page.songs,
+            continuation = page.continuation,
+            owned = page.owned,
+            // An album page names other releases and similar artists; the page itself is not one.
+            sections = if (type == BrowseType.ALBUM) page.sections.withoutRelease(browseId) else emptyList(),
+        )
+    }
 
     /** The rows after a collection's first page, and the token after those. */
     suspend fun moreCollectionSongs(
@@ -104,6 +121,13 @@ object DesktopSearchClient {
     suspend fun rate(videoId: String, status: LikeStatus): Result<Unit> = YtMusicRepository.rate(videoId, status)
 
     suspend fun artistPage(browseId: String): Result<ArtistPage> = YtMusicRepository.artistPage(browseId)
+
+    /** The artist's page, its landing handed to [onLanding] first when nothing whole is kept. */
+    suspend fun artistPage(browseId: String, onLanding: (ArtistPage) -> Unit): Result<ArtistPage> =
+        YtMusicRepository.artistPage(browseId, onLanding = onLanding)
+
+    /** What is kept of the artist's page, at any age — see [YtMusicRepository.cachedArtist]. */
+    fun cachedArtist(browseId: String): BrowseCache.Stored<ArtistPage>? = YtMusicRepository.cachedArtist(browseId)
 
     suspend fun setSubscribed(channelId: String, subscribed: Boolean): Result<Unit> =
         YtMusicRepository.setSubscribed(channelId, subscribed)

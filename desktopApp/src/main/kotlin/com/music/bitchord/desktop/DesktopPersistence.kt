@@ -34,6 +34,7 @@ class DesktopPersistence {
             }
             com.music.bitchord.data.stats.ArtistFacts.replayGenresEnabledProvider = { true }
             com.music.bitchord.data.stats.ArtistFacts.init(baseDir.resolve("artist_facts").toFile())
+            com.music.bitchord.data.BrowseCache.init(baseDir.resolve("browse_cache").toFile())
         } catch (_: Throwable) {}
         try {
             com.music.bitchord.data.lyrics.PaxSenix.apiKey = paxSenixApiKey()
