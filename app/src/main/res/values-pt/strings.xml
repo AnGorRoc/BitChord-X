@@ -1703,4 +1703,26 @@
     <string name="offline_music">Músicas offline</string>
     <string name="offline_music_subtitle">Músicas baixadas e em cache</string>
     <string name="offline_music_empty">Ainda não há nada salvo neste celular. Baixe músicas, ou toque-as uma vez online, para guardar uma cópia.</string>
+    <string name="settings_effects_performance">Efeitos e desempenho</string>
+    <string name="settings_player">Player</string>
+    <string name="settings_lyrics">Letras</string>
+    <string name="settings_sound">Som</string>
+    <string name="settings_output_dac">Saída e DAC</string>
+    <string name="settings_privacy_data">Privacidade e dados</string>
+    <string name="listen_together_this_device">Este dispositivo</string>
+    <string name="quick_settings">Ajustes rápidos</string>
+    <string name="quick_settings_edit">Editar ajustes rápidos</string>
+    <string name="quick_settings_add">Adicionar ajustes rápidos</string>
+    <string name="quick_settings_pick_hint">Escolha até %1$d para ficarem no topo dos Ajustes.</string>
+    <string name="on">Ativado</string>
+    <string name="data_saver">Economia de dados</string>
+    <string name="data_saver_subtitle">Nos dados móveis: qualidade mais baixa e sem capas animadas</string>
+    <string name="edit">Editar</string>
+    <string name="quick_settings_pinned">Fixados</string>
+    <string name="quick_settings_more">Mais</string>
+    <string name="move_up">Mover para cima</string>
+    <string name="move_down">Mover para baixo</string>
+    <string name="quick_settings_hold_hint">Toque para mudar. Segure para abrir os ajustes.</string>
+    <string name="dolby_atmos_no_source">Nenhuma das suas fontes tem Dolby Atmos. O YouTube não oferece; adicione em Fontes um addon que tenha.</string>
+    <string name="dolby_atmos_needs_source">Falta uma fonte</string>
 </resources>

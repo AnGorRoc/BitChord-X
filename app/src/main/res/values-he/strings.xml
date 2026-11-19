@@ -1704,4 +1704,26 @@
     <string name="offline_music">מוזיקה לא מקוונת</string>
     <string name="offline_music_subtitle">שירים שהורדו ושמורים במטמון</string>
     <string name="offline_music_empty">עדיין לא נשמר דבר בטלפון הזה. הורידו שירים, או נגנו אותם פעם אחת באינטרנט, כדי לשמור עותק.</string>
+    <string name="settings_effects_performance">אפקטים וביצועים</string>
+    <string name="settings_player">נגן</string>
+    <string name="settings_lyrics">מילים</string>
+    <string name="settings_sound">צליל</string>
+    <string name="settings_output_dac">פלט ו-DAC</string>
+    <string name="settings_privacy_data">פרטיות ונתונים</string>
+    <string name="listen_together_this_device">המכשיר הזה</string>
+    <string name="quick_settings">הגדרות מהירות</string>
+    <string name="quick_settings_edit">עריכת הגדרות מהירות</string>
+    <string name="quick_settings_add">הוספת הגדרות מהירות</string>
+    <string name="quick_settings_pick_hint">אפשר לבחור עד %1$d שיופיעו בראש ההגדרות.</string>
+    <string name="on">מופעל</string>
+    <string name="data_saver">חיסכון בנתונים</string>
+    <string name="data_saver_subtitle">בנתונים סלולריים: האיכות הנמוכה ביותר וללא עטיפות מונפשות</string>
+    <string name="edit">עריכה</string>
+    <string name="quick_settings_pinned">מוצמדים</string>
+    <string name="quick_settings_more">עוד</string>
+    <string name="move_up">העברה למעלה</string>
+    <string name="move_down">העברה למטה</string>
+    <string name="quick_settings_hold_hint">הקשה לשינוי. לחיצה ארוכה פותחת את ההגדרות.</string>
+    <string name="dolby_atmos_no_source">לאף אחד מהמקורות שלך אין Dolby Atmos. ב-YouTube אין את זה; אפשר להוסיף תוסף שיש בו ב׳מקורות׳.</string>
+    <string name="dolby_atmos_needs_source">צריך מקור</string>
 </resources>

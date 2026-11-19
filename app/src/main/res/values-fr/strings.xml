@@ -1699,4 +1699,26 @@
     <string name="offline_music">Musique hors ligne</string>
     <string name="offline_music_subtitle">Titres téléchargés et en cache</string>
     <string name="offline_music_empty">Rien n\'est encore enregistré sur ce téléphone. Téléchargez des titres, ou écoutez-les une fois en ligne, pour en garder une copie.</string>
+    <string name="settings_effects_performance">Effets et performances</string>
+    <string name="settings_player">Lecteur</string>
+    <string name="settings_lyrics">Paroles</string>
+    <string name="settings_sound">Son</string>
+    <string name="settings_output_dac">Sortie et DAC</string>
+    <string name="settings_privacy_data">Confidentialité et données</string>
+    <string name="listen_together_this_device">Cet appareil</string>
+    <string name="quick_settings">Réglages rapides</string>
+    <string name="quick_settings_edit">Modifier les réglages rapides</string>
+    <string name="quick_settings_add">Ajouter des réglages rapides</string>
+    <string name="quick_settings_pick_hint">Choisissez-en jusqu’à %1$d à garder en haut des Réglages.</string>
+    <string name="on">Activé</string>
+    <string name="data_saver">Économiseur de données</string>
+    <string name="data_saver_subtitle">En données mobiles : qualité la plus basse et pas de pochettes animées</string>
+    <string name="edit">Modifier</string>
+    <string name="quick_settings_pinned">Épinglés</string>
+    <string name="quick_settings_more">Plus</string>
+    <string name="move_up">Monter</string>
+    <string name="move_down">Descendre</string>
+    <string name="quick_settings_hold_hint">Touchez pour changer. Maintenez pour ouvrir ses réglages.</string>
+    <string name="dolby_atmos_no_source">Aucune de vos sources ne propose Dolby Atmos. YouTube ne l’offre pas ; ajoutez un addon qui l’a dans Sources.</string>
+    <string name="dolby_atmos_needs_source">Source requise</string>
 </resources>

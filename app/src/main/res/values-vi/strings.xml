@@ -1617,4 +1617,26 @@
     <string name="offline_music">Nhạc ngoại tuyến</string>
     <string name="offline_music_subtitle">Bài hát đã tải xuống và đã lưu đệm</string>
     <string name="offline_music_empty">Chưa có gì được lưu trên điện thoại này. Hãy tải bài hát xuống, hoặc phát một lần khi có mạng, để giữ một bản sao.</string>
+    <string name="settings_effects_performance">Hiệu ứng và hiệu năng</string>
+    <string name="settings_player">Trình phát</string>
+    <string name="settings_lyrics">Lời bài hát</string>
+    <string name="settings_sound">Âm thanh</string>
+    <string name="settings_output_dac">Đầu ra và DAC</string>
+    <string name="settings_privacy_data">Quyền riêng tư và dữ liệu</string>
+    <string name="listen_together_this_device">Thiết bị này</string>
+    <string name="quick_settings">Cài đặt nhanh</string>
+    <string name="quick_settings_edit">Sửa cài đặt nhanh</string>
+    <string name="quick_settings_add">Thêm cài đặt nhanh</string>
+    <string name="quick_settings_pick_hint">Chọn tối đa %1$d mục để giữ ở đầu Cài đặt.</string>
+    <string name="on">Bật</string>
+    <string name="data_saver">Tiết kiệm dữ liệu</string>
+    <string name="data_saver_subtitle">Khi dùng dữ liệu di động: chất lượng thấp nhất và không có ảnh bìa động</string>
+    <string name="edit">Sửa</string>
+    <string name="quick_settings_pinned">Đã ghim</string>
+    <string name="quick_settings_more">Thêm</string>
+    <string name="move_up">Lên trên</string>
+    <string name="move_down">Xuống dưới</string>
+    <string name="quick_settings_hold_hint">Chạm để đổi. Nhấn giữ để mở cài đặt.</string>
+    <string name="dolby_atmos_no_source">Không nguồn nào của bạn có Dolby Atmos. YouTube không hỗ trợ; hãy thêm addon có hỗ trợ trong Nguồn.</string>
+    <string name="dolby_atmos_needs_source">Cần nguồn</string>
 </resources>

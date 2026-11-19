@@ -1533,4 +1533,26 @@
     <string name="offline_music">오프라인 음악</string>
     <string name="offline_music_subtitle">다운로드한 곡과 캐시된 곡</string>
     <string name="offline_music_empty">이 휴대전화에는 아직 저장된 항목이 없습니다. 곡을 다운로드하거나 온라인에서 한 번 재생하면 사본이 남습니다.</string>
+    <string name="settings_effects_performance">효과 및 성능</string>
+    <string name="settings_player">플레이어</string>
+    <string name="settings_lyrics">가사</string>
+    <string name="settings_sound">사운드</string>
+    <string name="settings_output_dac">출력 및 DAC</string>
+    <string name="settings_privacy_data">개인정보 및 데이터</string>
+    <string name="listen_together_this_device">이 기기</string>
+    <string name="quick_settings">빠른 설정</string>
+    <string name="quick_settings_edit">빠른 설정 편집</string>
+    <string name="quick_settings_add">빠른 설정 추가</string>
+    <string name="quick_settings_pick_hint">설정 맨 위에 둘 항목을 최대 %1$d개 고르세요.</string>
+    <string name="on">켜짐</string>
+    <string name="data_saver">데이터 절약</string>
+    <string name="data_saver_subtitle">모바일 데이터 사용 시: 가장 낮은 음질, 움직이는 커버 없음</string>
+    <string name="edit">편집</string>
+    <string name="quick_settings_pinned">고정됨</string>
+    <string name="quick_settings_more">더 보기</string>
+    <string name="move_up">위로 이동</string>
+    <string name="move_down">아래로 이동</string>
+    <string name="quick_settings_hold_hint">탭해서 바꾸고, 길게 눌러 설정을 엽니다.</string>
+    <string name="dolby_atmos_no_source">Dolby Atmos를 제공하는 소스가 없어요. YouTube는 지원하지 않으니 소스에서 지원하는 애드온을 추가하세요.</string>
+    <string name="dolby_atmos_needs_source">소스 필요</string>
 </resources>

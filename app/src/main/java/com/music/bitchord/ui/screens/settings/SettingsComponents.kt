@@ -849,30 +849,38 @@ internal fun SegmentedControl(
  * they stay on the main page, where they always were.
  */
 enum class SettingsCategory(@param:StringRes val title: Int) {
-    DOWNLOADS(R.string.downloads),
-    PLAYBACK(R.string.playback),
-    CONTENT_PREFERENCES(R.string.content_preferences),
+    AUDIO_QUALITY(R.string.audio_quality),
     APPEARANCE(R.string.appearance),
-    PERFORMANCE(R.string.performance),
-    LOCAL_MUSIC(R.string.local_music),
+    EFFECTS_PERFORMANCE(R.string.settings_effects_performance),
+    PLAYER(R.string.settings_player),
+    LYRICS(R.string.settings_lyrics),
+    PLAYBACK(R.string.playback),
+    SOUND(R.string.settings_sound),
+    OUTPUT(R.string.settings_output_dac),
+    CONTENT_PREFERENCES(R.string.content_preferences),
+    DOWNLOADS(R.string.downloads),
     STORAGE(R.string.storage),
-    YOUR_DATA(R.string.your_data),
-    MISCELLANEOUS(R.string.miscellaneous),
+    LOCAL_MUSIC(R.string.local_music),
+    PRIVACY_DATA(R.string.settings_privacy_data),
     LANGUAGE(R.string.language),
     ADVANCED(R.string.advanced_options),
     ;
 
     val icon: ImageVector
         get() = when (this) {
-            DOWNLOADS -> SfIcons.Download
-            PLAYBACK -> SfIcons.PlayCircle
-            CONTENT_PREFERENCES -> SfIcons.Video
+            AUDIO_QUALITY -> SfIcons.GraphicEq
             APPEARANCE -> SfIcons.Appearance
-            PERFORMANCE -> SfIcons.Performance
-            LOCAL_MUSIC -> SfIcons.LibraryMusic
+            EFFECTS_PERFORMANCE -> SfIcons.Performance
+            PLAYER -> SfIcons.PlayCircle
+            LYRICS -> SfIcons.Notes
+            PLAYBACK -> SfIcons.PlaylistPlay
+            SOUND -> SfIcons.Tune
+            OUTPUT -> SfIcons.Usb
+            CONTENT_PREFERENCES -> SfIcons.Video
+            DOWNLOADS -> SfIcons.Download
             STORAGE -> SfIcons.Storage
-            YOUR_DATA -> SfIcons.YourData
-            MISCELLANEOUS -> SfIcons.Miscellaneous
+            LOCAL_MUSIC -> SfIcons.LibraryMusic
+            PRIVACY_DATA -> SfIcons.YourData
             LANGUAGE -> SfIcons.Language
             ADVANCED -> SfIcons.Advanced
         }

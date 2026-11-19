@@ -1539,4 +1539,26 @@
     <string name="offline_music">Offline music</string>
     <string name="offline_music_subtitle">Downloaded and cached songs</string>
     <string name="offline_music_empty">Nothing is saved on this phone yet. Download songs, or play them once while online, to keep a copy.</string>
+    <string name="settings_effects_performance">Effects and performance</string>
+    <string name="settings_player">Player</string>
+    <string name="settings_lyrics">Lyrics</string>
+    <string name="settings_sound">Sound</string>
+    <string name="settings_output_dac">Output and DAC</string>
+    <string name="settings_privacy_data">Privacy and data</string>
+    <string name="listen_together_this_device">This device</string>
+    <string name="quick_settings">Quick settings</string>
+    <string name="quick_settings_edit">Edit quick settings</string>
+    <string name="quick_settings_add">Add quick settings</string>
+    <string name="quick_settings_pick_hint">Choose up to %1$d to keep at the top of Settings.</string>
+    <string name="on">On</string>
+    <string name="data_saver">Data saver</string>
+    <string name="data_saver_subtitle">On mobile data: lowest quality and no animated covers</string>
+    <string name="edit">Edit</string>
+    <string name="quick_settings_pinned">Pinned</string>
+    <string name="quick_settings_more">More</string>
+    <string name="move_up">Move up</string>
+    <string name="move_down">Move down</string>
+    <string name="quick_settings_hold_hint">Tap to change. Hold to open its settings.</string>
+    <string name="dolby_atmos_no_source">None of your sources has Dolby Atmos. YouTube doesn’t offer it; add an addon that does under Sources.</string>
+    <string name="dolby_atmos_needs_source">Needs a source</string>
 </resources>

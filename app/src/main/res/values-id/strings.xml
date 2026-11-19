@@ -1677,4 +1677,26 @@
     <string name="offline_music">Musik offline</string>
     <string name="offline_music_subtitle">Lagu yang diunduh dan di-cache</string>
     <string name="offline_music_empty">Belum ada yang tersimpan di ponsel ini. Unduh lagu, atau putar sekali saat online, untuk menyimpan salinannya.</string>
+    <string name="settings_effects_performance">Efek dan performa</string>
+    <string name="settings_player">Pemutar</string>
+    <string name="settings_lyrics">Lirik</string>
+    <string name="settings_sound">Suara</string>
+    <string name="settings_output_dac">Output dan DAC</string>
+    <string name="settings_privacy_data">Privasi dan data</string>
+    <string name="listen_together_this_device">Perangkat ini</string>
+    <string name="quick_settings">Setelan cepat</string>
+    <string name="quick_settings_edit">Edit setelan cepat</string>
+    <string name="quick_settings_add">Tambah setelan cepat</string>
+    <string name="quick_settings_pick_hint">Pilih hingga %1$d untuk ditaruh paling atas di Setelan.</string>
+    <string name="on">Aktif</string>
+    <string name="data_saver">Hemat data</string>
+    <string name="data_saver_subtitle">Saat data seluler: kualitas terendah dan tanpa sampul animasi</string>
+    <string name="edit">Edit</string>
+    <string name="quick_settings_pinned">Disematkan</string>
+    <string name="quick_settings_more">Lainnya</string>
+    <string name="move_up">Pindah ke atas</string>
+    <string name="move_down">Pindah ke bawah</string>
+    <string name="quick_settings_hold_hint">Ketuk untuk mengubah. Tahan untuk membuka setelannya.</string>
+    <string name="dolby_atmos_no_source">Tidak ada sumber Anda yang punya Dolby Atmos. YouTube tidak menyediakannya; tambahkan addon yang punya di Sumber.</string>
+    <string name="dolby_atmos_needs_source">Perlu sumber</string>
 </resources>

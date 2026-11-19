@@ -636,6 +636,13 @@ object AppSettings {
      */
     val tintWithNowPlaying = MutableStateFlow(false)
 
+    /**
+     * The settings pinned to the top of Settings, by name, in the order chosen
+     * (at most six). Names, not the UI's own type, so this file stays free of it;
+     * a name the app no longer knows is skipped where they are drawn.
+     */
+    val quickSettings = MutableStateFlow(DEFAULT_QUICK_SETTINGS)
+
     /** Blurs unfocused lyric lines, keeping the active line sharp. */
     val lyricsBlur = MutableStateFlow(true)
 
@@ -1262,6 +1269,9 @@ object AppSettings {
         glassPerformance.value = prefs.getBoolean(KEY_GLASS_PERFORMANCE, false)
         progressiveBlur.value = prefs.getBoolean(KEY_PROGRESSIVE_BLUR, false)
         tintWithNowPlaying.value = prefs.getBoolean(KEY_TINT_WITH_NOW_PLAYING, false)
+        quickSettings.value = prefs.getString(KEY_QUICK_SETTINGS, null)
+            ?.split(',')?.filter { it.isNotBlank() }?.take(MAX_QUICK_SETTINGS)
+            ?: DEFAULT_QUICK_SETTINGS
         lyricsBlur.value = prefs.getBoolean(KEY_LYRICS_BLUR, true)
         lyricsOffsetMs.value = prefs.getInt(KEY_LYRICS_OFFSET_MS, 0)
             .coerceIn(MIN_LYRICS_OFFSET_MS, MAX_LYRICS_OFFSET_MS)
@@ -1591,6 +1601,39 @@ object AppSettings {
         prefs.edit().putString(KEY_QUALITY_CELLULAR, value.name).apply()
     }
 
+    /**
+     * Data saver, as one switch: on mobile data, the lowest quality and no
+     * animated covers. Not a setting of its own — it is those two settings at
+     * their thriftiest, so it reads as on exactly while they are, and turning it
+     * off puts back what they were before it was turned on.
+     */
+    val dataSaver: kotlinx.coroutines.flow.StateFlow<Boolean> by lazy {
+        kotlinx.coroutines.flow.combine(audioQualityCellular, canvasOverCellular) { quality, canvas ->
+            quality == AudioQuality.LOW && !canvas
+        }.stateIn(
+            kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + kotlinx.coroutines.Dispatchers.Default),
+            kotlinx.coroutines.flow.SharingStarted.Eagerly,
+            audioQualityCellular.value == AudioQuality.LOW && !canvasOverCellular.value,
+        )
+    }
+
+    fun setDataSaver(on: Boolean) {
+        if (on) {
+            prefs.edit()
+                .putString(KEY_DATA_SAVER_PREVIOUS_QUALITY, audioQualityCellular.value.name)
+                .putBoolean(KEY_DATA_SAVER_PREVIOUS_CANVAS, canvasOverCellular.value)
+                .apply()
+            setAudioQualityCellular(AudioQuality.LOW)
+            setCanvasOverCellular(false)
+        } else {
+            val quality = runCatching {
+                AudioQuality.valueOf(prefs.getString(KEY_DATA_SAVER_PREVIOUS_QUALITY, null) ?: AudioQuality.HIGH.name)
+            }.getOrDefault(AudioQuality.HIGH)
+            setAudioQualityCellular(if (quality == AudioQuality.LOW) AudioQuality.HIGH else quality)
+            setCanvasOverCellular(prefs.getBoolean(KEY_DATA_SAVER_PREVIOUS_CANVAS, false))
+        }
+    }
+
     fun setUpgradeLengthSlackSeconds(value: Int) {
         val normalized = value.coerceIn(
             MIN_UPGRADE_LENGTH_SLACK_SECONDS,
@@ -1906,6 +1949,12 @@ object AppSettings {
     fun setTintWithNowPlaying(value: Boolean) {
         tintWithNowPlaying.value = value
         prefs.edit().putBoolean(KEY_TINT_WITH_NOW_PLAYING, value).apply()
+    }
+
+    fun setQuickSettings(value: List<String>) {
+        val list = value.distinct().take(MAX_QUICK_SETTINGS)
+        quickSettings.value = list
+        prefs.edit().putString(KEY_QUICK_SETTINGS, list.joinToString(",")).apply()
     }
 
     fun setHighPerformanceMode(value: Boolean) {
@@ -2771,6 +2820,14 @@ object AppSettings {
     private const val KEY_LIQUID_GLASS = "liquid_glass"
     private const val KEY_PROGRESSIVE_BLUR = "progressive_blur"
     private const val KEY_TINT_WITH_NOW_PLAYING = "tint_with_now_playing"
+    private const val KEY_QUICK_SETTINGS = "quick_settings"
+    private const val KEY_DATA_SAVER_PREVIOUS_QUALITY = "data_saver_previous_quality"
+    private const val KEY_DATA_SAVER_PREVIOUS_CANVAS = "data_saver_previous_canvas"
+    const val MAX_QUICK_SETTINGS = 6
+    // A getter: [quickSettings] is initialised above this line, before a plain val here would be.
+    private val DEFAULT_QUICK_SETTINGS get() = listOf(
+        "OFFLINE_MODE", "DATA_SAVER", "LIQUID_GLASS", "ANIMATED_COVER", "THEME", "SYNCED_LYRICS",
+    )
     private const val KEY_LYRICS_BLUR = "lyrics_blur"
     private const val KEY_LYRICS_OFFSET_MS = "lyrics_offset_ms"
     private const val KEY_TRANSLATION_LANGUAGE = "translation_language"

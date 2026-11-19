@@ -310,7 +310,11 @@ internal fun SettingsYourDataSection(
         }
     }
 
-    SearchableSettingsGroup(search, header = stringResource(R.string.your_data)) {
+    SearchableSettingsGroup(search, header = stringResource(R.string.settings_privacy_data)) {
+        val telemetryTitle = stringResource(R.string.telemetry_diagnostics)
+        row(telemetryTitle, "telemetry", "diagnostics", "privacy", "errors", "crash", "analytics") {
+            TelemetryRow(telemetryTitle)
+        }
         val replayTitle = stringResource(R.string.replay)
         row(replayTitle, "stats", "history", "wrapped") {
             SettingsRow(

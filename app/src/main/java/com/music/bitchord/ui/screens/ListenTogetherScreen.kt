@@ -612,6 +612,8 @@ fun ListenTogetherScreen(
             )
         }
 
+        SettingsListenTogetherDeviceSection(search = remember { SettingsSearch("") })
+
         SettingsGroup(
             header = stringResource(R.string.listen_together_custom_server),
             footer = stringResource(R.string.listen_together_custom_server_footer),

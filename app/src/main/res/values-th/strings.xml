@@ -1683,4 +1683,26 @@
     <string name="offline_music">เพลงออฟไลน์</string>
     <string name="offline_music_subtitle">เพลงที่ดาวน์โหลดและแคชไว้</string>
     <string name="offline_music_empty">ยังไม่มีอะไรบันทึกไว้ในโทรศัพท์เครื่องนี้ ดาวน์โหลดเพลง หรือเล่นสักครั้งตอนออนไลน์เพื่อเก็บสำเนาไว้</string>
+    <string name="settings_effects_performance">เอฟเฟกต์และประสิทธิภาพ</string>
+    <string name="settings_player">เครื่องเล่น</string>
+    <string name="settings_lyrics">เนื้อเพลง</string>
+    <string name="settings_sound">เสียง</string>
+    <string name="settings_output_dac">เอาต์พุตและ DAC</string>
+    <string name="settings_privacy_data">ความเป็นส่วนตัวและข้อมูล</string>
+    <string name="listen_together_this_device">อุปกรณ์นี้</string>
+    <string name="quick_settings">การตั้งค่าด่วน</string>
+    <string name="quick_settings_edit">แก้ไขการตั้งค่าด่วน</string>
+    <string name="quick_settings_add">เพิ่มการตั้งค่าด่วน</string>
+    <string name="quick_settings_pick_hint">เลือกได้สูงสุด %1$d รายการเพื่อวางไว้บนสุดของการตั้งค่า</string>
+    <string name="on">เปิด</string>
+    <string name="data_saver">ประหยัดอินเทอร์เน็ต</string>
+    <string name="data_saver_subtitle">เมื่อใช้เน็ตมือถือ: คุณภาพต่ำสุดและไม่มีปกแบบเคลื่อนไหว</string>
+    <string name="edit">แก้ไข</string>
+    <string name="quick_settings_pinned">ปักหมุดแล้ว</string>
+    <string name="quick_settings_more">เพิ่มเติม</string>
+    <string name="move_up">เลื่อนขึ้น</string>
+    <string name="move_down">เลื่อนลง</string>
+    <string name="quick_settings_hold_hint">แตะเพื่อเปลี่ยน กดค้างเพื่อเปิดการตั้งค่า</string>
+    <string name="dolby_atmos_no_source">ไม่มีแหล่งไหนของคุณที่มี Dolby Atmos YouTube ไม่มีให้ เพิ่มแอดออนที่มีในหน้าแหล่งที่มา</string>
+    <string name="dolby_atmos_needs_source">ต้องมีแหล่งที่มา</string>
 </resources>

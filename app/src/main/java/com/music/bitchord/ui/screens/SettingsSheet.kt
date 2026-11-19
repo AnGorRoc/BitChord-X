@@ -132,18 +132,16 @@ fun SettingsScreen(
                 modifier = Modifier.padding(start = 20.dp, end = 20.dp, bottom = 4.dp),
             )
 
+            if (!searching) {
+                SettingsQuickSettingsGroup(onOpenSection = onOpenSection)
+            }
+
             SettingsAccountAndPartyGroup(
                 search = search,
                 signedIn = signedIn,
                 account = account,
                 onAccountScrobbling = onAccountScrobbling,
                 onListenTogether = onListenTogether,
-            )
-
-            SettingsAudioQualityGroup(
-                search = search,
-                onSources = onSources,
-                onOpenChoice = onOpenChoice,
             )
 
             if (!searching) {
@@ -156,39 +154,63 @@ fun SettingsScreen(
             }
         }
 
-        if (shows(SettingsCategory.DOWNLOADS)) {
-            SettingsDownloadsSection(search = search, onOpenChoice = onOpenChoice)
+        if (shows(SettingsCategory.AUDIO_QUALITY)) {
+            SettingsAudioQualityGroup(
+                search = search,
+                onSources = onSources,
+                onOpenChoice = onOpenChoice,
+            )
+        }
+        if (shows(SettingsCategory.APPEARANCE)) {
+            SettingsAppearanceSection(search = search, onOpenChoice = onOpenChoice)
+        }
+        if (shows(SettingsCategory.EFFECTS_PERFORMANCE)) {
+            SettingsEffectsSection(search = search)
+            SettingsPerformanceSection(search = search)
+        }
+        if (shows(SettingsCategory.PLAYER)) {
+            SettingsPlayerSection(
+                search = search,
+                windowWidth = windowWidth,
+                onSpotifyCanvasAuth = onSpotifyCanvasAuth,
+                onEditSignatureApi = onEditSignatureApi,
+            )
+        }
+        if (shows(SettingsCategory.LYRICS)) {
+            SettingsLyricsSection(
+                search = search,
+                onLyricsSources = onLyricsSources,
+                onTranslationLanguage = onTranslationLanguage,
+            )
         }
         if (shows(SettingsCategory.PLAYBACK)) {
-            SettingsPlaybackSection(
+            SettingsPlaybackSection(search = search, onOpenChoice = onOpenChoice)
+        }
+        if (shows(SettingsCategory.SOUND)) {
+            SettingsSoundSection(search = search, onEqualizer = onEqualizer)
+        }
+        if (shows(SettingsCategory.OUTPUT)) {
+            SettingsOutputSection(
                 search = search,
                 onOpenChoice = onOpenChoice,
                 onConfirmFixedVolume = onConfirmFixedVolume,
-                onEqualizer = onEqualizer,
             )
         }
         if (shows(SettingsCategory.CONTENT_PREFERENCES)) {
             SettingsContentPreferencesSection(search = search)
         }
-        if (shows(SettingsCategory.APPEARANCE)) {
-            SettingsAppearanceSection(
-                search = search,
-                windowWidth = windowWidth,
-                onOpenChoice = onOpenChoice,
-                onSpotifyCanvasAuth = onSpotifyCanvasAuth,
-                onEditSignatureApi = onEditSignatureApi,
-                onLyricsSources = onLyricsSources,
-                onTranslationLanguage = onTranslationLanguage,
-            )
+        if (shows(SettingsCategory.DOWNLOADS)) {
+            SettingsDownloadsSection(search = search, onOpenChoice = onOpenChoice)
         }
-        if (shows(SettingsCategory.PERFORMANCE)) {
-            SettingsPerformanceSection(search = search)
+        if (shows(SettingsCategory.STORAGE)) {
+            SettingsStorageSection(search = search, onOpenChoice = onOpenChoice)
         }
         if (shows(SettingsCategory.LOCAL_MUSIC)) {
             SettingsLocalMusicSection(search = search)
         }
-        if (shows(SettingsCategory.STORAGE)) {
-            SettingsStorageSection(search = search, onOpenChoice = onOpenChoice)
+        // Lives on the Listen Together page; here only so a search still finds it.
+        if (searching) {
+            SettingsListenTogetherDeviceSection(search = search)
         }
 
         if (searching && watchAvailable) {
@@ -199,11 +221,8 @@ fun SettingsScreen(
             }
         }
 
-        if (shows(SettingsCategory.YOUR_DATA)) {
+        if (shows(SettingsCategory.PRIVACY_DATA)) {
             SettingsYourDataSection(search = search, onOpenReplay = onOpenReplay)
-        }
-        if (shows(SettingsCategory.MISCELLANEOUS)) {
-            SettingsMiscellaneousSection(search = search)
         }
         if (shows(SettingsCategory.LANGUAGE)) {
             SettingsLanguageSection(search = search, onAppLanguage = onAppLanguage)

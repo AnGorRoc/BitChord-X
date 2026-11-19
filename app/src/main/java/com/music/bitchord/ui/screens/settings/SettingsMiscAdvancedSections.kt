@@ -43,111 +43,20 @@ import com.music.bitchord.ui.components.languageDisplayNameRes
 import com.music.bitchord.ui.icons.SfIcons
 import java.util.Locale
 
+/**
+ * How this device takes part in Listen Together and Connect: whether the other
+ * devices see it, whether they may drive it, and whether the player offers the
+ * party button. Shown on the Listen Together page, and in a Settings search.
+ */
 @Composable
-internal fun SettingsMiscellaneousSection(search: SettingsSearch) {
-    val swipeRightAction by AppSettings.swipeRightAction.collectAsStateWithLifecycle()
-    val swipeLeftAction by AppSettings.swipeLeftAction.collectAsStateWithLifecycle()
-    val dontRepeatSuggestions by AppSettings.dontRepeatSuggestions.collectAsStateWithLifecycle()
-    val stopOnTaskRemoved by AppSettings.stopOnTaskRemoved.collectAsStateWithLifecycle()
-    val hideVolumeBar by AppSettings.hideVolumeBar.collectAsStateWithLifecycle()
+internal fun SettingsListenTogetherDeviceSection(search: SettingsSearch) {
     val listenTogetherButton by AppSettings.showListenTogetherButton.collectAsStateWithLifecycle()
     val deviceVisible by AppSettings.deviceVisible.collectAsStateWithLifecycle()
     val deviceAcceptsControl by AppSettings.deviceAcceptsControl.collectAsStateWithLifecycle()
-    val hideStatusBarInPlayer by AppSettings.hideStatusBarInPlayer.collectAsStateWithLifecycle()
-    val showQueueHistory by AppSettings.showQueueHistory.collectAsStateWithLifecycle()
-    val hideSongStatus by AppSettings.hideSongStatus.collectAsStateWithLifecycle()
-    val telemetryLevel by AppSettings.telemetryLevel.collectAsStateWithLifecycle()
 
-    SearchableSettingsGroup(search, header = stringResource(R.string.miscellaneous)) {
-        val swipeRightTitle = stringResource(R.string.swipe_right_action)
-        val swipeHoldHint = stringResource(R.string.swipe_hold_playlist_hint)
-        row(swipeRightTitle, "swipe", "queue", "playlist", "right", stringResource(R.string.play_next_on_swipe)) {
-            val rightLabel = swipeRightAction.label()
-            SettingsRow(
-                icon = SfIcons.PlaylistPlay,
-                title = swipeRightTitle,
-                subtitle = "$rightLabel · $swipeHoldHint",
-                trailing = {
-                    SwipeActionPill(action = swipeRightAction, label = rightLabel)
-                },
-                onClick = { AppSettings.setSwipeRightAction(swipeRightAction.next()) },
-            )
-        }
-        val swipeLeftTitle = stringResource(R.string.swipe_left_action)
-        row(swipeLeftTitle, "swipe", "queue", "playlist", "left", stringResource(R.string.play_next_on_swipe)) {
-            val leftLabel = swipeLeftAction.label()
-            SettingsRow(
-                icon = SfIcons.PlaylistAdd,
-                title = swipeLeftTitle,
-                subtitle = "$leftLabel · $swipeHoldHint",
-                trailing = {
-                    SwipeActionPill(action = swipeLeftAction, label = leftLabel)
-                },
-                onClick = { AppSettings.setSwipeLeftAction(swipeLeftAction.next()) },
-            )
-        }
-        val dontRepeatSongsTitle = stringResource(R.string.dont_repeat_songs)
-        row(dontRepeatSongsTitle, "radio", "suggestions") {
-            SettingsRow(
-                icon = SfIcons.History,
-                title = dontRepeatSongsTitle,
-                subtitle = stringResource(R.string.dont_repeat_songs_subtitle),
-                trailing = {
-                    IosSwitch(
-                        checked = dontRepeatSuggestions,
-                        onCheckedChange = AppSettings::setDontRepeatSuggestions,
-                    )
-                },
-                onClick = { AppSettings.setDontRepeatSuggestions(!dontRepeatSuggestions) },
-            )
-        }
-        val stopMusicOnCloseTitle = stringResource(R.string.stop_music_on_close)
-        row(stopMusicOnCloseTitle, "notification", "background") {
-            SettingsRow(
-                icon = SfIcons.MusicOff,
-                title = stopMusicOnCloseTitle,
-                subtitle = stringResource(R.string.stop_music_on_close_subtitle),
-                trailing = {
-                    IosSwitch(
-                        checked = stopOnTaskRemoved,
-                        onCheckedChange = AppSettings::setStopOnTaskRemoved,
-                    )
-                },
-                onClick = { AppSettings.setStopOnTaskRemoved(!stopOnTaskRemoved) },
-            )
-        }
-        val hideVolumeBarTitle = stringResource(R.string.hide_volume_bar)
-        row(hideVolumeBarTitle, "volume", "player") {
-            SettingsRow(
-                icon = SfIcons.VolumeOff,
-                title = hideVolumeBarTitle,
-                subtitle = stringResource(R.string.hide_volume_bar_subtitle),
-                trailing = {
-                    IosSwitch(
-                        checked = hideVolumeBar,
-                        onCheckedChange = AppSettings::setHideVolumeBar,
-                    )
-                },
-                onClick = { AppSettings.setHideVolumeBar(!hideVolumeBar) },
-            )
-        }
-        val listenTogetherButtonTitle = stringResource(R.string.show_listen_together_button)
-        row(listenTogetherButtonTitle, "party", "jam", "output", "headphones", "player") {
-            SettingsRow(
-                icon = SfIcons.Groups,
-                title = listenTogetherButtonTitle,
-                subtitle = stringResource(R.string.show_listen_together_button_subtitle),
-                trailing = {
-                    IosSwitch(
-                        checked = listenTogetherButton,
-                        onCheckedChange = AppSettings::setShowListenTogetherButton,
-                    )
-                },
-                onClick = { AppSettings.setShowListenTogetherButton(!listenTogetherButton) },
-            )
-        }
+    SearchableSettingsGroup(search, header = stringResource(R.string.listen_together_this_device)) {
         val deviceVisibleTitle = stringResource(R.string.device_visible)
-        row(deviceVisibleTitle, "connect", "devices", "visible", "hidden", "party") {
+        row(deviceVisibleTitle, "listen together", "connect", "devices", "visible", "hidden", "party") {
             SettingsRow(
                 icon = SfIcons.Groups,
                 title = deviceVisibleTitle,
@@ -159,7 +68,7 @@ internal fun SettingsMiscellaneousSection(search: SettingsSearch) {
             )
         }
         val deviceControlTitle = stringResource(R.string.device_accepts_control)
-        row(deviceControlTitle, "connect", "devices", "control", "remote", "allow") {
+        row(deviceControlTitle, "listen together", "connect", "devices", "control", "remote", "allow") {
             SettingsRow(
                 icon = SfIcons.Groups,
                 title = deviceControlTitle,
@@ -170,58 +79,19 @@ internal fun SettingsMiscellaneousSection(search: SettingsSearch) {
                 onClick = { AppSettings.setDeviceAcceptsControl(!deviceAcceptsControl) },
             )
         }
-        val hideStatusBarTitle = stringResource(R.string.hide_status_bar_in_player)
-        row(hideStatusBarTitle, "status bar", "immersive", "fullscreen", "player") {
+        val listenTogetherButtonTitle = stringResource(R.string.show_listen_together_button)
+        row(listenTogetherButtonTitle, "listen together", "party", "jam", "output", "headphones", "player") {
             SettingsRow(
-                icon = SfIcons.WebAssetOff,
-                title = hideStatusBarTitle,
-                subtitle = stringResource(R.string.hide_status_bar_in_player_subtitle),
+                icon = SfIcons.Groups,
+                title = listenTogetherButtonTitle,
+                subtitle = stringResource(R.string.show_listen_together_button_subtitle),
                 trailing = {
                     IosSwitch(
-                        checked = hideStatusBarInPlayer,
-                        onCheckedChange = AppSettings::setHideStatusBarInPlayer,
+                        checked = listenTogetherButton,
+                        onCheckedChange = AppSettings::setShowListenTogetherButton,
                     )
                 },
-                onClick = { AppSettings.setHideStatusBarInPlayer(!hideStatusBarInPlayer) },
-            )
-        }
-        val showQueueHistoryTitle = stringResource(R.string.show_queue_history)
-        row(showQueueHistoryTitle, "player", "queue", "history", "previously played") {
-            SettingsRow(
-                icon = SfIcons.History,
-                title = showQueueHistoryTitle,
-                subtitle = stringResource(R.string.show_queue_history_subtitle),
-                trailing = {
-                    IosSwitch(
-                        checked = showQueueHistory,
-                        onCheckedChange = AppSettings::setShowQueueHistory,
-                    )
-                },
-                onClick = { AppSettings.setShowQueueHistory(!showQueueHistory) },
-            )
-        }
-        val hideSongStatusTitle = stringResource(R.string.hide_song_status)
-        row(hideSongStatusTitle, "player", "playing from", "played by") {
-            SettingsRow(
-                icon = SfIcons.VisibilityOff,
-                title = hideSongStatusTitle,
-                subtitle = stringResource(R.string.hide_song_status_subtitle),
-                trailing = {
-                    IosSwitch(
-                        checked = hideSongStatus,
-                        onCheckedChange = AppSettings::setHideSongStatus,
-                    )
-                },
-                onClick = { AppSettings.setHideSongStatus(!hideSongStatus) },
-            )
-        }
-        val telemetryTitle = stringResource(R.string.telemetry_diagnostics)
-        row(telemetryTitle, "telemetry", "diagnostics", "privacy", "errors", "crash", "analytics") {
-            SettingsRow(
-                icon = SfIcons.Info,
-                title = telemetryTitle,
-                value = telemetryLevelLabel(telemetryLevel),
-                onClick = TelemetryPrompts::openPicker,
+                onClick = { AppSettings.setShowListenTogetherButton(!listenTogetherButton) },
             )
         }
     }
@@ -249,7 +119,6 @@ internal fun SettingsLanguageSection(
 
 @Composable
 internal fun SettingsAdvancedSection(search: SettingsSearch) {
-    val context = LocalContext.current
     val smartVersionAlignment by AppSettings.smartVersionAlignment.collectAsStateWithLifecycle()
     val smartSourceAlignment by AppSettings.smartSourceAlignment.collectAsStateWithLifecycle()
     val nerdStats by AppSettings.showNerdStats.collectAsStateWithLifecycle()
@@ -295,62 +164,77 @@ internal fun SettingsAdvancedSection(search: SettingsSearch) {
                 onClick = { AppSettings.setShowNerdStats(!nerdStats) },
             )
         }
-        val appIconTitle = stringResource(R.string.app_icon)
-        row(appIconTitle, "icon", "launcher", "logo") {
-            var selectedIcon by remember { mutableStateOf(AppIcon.current(context)) }
-            SettingsRow(icon = SfIcons.Apps, title = appIconTitle)
-            Row(
+    }
+}
+
+/** The telemetry level, as a row for the privacy section. */
+@Composable
+internal fun TelemetryRow(title: String) {
+    val telemetryLevel by AppSettings.telemetryLevel.collectAsStateWithLifecycle()
+    SettingsRow(
+        icon = SfIcons.Info,
+        title = title,
+        value = telemetryLevelLabel(telemetryLevel),
+        onClick = TelemetryPrompts::openPicker,
+    )
+}
+
+/** The launcher icon choices, each previewed, the one in use highlighted. */
+@Composable
+internal fun AppIconPicker(title: String) {
+    val context = LocalContext.current
+    var selectedIcon by remember { mutableStateOf(AppIcon.current(context)) }
+    SettingsRow(icon = SfIcons.Apps, title = title)
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState())
+            .padding(start = ROW_INSET, end = ROW_INSET, bottom = 14.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        AppIcon.entries.forEach { option ->
+            val selected = option == selectedIcon
+            Column(
                 modifier = Modifier
-                    .fillMaxWidth()
-                    .horizontalScroll(rememberScrollState())
-                    .padding(start = ROW_INSET, end = ROW_INSET, bottom = 14.dp),
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                AppIcon.entries.forEach { option ->
-                    val selected = option == selectedIcon
-                    Column(
-                        modifier = Modifier
-                            .width(84.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .clickable {
-                                selectedIcon = option
-                                AppIcon.apply(context, option)
-                            }
-                            .padding(vertical = 6.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        val preview = option.previewRes
-                        if (preview == null) {
-                            AndroidView(
-                                factory = { ctx ->
-                                    android.widget.ImageView(ctx).apply { setImageResource(option.iconRes) }
-                                },
-                                modifier = Modifier
-                                    .size(68.dp)
-                                    .clip(RoundedCornerShape(22.dp)),
-                            )
-                        } else {
-                            Image(
-                                painter = painterResource(preview),
-                                contentDescription = null,
-                                contentScale = ContentScale.Fit,
-                                modifier = Modifier
-                                    .size(68.dp)
-                                    .scale(1.5f),
-                            )
-                        }
-                        Text(
-                            text = stringResource(option.labelRes),
-                            textAlign = TextAlign.Center,
-                            maxLines = 2,
-                            style = MaterialTheme.typography.labelMedium,
-                            color = if (selected) MaterialTheme.colorScheme.primary
-                            else MaterialTheme.colorScheme.onSurfaceVariant,
-                            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-                            modifier = Modifier.padding(top = 6.dp),
-                        )
+                    .width(84.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .clickable {
+                        selectedIcon = option
+                        AppIcon.apply(context, option)
                     }
+                    .padding(vertical = 6.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                val preview = option.previewRes
+                if (preview == null) {
+                    AndroidView(
+                        factory = { ctx ->
+                            android.widget.ImageView(ctx).apply { setImageResource(option.iconRes) }
+                        },
+                        modifier = Modifier
+                            .size(68.dp)
+                            .clip(RoundedCornerShape(22.dp)),
+                    )
+                } else {
+                    Image(
+                        painter = painterResource(preview),
+                        contentDescription = null,
+                        contentScale = ContentScale.Fit,
+                        modifier = Modifier
+                            .size(68.dp)
+                            .scale(1.5f),
+                    )
                 }
+                Text(
+                    text = stringResource(option.labelRes),
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (selected) MaterialTheme.colorScheme.primary
+                    else MaterialTheme.colorScheme.onSurfaceVariant,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+                    modifier = Modifier.padding(top = 6.dp),
+                )
             }
         }
     }

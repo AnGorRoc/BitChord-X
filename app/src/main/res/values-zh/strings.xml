@@ -1677,4 +1677,26 @@
     <string name="offline_music">离线音乐</string>
     <string name="offline_music_subtitle">已下载和已缓存的歌曲</string>
     <string name="offline_music_empty">这部手机上还没有保存任何内容。下载歌曲，或在联网时播放一次，即可保留副本。</string>
+    <string name="settings_effects_performance">效果与性能</string>
+    <string name="settings_player">播放器</string>
+    <string name="settings_lyrics">歌词</string>
+    <string name="settings_sound">声音</string>
+    <string name="settings_output_dac">输出与 DAC</string>
+    <string name="settings_privacy_data">隐私与数据</string>
+    <string name="listen_together_this_device">此设备</string>
+    <string name="quick_settings">快捷设置</string>
+    <string name="quick_settings_edit">编辑快捷设置</string>
+    <string name="quick_settings_add">添加快捷设置</string>
+    <string name="quick_settings_pick_hint">最多选择 %1$d 项，放在设置的最上方。</string>
+    <string name="on">开</string>
+    <string name="data_saver">流量节省</string>
+    <string name="data_saver_subtitle">使用移动数据时：最低音质，不播放动态封面</string>
+    <string name="edit">编辑</string>
+    <string name="quick_settings_pinned">已固定</string>
+    <string name="quick_settings_more">更多</string>
+    <string name="move_up">上移</string>
+    <string name="move_down">下移</string>
+    <string name="quick_settings_hold_hint">轻点即可更改，长按打开相应设置。</string>
+    <string name="dolby_atmos_no_source">你的来源都没有杜比全景声。YouTube 不提供；请在“来源”中添加支持它的插件。</string>
+    <string name="dolby_atmos_needs_source">需要来源</string>
 </resources>

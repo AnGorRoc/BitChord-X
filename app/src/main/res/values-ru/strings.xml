@@ -1727,4 +1727,26 @@
     <string name="offline_music">Музыка офлайн</string>
     <string name="offline_music_subtitle">Загруженные и кэшированные песни</string>
     <string name="offline_music_empty">На этом телефоне пока ничего не сохранено. Скачайте песни или воспроизведите их один раз онлайн, чтобы сохранить копию.</string>
+    <string name="settings_effects_performance">Эффекты и производительность</string>
+    <string name="settings_player">Плеер</string>
+    <string name="settings_lyrics">Тексты песен</string>
+    <string name="settings_sound">Звук</string>
+    <string name="settings_output_dac">Вывод и ЦАП</string>
+    <string name="settings_privacy_data">Конфиденциальность и данные</string>
+    <string name="listen_together_this_device">Это устройство</string>
+    <string name="quick_settings">Быстрые настройки</string>
+    <string name="quick_settings_edit">Изменить быстрые настройки</string>
+    <string name="quick_settings_add">Добавить быстрые настройки</string>
+    <string name="quick_settings_pick_hint">Выберите до %1$d, чтобы они были вверху настроек.</string>
+    <string name="on">Вкл.</string>
+    <string name="data_saver">Экономия трафика</string>
+    <string name="data_saver_subtitle">В мобильной сети: самое низкое качество и без анимированных обложек</string>
+    <string name="edit">Изменить</string>
+    <string name="quick_settings_pinned">Закреплённые</string>
+    <string name="quick_settings_more">Ещё</string>
+    <string name="move_up">Выше</string>
+    <string name="move_down">Ниже</string>
+    <string name="quick_settings_hold_hint">Нажмите, чтобы изменить. Удерживайте, чтобы открыть настройки.</string>
+    <string name="dolby_atmos_no_source">Ни в одном из ваших источников нет Dolby Atmos. YouTube его не даёт; добавьте в «Источниках» аддон, где он есть.</string>
+    <string name="dolby_atmos_needs_source">Нужен источник</string>
 </resources>

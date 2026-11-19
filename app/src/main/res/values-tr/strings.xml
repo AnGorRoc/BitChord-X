@@ -1655,4 +1655,26 @@
     <string name="offline_music">Çevrimdışı müzik</string>
     <string name="offline_music_subtitle">İndirilen ve önbelleğe alınan şarkılar</string>
     <string name="offline_music_empty">Bu telefonda henüz hiçbir şey kayıtlı değil. Bir kopya saklamak için şarkı indirin ya da çevrimiçiyken bir kez çalın.</string>
+    <string name="settings_effects_performance">Efektler ve performans</string>
+    <string name="settings_player">Oynatıcı</string>
+    <string name="settings_lyrics">Şarkı sözleri</string>
+    <string name="settings_sound">Ses</string>
+    <string name="settings_output_dac">Çıkış ve DAC</string>
+    <string name="settings_privacy_data">Gizlilik ve veriler</string>
+    <string name="listen_together_this_device">Bu cihaz</string>
+    <string name="quick_settings">Hızlı ayarlar</string>
+    <string name="quick_settings_edit">Hızlı ayarları düzenle</string>
+    <string name="quick_settings_add">Hızlı ayar ekle</string>
+    <string name="quick_settings_pick_hint">Ayarlar’ın en üstünde durması için en fazla %1$d tane seç.</string>
+    <string name="on">Açık</string>
+    <string name="data_saver">Veri tasarrufu</string>
+    <string name="data_saver_subtitle">Mobil veride: en düşük kalite ve hareketli kapak yok</string>
+    <string name="edit">Düzenle</string>
+    <string name="quick_settings_pinned">Sabitlenenler</string>
+    <string name="quick_settings_more">Diğer</string>
+    <string name="move_up">Yukarı taşı</string>
+    <string name="move_down">Aşağı taşı</string>
+    <string name="quick_settings_hold_hint">Değiştirmek için dokun. Ayarlarını açmak için basılı tut.</string>
+    <string name="dolby_atmos_no_source">Kaynaklarından hiçbirinde Dolby Atmos yok. YouTube sunmuyor; Kaynaklar’dan bunu sunan bir eklenti ekle.</string>
+    <string name="dolby_atmos_needs_source">Kaynak gerekli</string>
 </resources>

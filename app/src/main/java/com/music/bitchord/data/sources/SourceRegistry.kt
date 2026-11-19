@@ -322,6 +322,16 @@ object SourceRegistry {
         configs.filter { it.enabled && it.isComplete }
 
     /**
+     * Whether any source in use could hand over a Dolby Atmos mix: addons and
+     * modules can, when what they front has one. YouTube, JioSaavn and the
+     * Tidal/Monochrome instances never do — they serve stereo only.
+     */
+    fun mayServeDolbyAtmos(configs: List<SourceConfig>): Boolean =
+        enabledConfigs(configs).any { it.kind in ATMOS_CAPABLE_KINDS }
+
+    private val ATMOS_CAPABLE_KINDS = setOf(SourceKind.ADDON, SourceKind.CUSTOM_MODULE, SourceKind.MODULE)
+
+    /**
      * [active], minus the sources the ceiling on the connection in hand does
      * not pay for — see [AudioQuality.permits].
      *

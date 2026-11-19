@@ -1678,4 +1678,26 @@
     <string name="offline_music">オフライン音楽</string>
     <string name="offline_music_subtitle">ダウンロード済みとキャッシュ済みの曲</string>
     <string name="offline_music_empty">このスマートフォンにはまだ何も保存されていません。曲をダウンロードするか、オンラインで一度再生するとコピーが残ります。</string>
+    <string name="settings_effects_performance">エフェクトとパフォーマンス</string>
+    <string name="settings_player">プレーヤー</string>
+    <string name="settings_lyrics">歌詞</string>
+    <string name="settings_sound">サウンド</string>
+    <string name="settings_output_dac">出力と DAC</string>
+    <string name="settings_privacy_data">プライバシーとデータ</string>
+    <string name="listen_together_this_device">このデバイス</string>
+    <string name="quick_settings">クイック設定</string>
+    <string name="quick_settings_edit">クイック設定を編集</string>
+    <string name="quick_settings_add">クイック設定を追加</string>
+    <string name="quick_settings_pick_hint">設定の一番上に置く項目を最大 %1$d 個選べます。</string>
+    <string name="on">オン</string>
+    <string name="data_saver">データセーバー</string>
+    <string name="data_saver_subtitle">モバイルデータ通信時: 最低音質で、アニメーションのジャケットなし</string>
+    <string name="edit">編集</string>
+    <string name="quick_settings_pinned">固定済み</string>
+    <string name="quick_settings_more">その他</string>
+    <string name="move_up">上へ移動</string>
+    <string name="move_down">下へ移動</string>
+    <string name="quick_settings_hold_hint">タップで変更、長押しで設定を開きます。</string>
+    <string name="dolby_atmos_no_source">Dolby Atmos を配信するソースがありません。YouTube は非対応です。ソースで対応アドオンを追加してください。</string>
+    <string name="dolby_atmos_needs_source">ソースが必要</string>
 </resources>

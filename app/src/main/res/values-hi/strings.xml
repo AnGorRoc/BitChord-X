@@ -1698,4 +1698,26 @@
     <string name="offline_music">ऑफ़लाइन संगीत</string>
     <string name="offline_music_subtitle">डाउनलोड और कैश किए गए गाने</string>
     <string name="offline_music_empty">इस फ़ोन में अभी कुछ सहेजा नहीं गया है। कॉपी रखने के लिए गाने डाउनलोड करें, या ऑनलाइन रहते हुए एक बार चलाएँ।</string>
+    <string name="settings_effects_performance">इफ़ेक्ट और परफ़ॉर्मेंस</string>
+    <string name="settings_player">प्लेयर</string>
+    <string name="settings_lyrics">बोल</string>
+    <string name="settings_sound">साउंड</string>
+    <string name="settings_output_dac">आउटपुट और DAC</string>
+    <string name="settings_privacy_data">निजता और डेटा</string>
+    <string name="listen_together_this_device">यह डिवाइस</string>
+    <string name="quick_settings">क्विक सेटिंग</string>
+    <string name="quick_settings_edit">क्विक सेटिंग बदलें</string>
+    <string name="quick_settings_add">क्विक सेटिंग जोड़ें</string>
+    <string name="quick_settings_pick_hint">सेटिंग में सबसे ऊपर रखने के लिए %1$d तक चुनें।</string>
+    <string name="on">चालू</string>
+    <string name="data_saver">डेटा सेवर</string>
+    <string name="data_saver_subtitle">मोबाइल डेटा पर: सबसे कम क्वालिटी और कोई एनिमेटेड कवर नहीं</string>
+    <string name="edit">बदलें</string>
+    <string name="quick_settings_pinned">पिन किए गए</string>
+    <string name="quick_settings_more">और</string>
+    <string name="move_up">ऊपर ले जाएं</string>
+    <string name="move_down">नीचे ले जाएं</string>
+    <string name="quick_settings_hold_hint">बदलने के लिए टैप करें। सेटिंग खोलने के लिए दबाकर रखें।</string>
+    <string name="dolby_atmos_no_source">आपके किसी भी सोर्स में Dolby Atmos नहीं है। YouTube इसे नहीं देता; सोर्स में ऐसा ऐडऑन जोड़ें जिसमें यह हो।</string>
+    <string name="dolby_atmos_needs_source">सोर्स चाहिए</string>
 </resources>

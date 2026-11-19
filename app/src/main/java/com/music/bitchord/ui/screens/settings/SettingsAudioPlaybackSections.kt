@@ -92,12 +92,15 @@ internal fun SettingsAudioQualityGroup(
     val offlineOn by AppSettings.offlineMode.collectAsStateWithLifecycle()
     val detectedOffline by AppSettings.effectiveOffline.collectAsStateWithLifecycle()
     val cellularQuality by AppSettings.audioQualityCellular.collectAsStateWithLifecycle()
+    val dataSaver by AppSettings.dataSaver.collectAsStateWithLifecycle()
     val losslessDowngrade by AppSettings.losslessDowngrade.collectAsStateWithLifecycle()
     val losslessFromStart by AppSettings.losslessFromStart.collectAsStateWithLifecycle()
     val metered by AppSettings.meteredConnection.collectAsStateWithLifecycle()
     val dolbyAtmos by AppSettings.dolbyAtmos.collectAsStateWithLifecycle()
     val directSourceStream by AppSettings.directSourceStream.collectAsStateWithLifecycle()
     val dolbyAtmosSupported = DeviceCodecs.playsDolbyAtmos
+    val sourceConfigs by com.music.bitchord.data.sources.SourceRegistry.configs.collectAsStateWithLifecycle()
+    val atmosSource = com.music.bitchord.data.sources.SourceRegistry.mayServeDolbyAtmos(sourceConfigs)
     val bitPerfectReady by BitPerfectOutput.ready.collectAsStateWithLifecycle()
     val inParty by remember {
         ListenTogether.state.map { it.inParty }.distinctUntilChanged()
@@ -154,6 +157,18 @@ internal fun SettingsAudioQualityGroup(
                 onClick = { onOpenChoice(SettingsChoiceKind.AUDIO_QUALITY_WIFI) },
             )
         }
+        val dataSaverTitle = stringResource(R.string.data_saver)
+        row(dataSaverTitle, "cellular", "mobile data", "save", "streaming quality") {
+            SettingsRow(
+                icon = SfIcons.NetworkCheck,
+                title = dataSaverTitle,
+                subtitle = stringResource(R.string.data_saver_subtitle),
+                trailing = {
+                    IosSwitch(checked = dataSaver, onCheckedChange = AppSettings::setDataSaver)
+                },
+                onClick = { AppSettings.setDataSaver(!dataSaver) },
+            )
+        }
         val onMobileDataTitle = stringResource(R.string.on_mobile_data)
         row(onMobileDataTitle, "cellular", "streaming quality") {
             SettingsRow(
@@ -201,12 +216,15 @@ internal fun SettingsAudioQualityGroup(
                     iconPainter = painterResource(R.drawable.ic_dolby_atmos),
                     title = dolbyAtmosTitle,
                     subtitle = stringResource(
-                        if (dolbyAtmosSupported) {
-                            R.string.dolby_atmos_subtitle
-                        } else {
-                            R.string.dolby_atmos_unavailable
+                        when {
+                            !dolbyAtmosSupported -> R.string.dolby_atmos_unavailable
+                            // On, and nothing to ask: say so, rather than a switch that does nothing.
+                            !atmosSource -> R.string.dolby_atmos_no_source
+                            else -> R.string.dolby_atmos_subtitle
                         },
                     ),
+                    badge = stringResource(R.string.dolby_atmos_needs_source)
+                        .takeIf { dolbyAtmosSupported && !atmosSource && dolbyAtmos },
                     enabled = dolbyAtmosSupported,
                     trailing = {
                         IosSwitch(
@@ -273,28 +291,171 @@ internal fun SettingsDownloadsSection(
     }
 }
 
+/** What plays next and how one track hands over to the next. */
 @Composable
 internal fun SettingsPlaybackSection(
     search: SettingsSearch,
     onOpenChoice: (SettingsChoiceKind) -> Unit,
-    onConfirmFixedVolume: () -> Unit,
-    onEqualizer: () -> Unit,
 ) {
     val outputStatus by AudioOutputStatus.current.collectAsStateWithLifecycle()
-    val outputPcmMode by AppSettings.outputPcmMode.collectAsStateWithLifecycle()
-    val preferUsbDac by AppSettings.preferUsbDac.collectAsStateWithLifecycle()
-    val bitPerfectMode by AppSettings.bitPerfectMode.collectAsStateWithLifecycle()
-    val bitPerfectStatus by BitPerfectOutput.status.collectAsStateWithLifecycle()
     val bitPerfectReady by BitPerfectOutput.ready.collectAsStateWithLifecycle()
-    val dacVolume by BitPerfectOutput.hardwareVolume.collectAsStateWithLifecycle()
-    val usbAllowFixedVolume by AppSettings.usbAllowFixedVolume.collectAsStateWithLifecycle()
-    val convertForLimitedDac by AppSettings.convertForLimitedDac.collectAsStateWithLifecycle()
-    val loudnessNormalization by AppSettings.loudnessNormalization.collectAsStateWithLifecycle()
-    val loudnessOffOnSpeaker by AppSettings.loudnessOffOnSpeaker.collectAsStateWithLifecycle()
     val smartFade by AppSettings.smartFadeEnabled.collectAsStateWithLifecycle()
     val crossfade by AppSettings.crossfadeSeconds.collectAsStateWithLifecycle()
     val automixPerformance by AppSettings.automixPerformanceMode.collectAsStateWithLifecycle()
     val skipSilence by AppSettings.skipSilence.collectAsStateWithLifecycle()
+    val swipeRightAction by AppSettings.swipeRightAction.collectAsStateWithLifecycle()
+    val swipeLeftAction by AppSettings.swipeLeftAction.collectAsStateWithLifecycle()
+    val dontRepeatSuggestions by AppSettings.dontRepeatSuggestions.collectAsStateWithLifecycle()
+    val stopOnTaskRemoved by AppSettings.stopOnTaskRemoved.collectAsStateWithLifecycle()
+
+    SearchableSettingsGroup(
+        search,
+        header = stringResource(R.string.playback),
+        footer = stringResource(R.string.bit_perfect_bypassed_footer).takeIf { bitPerfectReady },
+    ) {
+        val dontRepeatSongsTitle = stringResource(R.string.dont_repeat_songs)
+        row(dontRepeatSongsTitle, "radio", "suggestions") {
+            SettingsRow(
+                icon = SfIcons.History,
+                title = dontRepeatSongsTitle,
+                subtitle = stringResource(R.string.dont_repeat_songs_subtitle),
+                trailing = {
+                    IosSwitch(
+                        checked = dontRepeatSuggestions,
+                        onCheckedChange = AppSettings::setDontRepeatSuggestions,
+                    )
+                },
+                onClick = { AppSettings.setDontRepeatSuggestions(!dontRepeatSuggestions) },
+            )
+        }
+        val stopMusicOnCloseTitle = stringResource(R.string.stop_music_on_close)
+        row(stopMusicOnCloseTitle, "notification", "background") {
+            SettingsRow(
+                icon = SfIcons.MusicOff,
+                title = stopMusicOnCloseTitle,
+                subtitle = stringResource(R.string.stop_music_on_close_subtitle),
+                trailing = {
+                    IosSwitch(
+                        checked = stopOnTaskRemoved,
+                        onCheckedChange = AppSettings::setStopOnTaskRemoved,
+                    )
+                },
+                onClick = { AppSettings.setStopOnTaskRemoved(!stopOnTaskRemoved) },
+            )
+        }
+        if (!smartFade) {
+            val crossfadeTitle = stringResource(R.string.crossfade)
+            row(crossfadeTitle, "fade", "gapless") {
+                BypassedByBitPerfect(bitPerfectReady) {
+                    SliderRow(
+                        icon = SfIcons.Waves,
+                        title = crossfadeTitle,
+                        subtitle = stringResource(R.string.crossfade_subtitle),
+                        value = if (crossfade == 0) stringResource(R.string.off) else "${crossfade}s",
+                        sliderValue = crossfade.toFloat(),
+                        onSliderValue = { AppSettings.setCrossfadeSeconds(it.roundToInt()) },
+                        valueRange = 0f..12f,
+                        steps = 11,
+                    )
+                }
+            }
+        }
+        val automixTitle = stringResource(R.string.automix)
+        row(automixTitle, "crossfade", "smart fade", "mix") {
+            BypassedByBitPerfect(bitPerfectReady) {
+                SettingsRow(
+                    icon = SfIcons.AutoAwesome,
+                    title = automixTitle,
+                    subtitle = if (smartFade) {
+                        stringResource(R.string.automix_enabled_subtitle)
+                    } else {
+                        stringResource(R.string.automix_disabled_subtitle)
+                    },
+                    trailing = {
+                        IosSwitch(
+                            checked = smartFade,
+                            onCheckedChange = AppSettings::setSmartFadeEnabled,
+                        )
+                    },
+                    onClick = { AppSettings.setSmartFadeEnabled(!smartFade) },
+                )
+            }
+        }
+        // Only means anything with Automix on — see [SettingsChoiceKind.AUTOMIX_PERFORMANCE].
+        if (smartFade) {
+            val automixPerformanceTitle = stringResource(R.string.automix_performance)
+            row(automixPerformanceTitle, "cpu", "battery", divided = false) {
+                BypassedByBitPerfect(bitPerfectReady) {
+                    SettingsRow(
+                        icon = SfIcons.Tune,
+                        title = automixPerformanceTitle,
+                        subtitle = stringResource(R.string.automix_performance_subtitle),
+                        value = automixPerformance.localizedLabel(),
+                        onClick = { onOpenChoice(SettingsChoiceKind.AUTOMIX_PERFORMANCE) },
+                    )
+                }
+            }
+        }
+        val skipSilenceTitle = stringResource(R.string.skip_silence)
+        row(skipSilenceTitle, "silence") {
+            BypassedByBitPerfect(bitPerfectReady) {
+                SettingsRow(
+                    icon = SfIcons.VolumeOff,
+                    title = skipSilenceTitle,
+                    subtitle = if (outputStatus.actualEncoding == AudioFormat.ENCODING_PCM_FLOAT) {
+                        stringResource(R.string.skip_silence_float_subtitle)
+                    } else {
+                        stringResource(R.string.skip_silence_subtitle)
+                    },
+                    trailing = {
+                        IosSwitch(
+                            checked = skipSilence,
+                            onCheckedChange = AppSettings::setSkipSilence,
+                        )
+                    },
+                    onClick = { AppSettings.setSkipSilence(!skipSilence) },
+                )
+            }
+        }
+        val swipeRightTitle = stringResource(R.string.swipe_right_action)
+        val swipeHoldHint = stringResource(R.string.swipe_hold_playlist_hint)
+        row(swipeRightTitle, "swipe", "queue", "playlist", "right", stringResource(R.string.play_next_on_swipe)) {
+            val rightLabel = swipeRightAction.label()
+            SettingsRow(
+                icon = SfIcons.PlaylistPlay,
+                title = swipeRightTitle,
+                subtitle = "$rightLabel · $swipeHoldHint",
+                trailing = {
+                    SwipeActionPill(action = swipeRightAction, label = rightLabel)
+                },
+                onClick = { AppSettings.setSwipeRightAction(swipeRightAction.next()) },
+            )
+        }
+        val swipeLeftTitle = stringResource(R.string.swipe_left_action)
+        row(swipeLeftTitle, "swipe", "queue", "playlist", "left", stringResource(R.string.play_next_on_swipe)) {
+            val leftLabel = swipeLeftAction.label()
+            SettingsRow(
+                icon = SfIcons.PlaylistAdd,
+                title = swipeLeftTitle,
+                subtitle = "$leftLabel · $swipeHoldHint",
+                trailing = {
+                    SwipeActionPill(action = swipeLeftAction, label = leftLabel)
+                },
+                onClick = { AppSettings.setSwipeLeftAction(swipeLeftAction.next()) },
+            )
+        }
+    }
+}
+
+/** What is done to the sound itself on its way out. */
+@Composable
+internal fun SettingsSoundSection(
+    search: SettingsSearch,
+    onEqualizer: () -> Unit,
+) {
+    val bitPerfectReady by BitPerfectOutput.ready.collectAsStateWithLifecycle()
+    val loudnessNormalization by AppSettings.loudnessNormalization.collectAsStateWithLifecycle()
+    val loudnessOffOnSpeaker by AppSettings.loudnessOffOnSpeaker.collectAsStateWithLifecycle()
     val spatialAudio by AppSettings.spatialAudio.collectAsStateWithLifecycle()
     val playingDolbyAtmos by remember {
         NerdStats.current.map { it?.isDolbyAtmos == true }.distinctUntilChanged()
@@ -302,9 +463,91 @@ internal fun SettingsPlaybackSection(
 
     SearchableSettingsGroup(
         search,
-        header = stringResource(R.string.playback),
+        header = stringResource(R.string.settings_sound),
         footer = stringResource(R.string.bit_perfect_bypassed_footer).takeIf { bitPerfectReady },
     ) {
+        val equalizerTitle = stringResource(R.string.equalizer)
+        row(equalizerTitle, "eq", "bass", "treble") {
+            BypassedByBitPerfect(bitPerfectReady) {
+                SettingsRow(
+                    icon = SfIcons.Tune,
+                    title = equalizerTitle,
+                    subtitle = stringResource(R.string.equalizer_subtitle),
+                    onClick = onEqualizer,
+                )
+            }
+        }
+        val loudnessTitle = stringResource(R.string.loudness_normalization)
+        row(loudnessTitle, "loudness", "volume", "normalize", "replaygain", "lufs") {
+            BypassedByBitPerfect(bitPerfectReady) {
+                SettingsRow(
+                    icon = SfIcons.VolumeUp,
+                    title = loudnessTitle,
+                    subtitle = stringResource(R.string.loudness_normalization_subtitle),
+                    trailing = {
+                        IosSwitch(
+                            checked = loudnessNormalization,
+                            onCheckedChange = AppSettings::setLoudnessNormalization,
+                        )
+                    },
+                    onClick = { AppSettings.setLoudnessNormalization(!loudnessNormalization) },
+                )
+            }
+        }
+        // Only means anything with normalization on.
+        if (loudnessNormalization) {
+            val loudnessSpeakerTitle = stringResource(R.string.loudness_off_on_speaker)
+            row(loudnessSpeakerTitle, "loudness", "speaker", "normalize", divided = false) {
+                BypassedByBitPerfect(bitPerfectReady) {
+                    SettingsSubRow(
+                        title = loudnessSpeakerTitle,
+                        checked = loudnessOffOnSpeaker,
+                        onCheckedChange = AppSettings::setLoudnessOffOnSpeaker,
+                    )
+                }
+            }
+        }
+        val spatialAudioTitle = stringResource(R.string.spatial_audio)
+        row(spatialAudioTitle, "surround", "3d") {
+            BypassedByBitPerfect(bitPerfectReady) {
+                SettingsRow(
+                    icon = SfIcons.SurroundSound,
+                    title = spatialAudioTitle,
+                    subtitle = if (playingDolbyAtmos) {
+                        stringResource(R.string.spatial_audio_atmos_subtitle)
+                    } else {
+                        stringResource(R.string.spatial_audio_subtitle)
+                    },
+                    trailing = {
+                        IosSwitch(
+                            checked = spatialAudio,
+                            onCheckedChange = AppSettings::setSpatialAudio,
+                        )
+                    },
+                    onClick = { AppSettings.setSpatialAudio(!spatialAudio) },
+                )
+            }
+        }
+    }
+}
+
+/** Where the sound leaves the phone: the output path, and USB DACs. */
+@Composable
+internal fun SettingsOutputSection(
+    search: SettingsSearch,
+    onOpenChoice: (SettingsChoiceKind) -> Unit,
+    onConfirmFixedVolume: () -> Unit,
+) {
+    val outputStatus by AudioOutputStatus.current.collectAsStateWithLifecycle()
+    val outputPcmMode by AppSettings.outputPcmMode.collectAsStateWithLifecycle()
+    val preferUsbDac by AppSettings.preferUsbDac.collectAsStateWithLifecycle()
+    val bitPerfectMode by AppSettings.bitPerfectMode.collectAsStateWithLifecycle()
+    val bitPerfectStatus by BitPerfectOutput.status.collectAsStateWithLifecycle()
+    val dacVolume by BitPerfectOutput.hardwareVolume.collectAsStateWithLifecycle()
+    val usbAllowFixedVolume by AppSettings.usbAllowFixedVolume.collectAsStateWithLifecycle()
+    val convertForLimitedDac by AppSettings.convertForLimitedDac.collectAsStateWithLifecycle()
+
+    SearchableSettingsGroup(search, header = stringResource(R.string.settings_output_dac)) {
         val outputPrecisionTitle = stringResource(R.string.output_precision)
         row(outputPrecisionTitle, "pcm", "bit depth", "sample rate", "dac") {
             SettingsRow(
@@ -396,136 +639,6 @@ internal fun SettingsPlaybackSection(
                     subtitle = stringResource(R.string.convert_for_limited_dac_subtitle),
                     checked = convertForLimitedDac,
                     onCheckedChange = AppSettings::setConvertForLimitedDac,
-                )
-            }
-        }
-        val loudnessTitle = stringResource(R.string.loudness_normalization)
-        row(loudnessTitle, "loudness", "volume", "normalize", "replaygain", "lufs") {
-            BypassedByBitPerfect(bitPerfectReady) {
-                SettingsRow(
-                    icon = SfIcons.VolumeUp,
-                    title = loudnessTitle,
-                    subtitle = stringResource(R.string.loudness_normalization_subtitle),
-                    trailing = {
-                        IosSwitch(
-                            checked = loudnessNormalization,
-                            onCheckedChange = AppSettings::setLoudnessNormalization,
-                        )
-                    },
-                    onClick = { AppSettings.setLoudnessNormalization(!loudnessNormalization) },
-                )
-            }
-        }
-        val loudnessSpeakerTitle = stringResource(R.string.loudness_off_on_speaker)
-        row(loudnessSpeakerTitle, "loudness", "speaker", "normalize") {
-            BypassedByBitPerfect(bitPerfectReady) {
-                SettingsSubRow(
-                    title = loudnessSpeakerTitle,
-                    checked = loudnessOffOnSpeaker,
-                    onCheckedChange = AppSettings::setLoudnessOffOnSpeaker,
-                )
-            }
-        }
-        if (!smartFade) {
-            val crossfadeTitle = stringResource(R.string.crossfade)
-            row(crossfadeTitle, "fade", "gapless") {
-                BypassedByBitPerfect(bitPerfectReady) {
-                    SliderRow(
-                        icon = SfIcons.Waves,
-                        title = crossfadeTitle,
-                        subtitle = stringResource(R.string.crossfade_subtitle),
-                        value = if (crossfade == 0) stringResource(R.string.off) else "${crossfade}s",
-                        sliderValue = crossfade.toFloat(),
-                        onSliderValue = { AppSettings.setCrossfadeSeconds(it.roundToInt()) },
-                        valueRange = 0f..12f,
-                        steps = 11,
-                    )
-                }
-            }
-        }
-        val automixTitle = stringResource(R.string.automix)
-        row(automixTitle, "crossfade", "smart fade", "mix") {
-            BypassedByBitPerfect(bitPerfectReady) {
-                SettingsRow(
-                    icon = SfIcons.AutoAwesome,
-                    title = automixTitle,
-                    subtitle = if (smartFade) {
-                        stringResource(R.string.automix_enabled_subtitle)
-                    } else {
-                        stringResource(R.string.automix_disabled_subtitle)
-                    },
-                    trailing = {
-                        IosSwitch(
-                            checked = smartFade,
-                            onCheckedChange = AppSettings::setSmartFadeEnabled,
-                        )
-                    },
-                    onClick = { AppSettings.setSmartFadeEnabled(!smartFade) },
-                )
-            }
-        }
-        val automixPerformanceTitle = stringResource(R.string.automix_performance)
-        row(automixPerformanceTitle, "cpu", "battery") {
-            BypassedByBitPerfect(bitPerfectReady) {
-                SettingsRow(
-                    icon = SfIcons.Tune,
-                    title = automixPerformanceTitle,
-                    subtitle = stringResource(R.string.automix_performance_subtitle),
-                    value = automixPerformance.localizedLabel(),
-                    onClick = { onOpenChoice(SettingsChoiceKind.AUTOMIX_PERFORMANCE) },
-                )
-            }
-        }
-        val skipSilenceTitle = stringResource(R.string.skip_silence)
-        row(skipSilenceTitle, "silence") {
-            BypassedByBitPerfect(bitPerfectReady) {
-                SettingsRow(
-                    icon = SfIcons.VolumeOff,
-                    title = skipSilenceTitle,
-                    subtitle = if (outputStatus.actualEncoding == AudioFormat.ENCODING_PCM_FLOAT) {
-                        stringResource(R.string.skip_silence_float_subtitle)
-                    } else {
-                        stringResource(R.string.skip_silence_subtitle)
-                    },
-                    trailing = {
-                        IosSwitch(
-                            checked = skipSilence,
-                            onCheckedChange = AppSettings::setSkipSilence,
-                        )
-                    },
-                    onClick = { AppSettings.setSkipSilence(!skipSilence) },
-                )
-            }
-        }
-        val spatialAudioTitle = stringResource(R.string.spatial_audio)
-        row(spatialAudioTitle, "surround", "3d") {
-            BypassedByBitPerfect(bitPerfectReady) {
-                SettingsRow(
-                    icon = SfIcons.SurroundSound,
-                    title = spatialAudioTitle,
-                    subtitle = if (playingDolbyAtmos) {
-                        stringResource(R.string.spatial_audio_atmos_subtitle)
-                    } else {
-                        stringResource(R.string.spatial_audio_subtitle)
-                    },
-                    trailing = {
-                        IosSwitch(
-                            checked = spatialAudio,
-                            onCheckedChange = AppSettings::setSpatialAudio,
-                        )
-                    },
-                    onClick = { AppSettings.setSpatialAudio(!spatialAudio) },
-                )
-            }
-        }
-        val equalizerTitle = stringResource(R.string.equalizer)
-        row(equalizerTitle, "eq", "bass", "treble") {
-            BypassedByBitPerfect(bitPerfectReady) {
-                SettingsRow(
-                    icon = SfIcons.Tune,
-                    title = equalizerTitle,
-                    subtitle = stringResource(R.string.equalizer_subtitle),
-                    onClick = onEqualizer,
                 )
             }
         }

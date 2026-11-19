@@ -53,7 +53,6 @@ internal fun SettingsContentPreferencesSection(search: SettingsSearch) {
     val hideHomeVideos by AppSettings.hideHomeVideos.collectAsStateWithLifecycle()
     val hideTopPicks by AppSettings.hideTopPicks.collectAsStateWithLifecycle()
     val hideHomeMoods by AppSettings.hideHomeMoods.collectAsStateWithLifecycle()
-    val squareVideoThumbnails by AppSettings.squareVideoThumbnails.collectAsStateWithLifecycle()
 
     SearchableSettingsGroup(search, header = stringResource(R.string.content_preferences)) {
         val preferMusicOnlyTitle = stringResource(R.string.prefer_music_only)
@@ -143,56 +142,19 @@ internal fun SettingsContentPreferencesSection(search: SettingsSearch) {
                 onClick = { AppSettings.setHideHomeMoods(!hideHomeMoods) },
             )
         }
-        val squareVideoThumbnailsTitle = stringResource(R.string.square_video_thumbnails)
-        row(squareVideoThumbnailsTitle, "video", "thumbnail", "cover", "artwork", "player") {
-            SettingsRow(
-                icon = SfIcons.Apps,
-                title = squareVideoThumbnailsTitle,
-                subtitle = stringResource(R.string.square_video_thumbnails_subtitle),
-                trailing = {
-                    IosSwitch(
-                        checked = squareVideoThumbnails,
-                        onCheckedChange = AppSettings::setSquareVideoThumbnails,
-                    )
-                },
-                onClick = { AppSettings.setSquareVideoThumbnails(!squareVideoThumbnails) },
-            )
-        }
     }
 }
 
 @Composable
 internal fun SettingsAppearanceSection(
     search: SettingsSearch,
-    windowWidth: Dp,
     onOpenChoice: (SettingsChoiceKind) -> Unit,
-    onSpotifyCanvasAuth: () -> Unit,
-    onEditSignatureApi: () -> Unit,
-    onLyricsSources: () -> Unit,
-    onTranslationLanguage: () -> Unit,
 ) {
     val theme by AppSettings.themeMode.collectAsStateWithLifecycle()
     val appFont by AppSettings.appFont.collectAsStateWithLifecycle()
-    val reduceAnimation by AppSettings.reduceAnimation.collectAsStateWithLifecycle()
     val navLabels by AppSettings.showNavLabels.collectAsStateWithLifecycle()
-    val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
-    val disableBlendEffects by AppSettings.disableBlendEffects.collectAsStateWithLifecycle()
-    val liquidGlass by AppSettings.liquidGlass.collectAsStateWithLifecycle()
-    val glassPerformance by AppSettings.glassPerformance.collectAsStateWithLifecycle()
-    val progressiveBlur by AppSettings.progressiveBlur.collectAsStateWithLifecycle()
     val tintWithPlaying by AppSettings.tintWithNowPlaying.collectAsStateWithLifecycle()
-    val liquidGlassSupported = isGlassSupported()
-    val fullBleedArtwork by AppSettings.fullBleedArtwork.collectAsStateWithLifecycle()
-    val playerTheme by AppSettings.playerTheme.collectAsStateWithLifecycle()
-    val animatedCanvas by AppSettings.animatedCanvas.collectAsStateWithLifecycle()
-    val canvasOverCellular by AppSettings.canvasOverCellular.collectAsStateWithLifecycle()
-    val signatureApiEnabled by AppSettings.signatureApiEnabled.collectAsStateWithLifecycle()
-    val signatureApiUrl by AppSettings.signatureApiUrl.collectAsStateWithLifecycle()
-    val syncedLyrics by AppSettings.syncedLyrics.collectAsStateWithLifecycle()
-    val lyricAboveScrubber by AppSettings.lyricAboveScrubber.collectAsStateWithLifecycle()
-    val lyricsBlur by AppSettings.lyricsBlur.collectAsStateWithLifecycle()
-    val lyricsSources by AppSettings.lyricsSources.collectAsStateWithLifecycle()
-    val translationLanguage by AppSettings.translationLanguage.collectAsStateWithLifecycle()
+    val squareVideoThumbnails by AppSettings.squareVideoThumbnails.collectAsStateWithLifecycle()
 
     SearchableSettingsGroup(search, header = stringResource(R.string.appearance)) {
         val themeTitle = stringResource(R.string.theme)
@@ -230,20 +192,9 @@ internal fun SettingsAppearanceSection(
                 onClick = { onOpenChoice(SettingsChoiceKind.FONT) },
             )
         }
-        val reduceAnimationTitle = stringResource(R.string.reduce_animation)
-        row(reduceAnimationTitle, "motion") {
-            SettingsRow(
-                icon = SfIcons.MotionPhotosOff,
-                title = reduceAnimationTitle,
-                subtitle = stringResource(R.string.reduce_animation_subtitle),
-                trailing = {
-                    IosSwitch(
-                        checked = reduceAnimation,
-                        onCheckedChange = AppSettings::setReduceAnimation,
-                    )
-                },
-                onClick = { AppSettings.setReduceAnimation(!reduceAnimation) },
-            )
+        val appIconTitle = stringResource(R.string.app_icon)
+        row(appIconTitle, "icon", "launcher", "logo") {
+            AppIconPicker(appIconTitle)
         }
         val navLabelsTitle = stringResource(R.string.show_nav_labels)
         row(navLabelsTitle, "navigation", "tabs", "bar", "labels", "icons") {
@@ -260,36 +211,36 @@ internal fun SettingsAppearanceSection(
                 onClick = { AppSettings.setShowNavLabels(!navLabels) },
             )
         }
-        val reduceDynamicBlurTitle = stringResource(R.string.reduce_dynamic_blur)
-        row(reduceDynamicBlurTitle, "blur", "performance") {
+        val squareVideoThumbnailsTitle = stringResource(R.string.square_video_thumbnails)
+        row(squareVideoThumbnailsTitle, "video", "thumbnail", "cover", "artwork", "player") {
             SettingsRow(
-                icon = SfIcons.BlurOff,
-                title = reduceDynamicBlurTitle,
-                subtitle = stringResource(R.string.reduce_dynamic_blur_subtitle),
+                icon = SfIcons.Apps,
+                title = squareVideoThumbnailsTitle,
+                subtitle = stringResource(R.string.square_video_thumbnails_subtitle),
                 trailing = {
                     IosSwitch(
-                        checked = reduceDynamicBlur,
-                        onCheckedChange = AppSettings::setReduceDynamicBlur,
+                        checked = squareVideoThumbnails,
+                        onCheckedChange = AppSettings::setSquareVideoThumbnails,
                     )
                 },
-                onClick = { AppSettings.setReduceDynamicBlur(!reduceDynamicBlur) },
+                onClick = { AppSettings.setSquareVideoThumbnails(!squareVideoThumbnails) },
             )
         }
-        val disableBlendEffectsTitle = stringResource(R.string.disable_blend_effects)
-        row(disableBlendEffectsTitle, "blend", "blending", "colour", "color", "tint", "player", "menu") {
-            SettingsRow(
-                icon = SfIcons.Gradient,
-                title = disableBlendEffectsTitle,
-                subtitle = stringResource(R.string.disable_blend_effects_subtitle),
-                trailing = {
-                    IosSwitch(
-                        checked = disableBlendEffects,
-                        onCheckedChange = AppSettings::setDisableBlendEffects,
-                    )
-                },
-                onClick = { AppSettings.setDisableBlendEffects(!disableBlendEffects) },
-            )
-        }
+    }
+}
+
+/** Glass, blur, blending and motion: what the app draws, and what that costs. */
+@Composable
+internal fun SettingsEffectsSection(search: SettingsSearch) {
+    val reduceAnimation by AppSettings.reduceAnimation.collectAsStateWithLifecycle()
+    val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
+    val disableBlendEffects by AppSettings.disableBlendEffects.collectAsStateWithLifecycle()
+    val liquidGlass by AppSettings.liquidGlass.collectAsStateWithLifecycle()
+    val glassPerformance by AppSettings.glassPerformance.collectAsStateWithLifecycle()
+    val progressiveBlur by AppSettings.progressiveBlur.collectAsStateWithLifecycle()
+    val liquidGlassSupported = isGlassSupported()
+
+    SearchableSettingsGroup(search, header = stringResource(R.string.settings_effects_performance)) {
         val liquidGlassTitle = stringResource(R.string.liquid_glass)
         row(liquidGlassTitle, "glass", "blur") {
             SettingsRow(
@@ -331,6 +282,88 @@ internal fun SettingsAppearanceSection(
                 )
             }
         }
+        val reduceDynamicBlurTitle = stringResource(R.string.reduce_dynamic_blur)
+        row(reduceDynamicBlurTitle, "blur", "performance") {
+            SettingsRow(
+                icon = SfIcons.BlurOff,
+                title = reduceDynamicBlurTitle,
+                subtitle = stringResource(R.string.reduce_dynamic_blur_subtitle),
+                trailing = {
+                    IosSwitch(
+                        checked = reduceDynamicBlur,
+                        onCheckedChange = AppSettings::setReduceDynamicBlur,
+                    )
+                },
+                onClick = { AppSettings.setReduceDynamicBlur(!reduceDynamicBlur) },
+            )
+        }
+        val disableBlendEffectsTitle = stringResource(R.string.disable_blend_effects)
+        row(disableBlendEffectsTitle, "blend", "blending", "colour", "color", "tint", "player", "menu") {
+            SettingsRow(
+                icon = SfIcons.Gradient,
+                title = disableBlendEffectsTitle,
+                subtitle = stringResource(R.string.disable_blend_effects_subtitle),
+                trailing = {
+                    IosSwitch(
+                        checked = disableBlendEffects,
+                        onCheckedChange = AppSettings::setDisableBlendEffects,
+                    )
+                },
+                onClick = { AppSettings.setDisableBlendEffects(!disableBlendEffects) },
+            )
+        }
+        val reduceAnimationTitle = stringResource(R.string.reduce_animation)
+        row(reduceAnimationTitle, "motion") {
+            SettingsRow(
+                icon = SfIcons.MotionPhotosOff,
+                title = reduceAnimationTitle,
+                subtitle = stringResource(R.string.reduce_animation_subtitle),
+                trailing = {
+                    IosSwitch(
+                        checked = reduceAnimation,
+                        onCheckedChange = AppSettings::setReduceAnimation,
+                    )
+                },
+                onClick = { AppSettings.setReduceAnimation(!reduceAnimation) },
+            )
+        }
+    }
+}
+
+/** The now-playing screen: how it looks, and what it shows around the music. */
+@Composable
+internal fun SettingsPlayerSection(
+    search: SettingsSearch,
+    windowWidth: Dp,
+    onSpotifyCanvasAuth: () -> Unit,
+    onEditSignatureApi: () -> Unit,
+) {
+    val fullBleedArtwork by AppSettings.fullBleedArtwork.collectAsStateWithLifecycle()
+    val playerTheme by AppSettings.playerTheme.collectAsStateWithLifecycle()
+    val animatedCanvas by AppSettings.animatedCanvas.collectAsStateWithLifecycle()
+    val canvasOverCellular by AppSettings.canvasOverCellular.collectAsStateWithLifecycle()
+    val signatureApiEnabled by AppSettings.signatureApiEnabled.collectAsStateWithLifecycle()
+    val signatureApiUrl by AppSettings.signatureApiUrl.collectAsStateWithLifecycle()
+    val hideStatusBarInPlayer by AppSettings.hideStatusBarInPlayer.collectAsStateWithLifecycle()
+    val hideVolumeBar by AppSettings.hideVolumeBar.collectAsStateWithLifecycle()
+    val showQueueHistory by AppSettings.showQueueHistory.collectAsStateWithLifecycle()
+    val hideSongStatus by AppSettings.hideSongStatus.collectAsStateWithLifecycle()
+
+    SearchableSettingsGroup(search, header = stringResource(R.string.settings_player)) {
+        val playerThemeTitle = stringResource(R.string.player_theme)
+        row(playerThemeTitle, "background", "player", "mesh", "gradient", "legacy", "simple", "blur") {
+            SettingsRow(
+                icon = SfIcons.Gradient,
+                title = playerThemeTitle,
+                subtitle = playerTheme.description(),
+            )
+            SegmentedControl(
+                options = PlayerTheme.entries.map { it.localizedLabel() },
+                selectedIndex = PlayerTheme.entries.indexOf(playerTheme),
+                onSelect = { AppSettings.setPlayerTheme(PlayerTheme.entries[it]) },
+                modifier = Modifier.padding(start = ROW_INSET, end = ROW_INSET, bottom = 14.dp),
+            )
+        }
         if (fullBleedArtworkAvailable(windowWidth)) {
             val fullScreenCoverArtTitle = stringResource(R.string.full_screen_cover_art)
             row(fullScreenCoverArtTitle, "artwork", "player") {
@@ -347,20 +380,6 @@ internal fun SettingsAppearanceSection(
                     onClick = { AppSettings.setFullBleedArtwork(!fullBleedArtwork) },
                 )
             }
-        }
-        val playerThemeTitle = stringResource(R.string.player_theme)
-        row(playerThemeTitle, "background", "player", "mesh", "gradient", "legacy", "simple", "blur") {
-            SettingsRow(
-                icon = SfIcons.Gradient,
-                title = playerThemeTitle,
-                subtitle = playerTheme.description(),
-            )
-            SegmentedControl(
-                options = PlayerTheme.entries.map { it.localizedLabel() },
-                selectedIndex = PlayerTheme.entries.indexOf(playerTheme),
-                onSelect = { AppSettings.setPlayerTheme(PlayerTheme.entries[it]) },
-                modifier = Modifier.padding(start = ROW_INSET, end = ROW_INSET, bottom = 14.dp),
-            )
         }
         val animatedCoverArtTitle = stringResource(R.string.animated_cover_art)
         row(animatedCoverArtTitle, "canvas", "video", "spotify") {
@@ -446,6 +465,82 @@ internal fun SettingsAppearanceSection(
                 }
             }
         }
+        val hideStatusBarTitle = stringResource(R.string.hide_status_bar_in_player)
+        row(hideStatusBarTitle, "status bar", "immersive", "fullscreen", "player") {
+            SettingsRow(
+                icon = SfIcons.WebAssetOff,
+                title = hideStatusBarTitle,
+                subtitle = stringResource(R.string.hide_status_bar_in_player_subtitle),
+                trailing = {
+                    IosSwitch(
+                        checked = hideStatusBarInPlayer,
+                        onCheckedChange = AppSettings::setHideStatusBarInPlayer,
+                    )
+                },
+                onClick = { AppSettings.setHideStatusBarInPlayer(!hideStatusBarInPlayer) },
+            )
+        }
+        val hideVolumeBarTitle = stringResource(R.string.hide_volume_bar)
+        row(hideVolumeBarTitle, "volume", "player") {
+            SettingsRow(
+                icon = SfIcons.VolumeOff,
+                title = hideVolumeBarTitle,
+                subtitle = stringResource(R.string.hide_volume_bar_subtitle),
+                trailing = {
+                    IosSwitch(
+                        checked = hideVolumeBar,
+                        onCheckedChange = AppSettings::setHideVolumeBar,
+                    )
+                },
+                onClick = { AppSettings.setHideVolumeBar(!hideVolumeBar) },
+            )
+        }
+        val showQueueHistoryTitle = stringResource(R.string.show_queue_history)
+        row(showQueueHistoryTitle, "player", "queue", "history", "previously played") {
+            SettingsRow(
+                icon = SfIcons.History,
+                title = showQueueHistoryTitle,
+                subtitle = stringResource(R.string.show_queue_history_subtitle),
+                trailing = {
+                    IosSwitch(
+                        checked = showQueueHistory,
+                        onCheckedChange = AppSettings::setShowQueueHistory,
+                    )
+                },
+                onClick = { AppSettings.setShowQueueHistory(!showQueueHistory) },
+            )
+        }
+        val hideSongStatusTitle = stringResource(R.string.hide_song_status)
+        row(hideSongStatusTitle, "player", "playing from", "played by") {
+            SettingsRow(
+                icon = SfIcons.VisibilityOff,
+                title = hideSongStatusTitle,
+                subtitle = stringResource(R.string.hide_song_status_subtitle),
+                trailing = {
+                    IosSwitch(
+                        checked = hideSongStatus,
+                        onCheckedChange = AppSettings::setHideSongStatus,
+                    )
+                },
+                onClick = { AppSettings.setHideSongStatus(!hideSongStatus) },
+            )
+        }
+    }
+}
+
+@Composable
+internal fun SettingsLyricsSection(
+    search: SettingsSearch,
+    onLyricsSources: () -> Unit,
+    onTranslationLanguage: () -> Unit,
+) {
+    val syncedLyrics by AppSettings.syncedLyrics.collectAsStateWithLifecycle()
+    val lyricAboveScrubber by AppSettings.lyricAboveScrubber.collectAsStateWithLifecycle()
+    val lyricsBlur by AppSettings.lyricsBlur.collectAsStateWithLifecycle()
+    val lyricsSources by AppSettings.lyricsSources.collectAsStateWithLifecycle()
+    val translationLanguage by AppSettings.translationLanguage.collectAsStateWithLifecycle()
+
+    SearchableSettingsGroup(search, header = stringResource(R.string.settings_lyrics)) {
         val syncedLyricsTitle = stringResource(R.string.synced_lyrics)
         row(syncedLyricsTitle, "lyrics", "translation", "lrclib", "musixmatch") {
             SettingsRow(
