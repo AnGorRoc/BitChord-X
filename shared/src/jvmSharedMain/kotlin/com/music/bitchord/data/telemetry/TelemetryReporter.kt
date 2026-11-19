@@ -18,8 +18,9 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
 /**
- * Sends error reports to the BitChord-X server (`POST /api/telemetry/error`) while telemetry is
- * enabled in Settings. It is on by default and can be switched off on both the phone and the PC.
+ * Sends error reports to the BitChord-X server (`POST /api/telemetry/error`) at the level chosen in
+ * Settings: full, minimal (the error type alone, no install ID, message, stack or device) or off. It
+ * is on by default and can be changed on both the phone and the PC.
  *
  * Only technical error metadata (error type, message and stack trace with the user's home folder,
  * user name and URL queries removed, app version, and basic device model/OS) plus the per-install
@@ -45,7 +46,7 @@ object TelemetryReporter {
         val deviceModel: String,
         val osVersion: String,
         val abi: String,
-        val enabledProvider: () -> Boolean,
+        val levelProvider: () -> TelemetryLevel,
     )
 
     fun configure(
@@ -56,7 +57,7 @@ object TelemetryReporter {
         deviceModel: String = "",
         osVersion: String = "",
         abi: String = "",
-        enabledProvider: () -> Boolean = { true },
+        levelProvider: () -> TelemetryLevel = { TelemetryLevel.FULL },
     ) {
         val base = serverBaseUrl.trim().trimEnd('/')
         if (base.isEmpty()) return
@@ -68,7 +69,7 @@ object TelemetryReporter {
             deviceModel = deviceModel,
             osVersion = osVersion,
             abi = abi,
-            enabledProvider = enabledProvider,
+            levelProvider = levelProvider,
         )
     }
 
@@ -106,7 +107,8 @@ object TelemetryReporter {
         blocking: Boolean = false,
     ) {
         val cfg = config ?: return
-        if (!cfg.enabledProvider()) return
+        val level = cfg.levelProvider()
+        if (!level.sends) return
         val cleanType = errorType.trim().ifEmpty { "runtime_error" }.take(64)
         val cleanMessage = scrub(message.trim().ifEmpty { throwable?.javaClass?.simpleName ?: "Unknown error" })
             .take(MAX_MESSAGE_CHARS)
@@ -122,33 +124,45 @@ object TelemetryReporter {
             recentErrors.entries.removeIf { now - it.value >= DEDUPE_WINDOW_MS }
         }
 
-        val stack = throwable?.let { scrub(formatStacktrace(it)) }.orEmpty()
+        val (sentMessage, sentStack) = shaped(
+            level, cleanType, cleanMessage, throwable?.let { scrub(formatStacktrace(it)) }.orEmpty(),
+        )
         if (blocking) {
-            sendSync(cfg, cleanType, cleanMessage, stack, timeoutMs = 1500L)
+            sendSync(cfg, level, cleanType, sentMessage, sentStack, timeoutMs = 1500L)
         } else {
             scope.launch {
-                sendSync(cfg, cleanType, cleanMessage, stack, timeoutMs = 8000L)
+                sendSync(cfg, level, cleanType, sentMessage, sentStack, timeoutMs = 8000L)
             }
         }
     }
 
+    /**
+     * What a report carries at [level]. A minimal one is its type and nothing else: the message and the
+     * stack trace can name files, paths and values, so they stay on the device.
+     */
+    internal fun shaped(level: TelemetryLevel, type: String, message: String, stack: String): Pair<String, String> =
+        if (level == TelemetryLevel.MINIMAL) type to "" else message to stack
+
     private fun sendSync(
         cfg: Config,
+        level: TelemetryLevel,
         errorType: String,
         errorMessage: String,
         stacktrace: String,
         timeoutMs: Long,
     ) {
+        val minimal = level == TelemetryLevel.MINIMAL
         val payload = buildJsonObject {
-            put("id", cfg.installId)
+            if (!minimal) put("id", cfg.installId)
             put("platform", cfg.platform.wire)
             put("appVersion", cfg.appVersion)
             put("errorType", errorType)
             put("errorMessage", errorMessage)
+            if (minimal) put("level", level.wire)
             if (stacktrace.isNotEmpty()) put("stacktrace", stacktrace)
-            if (cfg.deviceModel.isNotBlank()) put("deviceModel", cfg.deviceModel)
-            if (cfg.osVersion.isNotBlank()) put("osVersion", cfg.osVersion)
-            if (cfg.abi.isNotBlank()) put("abi", cfg.abi)
+            if (!minimal && cfg.deviceModel.isNotBlank()) put("deviceModel", cfg.deviceModel)
+            if (!minimal && cfg.osVersion.isNotBlank()) put("osVersion", cfg.osVersion)
+            if (!minimal && cfg.abi.isNotBlank()) put("abi", cfg.abi)
         }.toString().toRequestBody(JSON)
 
         val request = Request.Builder()

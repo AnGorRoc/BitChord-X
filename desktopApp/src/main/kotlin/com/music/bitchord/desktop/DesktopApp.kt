@@ -4640,6 +4640,8 @@ fun BitChordDesktopApp() {
                     if (overlays.discordToken) {
                         DesktopDiscordTokenDialog(onDismiss = { overlays.discordToken = false })
                     }
+                    DesktopTelemetryDialogHost()
+                    LaunchedEffect(Unit) { DesktopPresence.showNoticeIfNew() }
                     if (overlays.listenTogether) {
                         DesktopListenTogetherDialog(
                             autoplayEnabled = autoplay,
@@ -8552,15 +8554,11 @@ private fun DesktopSettingsScreen(
                             DesktopAppearanceSettings::setHideVolumeBar,
                         )
 
-                        val telemetryEnabled by DesktopPresence.telemetryEnabled.collectAsState()
-                        SettingsToggle(
+                        val telemetryLevel by DesktopPresence.telemetryLevel.collectAsState()
+                        SettingsNavigationRow(
                             DesktopStrings["telemetry_diagnostics", "Anonymous telemetry and error reports"],
-                            DesktopStrings[
-                                "telemetry_diagnostics_subtitle",
-                                "Sends a stable install ID (hashed, never the raw device ID), app version, platform, connection times and, on errors, the error details with the device model and OS version. Never your account, IP address, listening history or playlists.",
-                            ],
-                            telemetryEnabled,
-                            DesktopPresence::setTelemetryEnabled,
+                            telemetryLevelLabel(telemetryLevel),
+                            DesktopPresence::openPicker,
                         )
 
                         var prioritizeCanvas by remember { mutableStateOf(DesktopPersistence().prioritizeSpotifyCanvas()) }

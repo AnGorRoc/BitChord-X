@@ -1,5 +1,6 @@
 package com.music.bitchord.data.settings
 
+import com.music.bitchord.data.telemetry.TelemetryLevel
 import com.music.bitchord.data.webdav.update
 import android.content.Context
 import android.content.SharedPreferences
@@ -560,8 +561,11 @@ object AppSettings {
     /** Hides the "Playing from" / "Played by" caption at the top of the main player. */
     val hideSongStatus = MutableStateFlow(false)
 
-    /** Sends anonymous presence/version telemetry and opt-in error reports. Enabled by default. */
-    val telemetryEnabled = MutableStateFlow(true)
+    /** How much anonymous telemetry is sent: full by default, minimal or off by choice. */
+    val telemetryLevel = MutableStateFlow(TelemetryLevel.FULL)
+
+    /** True once the first-run telemetry notice has been shown. Starts true so nothing flashes before load. */
+    val telemetryNoticeSeen = MutableStateFlow(true)
 
     val showQueueHistory = MutableStateFlow(false)
 
@@ -1229,7 +1233,10 @@ object AppSettings {
         hideVolumeBar.value = prefs.getBoolean(KEY_HIDE_VOLUME_BAR, true)
         hideStatusBarInPlayer.value = prefs.getBoolean(KEY_HIDE_STATUS_BAR_IN_PLAYER, false)
         hideSongStatus.value = prefs.getBoolean(KEY_HIDE_SONG_STATUS, false)
-        telemetryEnabled.value = prefs.getBoolean(KEY_TELEMETRY_ENABLED, true)
+        telemetryLevel.value = prefs.getString(KEY_TELEMETRY_LEVEL, null)?.let(TelemetryLevel::fromWire)
+            // Before there were levels there was one switch.
+            ?: if (prefs.getBoolean(KEY_TELEMETRY_ENABLED, true)) TelemetryLevel.FULL else TelemetryLevel.OFF
+        telemetryNoticeSeen.value = prefs.getBoolean(KEY_TELEMETRY_NOTICE_SEEN, false)
         showQueueHistory.value = prefs.getBoolean(KEY_SHOW_QUEUE_HISTORY, false)
         swipeToPlayNext.value = prefs.getBoolean(KEY_SWIPE_TO_PLAY_NEXT, false)
         swipeRightAction.value = prefs.getString(KEY_SWIPE_RIGHT_ACTION, null)
@@ -1742,9 +1749,14 @@ object AppSettings {
         prefs.edit().putBoolean(KEY_HIDE_SONG_STATUS, value).apply()
     }
 
-    fun setTelemetryEnabled(value: Boolean) {
-        telemetryEnabled.value = value
-        prefs.edit().putBoolean(KEY_TELEMETRY_ENABLED, value).apply()
+    fun setTelemetryLevel(value: TelemetryLevel) {
+        telemetryLevel.value = value
+        prefs.edit().putString(KEY_TELEMETRY_LEVEL, value.wire).apply()
+    }
+
+    fun markTelemetryNoticeSeen() {
+        telemetryNoticeSeen.value = true
+        prefs.edit().putBoolean(KEY_TELEMETRY_NOTICE_SEEN, true).apply()
     }
 
     fun setShowQueueHistory(value: Boolean) {
@@ -2709,6 +2721,8 @@ object AppSettings {
     private const val KEY_HIDE_STATUS_BAR_IN_PLAYER = "hide_status_bar_in_player"
     private const val KEY_HIDE_SONG_STATUS = "hide_song_status"
     private const val KEY_TELEMETRY_ENABLED = "telemetry_enabled"
+    private const val KEY_TELEMETRY_LEVEL = "telemetry_level"
+    private const val KEY_TELEMETRY_NOTICE_SEEN = "telemetry_notice_seen"
     private const val KEY_SHOW_QUEUE_HISTORY = "show_queue_history"
     private const val KEY_SWIPE_TO_PLAY_NEXT = "swipe_to_play_next"
     private const val KEY_SWIPE_RIGHT_ACTION = "swipe_right_action"

@@ -37,7 +37,7 @@ object AndroidPresence {
             installId = id,
             endpoint = "$base/api/presence",
             appVersion = appVersion,
-            enabledProvider = { AppSettings.telemetryEnabled.value },
+            levelProvider = { AppSettings.telemetryLevel.value },
             useWebSocket = true,
         )
 
@@ -56,7 +56,7 @@ object AndroidPresence {
             deviceModel = deviceModel,
             osVersion = osVersion,
             abi = abi,
-            enabledProvider = { AppSettings.telemetryEnabled.value },
+            levelProvider = { AppSettings.telemetryLevel.value },
         )
         TelemetryReporter.installUncaughtHandler()
 
@@ -72,8 +72,8 @@ object AndroidPresence {
             }
         })
         CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate).launch {
-            AppSettings.telemetryEnabled.drop(1).collect { enabled ->
-                presence.setOpen(enabled && isForeground)
+            AppSettings.telemetryLevel.drop(1).collect { level ->
+                presence.setOpen(level.sends && isForeground)
             }
         }
     }

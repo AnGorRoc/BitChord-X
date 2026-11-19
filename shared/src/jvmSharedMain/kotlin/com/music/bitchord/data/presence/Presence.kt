@@ -2,6 +2,7 @@ package com.music.bitchord.data.presence
 
 import com.music.bitchord.data.DebugLog
 import com.music.bitchord.data.Http
+import com.music.bitchord.data.telemetry.TelemetryLevel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineScope
@@ -46,7 +47,7 @@ class Presence(
     private val installId: String,
     private val endpoint: String = ENDPOINT,
     private val appVersion: String = "",
-    private val enabledProvider: () -> Boolean = { true },
+    private val levelProvider: () -> TelemetryLevel = { TelemetryLevel.FULL },
     private val useWebSocket: Boolean = false,
 ) {
     private val open = MutableStateFlow(false)
@@ -86,7 +87,7 @@ class Presence(
     }
 
     fun setOpen(isOpen: Boolean) {
-        open.value = isOpen && enabledProvider()
+        open.value = isOpen && levelProvider().sends
     }
 
     /**
@@ -117,12 +118,14 @@ class Presence(
      */
     private suspend fun runWebSocketSession(): Boolean {
         val url = wsEndpoint() ?: return false
-        if (!enabledProvider()) return true
+        val level = levelProvider()
+        if (!level.sends) return true
         val closed = CompletableDeferred<Boolean>()
         val hello = buildJsonObject {
-            put("id", installId)
+            put("id", idFor(level))
             put("platform", platform.wire)
             if (appVersion.isNotBlank()) put("version", appVersion)
+            if (level == TelemetryLevel.MINIMAL) put("level", level.wire)
         }.toString()
 
         val req = Request.Builder().url(url).build()
@@ -156,6 +159,10 @@ class Presence(
         }
     }
 
+    /** The install's own ID, or at [TelemetryLevel.MINIMAL] one that changes every UTC day. */
+    private fun idFor(level: TelemetryLevel): String =
+        TelemetryLevel.idFor(level, installId, TelemetryLevel.today())
+
     private fun nextDelayMs(): Long {
         val base = intervalSec.coerceIn(MIN_INTERVAL_SEC, MAX_INTERVAL_SEC) * 1000L
         // ±10%, so a release that starts thousands of apps at once spreads out.
@@ -163,14 +170,16 @@ class Presence(
     }
 
     private fun send(open: Boolean, timeoutSec: Long = 15) {
-        if (open && !enabledProvider()) return
+        val level = levelProvider()
+        if (open && !level.sends) return
         val body = buildJsonObject {
-            put("id", installId)
+            put("id", idFor(level))
             put("platform", platform.wire)
             put("open", open)
             if (appVersion.isNotBlank()) {
                 put("version", appVersion)
             }
+            if (level == TelemetryLevel.MINIMAL) put("level", level.wire)
         }.toString().toRequestBody(JSON)
         val request = Request.Builder().url(endpoint).post(body).build()
         // Set before sending: a ping that times out may still have been counted,

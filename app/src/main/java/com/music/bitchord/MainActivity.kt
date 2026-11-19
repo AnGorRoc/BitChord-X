@@ -6280,6 +6280,12 @@ private fun BitChordApp(
             )
         }
 
+        com.music.bitchord.ui.components.TelemetryDialogHost(hazeState)
+        val telemetryNoticeSeen by AppSettings.telemetryNoticeSeen.collectAsStateWithLifecycle()
+        LaunchedEffect(telemetryNoticeSeen) {
+            if (!telemetryNoticeSeen) com.music.bitchord.ui.components.TelemetryPrompts.showNoticeIfNew()
+        }
+
         confirmOptIn?.let { kind ->
             val monochrome = kind == SourceKind.MONOCHROME
             ConfirmationAlert(
