@@ -58,6 +58,7 @@ type Counts struct {
 type entry struct {
 	lastMs   int64
 	platform Platform
+	token    uint64
 }
 
 type Tracker struct {
@@ -65,6 +66,7 @@ type Tracker struct {
 	seen       map[[16]byte]entry
 	windowMs   int64
 	maxEntries int
+	nextToken  atomic.Uint64
 	counts     atomic.Pointer[Counts]
 }
 
@@ -90,6 +92,48 @@ func (t *Tracker) Ping(id [16]byte, platform Platform, nowMs int64) {
 	t.seen[id] = entry{lastMs: nowMs, platform: platform}
 }
 
+// Pin marks an install as online for an active WebSocket presence session and
+// returns a unique connection token so an older socket closing never removes a
+// newer session from the same install.
+func (t *Tracker) Pin(id [16]byte, platform Platform, nowMs int64) uint64 {
+	tok := t.nextToken.Add(1)
+	t.mu.Lock()
+	if _, known := t.seen[id]; !known && t.maxEntries > 0 && len(t.seen) >= t.maxEntries {
+		t.mu.Unlock()
+		return 0
+	}
+	t.seen[id] = entry{lastMs: nowMs, platform: platform, token: tok}
+	t.recountLocked(nowMs)
+	t.mu.Unlock()
+	return tok
+}
+
+// TouchToken refreshes lastMs while a WebSocket presence session is alive.
+func (t *Tracker) TouchToken(id [16]byte, tok uint64, nowMs int64) {
+	if tok == 0 {
+		return
+	}
+	t.mu.Lock()
+	if cur, ok := t.seen[id]; ok && cur.token == tok {
+		cur.lastMs = nowMs
+		t.seen[id] = cur
+	}
+	t.mu.Unlock()
+}
+
+// CloseToken forgets an install only if its current token still matches tok.
+func (t *Tracker) CloseToken(id [16]byte, tok uint64, nowMs int64) bool {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	cur, ok := t.seen[id]
+	if !ok || (tok != 0 && cur.token != tok) {
+		return false
+	}
+	delete(t.seen, id)
+	t.recountLocked(nowMs)
+	return true
+}
+
 // Close forgets an install that told us it closed, instead of waiting out its window.
 func (t *Tracker) Close(id [16]byte) {
 	t.mu.Lock()
@@ -100,13 +144,19 @@ func (t *Tracker) Close(id [16]byte) {
 // Sweep drops installs that missed their window and publishes the new counts.
 func (t *Tracker) Sweep(nowMs int64) {
 	cutoff := nowMs - t.windowMs
-	c := Counts{UpdatedAt: nowMs}
 	t.mu.Lock()
 	for id, e := range t.seen {
 		if e.lastMs < cutoff {
 			delete(t.seen, id)
-			continue
 		}
+	}
+	t.recountLocked(nowMs)
+	t.mu.Unlock()
+}
+
+func (t *Tracker) recountLocked(nowMs int64) {
+	c := Counts{UpdatedAt: nowMs}
+	for _, e := range t.seen {
 		switch e.platform {
 		case Android:
 			c.Android++
@@ -116,7 +166,6 @@ func (t *Tracker) Sweep(nowMs int64) {
 			c.Browser++
 		}
 	}
-	t.mu.Unlock()
 	c.Online = c.Android + c.PC + c.Browser
 	t.counts.Store(&c)
 }

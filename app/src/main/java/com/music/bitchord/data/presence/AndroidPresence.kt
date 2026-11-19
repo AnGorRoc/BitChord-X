@@ -9,6 +9,11 @@ import androidx.lifecycle.ProcessLifecycleOwner
 import com.music.bitchord.BuildConfig
 import com.music.bitchord.data.settings.AppSettings
 import com.music.bitchord.data.telemetry.TelemetryReporter
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.launch
 import java.util.UUID
 
 /**
@@ -32,6 +37,7 @@ object AndroidPresence {
             endpoint = "$base/api/presence",
             appVersion = appVersion,
             enabledProvider = { AppSettings.telemetryEnabled.value },
+            useWebSocket = true,
         )
 
         val deviceModel = listOf(Build.MANUFACTURER, Build.MODEL)
@@ -53,10 +59,22 @@ object AndroidPresence {
         )
         TelemetryReporter.installUncaughtHandler()
 
+        var isForeground = false
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
-            override fun onStart(owner: LifecycleOwner) = presence.setOpen(true)
-            override fun onStop(owner: LifecycleOwner) = presence.setOpen(false)
+            override fun onStart(owner: LifecycleOwner) {
+                isForeground = true
+                presence.setOpen(true)
+            }
+            override fun onStop(owner: LifecycleOwner) {
+                isForeground = false
+                presence.setOpen(false)
+            }
         })
+        CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate).launch {
+            AppSettings.telemetryEnabled.drop(1).collect { enabled ->
+                presence.setOpen(enabled && isForeground)
+            }
+        }
     }
 
     /** Random and local to this install: not the device, and not the account. */

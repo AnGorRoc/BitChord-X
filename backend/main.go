@@ -43,6 +43,7 @@ var (
 	presenceLimiter  = newIPRateLimiter(time.Minute, config.PresencePingsPerMinute, config.PresenceRateLimitMaxIPs)
 	telemetryLimiter = newIPRateLimiter(time.Minute, config.TelemetryRatePerMin, config.RateLimitMaxEntries)
 	telemetryStore   *telemetry.Store
+	telemetryHub     = telemetry.NewLiveHub()
 	upgrader = websocket.Upgrader{
 		// Answered only to a browser that offered it with its token (see
 		// parseSocketToken); a native client offers no subprotocol and gets none.
@@ -57,22 +58,34 @@ var (
 func liveTelemetryStats() telemetry.LiveStats {
 	c := presenceTracker.Counts()
 	return telemetry.LiveStats{
-		Online:        c.Online,
-		Android:       c.Android,
-		PC:            c.PC,
-		Browser:       c.Browser,
-		ActiveParties: store.Len(),
-		ActiveSockets: hubInst.Count(),
-		UpdatedAt:     c.UpdatedAt,
+		Online:            c.Online,
+		Android:           c.Android,
+		PC:                c.PC,
+		Browser:           c.Browser,
+		ActiveParties:     store.Len(),
+		TotalPartyMembers: store.MemberCount(),
+		ActiveSockets:     hubInst.Count(),
+		UpdatedAt:         c.UpdatedAt,
 	}
 }
 
 func startTelemetrySnapshotTicker() {
-	ticker := time.NewTicker(1 * time.Minute)
-	defer ticker.Stop()
-	for range ticker.C {
-		if telemetryStore != nil {
-			telemetryStore.RecordSnapshot(liveTelemetryStats())
+	snapshotTicker := time.NewTicker(1 * time.Minute)
+	liveTicker := time.NewTicker(3 * time.Second)
+	defer snapshotTicker.Stop()
+	defer liveTicker.Stop()
+	for {
+		select {
+		case <-snapshotTicker.C:
+			live := liveTelemetryStats()
+			if telemetryStore != nil {
+				telemetryStore.RecordSnapshot(live)
+			}
+			telemetryHub.Notify("snapshot", live)
+		case <-liveTicker.C:
+			if telemetryHub.ClientCount() > 0 {
+				telemetryHub.Notify("live", liveTelemetryStats())
+			}
 		}
 	}
 }
@@ -108,6 +121,7 @@ func main() {
 
 	// Open-app counter & opt-in error telemetry
 	mux.HandleFunc("POST /api/presence", handlePresence)
+	mux.HandleFunc("GET /ws/presence", handlePresenceWS)
 	mux.HandleFunc("POST /api/telemetry/error", handleTelemetryError)
 	mux.HandleFunc("GET /api/stats/live", handleLiveStats)
 	mux.HandleFunc("GET /api/stats/live/badge.svg", handleLiveBadge)
@@ -123,7 +137,7 @@ func main() {
 		adminAddr := fmt.Sprintf("0.0.0.0:%d", config.AdminPort)
 		adminSrv := &http.Server{
 			Addr:              adminAddr,
-			Handler:           telemetry.NewAdminHandler(telemetryStore, config.AdminSecret),
+			Handler:           telemetry.NewAdminHandler(telemetryStore, telemetryHub, config.AdminSecret),
 			ReadHeaderTimeout: 10 * time.Second,
 			ReadTimeout:       20 * time.Second,
 			WriteTimeout:      20 * time.Second,
@@ -461,7 +475,96 @@ func handlePresence(w http.ResponseWriter, r *http.Request) {
 	if telemetryStore != nil {
 		telemetryStore.RecordPresence(body.ID, body.Platform, body.Version, *body.Open)
 	}
+	telemetryHub.Notify("live", liveTelemetryStats())
 	jsonResponse(w, http.StatusOK, map[string]int{"intervalSec": config.PresenceIntervalSec})
+}
+
+// handlePresenceWS keeps a lightweight WebSocket per open app so closing or
+// force-killing the app drops the live count immediately via TCP close.
+func handlePresenceWS(w http.ResponseWriter, r *http.Request) {
+	if !presenceLimiter.Allow(clientIP(r)) {
+		jsonError(w, http.StatusTooManyRequests, "rate_limited", "Too many presence connections from this address.")
+		return
+	}
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		return
+	}
+	defer conn.Close()
+
+	_ = conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+	conn.SetReadLimit(4096)
+	_, raw, err := conn.ReadMessage()
+	if err != nil {
+		return
+	}
+	var hello struct {
+		ID       string `json:"id"`
+		Platform string `json:"platform"`
+		Version  string `json:"version"`
+	}
+	if err := json.Unmarshal(raw, &hello); err != nil {
+		return
+	}
+	id, ok := presence.ParseID(hello.ID)
+	if !ok {
+		return
+	}
+	platform, ok := presence.ParsePlatform(hello.Platform)
+	if !ok {
+		return
+	}
+	origin := r.Header.Get("Origin")
+	if (platform == presence.Browser) != (origin != "") || (origin != "" && !config.IsAllowedOrigin(origin)) {
+		return
+	}
+
+	tok := presenceTracker.Pin(id, platform, clock.NowMs())
+	if telemetryStore != nil {
+		telemetryStore.RecordPresence(hello.ID, hello.Platform, hello.Version, true)
+	}
+	telemetryHub.Notify("live", liveTelemetryStats())
+
+	defer func() {
+		if presenceTracker.CloseToken(id, tok, clock.NowMs()) {
+			if telemetryStore != nil {
+				telemetryStore.RecordPresence(hello.ID, hello.Platform, hello.Version, false)
+			}
+			telemetryHub.Notify("live", liveTelemetryStats())
+		}
+	}()
+
+	done := make(chan struct{})
+	go func() {
+		defer close(done)
+		ticker := time.NewTicker(15 * time.Second)
+		defer ticker.Stop()
+		for {
+			select {
+			case <-done:
+				return
+			case <-ticker.C:
+				_ = conn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+				if err := conn.WriteMessage(websocket.PingMessage, nil); err != nil {
+					_ = conn.Close()
+					return
+				}
+				presenceTracker.TouchToken(id, tok, clock.NowMs())
+			}
+		}
+	}()
+
+	_ = conn.SetReadDeadline(time.Now().Add(35 * time.Second))
+	conn.SetPongHandler(func(string) error {
+		presenceTracker.TouchToken(id, tok, clock.NowMs())
+		return conn.SetReadDeadline(time.Now().Add(35 * time.Second))
+	})
+	for {
+		if _, _, err := conn.ReadMessage(); err != nil {
+			break
+		}
+		_ = conn.SetReadDeadline(time.Now().Add(35 * time.Second))
+	}
 }
 
 // handleTelemetryError accepts opt-in error reports with basic device info.
@@ -505,7 +608,7 @@ func handleTelemetryError(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if telemetryStore != nil {
-		if _, err := telemetryStore.RecordError(r.Context(), telemetry.ErrorInput{
+		id, err := telemetryStore.RecordError(r.Context(), telemetry.ErrorInput{
 			InstallID:    body.ID,
 			Platform:     body.Platform,
 			AppVersion:   body.AppVersion,
@@ -515,10 +618,17 @@ func handleTelemetryError(w http.ResponseWriter, r *http.Request) {
 			DeviceModel:  body.DeviceModel,
 			OSVersion:    body.OSVersion,
 			ABI:          body.ABI,
-		}); err != nil {
+		})
+		if err != nil {
 			jsonError(w, http.StatusInternalServerError, "store_error", "Failed to store error report.")
 			return
 		}
+		telemetryHub.Notify("error", map[string]interface{}{
+			"id":         id,
+			"errorType":  body.ErrorType,
+			"appVersion": body.AppVersion,
+			"platform":   body.Platform,
+		})
 	}
 	jsonResponse(w, http.StatusAccepted, map[string]bool{"ok": true})
 }
