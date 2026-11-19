@@ -61,7 +61,7 @@
 - **Explore charts** — regional charts, new releases and daily topics.
 - **Dynamic Radio & Origin Tracking** — contextual radio stations and source badges.
 - **Discord Rich Presence** — in-app login, live track/artist/album and progress.
-- **Anonymous telemetry** — an install ID, version, platform and, on errors, scrubbed error details; never your account, IP or listening history. On by default, one switch in Settings turns it off.
+- **Anonymous telemetry** — full by default, minimal or off by choice in Settings; never your account, IP or listening history. See [docs/telemetry.md](docs/telemetry.md).
 - **Scrobbling** to Last.fm and ListenBrainz.
 - **Pluggable sources** — add, edit, test and health-check addon sources, ranked ahead of Monochrome, JioSaavn and YouTube Music.
 
