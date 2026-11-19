@@ -441,6 +441,7 @@ func handlePresence(w http.ResponseWriter, r *http.Request) {
 		Platform string `json:"platform"`
 		Open     *bool  `json:"open"`
 		Version  string `json:"version"`
+		Level    string `json:"level"`
 	}
 	if !decodeJSONBody(w, r, &body) {
 		return
@@ -473,7 +474,15 @@ func handlePresence(w http.ResponseWriter, r *http.Request) {
 		presenceTracker.Close(id)
 	}
 	if telemetryStore != nil {
-		telemetryStore.RecordPresence(body.ID, body.Platform, body.Version, *body.Open)
+		if telemetry.ParseLevel(body.Level) == telemetry.Minimal {
+			// A headcount by day, version and platform. The ID is the client's
+			// per-day one, used to count it once and never stored.
+			if *body.Open {
+				telemetryStore.RecordMinimalPresence(body.ID, body.Platform, body.Version)
+			}
+		} else {
+			telemetryStore.RecordPresence(body.ID, body.Platform, body.Version, *body.Open)
+		}
 	}
 	telemetryHub.Notify("live", liveTelemetryStats())
 	jsonResponse(w, http.StatusOK, map[string]int{"intervalSec": config.PresenceIntervalSec})
@@ -502,6 +511,7 @@ func handlePresenceWS(w http.ResponseWriter, r *http.Request) {
 		ID       string `json:"id"`
 		Platform string `json:"platform"`
 		Version  string `json:"version"`
+		Level    string `json:"level"`
 	}
 	if err := json.Unmarshal(raw, &hello); err != nil {
 		return
@@ -519,15 +529,20 @@ func handlePresenceWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	minimal := telemetry.ParseLevel(hello.Level) == telemetry.Minimal
 	tok := presenceTracker.Pin(id, platform, clock.NowMs())
 	if telemetryStore != nil {
-		telemetryStore.RecordPresence(hello.ID, hello.Platform, hello.Version, true)
+		if minimal {
+			telemetryStore.RecordMinimalPresence(hello.ID, hello.Platform, hello.Version)
+		} else {
+			telemetryStore.RecordPresence(hello.ID, hello.Platform, hello.Version, true)
+		}
 	}
 	telemetryHub.Notify("live", liveTelemetryStats())
 
 	defer func() {
 		if presenceTracker.CloseToken(id, tok, clock.NowMs()) {
-			if telemetryStore != nil {
+			if telemetryStore != nil && !minimal {
 				telemetryStore.RecordPresence(hello.ID, hello.Platform, hello.Version, false)
 			}
 			telemetryHub.Notify("live", liveTelemetryStats())
@@ -583,6 +598,7 @@ func handleTelemetryError(w http.ResponseWriter, r *http.Request) {
 		DeviceModel  string `json:"deviceModel"`
 		OSVersion    string `json:"osVersion"`
 		ABI          string `json:"abi"`
+		Level        string `json:"level"`
 	}
 	if !decodeJSONBody(w, r, &body) {
 		return
@@ -595,6 +611,23 @@ func handleTelemetryError(w http.ResponseWriter, r *http.Request) {
 	origin := r.Header.Get("Origin")
 	if (platform == presence.Browser) != (origin != "") || (origin != "" && !config.IsAllowedOrigin(origin)) {
 		jsonError(w, http.StatusForbidden, "origin_not_allowed", "Telemetry is only accepted from the apps and the web player.")
+		return
+	}
+	// A minimal report is counted by its type and nothing else is read from it:
+	// whatever else the body carries (an ID, a message, a stack trace, a device)
+	// is ignored, so the promise does not depend on the client keeping it.
+	if telemetry.ParseLevel(body.Level) == telemetry.Minimal {
+		if strings.TrimSpace(body.ErrorType) == "" {
+			jsonError(w, http.StatusUnprocessableEntity, "invalid_error", "errorType is required.")
+			return
+		}
+		if telemetryStore != nil {
+			if err := telemetryStore.RecordMinimalError(r.Context(), body.Platform, body.AppVersion, body.ErrorType); err != nil {
+				jsonError(w, http.StatusInternalServerError, "store_error", "Failed to store error report.")
+				return
+			}
+		}
+		jsonResponse(w, http.StatusAccepted, map[string]bool{"ok": true})
 		return
 	}
 	if body.ID != "" {

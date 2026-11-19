@@ -713,3 +713,43 @@ func TestPreviewCountsPeopleNotDevices(t *testing.T) {
 		t.Fatalf("one person on two devices is one face and one seat of two: %+v", got)
 	}
 }
+
+// A minimal-level app is still counted as open, under its per-day ID, and its
+// error report needs nothing but a type: no ID, no message, no device.
+func TestMinimalTelemetry(t *testing.T) {
+	presenceTracker = presence.NewTracker(6*time.Minute, 1000)
+	presenceLimiter = newIPRateLimiter(time.Minute, 100, 100)
+	telemetryLimiter = newIPRateLimiter(time.Minute, 100, 100)
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /api/presence", handlePresence)
+	mux.HandleFunc("POST /api/telemetry/error", handleTelemetryError)
+	mux.HandleFunc("GET /api/stats/live", handleLiveStats)
+	ts := httptest.NewServer(corsMiddleware(mux))
+	defer ts.Close()
+
+	res := postPresence(t, ts, `{"id":"3f2b8c1e-0d4a-4a55-9f0e-1c2d3e4f5a6b","platform":"android","open":true,"version":"1.9.3","level":"minimal"}`, "")
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("minimal presence: status %d", res.StatusCode)
+	}
+	presenceTracker.Sweep(clock.NowMs())
+	if got := liveStats(t, ts).Online; got != 1 {
+		t.Fatalf("a minimal device counts toward the live total, got %d", got)
+	}
+
+	post := func(body string) int {
+		res, err := http.Post(ts.URL+"/api/telemetry/error", "application/json", strings.NewReader(body))
+		if err != nil {
+			t.Fatalf("POST error report: %v", err)
+		}
+		return res.StatusCode
+	}
+	if code := post(`{"platform":"android","appVersion":"1.9.3","errorType":"uncaught_crash","errorMessage":"uncaught_crash","level":"minimal"}`); code != http.StatusAccepted {
+		t.Fatalf("a minimal report with only a type should be accepted, got %d", code)
+	}
+	if code := post(`{"platform":"android","appVersion":"1.9.3","level":"minimal"}`); code != http.StatusUnprocessableEntity {
+		t.Fatalf("a minimal report still needs its type, got %d", code)
+	}
+	if code := post(`{"platform":"android","appVersion":"1.9.3","errorType":"uncaught_crash"}`); code != http.StatusUnprocessableEntity {
+		t.Fatalf("a full report still needs its message, got %d", code)
+	}
+}

@@ -159,6 +159,19 @@ type OverviewData struct {
 	Platforms         []PlatformStat   `json:"platforms"`
 	TopErrors         []ErrorGroupStat `json:"topErrors"`
 	ErrorDevices      []DeviceStat     `json:"errorDevices"`
+	Minimal           MinimalStats     `json:"minimal"`
+}
+
+// MinimalStats is what the minimal level adds up to: device-days and errors by
+// type, with no way back to any one device.
+type MinimalStats struct {
+	DeviceDays int64              `json:"deviceDays"`
+	Errors     []MinimalErrorStat `json:"errors"`
+}
+
+type MinimalErrorStat struct {
+	ErrorType string `json:"errorType"`
+	Count     int64  `json:"count"`
 }
 
 type Store struct {
@@ -171,6 +184,15 @@ type Store struct {
 	wg     sync.WaitGroup
 	closed chan struct{}
 	once   sync.Once
+
+	// Today's minimal-level IDs, kept in memory only and only for the day they
+	// were made: they change every day on the client, so there is nothing to
+	// follow, and they are never written to the database. Their one job is to
+	// count a device once a day. A restart forgets them and can count a device
+	// a second time that day, which is the whole cost of not storing them.
+	minimalMu   sync.Mutex
+	minimalDay  string
+	minimalSeen map[string]struct{}
 }
 
 // NewStore connects to PostgreSQL when databaseURL is non-empty and runs
@@ -295,6 +317,26 @@ CREATE INDEX IF NOT EXISTS idx_errors_created ON error_reports (created_at DESC)
 CREATE INDEX IF NOT EXISTS idx_errors_resolved ON error_reports (resolved, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_errors_type ON error_reports (error_type);
 CREATE INDEX IF NOT EXISTS idx_errors_version ON error_reports (app_version);
+
+-- Minimal telemetry: counters only. No install ID, no message, no stack trace,
+-- no device. A row says how many devices opened which version on which day, or
+-- how many errors of one type a version had, and nothing about who.
+CREATE TABLE IF NOT EXISTS minimal_usage (
+	day         DATE NOT NULL,
+	platform    TEXT NOT NULL,
+	app_version TEXT NOT NULL DEFAULT '',
+	devices     BIGINT NOT NULL DEFAULT 0,
+	PRIMARY KEY (day, platform, app_version)
+);
+
+CREATE TABLE IF NOT EXISTS minimal_errors (
+	day         DATE NOT NULL,
+	platform    TEXT NOT NULL,
+	app_version TEXT NOT NULL DEFAULT '',
+	error_type  TEXT NOT NULL,
+	count       BIGINT NOT NULL DEFAULT 0,
+	PRIMARY KEY (day, platform, app_version, error_type)
+);
 `
 	_, err := pool.Exec(ctx, ddl)
 	return err
@@ -429,6 +471,64 @@ WHERE install_id = $1;`
 	})
 }
 
+// firstSightingToday reports whether dailyID is new for day, and remembers it
+// until the day changes.
+func (s *Store) firstSightingToday(day, dailyID string) bool {
+	s.minimalMu.Lock()
+	defer s.minimalMu.Unlock()
+	if s.minimalDay != day || s.minimalSeen == nil {
+		s.minimalDay = day
+		s.minimalSeen = make(map[string]struct{})
+	}
+	if _, seen := s.minimalSeen[dailyID]; seen {
+		return false
+	}
+	s.minimalSeen[dailyID] = struct{}{}
+	return true
+}
+
+// RecordMinimalPresence counts a minimal-level device once a day, by version
+// and platform. dailyID is the client's per-day ID: it is used to avoid
+// counting the same device twice and is not stored.
+func (s *Store) RecordMinimalPresence(dailyID, platform, appVersion string) {
+	if s.pool == nil {
+		return
+	}
+	day := time.Now().UTC().Format("2006-01-02")
+	if !s.firstSightingToday(day, dailyID) {
+		return
+	}
+	platform = truncate(strings.TrimSpace(platform), 24)
+	appVersion = truncate(strings.TrimSpace(appVersion), 32)
+	s.enqueue(func(ctx context.Context) {
+		const q = `
+INSERT INTO minimal_usage (day, platform, app_version, devices) VALUES ($1::date, $2, $3, 1)
+ON CONFLICT (day, platform, app_version) DO UPDATE SET devices = minimal_usage.devices + 1;`
+		if _, err := s.pool.Exec(ctx, q, day, platform, appVersion); err != nil {
+			log.Printf("telemetry: minimal usage failed: %v", err)
+		}
+	})
+}
+
+// RecordMinimalError counts one error of errorType. Nothing else about the
+// report is accepted here: not the message, the stack trace, the device or
+// the install.
+func (s *Store) RecordMinimalError(ctx context.Context, platform, appVersion, errorType string) error {
+	if s.pool == nil {
+		return nil
+	}
+	const q = `
+INSERT INTO minimal_errors (day, platform, app_version, error_type, count)
+VALUES (CURRENT_DATE, $1, $2, $3, 1)
+ON CONFLICT (day, platform, app_version, error_type) DO UPDATE SET count = minimal_errors.count + 1;`
+	_, err := s.pool.Exec(ctx, q,
+		truncate(strings.TrimSpace(platform), 24),
+		truncate(strings.TrimSpace(appVersion), 32),
+		CleanErrorType(strings.TrimSpace(errorType)),
+	)
+	return err
+}
+
 // RecordSnapshot persists a point-in-time concurrency sample.
 func (s *Store) RecordSnapshot(live LiveStats) {
 	if s.pool == nil {
@@ -503,6 +603,7 @@ func (s *Store) Overview(ctx context.Context, rangeStr string) (OverviewData, er
 		Platforms:         []PlatformStat{},
 		TopErrors:         []ErrorGroupStat{},
 		ErrorDevices:      []DeviceStat{},
+		Minimal:           MinimalStats{Errors: []MinimalErrorStat{}},
 	}
 	for h := 0; h < 24; h++ {
 		out.HourlyConnections[h].Hour = h
@@ -706,6 +807,18 @@ LIMIT 10;`
 		}
 	}
 
+	// 6b. Minimal level: device-days and errors by type
+	_ = s.pool.QueryRow(ctx, `SELECT COALESCE(SUM(devices), 0)::BIGINT FROM minimal_usage WHERE day >= $1::date`, since).Scan(&out.Minimal.DeviceDays)
+	if rows, err := s.pool.Query(ctx, `SELECT error_type, SUM(count)::BIGINT AS c FROM minimal_errors WHERE day >= $1::date GROUP BY error_type ORDER BY c DESC LIMIT 10`, since); err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var m MinimalErrorStat
+			if scanErr := rows.Scan(&m.ErrorType, &m.Count); scanErr == nil {
+				out.Minimal.Errors = append(out.Minimal.Errors, m)
+			}
+		}
+	}
+
 	// 7. Affected devices
 	const devQ = `
 SELECT
@@ -816,34 +929,6 @@ LIMIT %s OFFSET %s;`, where, limitArg, offsetArg)
 		}
 	}
 
-	// 4b. Version upgrades & outdated active installs
-	const upgradesQ = `
-SELECT previous_version, app_version, COUNT(*)::INT AS cnt
-FROM installs
-WHERE previous_version <> '' AND upgraded_at >= $1
-GROUP BY previous_version, app_version
-ORDER BY cnt DESC
-LIMIT 10;`
-	if rows, err := s.pool.Query(ctx, upgradesQ, since); err == nil {
-		defer rows.Close()
-		for rows.Next() {
-			var u UpgradeStat
-			if rows.Scan(&u.FromVersion, &u.ToVersion, &u.Count) == nil {
-				out.UpgradedInPeriod += u.Count
-				out.Upgrades = append(out.Upgrades, u)
-			}
-		}
-	}
-	latestVer := s.version
-	if latestVer == "" || latestVer == "dev" {
-		_ = s.pool.QueryRow(ctx, `SELECT app_version FROM installs WHERE app_version <> '' ORDER BY app_version DESC LIMIT 1`).Scan(&latestVer)
-	}
-	out.LatestVersion = latestVer
-	if latestVer != "" {
-		_ = s.pool.QueryRow(ctx, `
-SELECT COUNT(*)::INT FROM installs
-WHERE last_seen_at >= NOW() - INTERVAL '7 days' AND app_version <> '' AND app_version <> $1;`, latestVer).Scan(&out.OutdatedActive7d)
-	}
 	if tRows, err := s.pool.Query(ctx, `SELECT DISTINCT error_type FROM error_reports ORDER BY error_type ASC LIMIT 50`); err == nil {
 		defer tRows.Close()
 		for tRows.Next() {
@@ -1045,34 +1130,6 @@ LIMIT %s OFFSET %s;`, where, limitArg, offsetArg)
 		}
 	}
 
-	// 4b. Version upgrades & outdated active installs
-	const upgradesQ = `
-SELECT previous_version, app_version, COUNT(*)::INT AS cnt
-FROM installs
-WHERE previous_version <> '' AND upgraded_at >= $1
-GROUP BY previous_version, app_version
-ORDER BY cnt DESC
-LIMIT 10;`
-	if rows, err := s.pool.Query(ctx, upgradesQ, since); err == nil {
-		defer rows.Close()
-		for rows.Next() {
-			var u UpgradeStat
-			if rows.Scan(&u.FromVersion, &u.ToVersion, &u.Count) == nil {
-				out.UpgradedInPeriod += u.Count
-				out.Upgrades = append(out.Upgrades, u)
-			}
-		}
-	}
-	latestVer := s.version
-	if latestVer == "" || latestVer == "dev" {
-		_ = s.pool.QueryRow(ctx, `SELECT app_version FROM installs WHERE app_version <> '' ORDER BY app_version DESC LIMIT 1`).Scan(&latestVer)
-	}
-	out.LatestVersion = latestVer
-	if latestVer != "" {
-		_ = s.pool.QueryRow(ctx, `
-SELECT COUNT(*)::INT FROM installs
-WHERE last_seen_at >= NOW() - INTERVAL '7 days' AND app_version <> '' AND app_version <> $1;`, latestVer).Scan(&out.OutdatedActive7d)
-	}
 	return out, nil
 }
 
@@ -1228,14 +1285,18 @@ func (s *Store) PruneOldHistory(ctx context.Context, days int) (int64, error) {
 	if err != nil {
 		return t1.RowsAffected(), err
 	}
-	return t1.RowsAffected() + t2.RowsAffected(), nil
+	// The minimal counters carry no identity and are tiny, so they are kept a year.
+	yearAgo := time.Now().UTC().Add(-365 * 24 * time.Hour)
+	t3, _ := s.pool.Exec(ctx, `DELETE FROM minimal_usage WHERE day < $1::date`, yearAgo)
+	t4, _ := s.pool.Exec(ctx, `DELETE FROM minimal_errors WHERE day < $1::date`, yearAgo)
+	return t1.RowsAffected() + t2.RowsAffected() + t3.RowsAffected() + t4.RowsAffected(), nil
 }
 
 func (s *Store) ResetDatabase(ctx context.Context) error {
 	if s.pool == nil {
 		return nil
 	}
-	_, err := s.pool.Exec(ctx, `TRUNCATE TABLE installs, connection_events, concurrency_snapshots, error_reports RESTART IDENTITY;`)
+	_, err := s.pool.Exec(ctx, `TRUNCATE TABLE installs, connection_events, concurrency_snapshots, error_reports, minimal_usage, minimal_errors RESTART IDENTITY;`)
 	return err
 }
 
