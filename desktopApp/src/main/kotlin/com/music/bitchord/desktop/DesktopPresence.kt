@@ -55,7 +55,11 @@ internal object DesktopPresence {
 
     /** Shows the notice once, to anyone who has not seen it yet. */
     fun showNoticeIfNew() {
-        if (!noticeSeen.value && prompt.value == null) prompt.value = DesktopTelemetryPrompt.Notice
+        // Seen once shown: closing the window with it open must not bring it back.
+        if (!noticeSeen.value && prompt.value == null) {
+            markNoticeSeen()
+            prompt.value = DesktopTelemetryPrompt.Notice
+        }
     }
 
     fun install() {

@@ -52,9 +52,16 @@ object TelemetryPrompts {
         current.value = TelemetryPrompt.Picker
     }
 
-    /** Shows the notice once, to anyone who has not seen it yet. */
+    /**
+     * Shows the notice once, to anyone who has not seen it yet.
+     *
+     * It counts as seen the moment it is shown, not when a button closes it:
+     * leaving the app with it open (Back, Home, an update installed over it)
+     * used to leave the flag unset, and the notice came back on every launch.
+     */
     fun showNoticeIfNew() {
         if (!AppSettings.telemetryNoticeSeen.value && current.value == null) {
+            AppSettings.markTelemetryNoticeSeen()
             current.value = TelemetryPrompt.Notice
         }
     }
@@ -90,6 +97,8 @@ fun TelemetryDialogHost(hazeState: HazeState) {
     val prompt by TelemetryPrompts.current.collectAsStateWithLifecycle()
     val level by AppSettings.telemetryLevel.collectAsStateWithLifecycle()
     val close = { TelemetryPrompts.current.value = null }
+    // Back closes the dialog instead of leaving the app underneath it.
+    androidx.activity.compose.BackHandler(enabled = prompt != null, onBack = close)
 
     when (val p = prompt) {
         null -> Unit
