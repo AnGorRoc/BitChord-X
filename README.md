@@ -48,6 +48,7 @@
 - **Sing / Karaoke Mode** — Real-time vocal remover with DSP engine selector and liquid capsule fader.
 - **Gapless playback with true crossfade**, adjustable 0–12s.
 - **Offline downloads & smart caching** — save tracks with embedded metadata and automatic background upgrades to higher-tier copies.
+- **Offline mode** — with no connection only saved songs play, the rest are greyed out and listed after them, an *Offline music* playlist gathers everything on the phone, and it all reverts by itself when the network returns.
 - **Audio DSP engines & formats** — system EQ, ReplayGain, and DSD support.
 - **Local music library & network streaming** — local audio files, plus SMB and WebDAV network folders.
 - **Background playback** via a proper foreground media session.
