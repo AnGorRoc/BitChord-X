@@ -938,6 +938,7 @@ class PlaybackService : MediaLibraryService() {
         }
 
         override fun onIsPlayingChanged(isPlaying: Boolean) {
+            com.music.bitchord.data.presence.AndroidPresence.setPlaying(isPlaying)
             // The player this fired on, which is by definition the one the
             // session is currently pointed at.
             val exoPlayer = player ?: return
@@ -9449,6 +9450,7 @@ class PlaybackService : MediaLibraryService() {
 
 
     override fun onDestroy() {
+        com.music.bitchord.data.presence.AndroidPresence.setPlaying(false)
         DeviceLink.setServiceRunning(false)
         WearBridge.attachStreams(null)
         WearBridge.releaseSpeaker()

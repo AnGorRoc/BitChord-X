@@ -25,6 +25,19 @@ object AndroidPresence {
     private const val PREFS = "presence"
     private const val KEY_INSTALL_ID = "install_id"
 
+    @Volatile private var presenceInstance: Presence? = null
+    @Volatile private var isForeground = false
+    @Volatile private var isPlaying = false
+
+    fun setPlaying(playing: Boolean) {
+        isPlaying = playing
+        syncOpen()
+    }
+
+    private fun syncOpen() {
+        presenceInstance?.setOpen(isForeground || isPlaying)
+    }
+
     /** Call once from [Application.onCreate], on the main thread. */
     fun install(app: Application) {
         val id = installId(app)
@@ -60,20 +73,21 @@ object AndroidPresence {
         )
         TelemetryReporter.installUncaughtHandler()
 
-        var isForeground = false
+        presenceInstance = presence
+
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
             override fun onStart(owner: LifecycleOwner) {
                 isForeground = true
-                presence.setOpen(true)
+                syncOpen()
             }
             override fun onStop(owner: LifecycleOwner) {
                 isForeground = false
-                presence.setOpen(false)
+                syncOpen()
             }
         })
         CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate).launch {
             AppSettings.telemetryLevel.drop(1).collect { level ->
-                presence.setOpen(level.sends && isForeground)
+                presence.setOpen(level.sends && (isForeground || isPlaying))
             }
         }
     }
