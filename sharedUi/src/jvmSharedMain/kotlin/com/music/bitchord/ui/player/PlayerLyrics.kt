@@ -497,6 +497,13 @@ private fun scrollLead(lines: List<LyricLine>, positionMs: Long): Long {
  */
 private val CONTROLS_SCROLL_SLOP = 20.dp
 
+/**
+ * The scroll back up that brings the controls out over the lyrics or the
+ * queue: about a third of a phone screen of finger travel, in one go or
+ * banked over a couple of swipes in the same direction.
+ */
+internal val PLAYER_PANEL_REVEAL_SCROLL = 180.dp
+
 private const val LYRICS_UNAVAILABLE_HOLD_MS = 5_000L
 private const val LYRICS_UNAVAILABLE_FADE_MS = 900
 internal sealed interface LyricsTranslationUiState {
@@ -1727,12 +1734,20 @@ internal fun rememberPlayerControlsOnScroll(
     onUserScroll: () -> Unit = {},
     onReveal: () -> Unit,
     onHide: () -> Unit,
+    /**
+     * How far the finger has to bring the list back before the controls come
+     * out. Hiding answers at [CONTROLS_SCROLL_SLOP]; coming back takes a real
+     * scroll up — one long one, or two short — so glancing back a line or two
+     * doesn't pull the deck up over the words.
+     */
+    revealDistance: Dp = CONTROLS_SCROLL_SLOP,
 ): NestedScrollConnection {
     val controlsSlopPx = with(LocalDensity.current) { CONTROLS_SCROLL_SLOP.toPx() }
+    val revealPx = with(LocalDensity.current) { revealDistance.toPx() }
     val revealControls by rememberUpdatedState(onReveal)
     val hideControls by rememberUpdatedState(onHide)
     val notifyUserScroll by rememberUpdatedState(onUserScroll)
-    return remember(enabled, controlsSlopPx) {
+    return remember(enabled, controlsSlopPx, revealPx) {
         object : NestedScrollConnection {
             private var travel = 0f
 
@@ -1745,7 +1760,7 @@ internal fun rememberPlayerControlsOnScroll(
                     if (travel <= -controlsSlopPx) {
                         travel = 0f
                         hideControls()
-                    } else if (travel >= controlsSlopPx) {
+                    } else if (travel >= revealPx) {
                         travel = 0f
                         revealControls()
                     }
@@ -1902,11 +1917,13 @@ internal fun LyricsPanel(
     // line lands, and that is not somebody reading on.
     val controlsOnScroll = rememberPlayerControlsOnScroll(
         onUserScroll = { browsingByDrag = true },
-        // Only at the very top. Anywhere else a small reversal of the finger
-        // brought the deck back and the panel shrank in the middle of reading;
-        // a tap on the lower half still brings it back on purpose.
-        onReveal = { if (!picking && !listState.canScrollBackward) onRevealControls() },
+        // Not on a small reversal of the finger — that brought the deck back
+        // and shrank the panel in the middle of reading — but on a deliberate
+        // scroll back up, anywhere in the song. A tap on the lower half still
+        // brings it back on purpose.
+        onReveal = { if (!picking) onRevealControls() },
         onHide = onHideControls,
+        revealDistance = PLAYER_PANEL_REVEAL_SCROLL,
     )
 
     val currentLine by rememberUpdatedState(focusLine)

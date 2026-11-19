@@ -796,6 +796,16 @@ fun NowPlayingScreen(
             (queueOpen || queueDragging || queueSlide.floatValue > 0.001f)
         if (queueOwnsCollapse) queueSlide.floatValue else animatedCollapse.value
     }
+    // With the lyrics or the queue up, the controls draw in toward the foot of
+    // the screen: the gaps around the transport close to a fixed minimum and
+    // the tall screen's spread goes, so the deck sits low and compact under the
+    // panel instead of riding up into it. On the sleeve's own 420ms curve, so
+    // the two arrive together, and read only where the gaps are laid out.
+    val lyricsTighten = animateFloatAsState(
+        targetValue = if (lyricsOpen || queueOpen) 1f else 0f,
+        animationSpec = tween(durationMillis = 420, easing = FastOutSlowInEasing),
+        label = "lyricsTighten",
+    )
     val collapseStarted by remember { derivedStateOf { p() > 0f } }
     val collapseAtRest by remember { derivedStateOf { p() == 0f } }
     val collapsePastSettling by remember { derivedStateOf { p() >= 0.01f } }
@@ -3561,6 +3571,10 @@ fun NowPlayingScreen(
                         )
                     }
                     }
+                    // In the compact deck the scrubber gives up the empty height
+                    // under its times, so it — and the status line above it —
+                    // settles down onto the transport.
+                    Box(Modifier.tightenedScrubber { lyricsTighten.value }) {
                     IsolatedPlayerScrubber(
                         song = song,
                         isLoading = isLoading,
@@ -3572,6 +3586,7 @@ fun NowPlayingScreen(
                         onScrub = onScrub,
                         onScrubFinished = onScrubFinished,
                     )
+                    }
 
                     val transport: @Composable () -> Unit = {
                         TransportRow(
@@ -3592,9 +3607,9 @@ fun NowPlayingScreen(
                         // as one. Both of its own gaps take half the spread, so on a
                         // tall screen it holds the centre rather than drifting up
                         // under the seek bar.
-                        Spacer(Modifier.height(8.dp + controlSpread / 2))
-                        transport()
-                        Spacer(Modifier.height(12.dp + controlSpread / 2))
+                        TighteningGap(8.dp + controlSpread / 2, LYRICS_GAP_ABOVE_TRANSPORT) { lyricsTighten.value }
+                        Box(Modifier.tightenedTransport { lyricsTighten.value }) { transport() }
+                        TighteningGap(12.dp + controlSpread / 2, LYRICS_GAP_BELOW_TRANSPORT) { lyricsTighten.value }
                         VolumeRow(
                             value = { volume.level.value },
                             onValueChange = onVolumeChange,
@@ -3613,9 +3628,9 @@ fun NowPlayingScreen(
                         // from the top gap to the bottom one.
                         val run = 8.dp + 12.dp + 6.dp + controlSpread + VOLUME_ROW_HEIGHT
                         val lift = SCRUBBER_LABEL_LIFT / 2
-                        Spacer(Modifier.height(run / 2 - lift))
-                        transport()
-                        Spacer(Modifier.height(run / 2 + lift))
+                        TighteningGap(run / 2 - lift, LYRICS_GAP_ABOVE_TRANSPORT) { lyricsTighten.value }
+                        Box(Modifier.tightenedTransport { lyricsTighten.value }) { transport() }
+                        TighteningGap(run / 2 + lift, LYRICS_GAP_BELOW_TRANSPORT) { lyricsTighten.value }
                     }
 
                     playerActions()
@@ -3629,3 +3644,61 @@ fun NowPlayingScreen(
         }
     }
 }
+
+/**
+ * A gap in the deck that closes from [normal] to [compact] as [tighten] goes
+ * from 0 to 1 — see `lyricsTighten`. The amount is read while laying out, so
+ * the 420ms it takes moves the deck without recomposing the player.
+ */
+@Composable
+private fun TighteningGap(normal: Dp, compact: Dp, tighten: () -> Float) {
+    Spacer(
+        Modifier.layout { measurable, constraints ->
+            val height = lerp(normal, compact.coerceAtMost(normal), tighten().coerceIn(0f, 1f))
+                .roundToPx()
+                .coerceAtLeast(0)
+            val placeable = measurable.measure(Constraints.fixed(0, height))
+            layout(constraints.constrainWidth(0), height) { placeable.place(0, 0) }
+        },
+    )
+}
+
+/** Scrubber to transport, with a panel up: just enough for the times to clear the buttons. */
+private val LYRICS_GAP_ABOVE_TRANSPORT = 2.dp
+
+/** Transport to the bottom row, with a panel up. */
+private val LYRICS_GAP_BELOW_TRANSPORT = 4.dp
+
+/**
+ * The transport row, letting its touch target's spare height overlap its
+ * neighbours as [tighten] goes to 1: the play button's target is 92dp tall
+ * round a 74dp glyph, and the scrubber's slot has its times lifted 9dp out
+ * of the bottom of it, so there is empty height on both sides that only the
+ * compact deck gives up. Laid out shorter by that much and drawn centred in
+ * what is left — the glyphs keep their size and their targets.
+ */
+private fun Modifier.tightenedTransport(tighten: () -> Float): Modifier = layout { measurable, constraints ->
+    val placeable = measurable.measure(constraints)
+    val trimEach = (TRANSPORT_TRIM_EACH_SIDE.toPx() * tighten().coerceIn(0f, 1f)).roundToInt()
+    val height = (placeable.height - trimEach * 2).coerceAtLeast(0)
+    layout(placeable.width, height) { placeable.place(0, -trimEach) }
+}
+
+/** How much of the transport row's spare height each side gives up in the compact deck. */
+private val TRANSPORT_TRIM_EACH_SIDE = 9.dp
+
+/**
+ * The scrubber, laid out shorter at its foot as [tighten] goes to 1: its times
+ * are drawn [SCRUBBER_LABEL_LIFT] up out of their slot, so the bottom of the
+ * slot is empty, and the compact deck lets the transport have it. The deck is
+ * pinned to the screen's foot, so this brings the scrubber and the line above
+ * it down rather than the buttons up.
+ */
+private fun Modifier.tightenedScrubber(tighten: () -> Float): Modifier = layout { measurable, constraints ->
+    val placeable = measurable.measure(constraints)
+    val trim = (SCRUBBER_TRIM.toPx() * tighten().coerceIn(0f, 1f)).roundToInt()
+    layout(placeable.width, (placeable.height - trim).coerceAtLeast(0)) { placeable.place(0, 0) }
+}
+
+/** How much of the scrubber's empty foot the compact deck takes. */
+private val SCRUBBER_TRIM = 18.dp
