@@ -227,9 +227,15 @@ internal class DesktopDeviceLink(
     }
 
     /** The songs in this computer's queue as the controller last knew them. */
-    private var queueSig = ""
+    private var queueSig = 1 // the signature of an empty queue
 
-    private fun signature() = queue().songs.joinToString(",") { it.videoId }
+    // A hash, not a joined string: this runs every second even while idle, and a long queue
+    // would otherwise be rebuilt into a throwaway string each time.
+    private fun signature(): Int {
+        var h = 1
+        for (song in queue().songs) h = 31 * h + song.videoId.hashCode()
+        return h
+    }
 
     /** An edit made on this computer while another device is its remote: the remote's copy follows. */
     private fun mirrorEdits() {
