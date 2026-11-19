@@ -122,6 +122,8 @@ import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.graphicsLayer
@@ -3900,13 +3902,12 @@ private fun BitChordApp(
                 val topBarActionsVisible = !(route != null && AppRoute.Settings in navigator)
                 val topBarLeading: (@Composable () -> Unit)? = if (selectedTab == TAB_HOME && route == null && detail == null && selectedMoodGenre == null) {
                     {
-                        Icon(
-                            painter = painterResource(R.drawable.ic_logo),
-                            contentDescription = "BitChord",
-                            tint = MaterialTheme.colorScheme.onBackground,
+                        com.music.bitchord.ui.components.GlassLogo(
+                            hazeState = hazeState,
                             modifier = Modifier
                                 .padding(start = if (isLandscapeChrome) 0.dp else 4.dp)
-                                .size(width = 30.dp, height = 30.dp),
+                                .size(width = 30.dp, height = 30.dp)
+                                .semantics { contentDescription = "BitChord" },
                         )
                     }
                 } else null
@@ -4516,13 +4517,12 @@ private fun BitChordApp(
                         actionsVisible = !(route != null && AppRoute.Settings in navigator),
                         leading = if (selectedTab == TAB_HOME && route == null && detail == null && selectedMoodGenre == null) {
                             {
-                                Icon(
-                                    painter = painterResource(R.drawable.ic_logo),
-                                    contentDescription = "BitChord",
-                                    tint = MaterialTheme.colorScheme.onBackground,
+                                com.music.bitchord.ui.components.GlassLogo(
+                                    hazeState = hazeState,
                                     modifier = Modifier
                                         .padding(start = 4.dp)
-                                        .size(width = 30.dp, height = 30.dp),
+                                        .size(width = 30.dp, height = 30.dp)
+                                        .semantics { contentDescription = "BitChord" },
                                 )
                             }
                         } else null,
