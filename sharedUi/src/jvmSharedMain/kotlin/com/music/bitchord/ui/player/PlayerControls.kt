@@ -99,6 +99,7 @@ import org.jetbrains.compose.resources.vectorResource
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.TextStyle
@@ -111,6 +112,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.music.bitchord.ui.components.LINE_FADE
+import com.music.bitchord.ui.components.touchBleed
 import com.music.bitchord.ui.graphics.fadingEdges
 import com.music.bitchord.ui.haptics.Haptic
 import com.music.bitchord.ui.haptics.rememberHaptics
@@ -496,57 +498,76 @@ internal fun TransportRow(
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     compact: Boolean = false,
+    /**
+     * How far the three targets reach above and below the row, read while
+     * laying out. Positive into empty gaps around it; negative to hand back
+     * height a tighter deck lays the row over its neighbours with, so a tap
+     * on the seek bar or the volume bar never lands on a skip.
+     */
+    touchReach: () -> Dp = { 0.dp },
 ) {
     val playSize = if (compact) 58.dp else 74.dp
     val playTouch = if (compact) 76.dp else 92.dp
     val skipSize = if (compact) 44.dp else PLAYER_SKIP_ICON_SIZE
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        // SpaceAround, not SpaceEvenly: the outer margins take half a gap, so
-        // the three buttons spread a little further apart from each other.
-        horizontalArrangement = Arrangement.SpaceAround,
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        TransportGlyph(
-            icon = Res.drawable.ic_player_previous,
-            contentDescription = stringResource(Res.string.widget_previous),
-            size = skipSize,
-            touchSize = PLAYER_SKIP_TOUCH_SIZE,
-            heightScale = PLAYER_SKIP_HEIGHT_SCALE,
-            onClick = onPrevious,
-            enabled = previousEnabled,
-            haptic = Haptic.SkipPrevious,
-        )
-        if (isLoading) {
-            // Same footprint as the play/pause target — a smaller box here
-            // would shunt everything below it on every load.
-            Box(Modifier.size(playTouch), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(
-                    color = Color.White,
-                    strokeWidth = 3.dp,
-                    modifier = Modifier.size(if (compact) 30.dp else 38.dp),
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        // Laid out as SpaceAround always was — the outer margins half a gap,
+        // the glyphs where they have always been — but each button's cell takes
+        // half the gap on either side of it, so the row has no dead space
+        // between targets: a tap anywhere along it lands on the nearest button.
+        // Every cell is also the row's full height, so the skips answer as tall
+        // as the play button rather than just across their own glyph.
+        val gap = ((maxWidth - PLAYER_SKIP_TOUCH_SIZE * 2 - playTouch) / 3).coerceAtLeast(0.dp)
+        val skipCell = Modifier.width(PLAYER_SKIP_TOUCH_SIZE + gap).fillMaxHeight()
+        Row(
+            modifier = Modifier.fillMaxWidth().height(playTouch),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TransportGlyph(
+                icon = Res.drawable.ic_player_previous,
+                contentDescription = stringResource(Res.string.widget_previous),
+                size = skipSize,
+                heightScale = PLAYER_SKIP_HEIGHT_SCALE,
+                onClick = onPrevious,
+                enabled = previousEnabled,
+                haptic = Haptic.SkipPrevious,
+                touchReach = touchReach,
+                modifier = skipCell,
+            )
+            val playCell = Modifier.width(playTouch + gap).fillMaxHeight()
+            if (isLoading) {
+                // Same footprint as the play/pause target — a smaller box here
+                // would shunt everything below it on every load.
+                Box(playCell, contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(
+                        color = Color.White,
+                        strokeWidth = 3.dp,
+                        modifier = Modifier.size(if (compact) 30.dp else 38.dp),
+                    )
+                }
+            } else {
+                TransportGlyph(
+                    icon = if (isPlaying) Res.drawable.ic_player_pause else Res.drawable.ic_player_play,
+                    contentDescription = stringResource(if (isPlaying) Res.string.pause else Res.string.play),
+                    size = playSize,
+                    onClick = onPlayPause,
+                    haptic = if (isPlaying) Haptic.Pause else Haptic.Resume,
+                    touchReach = touchReach,
+                    modifier = playCell,
                 )
             }
-        } else {
             TransportGlyph(
-                icon = if (isPlaying) Res.drawable.ic_player_pause else Res.drawable.ic_player_play,
-                contentDescription = stringResource(if (isPlaying) Res.string.pause else Res.string.play),
-                size = playSize,
-                touchSize = playTouch,
-                onClick = onPlayPause,
-                haptic = if (isPlaying) Haptic.Pause else Haptic.Resume,
+                icon = Res.drawable.ic_player_next,
+                contentDescription = stringResource(Res.string.widget_next),
+                size = skipSize,
+                heightScale = PLAYER_SKIP_HEIGHT_SCALE,
+                onClick = onNext,
+                enabled = nextEnabled,
+                haptic = Haptic.SkipNext,
+                touchReach = touchReach,
+                modifier = skipCell,
             )
         }
-        TransportGlyph(
-            icon = Res.drawable.ic_player_next,
-            contentDescription = stringResource(Res.string.widget_next),
-            size = skipSize,
-            touchSize = PLAYER_SKIP_TOUCH_SIZE,
-            heightScale = PLAYER_SKIP_HEIGHT_SCALE,
-            onClick = onNext,
-            enabled = nextEnabled,
-            haptic = Haptic.SkipNext,
-        )
     }
 }
 
@@ -822,12 +843,15 @@ private fun TransportGlyph(
     icon: DrawableResource,
     contentDescription: String,
     size: androidx.compose.ui.unit.Dp,
-    touchSize: androidx.compose.ui.unit.Dp = size,
     onClick: () -> Unit,
+    /** The button's whole cell — the glyph is centred in it, and all of it answers a tap. */
+    modifier: Modifier,
     enabled: Boolean = true,
     haptic: Haptic = Haptic.Tap,
     /** Vertical squash of the glyph alone; its width and touch box are untouched. */
     heightScale: Float = 1f,
+    /** See [TransportRow]'s touchReach. */
+    touchReach: () -> Dp = { 0.dp },
 ) {
     val haptics = rememberHaptics()
     // Faded rather than hidden: the row keeps its shape at the ends of a queue.
@@ -835,22 +859,25 @@ private fun TransportGlyph(
         targetValue = if (enabled) 1f else 0.3f,
         label = "transportAlpha",
     )
-    Box(
-        modifier = Modifier
-            .size(touchSize)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-                enabled = enabled,
-            ) {
-                haptics.play(haptic)
-                onClick()
-            },
-        contentAlignment = Alignment.Center,
-    ) {
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        Box(
+            Modifier
+                .matchParentSize()
+                .touchBleed(vertical = touchReach)
+                .semantics { this.contentDescription = contentDescription }
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                    enabled = enabled,
+                    role = Role.Button,
+                ) {
+                    haptics.play(haptic)
+                    onClick()
+                },
+        )
         Icon(
             painter = painterResource(icon),
-            contentDescription = contentDescription,
+            contentDescription = null,
             tint = Color.White.copy(alpha = alpha),
             modifier = Modifier
                 .size(size)

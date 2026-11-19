@@ -6,6 +6,11 @@ import com.music.bitchord.data.listentogether.ListenTogether
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import com.music.bitchord.ui.components.touchBleed
+import androidx.compose.ui.semantics.Role
+import androidx.compose.material3.ripple
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.indication
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.spring
@@ -26,7 +31,6 @@ import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -478,21 +482,33 @@ fun MiniPlayer(
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
             }
+            // Play and next split the gap between them down the middle, and each
+            // reaches out to the bar's edge above and below — next to its right end
+            // too — so there is no dead strip between or around the two targets.
+            // The glyphs sit where they always did; only the answering area grows.
+            val reachY = { ROW_PADDING_VERTICAL }
             if (isLoading) {
-                Box(Modifier.size(GLYPH_SLOT), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(
-                        color = MaterialTheme.colorScheme.onBackground,
-                        strokeWidth = 2.dp,
-                        modifier = Modifier.size(SPINNER_SIZE),
-                    )
+                Box(
+                    Modifier.size(GLYPH_SLOT + TRANSPORT_GAP / 2, GLYPH_SLOT),
+                    contentAlignment = Alignment.CenterStart,
+                ) {
+                    Box(Modifier.size(GLYPH_SLOT), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(
+                            color = MaterialTheme.colorScheme.onBackground,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(SPINNER_SIZE),
+                        )
+                    }
                 }
             } else {
-                IconButton(
+                MiniTransportCell(
                     onClick = {
                         haptics.play(if (isPlaying) Haptic.Pause else Haptic.Resume)
                         onPlayPause()
                     },
-                    modifier = Modifier.size(GLYPH_SLOT),
+                    glyphAlignment = Alignment.CenterStart,
+                    bleedEnd = 0.dp,
+                    reachY = reachY,
                 ) {
                     Icon(
                         imageVector = if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
@@ -502,22 +518,67 @@ fun MiniPlayer(
                     )
                 }
             }
-            Spacer(Modifier.width(TRANSPORT_GAP))
             // Faded and inert rather than removed while the host holds the
             // controls, so the bar keeps its shape — see [controlsLocked].
-            IconButton(
+            MiniTransportCell(
                 onClick = {
                     haptics.play(Haptic.SkipNext)
                     onNext()
                 },
                 enabled = !controlsLocked,
-                modifier = Modifier.size(GLYPH_SLOT),
+                glyphAlignment = Alignment.CenterEnd,
+                bleedEnd = ROW_PADDING_HORIZONTAL,
+                reachY = reachY,
             ) {
                 MiniPlayerNextGlyph(
                     tint = MaterialTheme.colorScheme.onBackground
                         .copy(alpha = if (controlsLocked) 0.3f else 1f),
                 )
             }
+        }
+    }
+}
+
+/**
+ * One of the mini player's two transport buttons: a [GLYPH_SLOT] for the glyph
+ * at [glyphAlignment], plus half of [TRANSPORT_GAP] on the side facing the other
+ * button, all of which answers a tap — and past it by [bleedEnd] at the end and
+ * by [reachY] above and below, into the bar's own padding. The ripple stays the
+ * IconButton's circle round the glyph.
+ */
+@Composable
+private fun MiniTransportCell(
+    onClick: () -> Unit,
+    glyphAlignment: Alignment,
+    bleedEnd: Dp,
+    reachY: () -> Dp,
+    enabled: Boolean = true,
+    glyph: @Composable () -> Unit,
+) {
+    val interaction = remember { MutableInteractionSource() }
+    Box(
+        Modifier.size(GLYPH_SLOT + TRANSPORT_GAP / 2, GLYPH_SLOT),
+        contentAlignment = glyphAlignment,
+    ) {
+        Box(
+            Modifier
+                .matchParentSize()
+                .touchBleed(end = bleedEnd, vertical = reachY)
+                .clickable(
+                    interactionSource = interaction,
+                    indication = null,
+                    enabled = enabled,
+                    role = Role.Button,
+                    onClick = onClick,
+                ),
+        )
+        Box(
+            Modifier
+                .size(GLYPH_SLOT)
+                .indication(interaction, ripple(bounded = false, radius = GLYPH_SLOT / 2)),
+            contentAlignment = Alignment.Center,
+        ) {
+            glyph()
         }
     }
 }

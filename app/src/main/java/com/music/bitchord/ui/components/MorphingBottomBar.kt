@@ -74,6 +74,12 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.onClick
+import androidx.compose.ui.semantics.Role
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -231,6 +237,9 @@ fun MorphingBottomBar(
     var lastHapticTab by remember { mutableIntStateOf(lastSelectedNavTab) }
     val currentSelectedNavTab by rememberUpdatedState(lastSelectedNavTab)
     val currentOnTabSelected by rememberUpdatedState(onTabSelected)
+    // The gesture handlers below live for the bar's lifetime; this is what
+    // they read, so they see the step once the row has been measured.
+    val currentTabStep by rememberUpdatedState(tabStepPx)
 
     LaunchedEffect(isSearching) {
         if (isSearching) {
@@ -345,6 +354,60 @@ fun MorphingBottomBar(
                                 .graphicsLayer {
                                     alpha = (1f - safeInlineProgress * 1.4f).coerceIn(0f, 1f)
                                 }
+                                // Ahead of the padding, so the whole pill takes the
+                                // tab gestures — its inset and the gaps between tabs
+                                // included — rather than only the tabs' own boxes.
+                                // A tap goes to the nearest tab: the boundaries sit
+                                // halfway across each gap.
+                                .pointerInput(Unit) {
+                                    detectTapGestures { offset ->
+                                        val step = currentTabStep
+                                        if (step <= 0f || n == 0) return@detectTapGestures
+                                        val x = offset.x - PILL_INSET.toPx() + gapPx / 2f
+                                        val index = (x / step).toInt().coerceIn(0, n - 1)
+                                        // The active tab is forwarded too: the host turns
+                                        // that tap into "back to the root, or to the top".
+                                        haptics.play(Haptic.Select)
+                                        currentOnTabSelected(index)
+                                    }
+                                }
+                                .pointerInput(Unit) {
+                                    var totalDrag = 0f
+                                    var dragStartIndex = currentSelectedNavTab
+                                    detectHorizontalDragGestures(
+                                        onDragStart = {
+                                            totalDrag = 0f
+                                            dragStartIndex = currentSelectedNavTab
+                                        },
+                                        onDragCancel = { dragOffset = 0f },
+                                        onDragEnd = {
+                                            val step = currentTabStep
+                                            if (step > 0f) {
+                                                val absoluteIndexFloat = (dragStartIndex + totalDrag / step)
+                                                    .coerceIn(0f, (n - 1).toFloat())
+                                                val newIndex = absoluteIndexFloat.roundToInt()
+                                                if (newIndex != currentSelectedNavTab) {
+                                                    currentOnTabSelected(newIndex)
+                                                }
+                                            }
+                                            dragOffset = 0f
+                                        },
+                                        onHorizontalDrag = { _, delta ->
+                                            val step = currentTabStep
+                                            if (step <= 0f) return@detectHorizontalDragGestures
+                                            totalDrag += delta
+                                            val absoluteIndexFloat = (dragStartIndex + totalDrag / step)
+                                                .coerceIn(0f, (n - 1).toFloat())
+                                            dragOffset = absoluteIndexFloat * step - dragStartIndex * step
+
+                                            val approxTab = absoluteIndexFloat.roundToInt()
+                                            if (approxTab != lastHapticTab) {
+                                                haptics.play(Haptic.Tick)
+                                                lastHapticTab = approxTab
+                                            }
+                                        },
+                                    )
+                                }
                                 .padding(horizontal = PILL_INSET, vertical = 4.dp),
                         ) {
                     // Liquid sliding indicator pill
@@ -366,41 +429,7 @@ fun MorphingBottomBar(
                     Row(
                         modifier = Modifier
                             .fillMaxSize()
-                            .onSizeChanged { rowSize = it }
-                            .pointerInput(Unit) {
-                                var totalDrag = 0f
-                                var dragStartIndex = currentSelectedNavTab
-                                detectHorizontalDragGestures(
-                                    onDragStart = {
-                                        totalDrag = 0f
-                                        dragStartIndex = currentSelectedNavTab
-                                    },
-                                    onDragCancel = { dragOffset = 0f },
-                                    onDragEnd = {
-                                        if (tabStepPx > 0f) {
-                                            val absoluteIndexFloat = (dragStartIndex + totalDrag / tabStepPx)
-                                                .coerceIn(0f, (n - 1).toFloat())
-                                            val newIndex = absoluteIndexFloat.roundToInt()
-                                            if (newIndex != currentSelectedNavTab) {
-                                                currentOnTabSelected(newIndex)
-                                            }
-                                        }
-                                        dragOffset = 0f
-                                    },
-                                    onHorizontalDrag = { _, delta ->
-                                        totalDrag += delta
-                                        val absoluteIndexFloat = (dragStartIndex + totalDrag / tabStepPx)
-                                            .coerceIn(0f, (n - 1).toFloat())
-                                        dragOffset = absoluteIndexFloat * tabStepPx - dragStartIndex * tabStepPx
-
-                                        val approxTab = absoluteIndexFloat.roundToInt()
-                                        if (approxTab != lastHapticTab) {
-                                            haptics.play(Haptic.Tick)
-                                            lastHapticTab = approxTab
-                                        }
-                                    },
-                                )
-                            },
+                            .onSizeChanged { rowSize = it },
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
@@ -426,15 +455,16 @@ fun MorphingBottomBar(
                                 modifier = Modifier
                                     .weight(1f)
                                     .fillMaxHeight()
-                                    .clip(pillShape)
-                                    .clickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null,
-                                    ) {
-                                        // The active tab is forwarded too: the host turns
-                                        // that tap into "back to the root, or to the top".
-                                        haptics.play(Haptic.Select)
-                                        onTabSelected(index)
+                                    // Taps are taken by the pill around the row (see
+                                    // above); this only tells accessibility what is here.
+                                    .semantics(mergeDescendants = true) {
+                                        role = Role.Tab
+                                        selected = isSelected
+                                        onClick {
+                                            haptics.play(Haptic.Select)
+                                            onTabSelected(index)
+                                            true
+                                        }
                                     },
                             ) {
                                 Icon(

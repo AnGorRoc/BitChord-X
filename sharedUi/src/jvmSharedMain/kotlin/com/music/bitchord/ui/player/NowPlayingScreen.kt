@@ -3598,6 +3598,17 @@ fun NowPlayingScreen(
                             onPrevious = onPrevious,
                             onPlayPause = onPlayPause,
                             onNext = onNext,
+                            // Out into the open gaps either side of the row; in the
+                            // compact deck, back in to just the height it is laid
+                            // out at, which is where the seek bar and volume bar
+                            // begin — see [tightenedTransport].
+                            touchReach = {
+                                lerp(
+                                    TRANSPORT_TOUCH_REACH,
+                                    -TRANSPORT_TRIM_EACH_SIDE,
+                                    lyricsTighten.value.coerceIn(0f, 1f),
+                                )
+                            },
                         )
                     }
                     if (!hideVolumeBar) {
@@ -3686,6 +3697,14 @@ private fun Modifier.tightenedTransport(tighten: () -> Float): Modifier = layout
 
 /** How much of the transport row's spare height each side gives up in the compact deck. */
 private val TRANSPORT_TRIM_EACH_SIDE = 9.dp
+
+/**
+ * How far the transport's targets reach past the row, above and below, in the
+ * full deck. Inside the smallest gap either side of it — 8dp to the scrubber,
+ * 12dp to the volume bar — so it only ever takes empty space. It shrinks with
+ * those gaps and turns into [TRANSPORT_TRIM_EACH_SIDE] inward as a panel opens.
+ */
+private val TRANSPORT_TOUCH_REACH = 8.dp
 
 /**
  * The scrubber, laid out shorter at its foot as [tighten] goes to 1: its times
