@@ -669,5 +669,20 @@
     <string name="listen_together_open_count">一緒に聴いています · %1$d</string>
     <string name="miscellaneous_footer">オンにすると、最近のアプリ画面からアプリを終了した際に音楽の再生も停止します。</string>
     <string name="telemetry_diagnostics">匿名テレメトリとエラーレポート</string>
-    <string name="telemetry_diagnostics_subtitle">安定したインストールID（ハッシュ化済みで、端末の実IDは送りません）、アプリのバージョン、プラットフォーム、接続時刻、エラー発生時はエラーの詳細と端末のモデル、OSのバージョンを送信します。アカウント、IPアドレス、再生履歴、プレイリストは一切送信しません。</string>
+    <string name="telemetry_level_full">フル</string>
+    <string name="telemetry_level_full_desc">詳細、端末のモデル、システムのバージョンを含む匿名の利用・エラーレポート。不具合の修正に最も役立ちます。</string>
+    <string name="telemetry_level_minimal">最小</string>
+    <string name="telemetry_level_minimal_desc">アプリが開いていることだけを、バージョンとプラットフォームとともに、毎日変わるIDで送ります。エラーは種類ごとに数えるだけで、詳細は含みません。</string>
+    <string name="telemetry_level_off">オフ</string>
+    <string name="telemetry_level_off_desc">何も送信しません。</string>
+    <string name="telemetry_notice_title">不具合の修正にご協力ください</string>
+    <string name="telemetry_notice_body">BitChord-Xは、クラッシュや不具合を見つけて修正できるよう、匿名の診断情報を送信します。アカウント、IPアドレス、再生履歴、プレイリストは決して含まれません。設定でいつでも変更できます。</string>
+    <string name="telemetry_notice_ok">わかりました</string>
+    <string name="telemetry_notice_choose">送信する内容を選ぶ</string>
+    <string name="telemetry_plea_title">オンのままにしてください</string>
+    <string name="telemetry_plea_body">BitChord-Xはとても小さなプロジェクトで、このレポートは私たちだけでは再現できないクラッシュを見つける手がかりです。個人データは含まれず、1件のレポートがすべての人の不具合を直すこともあります。それでも減らしたい場合は、その気持ちを尊重します。</string>
+    <string name="telemetry_plea_keep">オンのままにする</string>
+    <string name="telemetry_plea_minimal">代わりに最小にする</string>
+    <string name="telemetry_plea_confirm">それでも変更する</string>
+    <string name="telemetry_picker_message">アカウント、IPアドレス、再生履歴、プレイリストは決して送信しません。変更はすぐに反映されます。</string>
 </resources>

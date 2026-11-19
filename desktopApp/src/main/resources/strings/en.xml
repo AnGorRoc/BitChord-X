@@ -871,5 +871,20 @@
     <string name="miscellaneous_footer">When enabled, closing the app from the recent apps screen will also stop music playback.</string>
     <string name="translate">Translate</string>
     <string name="telemetry_diagnostics">Anonymous telemetry and error reports</string>
-    <string name="telemetry_diagnostics_subtitle">Sends a stable install ID (hashed, never the raw device ID), app version, platform, connection times and, on errors, the error details with the device model and OS version. Never your account, IP address, listening history or playlists.</string>
+    <string name="telemetry_level_full">Full</string>
+    <string name="telemetry_level_full_desc">Anonymous usage and error reports with details, device model and system version. The most useful for fixing bugs.</string>
+    <string name="telemetry_level_minimal">Minimal</string>
+    <string name="telemetry_level_minimal_desc">Only that the app is open, with its version and platform, under an ID that changes every day. Errors are counted by type, with no details.</string>
+    <string name="telemetry_level_off">Off</string>
+    <string name="telemetry_level_off_desc">Nothing is sent.</string>
+    <string name="telemetry_notice_title">Help fix bugs</string>
+    <string name="telemetry_notice_body">BitChord-X sends anonymous diagnostics so crashes and bugs can be found and fixed. It never includes your account, IP address, listening history or playlists. You can change this anytime in Settings.</string>
+    <string name="telemetry_notice_ok">Got it</string>
+    <string name="telemetry_notice_choose">Choose what is sent</string>
+    <string name="telemetry_plea_title">Please keep this on</string>
+    <string name="telemetry_plea_body">BitChord-X is a very small project, and these reports are how we find crashes we could never reproduce ourselves. They carry no personal data, and a single one can fix a bug for everybody. If you still prefer less, we understand.</string>
+    <string name="telemetry_plea_keep">Keep it on</string>
+    <string name="telemetry_plea_minimal">Use minimal instead</string>
+    <string name="telemetry_plea_confirm">Change anyway</string>
+    <string name="telemetry_picker_message">Never your account, IP address, listening history or playlists. Changes apply right away.</string>
 </resources>

@@ -1618,5 +1618,20 @@
     <string name="filter_music_videos_autoplay">Filtra i video musicali in AutoPlay</string>
     <string name="filter_music_videos_autoplay_subtitle">Accoda solo tracce audio in AutoPlay e nei consigli della radio, mai video musicali</string>
     <string name="telemetry_diagnostics">Telemetria anonima e segnalazioni di errori</string>
-    <string name="telemetry_diagnostics_subtitle">Invia: un ID di installazione stabile (con hash, mai l\'ID reale del dispositivo), la versione dell\'app, la piattaforma, i momenti di connessione e, in caso di errore, i dettagli dell\'errore, il modello del dispositivo e la versione di Android. Non invia mai il tuo account, l\'IP, la cronologia di ascolto o le playlist.</string>
+    <string name="telemetry_level_full">Completa</string>
+    <string name="telemetry_level_full_desc">Segnalazioni anonime di utilizzo ed errori con dettagli, modello del dispositivo e versione del sistema. La più utile per correggere i bug.</string>
+    <string name="telemetry_level_minimal">Minima</string>
+    <string name="telemetry_level_minimal_desc">Solo che l\'app è aperta, con la sua versione e piattaforma, sotto un ID che cambia ogni giorno. Gli errori sono contati per tipo, senza dettagli.</string>
+    <string name="telemetry_level_off">Disattivata</string>
+    <string name="telemetry_level_off_desc">Non viene inviato nulla.</string>
+    <string name="telemetry_notice_title">Aiuta a correggere i bug</string>
+    <string name="telemetry_notice_body">BitChord-X invia diagnostica anonima in modo che arresti anomali e bug possano essere trovati e corretti. Non include mai il tuo account, l\'indirizzo IP, la cronologia di ascolto o le playlist. Puoi cambiarlo in qualsiasi momento in Impostazioni.</string>
+    <string name="telemetry_notice_ok">Ho capito</string>
+    <string name="telemetry_notice_choose">Scegli cosa viene inviato</string>
+    <string name="telemetry_plea_title">Per favore, lasciala attiva</string>
+    <string name="telemetry_plea_body">BitChord-X è un progetto molto piccolo e queste segnalazioni sono il modo in cui troviamo arresti che non potremmo mai riprodurre da soli. Non contengono dati personali e una sola può correggere un bug per tutti. Se preferisci comunque inviare meno, lo capiamo.</string>
+    <string name="telemetry_plea_keep">Lascia attiva</string>
+    <string name="telemetry_plea_minimal">Usa la minima</string>
+    <string name="telemetry_plea_confirm">Cambia comunque</string>
+    <string name="telemetry_picker_message">Mai il tuo account, l\'indirizzo IP, la cronologia di ascolto o le playlist. Le modifiche valgono subito.</string>
 </resources>

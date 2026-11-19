@@ -1684,5 +1684,20 @@
     <string name="filter_music_videos_autoplay">Filtrar clipes no AutoPlay</string>
     <string name="filter_music_videos_autoplay_subtitle">Enfileirar apenas faixas de áudio no AutoPlay e nas recomendações de rádio, nunca clipes</string>
     <string name="telemetry_diagnostics">Telemetria anônima e relatórios de erros</string>
-    <string name="telemetry_diagnostics_subtitle">Envia: um ID de instalação estável (com hash, nunca o ID real do dispositivo), a versão do app, a plataforma, os momentos de conexão e, em caso de erro, os detalhes do erro, o modelo do dispositivo e a versão do Android. Nunca envia sua conta, IP, histórico de reprodução ou playlists.</string>
+    <string name="telemetry_level_full">Completa</string>
+    <string name="telemetry_level_full_desc">Relatórios anônimos de uso e de erros com detalhes, modelo do dispositivo e versão do sistema. O mais útil para corrigir falhas.</string>
+    <string name="telemetry_level_minimal">Mínima</string>
+    <string name="telemetry_level_minimal_desc">Apenas que o app está aberto, com sua versão e plataforma, sob um ID que muda todos os dias. Os erros são contados por tipo, sem detalhes.</string>
+    <string name="telemetry_level_off">Desativada</string>
+    <string name="telemetry_level_off_desc">Nada é enviado.</string>
+    <string name="telemetry_notice_title">Ajude a corrigir falhas</string>
+    <string name="telemetry_notice_body">O BitChord-X envia diagnósticos anônimos para que travamentos e falhas possam ser encontrados e corrigidos. Eles nunca incluem sua conta, endereço IP, histórico de reprodução ou playlists. Você pode mudar isso a qualquer momento em Configurações.</string>
+    <string name="telemetry_notice_ok">Entendi</string>
+    <string name="telemetry_notice_choose">Escolher o que é enviado</string>
+    <string name="telemetry_plea_title">Por favor, mantenha ativado</string>
+    <string name="telemetry_plea_body">O BitChord-X é um projeto muito pequeno, e esses relatórios são como encontramos travamentos que nunca conseguiríamos reproduzir sozinhos. Eles não levam dados pessoais, e um único relatório pode corrigir uma falha para todos. Se ainda assim preferir enviar menos, entendemos.</string>
+    <string name="telemetry_plea_keep">Manter ativado</string>
+    <string name="telemetry_plea_minimal">Usar a mínima</string>
+    <string name="telemetry_plea_confirm">Mudar mesmo assim</string>
+    <string name="telemetry_picker_message">Nunca sua conta, endereço IP, histórico de reprodução ou playlists. As mudanças valem na hora.</string>
 </resources>

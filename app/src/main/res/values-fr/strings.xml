@@ -1680,5 +1680,20 @@
     <string name="filter_music_videos_autoplay">Filtrer les clips musicaux dans AutoPlay</string>
     <string name="filter_music_videos_autoplay_subtitle">Ne mettre en file que des pistes audio dans AutoPlay et les radios, jamais de clips vidéo</string>
     <string name="telemetry_diagnostics">Télémétrie anonyme et rapports d\'erreurs</string>
-    <string name="telemetry_diagnostics_subtitle">Envoie : un ID d\'installation stable (haché, jamais l\'ID réel de l\'appareil), la version de l\'app, la plateforme, les moments de connexion et, en cas d\'erreur, le détail de l\'erreur, le modèle de l\'appareil et la version d\'Android. N\'envoie jamais votre compte, votre IP, votre historique d\'écoute ni vos playlists.</string>
+    <string name="telemetry_level_full">Complète</string>
+    <string name="telemetry_level_full_desc">Rapports anonymes d\'utilisation et d\'erreurs avec détails, modèle de l\'appareil et version du système. Le plus utile pour corriger les bugs.</string>
+    <string name="telemetry_level_minimal">Minimale</string>
+    <string name="telemetry_level_minimal_desc">Seulement le fait que l\'app est ouverte, avec sa version et sa plateforme, sous un ID qui change chaque jour. Les erreurs sont comptées par type, sans détails.</string>
+    <string name="telemetry_level_off">Désactivée</string>
+    <string name="telemetry_level_off_desc">Rien n\'est envoyé.</string>
+    <string name="telemetry_notice_title">Aidez-nous à corriger les bugs</string>
+    <string name="telemetry_notice_body">BitChord-X envoie des diagnostics anonymes pour que les plantages et les bugs puissent être trouvés et corrigés. Ils n\'incluent jamais votre compte, votre adresse IP, votre historique d\'écoute ni vos playlists. Vous pouvez changer cela à tout moment dans les Réglages.</string>
+    <string name="telemetry_notice_ok">Compris</string>
+    <string name="telemetry_notice_choose">Choisir ce qui est envoyé</string>
+    <string name="telemetry_plea_title">Merci de laisser cette option activée</string>
+    <string name="telemetry_plea_body">BitChord-X est un tout petit projet, et ces rapports sont la façon dont nous trouvons des plantages que nous ne pourrions jamais reproduire nous-mêmes. Ils ne contiennent aucune donnée personnelle, et un seul peut corriger un bug pour tout le monde. Si vous préférez en envoyer moins, nous le comprenons.</string>
+    <string name="telemetry_plea_keep">La laisser activée</string>
+    <string name="telemetry_plea_minimal">Utiliser la minimale</string>
+    <string name="telemetry_plea_confirm">Changer quand même</string>
+    <string name="telemetry_picker_message">Jamais votre compte, votre adresse IP, votre historique d\'écoute ni vos playlists. Les changements s\'appliquent immédiatement.</string>
 </resources>

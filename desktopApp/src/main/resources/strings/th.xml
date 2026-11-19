@@ -715,5 +715,20 @@
     <string name="listen_together_open">ฟังด้วยกัน</string>
     <string name="listen_together_open_count">กำลังฟังด้วยกัน · %1$d</string>
     <string name="telemetry_diagnostics">เทเลเมทรีแบบไม่ระบุตัวตนและรายงานข้อผิดพลาด</string>
-    <string name="telemetry_diagnostics_subtitle">ส่ง ID การติดตั้งที่คงที่ (แฮชแล้ว ไม่ใช่ ID จริงของอุปกรณ์) เวอร์ชันแอป แพลตฟอร์ม เวลาที่เชื่อมต่อ และเมื่อเกิดข้อผิดพลาด จะส่งรายละเอียดพร้อมรุ่นอุปกรณ์และเวอร์ชันระบบ จะไม่ส่งบัญชี IP ประวัติการฟัง หรือเพลย์ลิสต์ของคุณ</string>
+    <string name="telemetry_level_full">เต็มรูปแบบ</string>
+    <string name="telemetry_level_full_desc">รายงานการใช้งานและข้อผิดพลาดแบบไม่ระบุตัวตน พร้อมรายละเอียด รุ่นอุปกรณ์ และเวอร์ชันระบบ มีประโยชน์ที่สุดในการแก้บั๊ก</string>
+    <string name="telemetry_level_minimal">ขั้นต่ำ</string>
+    <string name="telemetry_level_minimal_desc">ส่งเพียงว่าแอปเปิดอยู่ พร้อมเวอร์ชันและแพลตฟอร์ม ภายใต้ ID ที่เปลี่ยนทุกวัน ข้อผิดพลาดนับตามประเภท ไม่มีรายละเอียด</string>
+    <string name="telemetry_level_off">ปิด</string>
+    <string name="telemetry_level_off_desc">ไม่ส่งอะไรเลย</string>
+    <string name="telemetry_notice_title">ช่วยแก้บั๊ก</string>
+    <string name="telemetry_notice_body">BitChord-X ส่งข้อมูลวินิจฉัยแบบไม่ระบุตัวตนเพื่อให้พบและแก้ไขการแครชและบั๊กได้ จะไม่รวมบัญชี ที่อยู่ IP ประวัติการฟัง หรือเพลย์ลิสต์ของคุณ คุณเปลี่ยนได้ทุกเมื่อในการตั้งค่า</string>
+    <string name="telemetry_notice_ok">เข้าใจแล้ว</string>
+    <string name="telemetry_notice_choose">เลือกสิ่งที่จะส่ง</string>
+    <string name="telemetry_plea_title">ขอให้เปิดไว้</string>
+    <string name="telemetry_plea_body">BitChord-X เป็นโครงการเล็กมาก และรายงานเหล่านี้คือวิธีที่เราพบการแครชที่เราไม่มีทางทำซ้ำได้เอง รายงานไม่มีข้อมูลส่วนบุคคล และรายงานเดียวก็อาจแก้บั๊กให้ทุกคนได้ หากคุณยังต้องการส่งน้อยลง เราเข้าใจ</string>
+    <string name="telemetry_plea_keep">เปิดไว้</string>
+    <string name="telemetry_plea_minimal">ใช้ขั้นต่ำแทน</string>
+    <string name="telemetry_plea_confirm">เปลี่ยนต่อไป</string>
+    <string name="telemetry_picker_message">ไม่ส่งบัญชี ที่อยู่ IP ประวัติการฟัง หรือเพลย์ลิสต์ของคุณเลย การเปลี่ยนแปลงมีผลทันที</string>
 </resources>

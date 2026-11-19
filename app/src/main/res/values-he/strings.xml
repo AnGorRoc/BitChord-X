@@ -1685,5 +1685,20 @@
     <string name="filter_music_videos_autoplay">סנן קליפים בהפעלה אוטומטית</string>
     <string name="filter_music_videos_autoplay_subtitle">הוסף לתור רק רצועות שמע בהפעלה אוטומטית ובהמלצות רדיו, לעולם לא קליפים</string>
     <string name="telemetry_diagnostics">טלמטריה אנונימית ודוחות שגיאה</string>
-    <string name="telemetry_diagnostics_subtitle">שולח: מזהה התקנה יציב (מגובב, לעולם לא המזהה האמיתי של המכשיר), גרסת האפליקציה, הפלטפורמה, זמני חיבור, ובמקרה של שגיאה: פרטי השגיאה, דגם המכשיר וגרסת Android. אף פעם לא שולח את החשבון שלך, כתובת IP, היסטוריית האזנה או פלייליסטים.</string>
+    <string name="telemetry_level_full">מלאה</string>
+    <string name="telemetry_level_full_desc">דוחות אנונימיים על שימוש ושגיאות עם פרטים, דגם המכשיר וגרסת המערכת. השימושי ביותר לתיקון באגים.</string>
+    <string name="telemetry_level_minimal">מינימלית</string>
+    <string name="telemetry_level_minimal_desc">רק שהאפליקציה פתוחה, עם הגרסה והפלטפורמה, תחת מזהה שמשתנה בכל יום. שגיאות נספרות לפי סוג, בלי פרטים.</string>
+    <string name="telemetry_level_off">כבויה</string>
+    <string name="telemetry_level_off_desc">שום דבר לא נשלח.</string>
+    <string name="telemetry_notice_title">עזרו לתקן באגים</string>
+    <string name="telemetry_notice_body">BitChord-X שולח אבחון אנונימי כדי שאפשר יהיה למצוא ולתקן קריסות ובאגים. הוא לעולם לא כולל את החשבון שלך, כתובת ה-IP, היסטוריית ההאזנה או הפלייליסטים. אפשר לשנות זאת בכל עת בהגדרות.</string>
+    <string name="telemetry_notice_ok">הבנתי</string>
+    <string name="telemetry_notice_choose">בחירת מה נשלח</string>
+    <string name="telemetry_plea_title">בבקשה השאירו את זה פעיל</string>
+    <string name="telemetry_plea_body">BitChord-X הוא פרויקט קטן מאוד, והדוחות האלה הם הדרך שלנו למצוא קריסות שלעולם לא היינו מצליחים לשחזר בעצמנו. הם לא כוללים מידע אישי, ודוח אחד יכול לתקן באג עבור כולם. אם בכל זאת אתם מעדיפים לשלוח פחות, אנחנו מבינים.</string>
+    <string name="telemetry_plea_keep">להשאיר פעיל</string>
+    <string name="telemetry_plea_minimal">להשתמש במינימלית</string>
+    <string name="telemetry_plea_confirm">לשנות בכל זאת</string>
+    <string name="telemetry_picker_message">לעולם לא החשבון, כתובת ה-IP, היסטוריית ההאזנה או הפלייליסטים. השינויים חלים מיד.</string>
 </resources>

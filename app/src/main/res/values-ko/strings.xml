@@ -1514,5 +1514,20 @@
     <string name="filter_music_videos_autoplay">자동 재생에서 뮤직비디오 필터링</string>
     <string name="filter_music_videos_autoplay_subtitle">자동 재생 및 라디오 추천 시 뮤직비디오를 제외하고 오디오 트랙만 대기열에 추가합니다</string>
     <string name="telemetry_diagnostics">익명 원격 측정 및 오류 보고</string>
-    <string name="telemetry_diagnostics_subtitle">전송 항목: 안정적인 설치 ID(해시 처리되며 실제 기기 ID는 보내지 않음), 앱 버전, 플랫폼, 연결 시각, 오류 발생 시 오류 세부 정보, 기기 모델, Android 버전. 계정, IP 주소, 청취 기록, 재생목록은 절대 보내지 않습니다.</string>
+    <string name="telemetry_level_full">전체</string>
+    <string name="telemetry_level_full_desc">세부 정보, 기기 모델, 시스템 버전을 포함한 익명 사용 및 오류 보고서. 버그를 고치는 데 가장 유용합니다.</string>
+    <string name="telemetry_level_minimal">최소</string>
+    <string name="telemetry_level_minimal_desc">앱이 열려 있다는 사실만, 버전과 플랫폼과 함께, 매일 바뀌는 ID로 보냅니다. 오류는 유형별로만 집계하며 세부 정보는 없습니다.</string>
+    <string name="telemetry_level_off">끄기</string>
+    <string name="telemetry_level_off_desc">아무것도 보내지 않습니다.</string>
+    <string name="telemetry_notice_title">버그 수정을 도와주세요</string>
+    <string name="telemetry_notice_body">BitChord-X는 충돌과 버그를 찾아 고칠 수 있도록 익명 진단 정보를 보냅니다. 계정, IP 주소, 청취 기록, 재생목록은 절대 포함되지 않습니다. 설정에서 언제든지 바꿀 수 있습니다.</string>
+    <string name="telemetry_notice_ok">알겠습니다</string>
+    <string name="telemetry_notice_choose">보낼 내용 선택</string>
+    <string name="telemetry_plea_title">켜 두세요</string>
+    <string name="telemetry_plea_body">BitChord-X는 아주 작은 프로젝트이며, 이 보고서는 우리가 직접 재현할 수 없는 충돌을 찾는 방법입니다. 개인 정보는 없고, 보고서 하나가 모두를 위해 버그를 고칠 수도 있습니다. 그래도 덜 보내고 싶으시다면 이해합니다.</string>
+    <string name="telemetry_plea_keep">켜 둔 채로 두기</string>
+    <string name="telemetry_plea_minimal">대신 최소 사용</string>
+    <string name="telemetry_plea_confirm">그래도 변경</string>
+    <string name="telemetry_picker_message">계정, IP 주소, 청취 기록, 재생목록은 절대 보내지 않습니다. 변경 사항은 즉시 적용됩니다.</string>
 </resources>

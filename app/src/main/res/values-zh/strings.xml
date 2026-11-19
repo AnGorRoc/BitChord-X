@@ -1658,5 +1658,20 @@
     <string name="filter_music_videos_autoplay">在自动播放中过滤音乐视频</string>
     <string name="filter_music_videos_autoplay_subtitle">仅在自动播放和电台推荐中排队音频曲目，绝不包含音乐视频</string>
     <string name="telemetry_diagnostics">匿名遥测与错误报告</string>
-    <string name="telemetry_diagnostics_subtitle">发送：稳定的安装 ID（已哈希，绝不发送设备的真实 ID）、应用版本、平台、连接时间，出错时还包括错误详情、设备型号和 Android 版本。绝不发送你的账号、IP 地址、收听历史或播放列表。</string>
+    <string name="telemetry_level_full">完整</string>
+    <string name="telemetry_level_full_desc">包含详细信息、设备型号和系统版本的匿名使用与错误报告。对修复问题最有帮助。</string>
+    <string name="telemetry_level_minimal">最少</string>
+    <string name="telemetry_level_minimal_desc">只说明应用已打开，附带版本和平台，使用每天都会变化的 ID。错误只按类型计数，不含任何详情。</string>
+    <string name="telemetry_level_off">关闭</string>
+    <string name="telemetry_level_off_desc">不发送任何内容。</string>
+    <string name="telemetry_notice_title">帮助修复问题</string>
+    <string name="telemetry_notice_body">BitChord-X 会发送匿名诊断信息，以便发现并修复崩溃和问题。其中绝不包含你的账号、IP 地址、收听历史或播放列表。你可以随时在设置中更改。</string>
+    <string name="telemetry_notice_ok">知道了</string>
+    <string name="telemetry_notice_choose">选择发送的内容</string>
+    <string name="telemetry_plea_title">请保持开启</string>
+    <string name="telemetry_plea_body">BitChord-X 是一个很小的项目，这些报告是我们发现自己永远无法复现的崩溃的方式。它们不含个人数据，一份报告就可能为所有人修复一个问题。如果你仍想少发送一些，我们理解。</string>
+    <string name="telemetry_plea_keep">保持开启</string>
+    <string name="telemetry_plea_minimal">改用最少</string>
+    <string name="telemetry_plea_confirm">仍然更改</string>
+    <string name="telemetry_picker_message">绝不发送你的账号、IP 地址、收听历史或播放列表。更改立即生效。</string>
 </resources>

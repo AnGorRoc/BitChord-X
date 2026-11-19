@@ -673,5 +673,20 @@
     <string name="lyrics_original_title">用原標題搜歌詞</string>
     <string name="lyrics_original_title_desc">先還原 YouTube 原標題再搜歌詞，翻譯過的標題也能找到</string>
     <string name="telemetry_diagnostics">匿名遙測與錯誤報告</string>
-    <string name="telemetry_diagnostics_subtitle">傳送穩定的安裝 ID（已雜湊，絕不傳送裝置的真實 ID）、應用程式版本、平台、連線時間，發生錯誤時還包括錯誤詳情、裝置型號和作業系統版本。絕不傳送你的帳號、IP 位址、收聽記錄或播放清單。</string>
+    <string name="telemetry_level_full">完整</string>
+    <string name="telemetry_level_full_desc">包含詳細資訊、裝置型號和系統版本的匿名使用與錯誤報告。對修復問題最有幫助。</string>
+    <string name="telemetry_level_minimal">最少</string>
+    <string name="telemetry_level_minimal_desc">只說明應用程式已開啟，附帶版本和平台，使用每天都會變化的 ID。錯誤只按類型計數，不含任何詳情。</string>
+    <string name="telemetry_level_off">關閉</string>
+    <string name="telemetry_level_off_desc">不傳送任何內容。</string>
+    <string name="telemetry_notice_title">幫助修復問題</string>
+    <string name="telemetry_notice_body">BitChord-X 會傳送匿名診斷資訊，以便發現並修復當機和問題。其中絕不包含你的帳號、IP 位址、收聽記錄或播放清單。你可以隨時在設定中變更。</string>
+    <string name="telemetry_notice_ok">知道了</string>
+    <string name="telemetry_notice_choose">選擇傳送的內容</string>
+    <string name="telemetry_plea_title">請保持開啟</string>
+    <string name="telemetry_plea_body">BitChord-X 是一個很小的專案，這些報告是我們發現自己永遠無法重現的當機的方式。它們不含個人資料，一份報告就可能為所有人修復一個問題。如果你仍想少傳送一些，我們理解。</string>
+    <string name="telemetry_plea_keep">保持開啟</string>
+    <string name="telemetry_plea_minimal">改用最少</string>
+    <string name="telemetry_plea_confirm">仍然變更</string>
+    <string name="telemetry_picker_message">絕不傳送你的帳號、IP 位址、收聽記錄或播放清單。變更立即生效。</string>
 </resources>

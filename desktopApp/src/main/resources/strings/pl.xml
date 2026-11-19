@@ -719,5 +719,20 @@
     <string name="listen_together_open_count">Wspólne słuchanie · %1$d</string>
     <string name="miscellaneous_footer">Po włączeniu, zamknięcie aplikacji z listy ostatnio używanych aplikacji zatrzyma odtwarzanie muzyki.</string>
     <string name="telemetry_diagnostics">Anonimowa telemetria i raporty błędów</string>
-    <string name="telemetry_diagnostics_subtitle">Wysyła stabilny identyfikator instalacji (zahaszowany, nigdy prawdziwy identyfikator urządzenia), wersję aplikacji, platformę, czasy połączenia, a w razie błędu jego szczegóły z modelem urządzenia i wersją systemu. Nigdy nie wysyła konta, adresu IP, historii odtwarzania ani playlist.</string>
+    <string name="telemetry_level_full">Pełna</string>
+    <string name="telemetry_level_full_desc">Anonimowe raporty o użyciu i błędach ze szczegółami, modelem urządzenia i wersją systemu. Najbardziej przydatne do naprawiania błędów.</string>
+    <string name="telemetry_level_minimal">Minimalna</string>
+    <string name="telemetry_level_minimal_desc">Tylko informacja, że aplikacja jest otwarta, z jej wersją i platformą, pod identyfikatorem zmieniającym się codziennie. Błędy są liczone według typu, bez szczegółów.</string>
+    <string name="telemetry_level_off">Wyłączona</string>
+    <string name="telemetry_level_off_desc">Nic nie jest wysyłane.</string>
+    <string name="telemetry_notice_title">Pomóż naprawiać błędy</string>
+    <string name="telemetry_notice_body">BitChord-X wysyła anonimową diagnostykę, aby można było znajdować i naprawiać awarie i błędy. Nigdy nie obejmuje ona Twojego konta, adresu IP, historii odtwarzania ani playlist. Możesz to zmienić w dowolnej chwili w Ustawieniach.</string>
+    <string name="telemetry_notice_ok">Rozumiem</string>
+    <string name="telemetry_notice_choose">Wybierz, co jest wysyłane</string>
+    <string name="telemetry_plea_title">Prosimy, zostaw to włączone</string>
+    <string name="telemetry_plea_body">BitChord-X to bardzo mały projekt, a te raporty pozwalają nam znajdować awarie, których sami nigdy byśmy nie odtworzyli. Nie zawierają danych osobowych, a jeden raport może naprawić błąd dla wszystkich. Jeśli mimo to wolisz wysyłać mniej, rozumiemy.</string>
+    <string name="telemetry_plea_keep">Zostaw włączone</string>
+    <string name="telemetry_plea_minimal">Użyj minimalnej</string>
+    <string name="telemetry_plea_confirm">Zmień mimo to</string>
+    <string name="telemetry_picker_message">Nigdy Twojego konta, adresu IP, historii odtwarzania ani playlist. Zmiany działają od razu.</string>
 </resources>

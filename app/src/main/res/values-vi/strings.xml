@@ -1598,5 +1598,20 @@
     <string name="filter_music_videos_autoplay">Lọc video âm nhạc trong Tự động phát</string>
     <string name="filter_music_videos_autoplay_subtitle">Chỉ xếp hàng các bản âm thanh trong Tự động phát và đề xuất radio, không bao giờ là video âm nhạc</string>
     <string name="telemetry_diagnostics">Telemetry ẩn danh và báo cáo lỗi</string>
-    <string name="telemetry_diagnostics_subtitle">Gửi: ID cài đặt ổn định (đã băm, không bao giờ là ID thật của thiết bị), phiên bản ứng dụng, nền tảng, thời điểm kết nối và khi có lỗi: chi tiết lỗi, mẫu thiết bị và phiên bản Android. Không bao giờ gửi tài khoản, IP, lịch sử nghe hoặc danh sách phát của bạn.</string>
+    <string name="telemetry_level_full">Đầy đủ</string>
+    <string name="telemetry_level_full_desc">Báo cáo sử dụng và lỗi ẩn danh kèm chi tiết, mẫu thiết bị và phiên bản hệ thống. Hữu ích nhất để sửa lỗi.</string>
+    <string name="telemetry_level_minimal">Tối thiểu</string>
+    <string name="telemetry_level_minimal_desc">Chỉ cho biết ứng dụng đang mở, kèm phiên bản và nền tảng, dưới một ID thay đổi mỗi ngày. Lỗi chỉ được đếm theo loại, không có chi tiết.</string>
+    <string name="telemetry_level_off">Tắt</string>
+    <string name="telemetry_level_off_desc">Không gửi gì cả.</string>
+    <string name="telemetry_notice_title">Giúp sửa lỗi</string>
+    <string name="telemetry_notice_body">BitChord-X gửi dữ liệu chẩn đoán ẩn danh để có thể tìm và sửa sự cố và lỗi. Dữ liệu này không bao giờ gồm tài khoản, địa chỉ IP, lịch sử nghe hay danh sách phát của bạn. Bạn có thể thay đổi bất cứ lúc nào trong Cài đặt.</string>
+    <string name="telemetry_notice_ok">Đã hiểu</string>
+    <string name="telemetry_notice_choose">Chọn nội dung được gửi</string>
+    <string name="telemetry_plea_title">Xin hãy để bật</string>
+    <string name="telemetry_plea_body">BitChord-X là một dự án rất nhỏ, và các báo cáo này là cách chúng tôi tìm ra những sự cố mà chính mình không thể tái hiện. Chúng không chứa dữ liệu cá nhân, và chỉ một báo cáo cũng có thể sửa lỗi cho tất cả mọi người. Nếu bạn vẫn muốn gửi ít hơn, chúng tôi hiểu.</string>
+    <string name="telemetry_plea_keep">Giữ bật</string>
+    <string name="telemetry_plea_minimal">Dùng mức tối thiểu</string>
+    <string name="telemetry_plea_confirm">Vẫn thay đổi</string>
+    <string name="telemetry_picker_message">Không bao giờ gửi tài khoản, địa chỉ IP, lịch sử nghe hay danh sách phát của bạn. Thay đổi có hiệu lực ngay.</string>
 </resources>

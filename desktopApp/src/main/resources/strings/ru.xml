@@ -709,5 +709,20 @@
     <string name="listen_together_open_count">Слушаем вместе · %1$d</string>
     <string name="miscellaneous_footer">При включении закрытие приложения из недавних также останавливает воспроизведение музыки.</string>
     <string name="telemetry_diagnostics">Анонимная телеметрия и отчёты об ошибках</string>
-    <string name="telemetry_diagnostics_subtitle">Отправляет постоянный идентификатор установки (хеш, а не реальный ID устройства), версию приложения, платформу, время подключения, а при ошибке — её подробности с моделью устройства и версией системы. Никогда не отправляет аккаунт, IP-адрес, историю прослушивания и плейлисты.</string>
+    <string name="telemetry_level_full">Полная</string>
+    <string name="telemetry_level_full_desc">Анонимные отчёты об использовании и ошибках с подробностями, моделью устройства и версией системы. Самое полезное для исправления багов.</string>
+    <string name="telemetry_level_minimal">Минимальная</string>
+    <string name="telemetry_level_minimal_desc">Только то, что приложение открыто, с его версией и платформой, под ID, который меняется каждый день. Ошибки считаются по типу, без подробностей.</string>
+    <string name="telemetry_level_off">Выключена</string>
+    <string name="telemetry_level_off_desc">Ничего не отправляется.</string>
+    <string name="telemetry_notice_title">Помогите исправлять ошибки</string>
+    <string name="telemetry_notice_body">BitChord-X отправляет анонимную диагностику, чтобы можно было находить и исправлять сбои и ошибки. Она никогда не включает ваш аккаунт, IP-адрес, историю прослушивания или плейлисты. Это можно изменить в любой момент в Настройках.</string>
+    <string name="telemetry_notice_ok">Понятно</string>
+    <string name="telemetry_notice_choose">Выбрать, что отправляется</string>
+    <string name="telemetry_plea_title">Пожалуйста, оставьте это включённым</string>
+    <string name="telemetry_plea_body">BitChord-X — очень маленький проект, и эти отчёты помогают нам находить сбои, которые мы сами никогда бы не воспроизвели. В них нет личных данных, а один-единственный отчёт может исправить ошибку для всех. Если вы всё же хотите отправлять меньше, мы понимаем.</string>
+    <string name="telemetry_plea_keep">Оставить включённым</string>
+    <string name="telemetry_plea_minimal">Использовать минимальную</string>
+    <string name="telemetry_plea_confirm">Всё равно изменить</string>
+    <string name="telemetry_picker_message">Никогда не отправляются ваш аккаунт, IP-адрес, история прослушивания и плейлисты. Изменения действуют сразу.</string>
 </resources>

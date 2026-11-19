@@ -687,5 +687,20 @@
     <string name="listen_together_open_count">Gemeinsam hören · %1$d</string>
     <string name="miscellaneous_footer">Wenn aktiviert, stoppt das Schließen der App aus den letzten Apps auch die Musikwiedergabe.</string>
     <string name="telemetry_diagnostics">Anonyme Telemetrie und Fehlerberichte</string>
-    <string name="telemetry_diagnostics_subtitle">Sendet eine stabile Installations-ID (gehasht, nie die echte Geräte-ID), App-Version, Plattform, Verbindungszeiten und bei Fehlern die Fehlerdetails mit Gerätemodell und Betriebssystemversion. Sendet nie dein Konto, deine IP, deinen Hörverlauf oder deine Playlists.</string>
+    <string name="telemetry_level_full">Vollständig</string>
+    <string name="telemetry_level_full_desc">Anonyme Nutzungs- und Fehlerberichte mit Details, Gerätemodell und Systemversion. Am nützlichsten, um Fehler zu beheben.</string>
+    <string name="telemetry_level_minimal">Minimal</string>
+    <string name="telemetry_level_minimal_desc">Nur, dass die App geöffnet ist, mit Version und Plattform, unter einer ID, die sich täglich ändert. Fehler werden nur nach Typ gezählt, ohne Details.</string>
+    <string name="telemetry_level_off">Aus</string>
+    <string name="telemetry_level_off_desc">Es wird nichts gesendet.</string>
+    <string name="telemetry_notice_title">Hilf, Fehler zu beheben</string>
+    <string name="telemetry_notice_body">BitChord-X sendet anonyme Diagnosedaten, damit Abstürze und Fehler gefunden und behoben werden können. Sie enthalten nie dein Konto, deine IP-Adresse, deinen Hörverlauf oder deine Playlists. Du kannst das jederzeit in den Einstellungen ändern.</string>
+    <string name="telemetry_notice_ok">Verstanden</string>
+    <string name="telemetry_notice_choose">Auswählen, was gesendet wird</string>
+    <string name="telemetry_plea_title">Bitte lass das eingeschaltet</string>
+    <string name="telemetry_plea_body">BitChord-X ist ein sehr kleines Projekt, und diese Berichte helfen uns, Abstürze zu finden, die wir selbst nie nachstellen könnten. Sie enthalten keine persönlichen Daten, und ein einziger kann einen Fehler für alle beheben. Wenn du trotzdem weniger senden möchtest, verstehen wir das.</string>
+    <string name="telemetry_plea_keep">Eingeschaltet lassen</string>
+    <string name="telemetry_plea_minimal">Stattdessen Minimal</string>
+    <string name="telemetry_plea_confirm">Trotzdem ändern</string>
+    <string name="telemetry_picker_message">Nie dein Konto, deine IP-Adresse, dein Hörverlauf oder deine Playlists. Änderungen gelten sofort.</string>
 </resources>

@@ -687,5 +687,20 @@
     <string name="listen_together_open_count">साथ में सुन रहे हैं · %1$d</string>
     <string name="miscellaneous_footer">चालू होने पर, हाल के ऐप्स स्क्रीन से ऐप बंद करने पर संगीत प्लेबैक भी रुक जाएगा।</string>
     <string name="telemetry_diagnostics">गुमनाम टेलीमेट्री और त्रुटि रिपोर्ट</string>
-    <string name="telemetry_diagnostics_subtitle">एक स्थिर इंस्टॉल आईडी (हैश की हुई, डिवाइस की असली आईडी कभी नहीं), ऐप का संस्करण, प्लेटफ़ॉर्म, कनेक्शन के समय और त्रुटि होने पर त्रुटि का विवरण, डिवाइस मॉडल और सिस्टम संस्करण के साथ भेजता है। आपका खाता, IP, सुनने का इतिहास या प्लेलिस्ट कभी नहीं भेजता।</string>
+    <string name="telemetry_level_full">पूर्ण</string>
+    <string name="telemetry_level_full_desc">विवरण, डिवाइस मॉडल और सिस्टम संस्करण के साथ गुमनाम उपयोग और त्रुटि रिपोर्ट। बग ठीक करने के लिए सबसे उपयोगी।</string>
+    <string name="telemetry_level_minimal">न्यूनतम</string>
+    <string name="telemetry_level_minimal_desc">केवल यह कि ऐप खुला है, उसके संस्करण और प्लेटफ़ॉर्म के साथ, एक ऐसी आईडी के तहत जो हर दिन बदलती है। त्रुटियाँ प्रकार के अनुसार गिनी जाती हैं, बिना विवरण के।</string>
+    <string name="telemetry_level_off">बंद</string>
+    <string name="telemetry_level_off_desc">कुछ भी नहीं भेजा जाता।</string>
+    <string name="telemetry_notice_title">बग ठीक करने में मदद करें</string>
+    <string name="telemetry_notice_body">BitChord-X गुमनाम डायग्नोस्टिक्स भेजता है ताकि क्रैश और बग खोजे और ठीक किए जा सकें। इनमें आपका खाता, IP पता, सुनने का इतिहास या प्लेलिस्ट कभी शामिल नहीं होते। आप इसे कभी भी सेटिंग्स में बदल सकते हैं।</string>
+    <string name="telemetry_notice_ok">समझ गया</string>
+    <string name="telemetry_notice_choose">चुनें कि क्या भेजा जाए</string>
+    <string name="telemetry_plea_title">कृपया इसे चालू रखें</string>
+    <string name="telemetry_plea_body">BitChord-X एक बहुत छोटा प्रोजेक्ट है, और ये रिपोर्ट ही हमें वे क्रैश खोजने में मदद करती हैं जिन्हें हम खुद कभी दोहरा नहीं सकते। इनमें कोई निजी डेटा नहीं होता, और एक अकेली रिपोर्ट सबके लिए एक बग ठीक कर सकती है। फिर भी आप कम भेजना चाहें, तो हम समझते हैं।</string>
+    <string name="telemetry_plea_keep">चालू रखें</string>
+    <string name="telemetry_plea_minimal">इसके बजाय न्यूनतम इस्तेमाल करें</string>
+    <string name="telemetry_plea_confirm">फिर भी बदलें</string>
+    <string name="telemetry_picker_message">आपका खाता, IP पता, सुनने का इतिहास या प्लेलिस्ट कभी नहीं। बदलाव तुरंत लागू होते हैं।</string>
 </resources>

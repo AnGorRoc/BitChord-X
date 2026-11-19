@@ -1658,5 +1658,20 @@
     <string name="filter_music_videos_autoplay">Filter video musik di AutoPlay</string>
     <string name="filter_music_videos_autoplay_subtitle">Hanya antrekan trek audio di AutoPlay dan rekomendasi radio, jangan pernah video musik</string>
     <string name="telemetry_diagnostics">Telemetri anonim dan laporan kesalahan</string>
-    <string name="telemetry_diagnostics_subtitle">Mengirim: ID instalasi yang stabil (di-hash, bukan ID perangkat asli), versi aplikasi, platform, waktu koneksi, dan jika terjadi kesalahan: detail kesalahan, model perangkat, dan versi Android. Tidak pernah mengirim akun, IP, riwayat pemutaran, atau playlist Anda.</string>
+    <string name="telemetry_level_full">Lengkap</string>
+    <string name="telemetry_level_full_desc">Laporan penggunaan dan kesalahan anonim dengan detail, model perangkat, dan versi sistem. Paling berguna untuk memperbaiki bug.</string>
+    <string name="telemetry_level_minimal">Minimal</string>
+    <string name="telemetry_level_minimal_desc">Hanya bahwa aplikasi terbuka, dengan versi dan platformnya, di bawah ID yang berubah setiap hari. Kesalahan dihitung per jenis, tanpa detail.</string>
+    <string name="telemetry_level_off">Mati</string>
+    <string name="telemetry_level_off_desc">Tidak ada yang dikirim.</string>
+    <string name="telemetry_notice_title">Bantu perbaiki bug</string>
+    <string name="telemetry_notice_body">BitChord-X mengirim diagnostik anonim agar crash dan bug dapat ditemukan dan diperbaiki. Tidak pernah menyertakan akun, alamat IP, riwayat pemutaran, atau playlist Anda. Anda dapat mengubahnya kapan saja di Pengaturan.</string>
+    <string name="telemetry_notice_ok">Mengerti</string>
+    <string name="telemetry_notice_choose">Pilih yang dikirim</string>
+    <string name="telemetry_plea_title">Mohon tetap aktifkan</string>
+    <string name="telemetry_plea_body">BitChord-X adalah proyek yang sangat kecil, dan laporan ini adalah cara kami menemukan crash yang tidak akan pernah bisa kami tiru sendiri. Laporan tidak berisi data pribadi, dan satu laporan saja dapat memperbaiki bug untuk semua orang. Jika Anda tetap ingin mengirim lebih sedikit, kami mengerti.</string>
+    <string name="telemetry_plea_keep">Tetap aktif</string>
+    <string name="telemetry_plea_minimal">Gunakan minimal</string>
+    <string name="telemetry_plea_confirm">Ubah saja</string>
+    <string name="telemetry_picker_message">Tidak pernah akun, alamat IP, riwayat pemutaran, atau playlist Anda. Perubahan berlaku seketika.</string>
 </resources>

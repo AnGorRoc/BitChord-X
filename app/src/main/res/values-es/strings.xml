@@ -1652,5 +1652,20 @@
     <string name="tint_with_now_playing">Colores de lo que suena</string>
     <string name="tint_with_now_playing_subtitle">Tiñe las páginas y las barras con la portada de la canción que está sonando</string>
     <string name="telemetry_diagnostics">Telemetría anónima y reporte de errores</string>
-    <string name="telemetry_diagnostics_subtitle">Envía: un ID de instalación estable (con hash, nunca el ID real del dispositivo), versión de la app, plataforma, momentos de conexión y, si hay un error, el detalle del fallo, modelo básico del teléfono y versión de Android. Nunca envía tu cuenta, IP, historial ni playlists.</string>
+    <string name="telemetry_level_full">Completa</string>
+    <string name="telemetry_level_full_desc">Informes anónimos de uso y de errores con detalles, modelo del dispositivo y versión del sistema. Lo más útil para corregir fallos.</string>
+    <string name="telemetry_level_minimal">Mínima</string>
+    <string name="telemetry_level_minimal_desc">Solo que la app está abierta, con su versión y plataforma, bajo un ID que cambia cada día. Los errores se cuentan por tipo, sin detalles.</string>
+    <string name="telemetry_level_off">Desactivada</string>
+    <string name="telemetry_level_off_desc">No se envía nada.</string>
+    <string name="telemetry_notice_title">Ayuda a corregir errores</string>
+    <string name="telemetry_notice_body">BitChord-X envía diagnósticos anónimos para poder encontrar y corregir fallos. Nunca incluye tu cuenta, dirección IP, historial de reproducción ni playlists. Puedes cambiarlo cuando quieras en Ajustes.</string>
+    <string name="telemetry_notice_ok">Entendido</string>
+    <string name="telemetry_notice_choose">Elegir qué se envía</string>
+    <string name="telemetry_plea_title">Por favor, déjala activada</string>
+    <string name="telemetry_plea_body">BitChord-X es un proyecto muy pequeño y estos informes son la forma en que encontramos fallos que nunca podríamos reproducir nosotros. No llevan datos personales y uno solo puede arreglar un error para todos. Si aun así prefieres enviar menos, lo entendemos.</string>
+    <string name="telemetry_plea_keep">Dejarla activada</string>
+    <string name="telemetry_plea_minimal">Usar la mínima</string>
+    <string name="telemetry_plea_confirm">Cambiar de todos modos</string>
+    <string name="telemetry_picker_message">Nunca tu cuenta, dirección IP, historial de reproducción ni playlists. Los cambios se aplican al instante.</string>
 </resources>
