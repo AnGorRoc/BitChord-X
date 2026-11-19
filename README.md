@@ -14,10 +14,11 @@
 [![Latest release](https://img.shields.io/github/v/release/AnGorRoc/BitChord-X?style=for-the-badge&labelColor=0d1117)](https://github.com/AnGorRoc/BitChord-X/releases)
 [![License](https://img.shields.io/github/license/AnGorRoc/BitChord-X?style=for-the-badge&labelColor=0d1117)](https://github.com/AnGorRoc/BitChord-X/blob/main/LICENSE)
 [![Downloads](https://img.shields.io/github/downloads/AnGorRoc/BitChord-X/total?style=for-the-badge&labelColor=0d1117)](https://github.com/AnGorRoc/BitChord-X/releases)
+[![Donate](https://img.shields.io/badge/Donate-Support%20BitChord--X-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white&labelColor=0d1117)](https://bitchord.pymp.net/donations)
 
 <br/>
 
-[**Download**](#download) · [**Features**](#features) · [**What's added**](#whats-added) · [**Credits**](#credits) · [**Disclaimer**](#disclaimer)
+[**Download**](#download) · [**Features**](#features) · [**What's added**](#whats-added) · [**Support**](#support) · [**Credits**](#credits) · [**Disclaimer**](#disclaimer)
 
 <br/>
 
@@ -158,6 +159,39 @@ For complete desktop setup, system requirements, and manual build commands, see 
 We welcome contributions to BitChord-X! Please review our [Contributing Guide](CONTRIBUTING.md) and [Code of Conduct](CODE_OF_CONDUCT.md) before submitting a Pull Request.
 
 [**Contributing Guide**](CONTRIBUTING.md) · [**Code of Conduct**](CODE_OF_CONDUCT.md) · [**Maintainers**](MAINTAINERS.md) · [**Additional Docs**](ADDITIONAL.md)
+
+</div>
+
+---
+
+<div align="center">
+
+<h1><a id="support"></a>Support & Donations</h1>
+
+If you enjoy using BitChord-X and would like to support its ongoing development:
+
+<br/>
+
+<a href="https://bitchord.pymp.net/donations" target="_blank" rel="noopener noreferrer">
+  <img src="https://img.shields.io/badge/Support-BitChord--X-FF5E5B?style=for-the-badge&logo=ko-fi&logoColor=white&labelColor=0d1117" alt="Support BitChord-X" height="38"/>
+</a>
+
+<br/>
+<sub>Automatically redirects to Ko-fi or Cafecito based on your country.</sub>
+
+<br/>
+<br/>
+
+You can also support **Kushagra Singh**, the original creator of BitChord:
+
+<br/>
+
+<a href="https://ko-fi.com/kushagrasinghx" target="_blank" rel="noopener noreferrer">
+  <img src="https://img.shields.io/badge/Support%20Original%20Creator-Ko--fi-29abe0?style=for-the-badge&logo=ko-fi&logoColor=white&labelColor=0d1117" alt="Support Kushagra Singh on Ko-fi" height="38"/>
+</a>
+
+<br/>
+<br/>
 
 </div>
 
