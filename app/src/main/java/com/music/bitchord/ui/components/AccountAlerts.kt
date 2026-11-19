@@ -883,6 +883,32 @@ private fun ChoiceRow(
  * card of the dialog grey (or the now-playing card shade), its hairline edge and a pill-shaped main
  * button under the text.
  */
+/**
+ * Asks the system to blur everything behind this dialog's window, and says
+ * whether it will. Android 12 and up, and only while the device allows
+ * cross-window blur (battery saver and some ROMs turn it off) — anywhere else
+ * this is false and the caller keeps its scrim. No dim either way: the blur
+ * replaces it, so the page keeps its own brightness.
+ */
+@Composable
+internal fun blurBehindDialogWindow(enabled: Boolean): Boolean {
+    val view = LocalView.current
+    val window = (view.parent as? DialogWindowProvider)?.window ?: return false
+    if (!enabled || android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.S) return false
+    val manager = view.context.getSystemService(android.view.WindowManager::class.java)
+    if (manager?.isCrossWindowBlurEnabled != true) return false
+    val radiusPx = with(androidx.compose.ui.platform.LocalDensity.current) { DIALOG_BLUR_BEHIND.roundToPx() }
+    SideEffect {
+        window.setDimAmount(0f)
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_BLUR_BEHIND)
+        window.attributes = window.attributes.apply { blurBehindRadius = radiusPx }
+    }
+    return true
+}
+
+/** Enough to take the page out of focus, not so much it turns to a wash of colour. */
+private val DIALOG_BLUR_BEHIND = 18.dp
+
 @OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
 internal fun AlertScaffold(
@@ -899,11 +925,18 @@ internal fun AlertScaffold(
     val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
     val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val fill = com.music.bitchord.ui.theme.cardSurfaceOrNull() ?: if (isDark) DIALOG_DARK_GREY else DIALOG_LIGHT_GREY
+    // In a window of its own the system can blur what is behind it: the page
+    // goes soft at its own brightness instead of being dimmed. Only where it
+    // can — otherwise, and under Reduce dynamic blur, the flat scrim as before.
+    val blurredBehind = !frosted && blurBehindDialogWindow(enabled = !reduceDynamicBlur)
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(Color.Black.copy(alpha = if (isDark) 0.55f else 0.28f))
+            .background(
+                if (blurredBehind) Color.Transparent
+                else Color.Black.copy(alpha = if (isDark) 0.55f else 0.28f),
+            )
             .clickable(
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() },
