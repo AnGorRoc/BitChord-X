@@ -1339,6 +1339,21 @@ object Innertube {
      * origin-scoped hash is documented against, then the third-party form, then
      * the first-party one.
      */
+    /**
+     * A short, stable name for whose pages these are — the guest, or one signed-in account and
+     * the channel it acts as. Kept caches are filed under it so one account's playlists never
+     * open under another, and it survives a restart, unlike the cookie itself, which Google
+     * rotates: the SAPISID inside it is what stays put for the life of a sign-in.
+     */
+    fun cacheScope(): String {
+        val c = cookie ?: return "guest"
+        val account = sapisidFrom(c) ?: c
+        val channel = channelOverride?.let { it.pageId ?: it.dataSyncId }.orEmpty()
+        val digest = java.security.MessageDigest.getInstance("SHA-1")
+            .digest("$account|$channel".toByteArray())
+        return digest.take(8).joinToString("") { "%02x".format(it) }
+    }
+
     private fun sapisidFrom(cookieHeader: String): String? {
         val jar = cookieHeader.split(';')
             .mapNotNull { entry ->

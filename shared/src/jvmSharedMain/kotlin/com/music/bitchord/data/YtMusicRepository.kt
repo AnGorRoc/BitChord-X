@@ -38,6 +38,10 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.json.JsonObject
@@ -718,7 +722,7 @@ object YtMusicRepository {
                 likedContinuation = likedPage?.continuation,
             )
         }
-    }
+    }.onSuccess { BrowsePrefetcher.onLibrary(it) }
 
     /**
      * Finishes syncing the liked collection into [LikeState], following
@@ -867,6 +871,10 @@ object YtMusicRepository {
         // parsePlaylistOwned — and only its own first response can be asked.
         if (!browseId.startsWith("VL")) page
         else page.copy(owned = InnertubeParser.parsePlaylistOwned(response))
+    }.onSuccess { page ->
+        // Every row arrived in this one response — most albums, short playlists: kept as it is,
+        // so the next open needs nothing. A longer one is kept by whoever reads it to the end.
+        if (page.continuation == null) keepCollection(browseId, page)
     }
 
     /**
@@ -1157,7 +1165,12 @@ object YtMusicRepository {
      */
     suspend fun setSubscribed(channelId: String, subscribed: Boolean): Result<Unit> =
         call("subscription:$channelId") { Innertube.setSubscribed(channelId, subscribed) }
-            .onSuccess { synchronized(artistPageCache) { artistPageCache.remove(channelId) } }
+            .onSuccess {
+                // The kept page stays the one opened next; only its button changes.
+                BrowseCache.updateArtist(channelId) { page ->
+                    page.subscription?.let { page.copy(subscription = it.copy(subscribed = subscribed)) } ?: page
+                }
+            }
 
     /**
      * The playlists a track can be added to. Paged because accounts with long
@@ -1167,7 +1180,7 @@ object YtMusicRepository {
     suspend fun userPlaylists(includeDeviceGroup: Boolean = false): Result<List<UserPlaylist>> = call("playlists:$includeDeviceGroup") {
         val all = InnertubeParser.parseUserPlaylists(libraryItemsPaged(LIBRARY_PLAYLISTS))
         if (includeDeviceGroup) all else all.filterNot { DeviceGroup.isDeviceGroupPlaylist(it.title) }
-    }
+    }.onSuccess { playlists -> BrowsePrefetcher.warmCollections(playlists.map { it.browseId }) }
 
     /**
      * All playlists in user library (including Liked Music and saved playlists).
@@ -1197,6 +1210,7 @@ object YtMusicRepository {
         videoIds: List<String>,
     ): Result<Map<String, String>> =
         call("playlist:add") { Innertube.addToPlaylist(playlistId, videoIds) }
+            .onSuccess { forgetPlaylist(playlistId) }
 
     /** [entries] are (setVideoId, videoId) pairs — see [Song.setVideoId]. */
     suspend fun removeFromPlaylist(
@@ -1204,7 +1218,7 @@ object YtMusicRepository {
         entries: List<Pair<String, String>>,
     ): Result<Unit> = call("playlist:remove") {
         Innertube.removeFromPlaylist(playlistId, entries)
-    }
+    }.onSuccess { forgetPlaylist(playlistId) }
 
     /**
      * A playlist's entries in their current order, every page of them, for
@@ -1234,46 +1248,51 @@ object YtMusicRepository {
         playlistMoves(current, target).chunked(MOVE_BATCH).forEach { batch ->
             Innertube.movePlaylistItems(playlistId, batch)
         }
-    }
+    }.also { forgetPlaylist(playlistId) }
 
     private const val MOVE_BATCH = 50
 
     suspend fun renamePlaylist(playlistId: String, title: String): Result<Unit> =
         call("playlist:rename") { Innertube.renamePlaylist(playlistId, title) }
+            .onSuccess { forgetPlaylist(playlistId) }
 
     suspend fun deletePlaylist(playlistId: String): Result<Unit> =
         call("playlist:delete") { Innertube.deletePlaylist(playlistId) }
+            .onSuccess { forgetPlaylist(playlistId) }
 
-    private data class CachedArtistPage(
-        val page: ArtistPage,
-        val cookieHash: Int?,
-        val cachedAtMs: Long,
+    /**
+     * An edit made the kept copy of a playlist wrong, so it goes — the next open reads it fresh
+     * rather than showing, even for a moment, a row that was just taken out.
+     */
+    private fun forgetPlaylist(playlistId: String) {
+        val raw = playlistId.removePrefix("VL")
+        BrowseCache.removeCollection("VL$raw")
+    }
+
+    /**
+     * How long a kept artist page counts as current. Younger than this, [artistPage] hands it back
+     * without asking; older, it is still shown at once by whoever opens it, and read again behind.
+     */
+    const val ARTIST_FRESH_MS = 30L * 60 * 1000
+
+    /** A request for one artist's page in flight: its landing as soon as that is read, then the whole. */
+    private class ArtistFetch(
+        val landing: MutableStateFlow<ArtistPage?>,
+        val whole: Deferred<Result<ArtistPage>>,
     )
 
-    private const val ARTIST_CACHE_MAX_ENTRIES = 64
-    private const val ARTIST_CACHE_TTL_MS = 20L * 60 * 1000
+    private val artistScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val inFlightArtistPages = ConcurrentHashMap<String, ArtistFetch>()
 
-    private val artistPageCache = object : LinkedHashMap<String, CachedArtistPage>(ARTIST_CACHE_MAX_ENTRIES, 0.75f, true) {
-        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, CachedArtistPage>?): Boolean =
-            size > ARTIST_CACHE_MAX_ENTRIES
-    }
+    /**
+     * The kept page for [browseId] at any age, possibly only its landing — see
+     * [BrowseCache.Stored.complete]. What an artist page opens on, before anything is asked.
+     */
+    fun cachedArtist(browseId: String): BrowseCache.Stored<ArtistPage>? = BrowseCache.artist(browseId)
 
-    private val artistPrefetchScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
-    private val inFlightArtistPages = ConcurrentHashMap<Pair<String, Int?>, Deferred<Result<ArtistPage>>>()
-
-    /** Returns a fresh cached [ArtistPage] for [browseId] if available for the current session. */
-    fun cachedArtistPage(browseId: String): ArtistPage? {
-        val cookieHash = Innertube.cookie?.hashCode()
-        val now = System.currentTimeMillis()
-        synchronized(artistPageCache) {
-            val entry = artistPageCache[browseId] ?: return null
-            if (entry.cookieHash != cookieHash || now - entry.cachedAtMs > ARTIST_CACHE_TTL_MS) {
-                artistPageCache.remove(browseId)
-                return null
-            }
-            return entry.page
-        }
-    }
+    /** The kept whole page for [browseId], at any age; null when there is only a landing or nothing. */
+    fun cachedArtistPage(browseId: String): ArtistPage? =
+        BrowseCache.artist(browseId)?.takeIf { it.complete }?.value
 
     /**
      * Artist page. The landing page only lists ~5 songs, so the linked
@@ -1281,33 +1300,132 @@ object YtMusicRepository {
      * full release shelves (Albums, Singles & EPs) are fetched to populate
      * their complete discography.
      *
-     * Results are cached in memory (per session) and in-flight requests for
-     * the same artist are coalesced so preloading and opening never duplicate work.
+     * A whole page kept less than [ARTIST_FRESH_MS] ago is returned without asking. Otherwise it
+     * is read, and two askers of the same artist share one request — the search warming it and the
+     * listener opening it, say. [onLanding] gets the landing (one request: header, first songs,
+     * first cards of each shelf) as soon as it is read, well before the whole page — what a page
+     * with nothing kept shows first.
      */
-    suspend fun artistPage(browseId: String, forceRefresh: Boolean = false): Result<ArtistPage> {
+    suspend fun artistPage(
+        browseId: String,
+        forceRefresh: Boolean = false,
+        onLanding: ((ArtistPage) -> Unit)? = null,
+    ): Result<ArtistPage> {
         if (!forceRefresh) {
-            cachedArtistPage(browseId)?.let { return Result.success(it) }
+            BrowseCache.artist(browseId)
+                ?.takeIf { it.complete && it.ageMs() < ARTIST_FRESH_MS }
+                ?.let { return Result.success(it.value) }
         }
-        val key = browseId to Innertube.cookie?.hashCode()
-        if (forceRefresh) {
-            synchronized(artistPageCache) { artistPageCache.remove(browseId) }
-        }
+        val key = "${Innertube.cacheScope()}:$browseId"
         // Started only once it is in the map: a fetch that finished first would remove an entry that
         // was not there yet, and the finished result would stay behind as the answer for good.
-        val deferred = inFlightArtistPages.computeIfAbsent(key) {
-            artistPrefetchScope.async(start = CoroutineStart.LAZY) {
-                try {
-                    fetchArtistPage(browseId).onSuccess { page ->
-                        synchronized(artistPageCache) {
-                            artistPageCache[browseId] = CachedArtistPage(
-                                page = page,
-                                cookieHash = key.second,
-                                cachedAtMs = System.currentTimeMillis(),
-                            )
+        val fetch = inFlightArtistPages.computeIfAbsent(key) {
+            val landing = MutableStateFlow<ArtistPage?>(null)
+            ArtistFetch(
+                landing = landing,
+                whole = artistScope.async(start = CoroutineStart.LAZY) {
+                    try {
+                        fetchArtistPage(browseId) { landing.value = it }
+                    } finally {
+                        inFlightArtistPages.remove(key)
+                    }
+                },
+            )
+        }
+        fetch.whole.start()
+        if (onLanding == null) return fetch.whole.await()
+        return coroutineScope {
+            val relay = launch {
+                val first = fetch.landing.filterNotNull().first()
+                if (!fetch.whole.isCompleted) onLanding(first)
+            }
+            fetch.whole.await().also { relay.cancel() }
+        }
+    }
+
+    private suspend fun fetchArtistPage(browseId: String, onLanding: (ArtistPage) -> Unit): Result<ArtistPage> =
+        call("artist:$browseId") {
+            val page = InnertubeParser.parseArtistPage(Innertube.browse(browseId))
+            // Kept as soon as it is read: a page opened while the rest is still coming, or after
+            // the rest failed, has at least this much to show. Never over a whole page.
+            BrowseCache.putArtist(browseId, page, complete = false)
+            onLanding(page)
+            coroutineScope {
+                val fullSongsDeferred = async {
+                    page.moreSongsBrowseId?.let { playlistId ->
+                        runCatching { songsPaged(playlistId) }.getOrNull()
+                    }
+                }
+                val shelvesDeferred = page.sections.map { shelf ->
+                    async {
+                        val moreBrowseId = shelf.moreBrowseId
+                        if (moreBrowseId != null) {
+                            val fullItems = runCatching {
+                                itemsPaged(moreBrowseId, shelf.moreParams)
+                            }.getOrNull()
+                            if (!fullItems.isNullOrEmpty()) {
+                                shelf.copy(items = fullItems)
+                            } else {
+                                shelf
+                            }
+                        } else {
+                            shelf
                         }
                     }
+                }
+                val fullSongs = fullSongsDeferred.await()
+                val fullShelves = shelvesDeferred.awaitAll()
+                val resolvedSongs = if (!fullSongs.isNullOrEmpty()) fullSongs else page.songs
+                page.copy(songs = resolvedSongs, sections = fullShelves)
+            }
+        }.onSuccess { BrowseCache.putArtist(browseId, it, complete = true) }
+
+    /**
+     * The artist's landing page alone — one request. [artistPage] goes on to
+     * page out every song and release, which a Top Picks card has no use for:
+     * it needs the header (photo, Mix and Shuffle) and the first card of each
+     * shelf. Kept as a landing, so the artist's own page has it to open on.
+     */
+    suspend fun artistLanding(browseId: String): Result<ArtistPage> = call("artistLanding:$browseId") {
+        InnertubeParser.parseArtistPage(Innertube.browse(browseId))
+    }.onSuccess { BrowseCache.putArtist(browseId, it, complete = false) }
+
+    // ---- Kept collections ------------------------------------------------------
+
+    /**
+     * The kept album or playlist [browseId], every row of it, at any age. What its page opens on;
+     * [collectionFull] is what checks it behind.
+     */
+    fun cachedCollection(browseId: String): BrowseCache.Stored<SongPage>? = BrowseCache.collection(browseId)
+
+    /** Keeps an album or playlist a page finished reading itself — see [BrowseCache.putCollection]. */
+    fun keepCollection(browseId: String, page: SongPage) {
+        if (!isKeptCollection(browseId)) return
+        BrowseCache.putCollection(browseId, page)
+    }
+
+    /**
+     * Whether [browseId] is an album or playlist whose listing is worth keeping. History, the
+     * library's own feeds and podcasts move too fast or are read elsewhere.
+     */
+    fun isKeptCollection(browseId: String): Boolean =
+        browseId.startsWith("VL") || browseId.startsWith("MPREb") || browseId.startsWith("OLAK")
+
+    private val inFlightCollections = ConcurrentHashMap<String, Deferred<Result<SongPage>>>()
+
+    /**
+     * An album or playlist read whole — its first page and every page after it — and kept.
+     * What revalidates a page opened from [cachedCollection], and what warms the library's
+     * playlists before they are opened. Two askers share one read.
+     */
+    suspend fun collectionFull(browseId: String): Result<SongPage> {
+        val key = "${Innertube.cacheScope()}:$browseId"
+        val deferred = inFlightCollections.computeIfAbsent(key) {
+            artistScope.async(start = CoroutineStart.LAZY) {
+                try {
+                    readCollectionFull(browseId)
                 } finally {
-                    inFlightArtistPages.remove(key)
+                    inFlightCollections.remove(key)
                 }
             }
         }
@@ -1315,46 +1433,26 @@ object YtMusicRepository {
         return deferred.await()
     }
 
-    private suspend fun fetchArtistPage(browseId: String): Result<ArtistPage> = call("artist:$browseId") {
-        val page = InnertubeParser.parseArtistPage(Innertube.browse(browseId))
-        coroutineScope {
-            val fullSongsDeferred = async {
-                page.moreSongsBrowseId?.let { playlistId ->
-                    runCatching { songsPaged(playlistId) }.getOrNull()
-                }
-            }
-            val shelvesDeferred = page.sections.map { shelf ->
-                async {
-                    val moreBrowseId = shelf.moreBrowseId
-                    if (moreBrowseId != null) {
-                        val fullItems = runCatching {
-                            itemsPaged(moreBrowseId, shelf.moreParams)
-                        }.getOrNull()
-                        if (!fullItems.isNullOrEmpty()) {
-                            shelf.copy(items = fullItems)
-                        } else {
-                            shelf
-                        }
-                    } else {
-                        shelf
-                    }
-                }
-            }
-            val fullSongs = fullSongsDeferred.await()
-            val fullShelves = shelvesDeferred.awaitAll()
-            val resolvedSongs = if (!fullSongs.isNullOrEmpty()) fullSongs else page.songs
-            page.copy(songs = resolvedSongs, sections = fullShelves)
+    private suspend fun readCollectionFull(browseId: String): Result<SongPage> {
+        val first = browseSongs(browseId).getOrElse { return Result.failure(it) }
+        val songs = LinkedHashMap<String, Song>()
+        fun keyOf(song: Song) = song.setVideoId ?: song.videoId
+        first.songs.forEach { songs.putIfAbsent(keyOf(it), it) }
+        val suggested = first.suggested.toMutableList()
+        var next = first.continuation
+        var pages = 1
+        while (next != null && pages++ < MAX_PAGES) {
+            val more = moreSongs(next).getOrElse { return Result.failure(it) }
+            var grew = false
+            more.songs.forEach { if (songs.putIfAbsent(keyOf(it), it) == null) grew = true }
+            more.suggested.forEach { s -> if (suggested.none { it.videoId == s.videoId }) suggested += s }
+            // A page that adds nothing means the feed looped back rather than ran dry.
+            if (!grew && more.suggested.isEmpty()) break
+            next = more.continuation
         }
-    }
-
-    /**
-     * The artist's landing page alone — one request. [artistPage] goes on to
-     * page out every song and release, which a Top Picks card has no use for:
-     * it needs the header (photo, Mix and Shuffle) and the first card of each
-     * shelf.
-     */
-    suspend fun artistLanding(browseId: String): Result<ArtistPage> = call("artistLanding:$browseId") {
-        InnertubeParser.parseArtistPage(Innertube.browse(browseId))
+        val whole = first.copy(songs = songs.values.toList(), suggested = suggested, continuation = null)
+        keepCollection(browseId, whole)
+        return Result.success(whole)
     }
 
     /**
