@@ -13,7 +13,7 @@ val appVersion: String = providers.gradleProperty("bitchordVersionName").orNull
     ?: providers.gradleProperty("bitchord.version").orNull
     ?.removePrefix("v")
     ?.takeIf { it.isNotBlank() }
-    ?: (rootProject.extra["bitchordVersionName"] as? String ?: "1.9.2")
+    ?: (rootProject.extra["bitchordVersionName"] as? String ?: "1.9.3")
 
 /** Which platform this build is *for*, which is the host unless told otherwise. */
 val hostIsWindows = System.getProperty("os.name").contains("Windows", ignoreCase = true)
