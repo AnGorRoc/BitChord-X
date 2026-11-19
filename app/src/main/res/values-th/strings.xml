@@ -1680,4 +1680,7 @@
     <string name="telemetry_plea_minimal">ใช้ขั้นต่ำแทน</string>
     <string name="telemetry_plea_confirm">เปลี่ยนต่อไป</string>
     <string name="telemetry_picker_message">ไม่ส่งบัญชี ที่อยู่ IP ประวัติการฟัง หรือเพลย์ลิสต์ของคุณเลย การเปลี่ยนแปลงมีผลทันที</string>
+    <string name="offline_music">เพลงออฟไลน์</string>
+    <string name="offline_music_subtitle">เพลงที่ดาวน์โหลดและแคชไว้</string>
+    <string name="offline_music_empty">ยังไม่มีอะไรบันทึกไว้ในโทรศัพท์เครื่องนี้ ดาวน์โหลดเพลง หรือเล่นสักครั้งตอนออนไลน์เพื่อเก็บสำเนาไว้</string>
 </resources>

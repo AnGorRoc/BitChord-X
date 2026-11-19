@@ -1674,4 +1674,7 @@
     <string name="telemetry_plea_minimal">改用最少</string>
     <string name="telemetry_plea_confirm">仍然變更</string>
     <string name="telemetry_picker_message">絕不傳送你的帳號、IP 位址、收聽記錄或播放清單。變更立即生效。</string>
+    <string name="offline_music">離線音樂</string>
+    <string name="offline_music_subtitle">已下載和已快取的歌曲</string>
+    <string name="offline_music_empty">這支手機上還沒有儲存任何內容。下載歌曲，或在連線時播放一次，即可保留副本。</string>
 </resources>

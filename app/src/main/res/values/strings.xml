@@ -1536,4 +1536,7 @@
     <string name="telemetry_plea_minimal">Use minimal instead</string>
     <string name="telemetry_plea_confirm">Change anyway</string>
     <string name="telemetry_picker_message">Never your account, IP address, listening history or playlists. Changes apply right away.</string>
+    <string name="offline_music">Offline music</string>
+    <string name="offline_music_subtitle">Downloaded and cached songs</string>
+    <string name="offline_music_empty">Nothing is saved on this phone yet. Download songs, or play them once while online, to keep a copy.</string>
 </resources>

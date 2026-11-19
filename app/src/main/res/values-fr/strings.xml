@@ -1696,4 +1696,7 @@
     <string name="telemetry_plea_minimal">Utiliser la minimale</string>
     <string name="telemetry_plea_confirm">Changer quand même</string>
     <string name="telemetry_picker_message">Jamais votre compte, votre adresse IP, votre historique d\'écoute ni vos playlists. Les changements s\'appliquent immédiatement.</string>
+    <string name="offline_music">Musique hors ligne</string>
+    <string name="offline_music_subtitle">Titres téléchargés et en cache</string>
+    <string name="offline_music_empty">Rien n\'est encore enregistré sur ce téléphone. Téléchargez des titres, ou écoutez-les une fois en ligne, pour en garder une copie.</string>
 </resources>

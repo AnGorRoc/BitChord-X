@@ -1,5 +1,7 @@
 package com.music.bitchord.ui
 
+import com.music.bitchord.data.offline.OfflineLibrary
+import com.music.bitchord.data.model.Song
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -24,6 +26,12 @@ object AndroidAppUiHost : AppUiHost {
     override fun downloadedIds(): Set<String> {
         val saved by Downloads.saved.collectAsStateWithLifecycle()
         return saved.keys
+    }
+
+    @Composable
+    override fun unplayableOffline(song: Song): Boolean {
+        val playable by OfflineLibrary.playable.collectAsStateWithLifecycle()
+        return !OfflineLibrary.isPlayable(song, playable)
     }
 
     override suspend fun releaseMotion(album: String, artist: String): CanvasArtwork? {

@@ -1634,4 +1634,7 @@
     <string name="telemetry_plea_minimal">Usa la minima</string>
     <string name="telemetry_plea_confirm">Cambia comunque</string>
     <string name="telemetry_picker_message">Mai il tuo account, l\'indirizzo IP, la cronologia di ascolto o le playlist. Le modifiche valgono subito.</string>
+    <string name="offline_music">Musica offline</string>
+    <string name="offline_music_subtitle">Brani scaricati e in cache</string>
+    <string name="offline_music_empty">Su questo telefono non è ancora salvato nulla. Scarica brani, o riproducili una volta online, per conservarne una copia.</string>
 </resources>

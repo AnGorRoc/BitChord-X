@@ -1701,4 +1701,7 @@
     <string name="telemetry_plea_minimal">להשתמש במינימלית</string>
     <string name="telemetry_plea_confirm">לשנות בכל זאת</string>
     <string name="telemetry_picker_message">לעולם לא החשבון, כתובת ה-IP, היסטוריית ההאזנה או הפלייליסטים. השינויים חלים מיד.</string>
+    <string name="offline_music">מוזיקה לא מקוונת</string>
+    <string name="offline_music_subtitle">שירים שהורדו ושמורים במטמון</string>
+    <string name="offline_music_empty">עדיין לא נשמר דבר בטלפון הזה. הורידו שירים, או נגנו אותם פעם אחת באינטרנט, כדי לשמור עותק.</string>
 </resources>

@@ -1634,6 +1634,18 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             }
         }
         viewModelScope.launch {
+            // The Offline music playlist exists only while offline: it follows what is saved, and closes
+            // itself when the connection returns.
+            com.music.bitchord.data.offline.OfflineLibrary.playable.collect { playable ->
+                val id = com.music.bitchord.ui.screens.OFFLINE_MUSIC_BROWSE_ID
+                if (playable == null) {
+                    closeDetail(id)
+                } else if (_detailStack.value.any { page -> page.browseId == id }) {
+                    reloadLocalDetail(id)
+                }
+            }
+        }
+        viewModelScope.launch {
             // Emptied from Settings while the folder sits open underneath.
             AudioCache.contentsChanged.drop(1).collect {
                 if (_detailStack.value.any { page -> page.browseId == CACHE_FOLDER_BROWSE_ID }) {
@@ -3857,6 +3869,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             browseId == "local:downloads" ->
                 nonEmpty(Downloads.getDownloadedSongs(context)) { "No downloaded tracks" }
             browseId == CACHE_FOLDER_BROWSE_ID -> cachedSongsState()
+            browseId == com.music.bitchord.ui.screens.OFFLINE_MUSIC_BROWSE_ID -> offlineMusicState()
             browseId == "local:all" -> if (!LocalMediaRepository.hasStoragePermission(context)) {
                 UiState.Error(text(R.string.storage_required_read))
             } else {
@@ -3899,6 +3912,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * The Cached songs folder: the YouTube and JioSaavn tracks the song cache
      * is holding, most recently played first. See [AudioCache.cachedSongs].
      */
+    /** The Offline music playlist: what the phone can play with no connection, downloads first. */
+    private suspend fun offlineMusicState(): UiState<List<Song>> {
+        val songs = com.music.bitchord.data.offline.OfflineLibrary.offlineMusic(getApplication())
+        return if (songs.isEmpty()) UiState.Error(text(R.string.offline_music_empty)) else UiState.Success(songs)
+    }
+
     private suspend fun cachedSongsState(): UiState<List<Song>> {
         val songs = AudioCache.cachedSongs().map { it.song }
         return if (songs.isEmpty()) UiState.Error(text(R.string.cached_songs_empty)) else UiState.Success(songs)

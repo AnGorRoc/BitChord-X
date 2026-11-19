@@ -3538,12 +3538,17 @@ class PlaybackService : MediaLibraryService() {
             if (room > 0 && autoplayReserve.isNotEmpty()) {
                 val queuedIds = (0 until exoPlayer.mediaItemCount)
                     .mapTo(HashSet()) { exoPlayer.getMediaItemAt(it).mediaId }
-                val usable = autoplayReserve.filter { it.videoId !in queuedIds }
+                // Offline, a held-back suggestion that is not saved on the phone stays held back.
+                val usable = autoplayReserve.filter {
+                    it.videoId !in queuedIds && com.music.bitchord.data.offline.OfflineLibrary.isPlayable(it)
+                }
                 val take = usable.take(room)
                 autoplayReserve = usable.drop(take.size)
                 if (take.isNotEmpty()) exoPlayer.addMediaItems(take.map { it.toMediaItem() })
             }
         }
+        // A station is asked for from the network; with none there is nothing to add.
+        if (AppSettings.effectiveOffline.value) return
         // In a party the server's queue is the one being topped up, and this
         // player's copy of it lags behind by however long reconcile is held off
         // — read from the copy, a batch that had already landed counted as

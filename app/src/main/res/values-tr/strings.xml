@@ -1652,4 +1652,7 @@
     <string name="telemetry_plea_minimal">Bunun yerine asgariyi kullan</string>
     <string name="telemetry_plea_confirm">Yine de değiştir</string>
     <string name="telemetry_picker_message">Hesabınız, IP adresiniz, dinleme geçmişiniz veya çalma listeleriniz asla gönderilmez. Değişiklikler hemen uygulanır.</string>
+    <string name="offline_music">Çevrimdışı müzik</string>
+    <string name="offline_music_subtitle">İndirilen ve önbelleğe alınan şarkılar</string>
+    <string name="offline_music_empty">Bu telefonda henüz hiçbir şey kayıtlı değil. Bir kopya saklamak için şarkı indirin ya da çevrimiçiyken bir kez çalın.</string>
 </resources>

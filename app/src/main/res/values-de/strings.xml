@@ -1695,4 +1695,7 @@
     <string name="telemetry_plea_minimal">Stattdessen Minimal</string>
     <string name="telemetry_plea_confirm">Trotzdem ändern</string>
     <string name="telemetry_picker_message">Nie dein Konto, deine IP-Adresse, dein Hörverlauf oder deine Playlists. Änderungen gelten sofort.</string>
+    <string name="offline_music">Offline-Musik</string>
+    <string name="offline_music_subtitle">Heruntergeladene und zwischengespeicherte Titel</string>
+    <string name="offline_music_empty">Auf diesem Telefon ist noch nichts gespeichert. Lade Titel herunter oder spiele sie einmal online ab, um eine Kopie zu behalten.</string>
 </resources>

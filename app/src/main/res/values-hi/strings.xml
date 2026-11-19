@@ -1695,4 +1695,7 @@
     <string name="telemetry_plea_minimal">इसके बजाय न्यूनतम इस्तेमाल करें</string>
     <string name="telemetry_plea_confirm">फिर भी बदलें</string>
     <string name="telemetry_picker_message">आपका खाता, IP पता, सुनने का इतिहास या प्लेलिस्ट कभी नहीं। बदलाव तुरंत लागू होते हैं।</string>
+    <string name="offline_music">ऑफ़लाइन संगीत</string>
+    <string name="offline_music_subtitle">डाउनलोड और कैश किए गए गाने</string>
+    <string name="offline_music_empty">इस फ़ोन में अभी कुछ सहेजा नहीं गया है। कॉपी रखने के लिए गाने डाउनलोड करें, या ऑनलाइन रहते हुए एक बार चलाएँ।</string>
 </resources>

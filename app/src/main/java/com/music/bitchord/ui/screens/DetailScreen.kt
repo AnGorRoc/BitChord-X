@@ -384,8 +384,12 @@ fun DetailScreen(
     // A folder keeps its own sort — the one its top bar menu sets — rather
     // than the per-page one a release takes.
     val folderSort = folder?.sort
-    val songs = remember(rawSongs, songSort, folderSort) {
-        if (folderSort != null) rawSongs.sortedForLibrary(folderSort) else rawSongs.sortedForDetail(songSort)
+    // Offline, what can be played comes first and the rest follows, dimmed. It is a view of the list, so
+    // the playlist's own order is back the moment the connection is.
+    val offlinePlayable by com.music.bitchord.data.offline.OfflineLibrary.playable.collectAsStateWithLifecycle()
+    val songs = remember(rawSongs, songSort, folderSort, offlinePlayable) {
+        val ordered = if (folderSort != null) rawSongs.sortedForLibrary(folderSort) else rawSongs.sortedForDetail(songSort)
+        com.music.bitchord.data.offline.OfflineLibrary.arranged(ordered, offlinePlayable)
     }
     // What a numbered row shows regardless of [songSort] — an album's track
     // numbers are the sleeve's own and must not relabel themselves to match

@@ -1,5 +1,6 @@
 package com.music.bitchord.ui.screens
 
+import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -43,6 +44,7 @@ fun libraryLinks(): List<LibraryLink> {
     val smbShare by AppSettings.smbShare.collectAsStateWithLifecycle()
     val showCacheFolder by AppSettings.showCacheFolder.collectAsStateWithLifecycle()
     val spotifyConnected by AppSettings.spotifySpdcToken.collectAsStateWithLifecycle()
+    val offline by AppSettings.effectiveOffline.collectAsStateWithLifecycle()
     fun link(title: String, subtitle: String, browseId: String, icon: ImageVector = deviceFolderIcon(browseId) ?: Icons.Rounded.Cloud) = LibraryLink(
         item = ShelfItem(
             title = title,
@@ -54,6 +56,12 @@ fun libraryLinks(): List<LibraryLink> {
         icon = icon,
     )
     return listOfNotNull(
+        // Only while offline: everything on the phone that plays without a connection, downloaded or cached.
+        link(
+            stringResource(R.string.offline_music),
+            stringResource(R.string.offline_music_subtitle),
+            OFFLINE_MUSIC_BROWSE_ID,
+        ).takeIf { offline },
         link(
             stringResource(R.string.downloads),
             stringResource(R.string.downloaded_songs),
@@ -127,6 +135,7 @@ fun deviceFolderIcon(browseId: String): ImageVector? = when (browseId) {
     "local:downloads" -> Icons.Rounded.Download
     "local:all" -> Icons.Rounded.Folder
     CACHE_FOLDER_BROWSE_ID -> Icons.Rounded.Storage
+    OFFLINE_MUSIC_BROWSE_ID -> Icons.Rounded.CloudOff
     com.music.bitchord.data.webdav.WebDavConfig.BROWSE_ID -> Icons.Rounded.Cloud
     com.music.bitchord.data.smb.SmbConfig.BROWSE_ID -> Icons.Rounded.Lan
     else -> null
@@ -137,6 +146,9 @@ const val SPOTIFY_BROWSE_ID = "app:spotify"
 
 /** The Cached songs folder's page id — one of the `local:` device folders. */
 const val CACHE_FOLDER_BROWSE_ID = "local:cache"
+
+/** The Offline music playlist's page id: downloads and cached songs together, listed only while offline. */
+const val OFFLINE_MUSIC_BROWSE_ID = "local:offlinemusic"
 
 /**
  * The phone's way in to Replay: its row of headline cards, placeholders for

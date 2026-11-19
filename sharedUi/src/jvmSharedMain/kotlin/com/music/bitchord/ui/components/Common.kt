@@ -389,18 +389,22 @@ fun SongRow(
      */
     trailing: (@Composable () -> Unit)? = null,
 ) {
-    val swipeActive = onSwipeAction != null || onSwipeToQueue != null || onSwipeHoldPlaylist != null
+    // Offline, a song that is not saved on the phone is shown dimmed and is not something a tap, a swipe
+    // or a menu can act on: it would only have to be skipped.
+    val offlineBlocked = AppUi.host.unplayableOffline(song)
+    val swipeActive = !offlineBlocked && (onSwipeAction != null || onSwipeToQueue != null || onSwipeHoldPlaylist != null)
     SwipeToQueueBox(
-        onSwipeToQueue = onSwipeToQueue,
-        onSwipeAction = onSwipeAction,
-        onSwipeHoldPlaylist = onSwipeHoldPlaylist,
+        onSwipeToQueue = onSwipeToQueue.takeUnless { offlineBlocked },
+        onSwipeAction = onSwipeAction.takeUnless { offlineBlocked },
+        onSwipeHoldPlaylist = onSwipeHoldPlaylist.takeUnless { offlineBlocked },
         modifier = modifier,
     ) {
         SongRowContent(
             song = song,
-            onClick = onClick,
-            onLongPress = onLongPress,
-            onMore = onMore ?: onLongPress,
+            onClick = if (offlineBlocked) ({}) else onClick,
+            onLongPress = onLongPress.takeUnless { offlineBlocked },
+            onMore = (onMore ?: onLongPress).takeUnless { offlineBlocked },
+            dimmed = offlineBlocked,
             modifier = when {
                 !swipeActive -> modifier
                 rowBackground != Color.Transparent -> Modifier.background(rowBackground)
@@ -781,6 +785,8 @@ private fun SongRowContent(
     selected: Boolean = false,
     showSourceQuality: Boolean = false,
     trailing: (@Composable () -> Unit)? = null,
+    /** Shown greyed out: not playable right now. */
+    dimmed: Boolean = false,
 ) {
     val titleColor by animateColorAsState(
         targetValue = if (isCurrent && !searchPlayingStyle) activeTint else MaterialTheme.colorScheme.onBackground,
@@ -797,7 +803,7 @@ private fun SongRowContent(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .alpha(if (unavailable) 0.45f else 1f)
+            .alpha(if (dimmed) 0.38f else if (unavailable) 0.45f else 1f)
             .background(activeBackground)
             .longPressMenuClickable(
                 onClick = onClick,

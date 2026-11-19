@@ -1668,4 +1668,7 @@
     <string name="telemetry_plea_minimal">Usar la mínima</string>
     <string name="telemetry_plea_confirm">Cambiar de todos modos</string>
     <string name="telemetry_picker_message">Nunca tu cuenta, dirección IP, historial de reproducción ni playlists. Los cambios se aplican al instante.</string>
+    <string name="offline_music">Música sin conexión</string>
+    <string name="offline_music_subtitle">Canciones descargadas y en caché</string>
+    <string name="offline_music_empty">Todavía no hay nada guardado en este teléfono. Descarga canciones, o reprodúcelas una vez con conexión, para conservar una copia.</string>
 </resources>

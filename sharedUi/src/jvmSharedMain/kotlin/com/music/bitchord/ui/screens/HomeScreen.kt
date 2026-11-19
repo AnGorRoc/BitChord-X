@@ -1,5 +1,6 @@
 package com.music.bitchord.ui.screens
 
+import androidx.compose.material.icons.rounded.CloudOff
 import com.music.bitchord.ui.components.trackArtSize
 import com.music.bitchord.ui.components.contextClick
 import com.music.bitchord.ui.AppUi
@@ -1280,6 +1281,11 @@ internal fun ShelfCard(
                 colors = listOf(Color(0xFF134E5E), Color(0xFF71B280)),
                 trackKey = "local:all",
                 icon = Icons.Rounded.LibraryMusic,
+            )
+            "local:offlinemusic" -> ServiceCard(
+                colors = listOf(Color(0xFF232526), Color(0xFF414345)),
+                trackKey = "local:offlinemusic",
+                icon = Icons.Rounded.CloudOff,
             )
             "local:cache" -> ServiceCard(
                 colors = listOf(Color(0xFF42275A), Color(0xFF734B6D)),

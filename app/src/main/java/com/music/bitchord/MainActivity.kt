@@ -1548,8 +1548,16 @@ private fun BitChordApp(
         // A Spotify page lists songs it has not found on YouTube Music yet (or
         // never will); those can't be queued, so play the rest in their order.
         if (allSongs.getOrNull(allIndex)?.isUnresolvedSpotify == true) return
-        val songs = allSongs.filterNot { it.isUnresolvedSpotify }
-        val index = songs.indexOf(allSongs.getOrNull(allIndex)).coerceAtLeast(0)
+        val resolved = allSongs.filterNot { it.isUnresolvedSpotify }
+        val resolvedIndex = resolved.indexOf(allSongs.getOrNull(allIndex)).coerceAtLeast(0)
+        // Offline, only what is saved on the phone is queued: nothing goes in that would have to be skipped,
+        // and a tap on a song that cannot be played does nothing.
+        val offlinePlayable = com.music.bitchord.data.offline.OfflineLibrary.playable.value
+        val (songs, index) = if (offlinePlayable == null) {
+            resolved to resolvedIndex
+        } else {
+            com.music.bitchord.data.offline.OfflineLibrary.queueOffline(resolved, resolvedIndex, offlinePlayable) ?: return
+        }
         playRequestGeneration++
         activeRadioSeed = null
         scope.launch {

@@ -1700,4 +1700,7 @@
     <string name="telemetry_plea_minimal">Usar a mínima</string>
     <string name="telemetry_plea_confirm">Mudar mesmo assim</string>
     <string name="telemetry_picker_message">Nunca sua conta, endereço IP, histórico de reprodução ou playlists. As mudanças valem na hora.</string>
+    <string name="offline_music">Músicas offline</string>
+    <string name="offline_music_subtitle">Músicas baixadas e em cache</string>
+    <string name="offline_music_empty">Ainda não há nada salvo neste celular. Baixe músicas, ou toque-as uma vez online, para guardar uma cópia.</string>
 </resources>

@@ -1724,4 +1724,7 @@
     <string name="telemetry_plea_minimal">Использовать минимальную</string>
     <string name="telemetry_plea_confirm">Всё равно изменить</string>
     <string name="telemetry_picker_message">Никогда не отправляются ваш аккаунт, IP-адрес, история прослушивания и плейлисты. Изменения действуют сразу.</string>
+    <string name="offline_music">Музыка офлайн</string>
+    <string name="offline_music_subtitle">Загруженные и кэшированные песни</string>
+    <string name="offline_music_empty">На этом телефоне пока ничего не сохранено. Скачайте песни или воспроизведите их один раз онлайн, чтобы сохранить копию.</string>
 </resources>

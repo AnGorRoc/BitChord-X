@@ -1614,4 +1614,7 @@
     <string name="telemetry_plea_minimal">Dùng mức tối thiểu</string>
     <string name="telemetry_plea_confirm">Vẫn thay đổi</string>
     <string name="telemetry_picker_message">Không bao giờ gửi tài khoản, địa chỉ IP, lịch sử nghe hay danh sách phát của bạn. Thay đổi có hiệu lực ngay.</string>
+    <string name="offline_music">Nhạc ngoại tuyến</string>
+    <string name="offline_music_subtitle">Bài hát đã tải xuống và đã lưu đệm</string>
+    <string name="offline_music_empty">Chưa có gì được lưu trên điện thoại này. Hãy tải bài hát xuống, hoặc phát một lần khi có mạng, để giữ một bản sao.</string>
 </resources>

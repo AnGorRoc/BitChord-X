@@ -1675,4 +1675,7 @@
     <string name="telemetry_plea_minimal">代わりに最小にする</string>
     <string name="telemetry_plea_confirm">それでも変更する</string>
     <string name="telemetry_picker_message">アカウント、IPアドレス、再生履歴、プレイリストは決して送信しません。変更はすぐに反映されます。</string>
+    <string name="offline_music">オフライン音楽</string>
+    <string name="offline_music_subtitle">ダウンロード済みとキャッシュ済みの曲</string>
+    <string name="offline_music_empty">このスマートフォンにはまだ何も保存されていません。曲をダウンロードするか、オンラインで一度再生するとコピーが残ります。</string>
 </resources>

@@ -1674,4 +1674,7 @@
     <string name="telemetry_plea_minimal">Gunakan minimal</string>
     <string name="telemetry_plea_confirm">Ubah saja</string>
     <string name="telemetry_picker_message">Tidak pernah akun, alamat IP, riwayat pemutaran, atau playlist Anda. Perubahan berlaku seketika.</string>
+    <string name="offline_music">Musik offline</string>
+    <string name="offline_music_subtitle">Lagu yang diunduh dan di-cache</string>
+    <string name="offline_music_empty">Belum ada yang tersimpan di ponsel ini. Unduh lagu, atau putar sekali saat online, untuk menyimpan salinannya.</string>
 </resources>

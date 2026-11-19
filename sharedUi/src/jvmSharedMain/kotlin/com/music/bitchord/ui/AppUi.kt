@@ -1,5 +1,6 @@
 package com.music.bitchord.ui
 
+import com.music.bitchord.data.model.Song
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.staticCompositionLocalOf
 import com.music.bitchord.data.canvas.CanvasArtwork
@@ -40,6 +41,13 @@ interface AppUiHost {
     /** Video ids of the tracks already downloaded, for the mark on their rows. */
     @Composable
     fun downloadedIds(): Set<String>
+
+    /**
+     * True while the app is offline and [song] is not saved on the phone: its row is shown dimmed, and it
+     * can be neither played nor queued. False online, and always on the desktop.
+     */
+    @Composable
+    fun unplayableOffline(song: Song): Boolean = false
 
     /**
      * A release's motion cover, for Home's Top Picks — the same lookup the
