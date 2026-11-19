@@ -948,6 +948,17 @@ class PlaybackService : MediaLibraryService() {
             // to say nothing about whether sound arrived quickly, because
             // the legs that were measured were the ones running in the
             // background for tracks nobody was waiting on.
+            // A queue brought back from the last session has no transition to start AutoPlay's
+            // load, and the one made at start-up can fail before the network is ready and give
+            // up. Pressing play is the moment to look again: with nothing loading and the tail
+            // short, the load is retried (a full tail makes it a no-op).
+            if (isPlaying && autoplayLoadJob?.isActive != true &&
+                (exoPlayer.currentMediaItemIndex + 1 until exoPlayer.mediaItemCount)
+                    .count { exoPlayer.getMediaItemAt(it).fromAutoplay } < MAX_QUEUED_AUTOPLAY
+            ) {
+                autoplaySeed = null
+                loadAutoplayForCurrentTrack()
+            }
             if (isPlaying) {
                 trackSelectedAt?.let {
                     TrackLog.d(
