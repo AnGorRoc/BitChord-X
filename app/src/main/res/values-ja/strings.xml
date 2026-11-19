@@ -1658,4 +1658,6 @@
     </plurals>
     <string name="filter_music_videos_autoplay">AutoPlayでミュージックビデオを除外</string>
     <string name="filter_music_videos_autoplay_subtitle">AutoPlayやラジオのおすすめでは音声トラックのみをキューに追加し、ミュージックビデオは追加しません</string>
+    <string name="telemetry_diagnostics">匿名テレメトリとエラーレポート</string>
+    <string name="telemetry_diagnostics_subtitle">送信するもの：安定したインストールID（ハッシュ化済みで、端末の実IDは送りません）、アプリのバージョン、プラットフォーム、接続時刻、エラー発生時はエラーの詳細、端末のモデル、Androidのバージョン。アカウント、IPアドレス、再生履歴、プレイリストは一切送信しません。</string>
 </resources>

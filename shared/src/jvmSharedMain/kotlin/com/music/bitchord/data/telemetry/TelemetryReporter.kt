@@ -18,12 +18,12 @@ import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
 /**
- * Sends opt-in, privacy-preserving error reports to the BitChord-X server
- * (`POST /api/telemetry/error`) when telemetry is enabled in settings.
+ * Sends error reports to the BitChord-X server (`POST /api/telemetry/error`) while telemetry is
+ * enabled in Settings. It is on by default and can be switched off on both the phone and the PC.
  *
- * Only technical error metadata (error type, sanitized message/stacktrace, app
- * version, and basic device model/OS) plus the random per-install UUID are sent.
- * Accounts, user names, IP addresses, and listening history are never included.
+ * Only technical error metadata (error type, message and stack trace with the user's home folder,
+ * user name and URL queries removed, app version, and basic device model/OS) plus the per-install
+ * ID are sent. Accounts, IP addresses and listening history are never included.
  */
 object TelemetryReporter {
     private const val TAG = "TelemetryReporter"
@@ -108,7 +108,8 @@ object TelemetryReporter {
         val cfg = config ?: return
         if (!cfg.enabledProvider()) return
         val cleanType = errorType.trim().ifEmpty { "runtime_error" }.take(64)
-        val cleanMessage = message.trim().ifEmpty { throwable?.javaClass?.simpleName ?: "Unknown error" }.take(MAX_MESSAGE_CHARS)
+        val cleanMessage = scrub(message.trim().ifEmpty { throwable?.javaClass?.simpleName ?: "Unknown error" })
+            .take(MAX_MESSAGE_CHARS)
 
         val dedupeKey = "$cleanType|$cleanMessage"
         val now = System.currentTimeMillis()
@@ -121,7 +122,7 @@ object TelemetryReporter {
             recentErrors.entries.removeIf { now - it.value >= DEDUPE_WINDOW_MS }
         }
 
-        val stack = throwable?.let { formatStacktrace(it) }.orEmpty()
+        val stack = throwable?.let { scrub(formatStacktrace(it)) }.orEmpty()
         if (blocking) {
             sendSync(cfg, cleanType, cleanMessage, stack, timeoutMs = 1500L)
         } else {
@@ -166,6 +167,20 @@ object TelemetryReporter {
         }.onFailure { e ->
             DebugLog.d(TAG, "telemetry error report failed: ${e.message}")
         }
+    }
+
+    private val QUERY = Regex("""(https?://[^\s?#"']+)\?[^\s"']*""")
+
+    /** Drops what identifies the person or a session: the home folder, the user name and URL queries. */
+    internal fun scrub(
+        text: String,
+        home: String = System.getProperty("user.home").orEmpty(),
+        user: String = System.getProperty("user.name").orEmpty(),
+    ): String {
+        var out = text
+        if (home.length > 3) out = out.replace(home, "~").replace(home.replace('\\', '/'), "~")
+        if (user.length > 2) out = out.replace(user, "<user>")
+        return QUERY.replace(out) { it.groupValues[1] + "?<query>" }
     }
 
     private fun formatStacktrace(t: Throwable): String {

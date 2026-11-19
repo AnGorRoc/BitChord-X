@@ -1707,4 +1707,6 @@
     </plurals>
     <string name="filter_music_videos_autoplay">Фильтровать клипы в автовоспроизведении</string>
     <string name="filter_music_videos_autoplay_subtitle">Добавлять в очередь только аудиодорожки в автовоспроизведении и радио, но не клипы</string>
+    <string name="telemetry_diagnostics">Анонимная телеметрия и отчёты об ошибках</string>
+    <string name="telemetry_diagnostics_subtitle">Отправляет: постоянный идентификатор установки (хеш, а не реальный ID устройства), версию приложения, платформу, время подключения, а при ошибке — её подробности, модель устройства и версию Android. Никогда не отправляет аккаунт, IP-адрес, историю прослушивания и плейлисты.</string>
 </resources>

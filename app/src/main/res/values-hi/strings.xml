@@ -1678,4 +1678,6 @@
     </plurals>
     <string name="filter_music_videos_autoplay">ऑटोप्ले में संगीत वीडियो फ़िल्टर करें</string>
     <string name="filter_music_videos_autoplay_subtitle">ऑटोप्ले और रेडियो अनुशंसाओं में केवल ऑडियो ट्रैक कतारबद्ध करें, कभी संगीत वीडियो नहीं</string>
+    <string name="telemetry_diagnostics">गुमनाम टेलीमेट्री और त्रुटि रिपोर्ट</string>
+    <string name="telemetry_diagnostics_subtitle">भेजता है: एक स्थिर इंस्टॉल आईडी (हैश की हुई, डिवाइस की असली आईडी कभी नहीं), ऐप का संस्करण, प्लेटफ़ॉर्म, कनेक्शन के समय और त्रुटि होने पर त्रुटि का विवरण, डिवाइस मॉडल और Android संस्करण। आपका खाता, IP, सुनने का इतिहास या प्लेलिस्ट कभी नहीं भेजता।</string>
 </resources>

@@ -1683,4 +1683,6 @@
     </plurals>
     <string name="filter_music_videos_autoplay">Filtrar clipes no AutoPlay</string>
     <string name="filter_music_videos_autoplay_subtitle">Enfileirar apenas faixas de áudio no AutoPlay e nas recomendações de rádio, nunca clipes</string>
+    <string name="telemetry_diagnostics">Telemetria anônima e relatórios de erros</string>
+    <string name="telemetry_diagnostics_subtitle">Envia: um ID de instalação estável (com hash, nunca o ID real do dispositivo), a versão do app, a plataforma, os momentos de conexão e, em caso de erro, os detalhes do erro, o modelo do dispositivo e a versão do Android. Nunca envia sua conta, IP, histórico de reprodução ou playlists.</string>
 </resources>

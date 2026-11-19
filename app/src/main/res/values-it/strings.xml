@@ -1617,4 +1617,6 @@
     </plurals>
     <string name="filter_music_videos_autoplay">Filtra i video musicali in AutoPlay</string>
     <string name="filter_music_videos_autoplay_subtitle">Accoda solo tracce audio in AutoPlay e nei consigli della radio, mai video musicali</string>
+    <string name="telemetry_diagnostics">Telemetria anonima e segnalazioni di errori</string>
+    <string name="telemetry_diagnostics_subtitle">Invia: un ID di installazione stabile (con hash, mai l\'ID reale del dispositivo), la versione dell\'app, la piattaforma, i momenti di connessione e, in caso di errore, i dettagli dell\'errore, il modello del dispositivo e la versione di Android. Non invia mai il tuo account, l\'IP, la cronologia di ascolto o le playlist.</string>
 </resources>

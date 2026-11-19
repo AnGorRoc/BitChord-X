@@ -1657,4 +1657,6 @@
     </plurals>
     <string name="filter_music_videos_autoplay">Filter video musik di AutoPlay</string>
     <string name="filter_music_videos_autoplay_subtitle">Hanya antrekan trek audio di AutoPlay dan rekomendasi radio, jangan pernah video musik</string>
+    <string name="telemetry_diagnostics">Telemetri anonim dan laporan kesalahan</string>
+    <string name="telemetry_diagnostics_subtitle">Mengirim: ID instalasi yang stabil (di-hash, bukan ID perangkat asli), versi aplikasi, platform, waktu koneksi, dan jika terjadi kesalahan: detail kesalahan, model perangkat, dan versi Android. Tidak pernah mengirim akun, IP, riwayat pemutaran, atau playlist Anda.</string>
 </resources>

@@ -1684,4 +1684,6 @@
     </plurals>
     <string name="filter_music_videos_autoplay">סנן קליפים בהפעלה אוטומטית</string>
     <string name="filter_music_videos_autoplay_subtitle">הוסף לתור רק רצועות שמע בהפעלה אוטומטית ובהמלצות רדיו, לעולם לא קליפים</string>
+    <string name="telemetry_diagnostics">טלמטריה אנונימית ודוחות שגיאה</string>
+    <string name="telemetry_diagnostics_subtitle">שולח: מזהה התקנה יציב (מגובב, לעולם לא המזהה האמיתי של המכשיר), גרסת האפליקציה, הפלטפורמה, זמני חיבור, ובמקרה של שגיאה: פרטי השגיאה, דגם המכשיר וגרסת Android. אף פעם לא שולח את החשבון שלך, כתובת IP, היסטוריית האזנה או פלייליסטים.</string>
 </resources>

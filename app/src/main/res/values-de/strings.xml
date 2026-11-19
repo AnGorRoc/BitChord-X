@@ -1678,4 +1678,6 @@
     </plurals>
     <string name="filter_music_videos_autoplay">Musikvideos in AutoPlay filtern</string>
     <string name="filter_music_videos_autoplay_subtitle">Nur Audiotitel in AutoPlay und Radio-Empfehlungen einreihen, niemals Musikvideos</string>
+    <string name="telemetry_diagnostics">Anonyme Telemetrie und Fehlerberichte</string>
+    <string name="telemetry_diagnostics_subtitle">Sendet: eine stabile Installations-ID (gehasht, nie die echte Geräte-ID), App-Version, Plattform, Verbindungszeiten und bei Fehlern die Fehlerdetails, das Gerätemodell und die Android-Version. Sendet nie dein Konto, deine IP, deinen Hörverlauf oder deine Playlists.</string>
 </resources>

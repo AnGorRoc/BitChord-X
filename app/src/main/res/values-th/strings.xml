@@ -1663,4 +1663,6 @@
     </plurals>
     <string name="filter_music_videos_autoplay">กรองมิวสิกวิดีโอในการเล่นอัตโนมัติ</string>
     <string name="filter_music_videos_autoplay_subtitle">จัดคิวเฉพาะแทร็กเสียงในการเล่นอัตโนมัติและคำแนะนำวิทยุเท่านั้น ไม่รวมมิวสิกวิดีโอ</string>
+    <string name="telemetry_diagnostics">เทเลเมทรีแบบไม่ระบุตัวตนและรายงานข้อผิดพลาด</string>
+    <string name="telemetry_diagnostics_subtitle">ส่ง: ID การติดตั้งที่คงที่ (แฮชแล้ว ไม่ใช่ ID จริงของอุปกรณ์) เวอร์ชันแอป แพลตฟอร์ม เวลาที่เชื่อมต่อ และเมื่อเกิดข้อผิดพลาด จะส่งรายละเอียดข้อผิดพลาด รุ่นอุปกรณ์ และเวอร์ชัน Android จะไม่ส่งบัญชี IP ประวัติการฟัง หรือเพลย์ลิสต์ของคุณ</string>
 </resources>

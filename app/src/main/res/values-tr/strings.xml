@@ -1635,4 +1635,6 @@
     </plurals>
     <string name="filter_music_videos_autoplay">Otomatik oynatmada müzik videolarını filtrele</string>
     <string name="filter_music_videos_autoplay_subtitle">Otomatik oynatma ve radyo önerilerinde yalnızca ses parçalarını sıraya ekle, asla müzik videolarını ekleme</string>
+    <string name="telemetry_diagnostics">Anonim telemetri ve hata raporları</string>
+    <string name="telemetry_diagnostics_subtitle">Gönderir: kararlı bir kurulum kimliği (karma, cihazın gerçek kimliği asla değil), uygulama sürümü, platform, bağlantı zamanları ve hata olursa hata ayrıntıları, cihaz modeli ve Android sürümü. Hesabınızı, IP adresinizi, dinleme geçmişinizi veya çalma listelerinizi asla göndermez.</string>
 </resources>

@@ -1718,4 +1718,6 @@
     </plurals>
     <string name="filter_music_videos_autoplay">Filtruj teledyski w AutoPlay</string>
     <string name="filter_music_videos_autoplay_subtitle">Kolejkuj tylko ścieżki audio w AutoPlay i rekomendacjach radiowych, nigdy teledyski</string>
+    <string name="telemetry_diagnostics">Anonimowa telemetria i raporty błędów</string>
+    <string name="telemetry_diagnostics_subtitle">Wysyła: stabilny identyfikator instalacji (zahaszowany, nigdy prawdziwy identyfikator urządzenia), wersję aplikacji, platformę, czasy połączenia, a w razie błędu jego szczegóły, model urządzenia i wersję Androida. Nigdy nie wysyła konta, adresu IP, historii odtwarzania ani playlist.</string>
 </resources>

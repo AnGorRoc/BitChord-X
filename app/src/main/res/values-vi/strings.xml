@@ -1597,4 +1597,6 @@
     </plurals>
     <string name="filter_music_videos_autoplay">Lọc video âm nhạc trong Tự động phát</string>
     <string name="filter_music_videos_autoplay_subtitle">Chỉ xếp hàng các bản âm thanh trong Tự động phát và đề xuất radio, không bao giờ là video âm nhạc</string>
+    <string name="telemetry_diagnostics">Telemetry ẩn danh và báo cáo lỗi</string>
+    <string name="telemetry_diagnostics_subtitle">Gửi: ID cài đặt ổn định (đã băm, không bao giờ là ID thật của thiết bị), phiên bản ứng dụng, nền tảng, thời điểm kết nối và khi có lỗi: chi tiết lỗi, mẫu thiết bị và phiên bản Android. Không bao giờ gửi tài khoản, IP, lịch sử nghe hoặc danh sách phát của bạn.</string>
 </resources>

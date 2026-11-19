@@ -1652,5 +1652,5 @@
     <string name="tint_with_now_playing">Colores de lo que suena</string>
     <string name="tint_with_now_playing_subtitle">Tiñe las páginas y las barras con la portada de la canción que está sonando</string>
     <string name="telemetry_diagnostics">Telemetría anónima y reporte de errores</string>
-    <string name="telemetry_diagnostics_subtitle">Envía: ID de instalación aleatorio, versión de la app, plataforma, momentos de conexión y, si hay un error, el detalle del fallo, modelo básico del teléfono y versión de Android. Nunca envía tu cuenta, IP, historial ni playlists.</string>
+    <string name="telemetry_diagnostics_subtitle">Envía: un ID de instalación estable (con hash, nunca el ID real del dispositivo), versión de la app, plataforma, momentos de conexión y, si hay un error, el detalle del fallo, modelo básico del teléfono y versión de Android. Nunca envía tu cuenta, IP, historial ni playlists.</string>
 </resources>

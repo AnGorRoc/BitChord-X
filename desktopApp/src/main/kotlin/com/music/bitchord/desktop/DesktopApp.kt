@@ -8552,6 +8552,17 @@ private fun DesktopSettingsScreen(
                             DesktopAppearanceSettings::setHideVolumeBar,
                         )
 
+                        val telemetryEnabled by DesktopPresence.telemetryEnabled.collectAsState()
+                        SettingsToggle(
+                            DesktopStrings["telemetry_diagnostics", "Anonymous telemetry and error reports"],
+                            DesktopStrings[
+                                "telemetry_diagnostics_subtitle",
+                                "Sends a stable install ID, app version, platform, when the app is open and, if something fails, the error details with the OS name and version. Never your account, IP address, listening history or playlists.",
+                            ],
+                            telemetryEnabled,
+                            DesktopPresence::setTelemetryEnabled,
+                        )
+
                         var prioritizeCanvas by remember { mutableStateOf(DesktopPersistence().prioritizeSpotifyCanvas()) }
                         SettingsToggle(
                             "Prioritize Spotify Canvas",

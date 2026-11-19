@@ -1513,4 +1513,6 @@
     </plurals>
     <string name="filter_music_videos_autoplay">자동 재생에서 뮤직비디오 필터링</string>
     <string name="filter_music_videos_autoplay_subtitle">자동 재생 및 라디오 추천 시 뮤직비디오를 제외하고 오디오 트랙만 대기열에 추가합니다</string>
+    <string name="telemetry_diagnostics">익명 원격 측정 및 오류 보고</string>
+    <string name="telemetry_diagnostics_subtitle">전송 항목: 안정적인 설치 ID(해시 처리되며 실제 기기 ID는 보내지 않음), 앱 버전, 플랫폼, 연결 시각, 오류 발생 시 오류 세부 정보, 기기 모델, Android 버전. 계정, IP 주소, 청취 기록, 재생목록은 절대 보내지 않습니다.</string>
 </resources>
