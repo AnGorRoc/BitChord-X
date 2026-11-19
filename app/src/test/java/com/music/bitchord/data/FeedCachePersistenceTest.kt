@@ -91,6 +91,33 @@ class FeedCachePersistenceTest {
     }
 
     @Test
+    fun `mood and genre pages live apart from the launch file, and old ones there are dropped`() {
+        val launch = MemoryPreferences()
+        val moods = MemoryPreferences()
+        launch.data[CacheSchema.KEY] = FeedCache.SCHEMA_VERSION
+        launch.data["mood_genre_index"] = "[\"old\"]"
+        launch.data["mood_genre_old"] = "[]"
+        launch.data["home_me"] = "kept"
+
+        FeedCache.initWith(launch, Dispatchers.Unconfined, moodSp = moods)
+        FeedCache.saveMoodGenreShelves("g", listOf(shelf("S")))
+
+        assertTrue(moods.contains("mood_genre_g"))
+        assertFalse(launch.contains("mood_genre_g"))
+        assertFalse(launch.contains("mood_genre_old"))
+        assertFalse(launch.contains("mood_genre_index"))
+        assertTrue(launch.contains("home_me"))
+    }
+
+    @Test
+    fun `explore is read when first asked for, not at start`() {
+        prefs.data["explore_sections"] = "[]"
+        restart()
+
+        assertEquals(emptyList<Any>(), FeedCache.getExplore())
+    }
+
+    @Test
     fun `prefs written under another schema are dropped`() {
         FeedCache.saveHome("me", listOf(shelf("A")), continuation = null)
         prefs.data[CacheSchema.KEY] = FeedCache.SCHEMA_VERSION - 1

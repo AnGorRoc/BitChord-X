@@ -45,9 +45,15 @@ data class CachedHomeFeed(
  * an unchanged feed young. What is written is versioned by [SCHEMA_VERSION]
  * and bounded: mood and genre pages are kept for the last [MAX_MOOD_GENRES]
  * opened.
+ *
+ * Nothing is read at [init]: the file is opened, its schema checked and its
+ * contents parsed the first time something asks, which for Home is a read off
+ * the main thread. Mood and genre pages live in a file of their own, so the one
+ * read at launch holds only Home and Explore rather than every page opened.
  */
 object FeedCache {
     private const val PREFS_NAME = "bitchord_feed_cache"
+    private const val MOOD_GENRE_PREFS_NAME = "bitchord_mood_genre_cache"
     private const val KEY_HOME_PREFIX = "home_"
     private const val KEY_EXPLORE = "explore_sections"
     private const val KEY_MOOD_GENRE_PREFIX = "mood_genre_"
@@ -61,8 +67,14 @@ object FeedCache {
 
     const val MAX_MOOD_GENRES = 24
 
-    private var prefs: SharedPreferences? = null
-    private var writer: PrefsWriter? = null
+    @Volatile private var prefs: SharedPreferences? = null
+    @Volatile private var writer: PrefsWriter? = null
+    @Volatile private var moodPrefs: SharedPreferences? = null
+    @Volatile private var moodWriter: PrefsWriter? = null
+
+    /** Set by [init] and opened by [ready] on first use. */
+    @Volatile private var pendingContext: Context? = null
+    private val openLock = Any()
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
 
     /** The mood and genre pages held, oldest first. */
@@ -76,22 +88,58 @@ object FeedCache {
     private var exploreMemoryCache: List<MoodGenreSection>? = null
     private val moodGenreMemoryCache = ConcurrentHashMap<String, List<HomeShelf>>()
 
+    /** Remembers where the cache lives; nothing is read until it is first asked for. */
     fun init(context: Context) {
-        if (prefs != null) return
-        initWith(context.applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE))
+        if (prefs != null || pendingContext != null) return
+        pendingContext = context.applicationContext
     }
 
+    /** The cache's files, opened on first use; null before [init]. */
+    private fun ready(): SharedPreferences? {
+        prefs?.let { return it }
+        val context = pendingContext ?: return null
+        synchronized(openLock) {
+            prefs?.let { return it }
+            initWith(
+                context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE),
+                moodSp = context.getSharedPreferences(MOOD_GENRE_PREFS_NAME, Context.MODE_PRIVATE),
+            )
+            return prefs
+        }
+    }
+
+    /**
+     * [moodSp] holds the mood and genre pages; a test may pass the same file
+     * for both. [prefs] is set last, so a reader that sees it sees the rest.
+     */
     @OptIn(ExperimentalCoroutinesApi::class)
-    internal fun initWith(sp: SharedPreferences, lane: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(1)) {
+    internal fun initWith(
+        sp: SharedPreferences,
+        lane: CoroutineDispatcher = Dispatchers.IO.limitedParallelism(1),
+        moodSp: SharedPreferences = sp,
+    ) {
         CacheSchema.ensure(sp, SCHEMA_VERSION)
+        if (moodSp !== sp) CacheSchema.ensure(moodSp, SCHEMA_VERSION)
         homeMemoryCache.clear()
         exploreMemoryCache = null
         moodGenreMemoryCache.clear()
         synchronized(moodGenreIndex) { moodGenreIndex.clear() }
+        val homeWriter = PrefsWriter(sp, lane)
+        writer = homeWriter
+        moodPrefs = moodSp
+        moodWriter = if (moodSp === sp) homeWriter else PrefsWriter(moodSp, lane)
+        loadMoodGenreIndex(moodSp)
+        // Pages written before they had a file of their own: a cache, so they
+        // are dropped rather than moved, and the launch file sheds their weight.
+        if (moodSp !== sp && sp.contains(KEY_MOOD_GENRE_INDEX)) {
+            homeWriter.write {
+                sp.all.keys
+                    .filter { it == KEY_MOOD_GENRE_INDEX || it.startsWith(KEY_MOOD_GENRE_PREFIX) }
+                    .forEach(::remove)
+            }
+        }
+        pendingContext = null
         prefs = sp
-        writer = PrefsWriter(sp, lane)
-        loadMoodGenreIndex(sp)
-        loadExploreFromPrefs(sp)
     }
 
     private fun loadMoodGenreIndex(sp: SharedPreferences) {
@@ -109,22 +157,11 @@ object FeedCache {
     private fun homePrefKey(listenerKey: String?): String =
         KEY_HOME_PREFIX + (listenerKey?.replace(":", "_") ?: "signed_out")
 
-    private fun loadExploreFromPrefs(sp: SharedPreferences) {
-        runCatching {
-            sp.getString(KEY_EXPLORE, null)?.let { raw ->
-                val arr = json.parseToJsonElement(raw).jsonArray
-                exploreMemoryCache = arr.mapNotNull { el ->
-                    el.takeIf { it !is JsonNull }?.let { runCatching { moodGenreSectionFromJson(it.jsonObject) }.getOrNull() }
-                }
-            }
-        }
-    }
-
     fun getHome(listenerKey: String?): CachedHomeFeed? {
         val key = homePrefKey(listenerKey)
         homeMemoryCache[key]?.let { return it.takeIf(::isFresh) }
 
-        val sp = prefs ?: return null
+        val sp = ready() ?: return null
         val raw = sp.getString(key, null) ?: return null
         return runCatching {
             val parsed = cachedHomeFeedFromJson(json.parseToJsonElement(raw).jsonObject)
@@ -142,6 +179,7 @@ object FeedCache {
             timestamp = clock(),
         )
         homeMemoryCache[key] = feed
+        ready()
         writer?.put(key, feed.toJsonObject().toString())
     }
 
@@ -150,12 +188,13 @@ object FeedCache {
         val existing = homeMemoryCache[key] ?: return
         val updated = existing.copy(timestamp = clock())
         homeMemoryCache[key] = updated
+        ready()
         writer?.put(key, updated.toJsonObject().toString())
     }
 
     fun getExplore(): List<MoodGenreSection>? {
         exploreMemoryCache?.let { return it }
-        val sp = prefs ?: return null
+        val sp = ready() ?: return null
         val raw = sp.getString(KEY_EXPLORE, null) ?: return null
         return runCatching {
             val arr = json.parseToJsonElement(raw).jsonArray
@@ -169,6 +208,7 @@ object FeedCache {
 
     fun saveExplore(sections: List<MoodGenreSection>) {
         exploreMemoryCache = sections
+        ready()
         val w = writer ?: return
         val array = buildJsonArray {
             sections.forEach { add(it.toJsonObject()) }
@@ -178,7 +218,8 @@ object FeedCache {
 
     fun getMoodGenreShelves(key: String): List<HomeShelf>? {
         moodGenreMemoryCache[key]?.let { return it }
-        val sp = prefs ?: return null
+        ready() ?: return null
+        val sp = moodPrefs ?: return null
         val raw = sp.getString(KEY_MOOD_GENRE_PREFIX + key, null) ?: return null
         return runCatching {
             val arr = json.parseToJsonElement(raw).jsonArray
@@ -192,7 +233,8 @@ object FeedCache {
 
     fun saveMoodGenreShelves(key: String, shelves: List<HomeShelf>) {
         moodGenreMemoryCache[key] = shelves
-        val w = writer ?: return
+        ready()
+        val w = moodWriter ?: return
         val array = buildJsonArray {
             shelves.forEach { add(it.toJsonObject()) }
         }
@@ -260,7 +302,13 @@ object FeedCache {
         exploreMemoryCache = null
         moodGenreMemoryCache.clear()
         synchronized(moodGenreIndex) { moodGenreIndex.clear() }
-        writer?.write {
+        ready()
+        val home = writer
+        home?.write {
+            clear()
+            putInt(CacheSchema.KEY, SCHEMA_VERSION)
+        }
+        moodWriter?.takeIf { it !== home }?.write {
             clear()
             putInt(CacheSchema.KEY, SCHEMA_VERSION)
         }
