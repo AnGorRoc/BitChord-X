@@ -249,6 +249,7 @@ internal fun InlineQueue(
         enabled = collapsePlayerOnScroll,
         onReveal = onRevealPlayer,
         onHide = onHidePlayer,
+        revealDistance = PLAYER_PANEL_REVEAL_SCROLL,
     )
     val showHistory by PlayerSettings.showQueueHistory.collectAsStateWithLifecycle()
     val tracks = remember(queue, currentIndex, showHistory) { splitQueue(queue, currentIndex, showHistory) }
