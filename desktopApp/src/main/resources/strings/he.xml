@@ -690,4 +690,21 @@
     <string name="listen_together_open">להאזין ביחד</string>
     <string name="listen_together_open_count">מאזינים ביחד · %1$d</string>
     <string name="miscellaneous_footer">כשמופעל, סגירת האפליקציה ממסך האפליקציות האחרונות תעצור גם את השמעת המוזיקה.</string>
+    <string name="telemetry_diagnostics">טלמטריה אנונימית ודוחות שגיאה</string>
+    <string name="telemetry_level_full">מלאה</string>
+    <string name="telemetry_level_full_desc">דוחות אנונימיים על שימוש ושגיאות עם פרטים, דגם המכשיר וגרסת המערכת. השימושי ביותר לתיקון באגים.</string>
+    <string name="telemetry_level_minimal">מינימלית</string>
+    <string name="telemetry_level_minimal_desc">רק שהאפליקציה פתוחה, עם הגרסה והפלטפורמה, תחת מזהה שמשתנה בכל יום. שגיאות נספרות לפי סוג, בלי פרטים.</string>
+    <string name="telemetry_level_off">כבויה</string>
+    <string name="telemetry_level_off_desc">שום דבר לא נשלח.</string>
+    <string name="telemetry_notice_title">עזרו לנו לתקן מה שאיננו רואים</string>
+    <string name="telemetry_notice_body">BitChord-X הוא פרויקט קטן ואיננו יכולים לבדוק כל טלפון וכל מערכת. כשמשהו נכשל, דוח אנונימי אומר לנו מה ואיפה: למשל, ״שגיאת נגן, Pixel 7, Android 15, גרסה 1.9.3״. זה כל מה שהוא מכיל. לעולם לא החשבון, כתובת ה-IP, היסטוריית ההאזנה או הפלייליסטים. אפשר לשנות זאת בכל עת בהגדרות.</string>
+    <string name="telemetry_notice_ok">הבנתי</string>
+    <string name="telemetry_notice_choose">בחירת מה נשלח</string>
+    <string name="telemetry_plea_title">לפני שמכבים</string>
+    <string name="telemetry_plea_body">רוב הקריסות קורות בטלפונים ובמערכות שאין לנו, ודוח הוא לרוב הדרך היחידה שלנו לגלות אותן. כל אחד מכיל שגיאה ודגם מכשיר, שום דבר עליכם, ודוח אחד יכול לתקן באג לכל מי שמשתמש באותו מכשיר. אם דוחות מלאים זה יותר מדי, ״מינימלית״ רק סופרת שמשהו נכשל. בכל מקרה, ההחלטה שלכם.</string>
+    <string name="telemetry_plea_keep">להשאיר פעיל</string>
+    <string name="telemetry_plea_minimal">להשתמש במינימלית</string>
+    <string name="telemetry_plea_confirm">לשנות בכל זאת</string>
+    <string name="telemetry_picker_message">לעולם לא החשבון, כתובת ה-IP, היסטוריית ההאזנה או הפלייליסטים. השינויים חלים מיד.</string>
 </resources>

@@ -1657,4 +1657,21 @@
     </plurals>
     <string name="filter_music_videos_autoplay">Filter video musik di AutoPlay</string>
     <string name="filter_music_videos_autoplay_subtitle">Hanya antrekan trek audio di AutoPlay dan rekomendasi radio, jangan pernah video musik</string>
+    <string name="telemetry_diagnostics">Telemetri anonim dan laporan kesalahan</string>
+    <string name="telemetry_level_full">Lengkap</string>
+    <string name="telemetry_level_full_desc">Laporan penggunaan dan kesalahan anonim dengan detail, model perangkat, dan versi sistem. Paling berguna untuk memperbaiki bug.</string>
+    <string name="telemetry_level_minimal">Minimal</string>
+    <string name="telemetry_level_minimal_desc">Hanya bahwa aplikasi terbuka, dengan versi dan platformnya, di bawah ID yang berubah setiap hari. Kesalahan dihitung per jenis, tanpa detail.</string>
+    <string name="telemetry_level_off">Mati</string>
+    <string name="telemetry_level_off_desc">Tidak ada yang dikirim.</string>
+    <string name="telemetry_notice_title">Bantu kami memperbaiki yang tidak terlihat</string>
+    <string name="telemetry_notice_body">BitChord-X adalah proyek kecil dan kami tidak bisa menguji setiap ponsel dan sistem. Saat sesuatu gagal, laporan anonim memberi tahu kami apa dan di mana: misalnya, “kesalahan pemutar, Pixel 7, Android 15, versi 1.9.3”. Hanya itu isinya. Tidak pernah akun, alamat IP, riwayat pemutaran, atau playlist Anda. Anda dapat mengubahnya kapan saja di Pengaturan.</string>
+    <string name="telemetry_notice_ok">Mengerti</string>
+    <string name="telemetry_notice_choose">Pilih yang dikirim</string>
+    <string name="telemetry_plea_title">Sebelum mematikannya</string>
+    <string name="telemetry_plea_body">Sebagian besar crash terjadi di ponsel dan sistem yang tidak kami miliki, dan laporan sering kali satu-satunya cara kami tahu. Setiap laporan berisi kesalahan dan model perangkat, tidak ada tentang Anda, dan satu laporan dapat memperbaiki bug untuk semua orang dengan perangkat yang sama. Jika laporan lengkap terlalu banyak, Minimal hanya menghitung bahwa ada yang gagal. Pilihan tetap di tangan Anda.</string>
+    <string name="telemetry_plea_keep">Tetap aktif</string>
+    <string name="telemetry_plea_minimal">Gunakan minimal</string>
+    <string name="telemetry_plea_confirm">Ubah saja</string>
+    <string name="telemetry_picker_message">Tidak pernah akun, alamat IP, riwayat pemutaran, atau playlist Anda. Perubahan berlaku seketika.</string>
 </resources>

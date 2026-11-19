@@ -751,4 +751,21 @@
     <string name="listen_together_open">Ascolta insieme</string>
     <string name="listen_together_open_count">Ascolto insieme · %1$d</string>
     <string name="miscellaneous_footer">Quando attivo, chiudere l\'app dalla schermata delle app recenti interrompe anche la riproduzione musicale.</string>
+    <string name="telemetry_diagnostics">Telemetria anonima e segnalazioni di errori</string>
+    <string name="telemetry_level_full">Completa</string>
+    <string name="telemetry_level_full_desc">Segnalazioni anonime di utilizzo ed errori con dettagli, modello del dispositivo e versione del sistema. La più utile per correggere i bug.</string>
+    <string name="telemetry_level_minimal">Minima</string>
+    <string name="telemetry_level_minimal_desc">Solo che l\'app è aperta, con la sua versione e piattaforma, sotto un ID che cambia ogni giorno. Gli errori sono contati per tipo, senza dettagli.</string>
+    <string name="telemetry_level_off">Disattivata</string>
+    <string name="telemetry_level_off_desc">Non viene inviato nulla.</string>
+    <string name="telemetry_notice_title">Aiutaci a correggere ciò che non vediamo</string>
+    <string name="telemetry_notice_body">BitChord-X è un piccolo progetto e non possiamo testare ogni telefono e ogni sistema. Quando qualcosa fallisce, una segnalazione anonima ci dice cosa e dove: per esempio, «errore del lettore, Pixel 7, Android 15, versione 1.9.3». È tutto ciò che contiene. Mai il tuo account, l\'indirizzo IP, la cronologia di ascolto o le playlist. Puoi cambiarlo in qualsiasi momento in Impostazioni.</string>
+    <string name="telemetry_notice_ok">Ho capito</string>
+    <string name="telemetry_notice_choose">Scegli cosa viene inviato</string>
+    <string name="telemetry_plea_title">Prima di disattivarlo</string>
+    <string name="telemetry_plea_body">La maggior parte degli arresti avviene su telefoni e sistemi che non abbiamo, e una segnalazione è spesso l\'unico modo per scoprirli. Ognuna contiene un errore e il modello del dispositivo, niente su di te, e una sola può correggere un bug per tutti quelli con lo stesso dispositivo. Se le segnalazioni complete sono troppe, la modalità Minima conta solo che qualcosa è fallito. In ogni caso la scelta è tua.</string>
+    <string name="telemetry_plea_keep">Lascia attiva</string>
+    <string name="telemetry_plea_minimal">Usa la minima</string>
+    <string name="telemetry_plea_confirm">Cambia comunque</string>
+    <string name="telemetry_picker_message">Mai il tuo account, l\'indirizzo IP, la cronologia di ascolto o le playlist. Le modifiche valgono subito.</string>
 </resources>

@@ -1663,4 +1663,21 @@
     </plurals>
     <string name="filter_music_videos_autoplay">กรองมิวสิกวิดีโอในการเล่นอัตโนมัติ</string>
     <string name="filter_music_videos_autoplay_subtitle">จัดคิวเฉพาะแทร็กเสียงในการเล่นอัตโนมัติและคำแนะนำวิทยุเท่านั้น ไม่รวมมิวสิกวิดีโอ</string>
+    <string name="telemetry_diagnostics">เทเลเมทรีแบบไม่ระบุตัวตนและรายงานข้อผิดพลาด</string>
+    <string name="telemetry_level_full">เต็มรูปแบบ</string>
+    <string name="telemetry_level_full_desc">รายงานการใช้งานและข้อผิดพลาดแบบไม่ระบุตัวตน พร้อมรายละเอียด รุ่นอุปกรณ์ และเวอร์ชันระบบ มีประโยชน์ที่สุดในการแก้บั๊ก</string>
+    <string name="telemetry_level_minimal">ขั้นต่ำ</string>
+    <string name="telemetry_level_minimal_desc">ส่งเพียงว่าแอปเปิดอยู่ พร้อมเวอร์ชันและแพลตฟอร์ม ภายใต้ ID ที่เปลี่ยนทุกวัน ข้อผิดพลาดนับตามประเภท ไม่มีรายละเอียด</string>
+    <string name="telemetry_level_off">ปิด</string>
+    <string name="telemetry_level_off_desc">ไม่ส่งอะไรเลย</string>
+    <string name="telemetry_notice_title">ช่วยเราแก้สิ่งที่เรามองไม่เห็น</string>
+    <string name="telemetry_notice_body">BitChord-X เป็นโครงการเล็ก เราทดสอบทุกเครื่องและทุกระบบไม่ได้ เมื่อมีอะไรผิดพลาด รายงานแบบไม่ระบุตัวตนจะบอกเราว่าอะไรและที่ไหน เช่น “ข้อผิดพลาดของเครื่องเล่น, Pixel 7, Android 15, เวอร์ชัน 1.9.3” มีเพียงเท่านี้ ไม่มีบัญชี ที่อยู่ IP ประวัติการฟัง หรือเพลย์ลิสต์ของคุณ คุณเปลี่ยนได้ทุกเมื่อในการตั้งค่า</string>
+    <string name="telemetry_notice_ok">เข้าใจแล้ว</string>
+    <string name="telemetry_notice_choose">เลือกสิ่งที่จะส่ง</string>
+    <string name="telemetry_plea_title">ก่อนที่คุณจะปิด</string>
+    <string name="telemetry_plea_body">การแครชส่วนใหญ่เกิดกับเครื่องและระบบที่เราไม่มี และรายงานมักเป็นวิธีเดียวที่เราจะรู้ แต่ละรายงานมีเพียงข้อผิดพลาดกับรุ่นอุปกรณ์ ไม่มีอะไรเกี่ยวกับคุณ และรายงานเดียวอาจแก้บั๊กให้ทุกคนที่ใช้อุปกรณ์เดียวกัน หากรายงานแบบเต็มมากไป โหมดขั้นต่ำจะนับเพียงว่ามีบางอย่างล้มเหลว ไม่ว่าอย่างไรก็เป็นการตัดสินใจของคุณ</string>
+    <string name="telemetry_plea_keep">เปิดไว้</string>
+    <string name="telemetry_plea_minimal">ใช้ขั้นต่ำแทน</string>
+    <string name="telemetry_plea_confirm">เปลี่ยนต่อไป</string>
+    <string name="telemetry_picker_message">ไม่ส่งบัญชี ที่อยู่ IP ประวัติการฟัง หรือเพลย์ลิสต์ของคุณเลย การเปลี่ยนแปลงมีผลทันที</string>
 </resources>

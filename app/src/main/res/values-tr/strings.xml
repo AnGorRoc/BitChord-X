@@ -1635,4 +1635,21 @@
     </plurals>
     <string name="filter_music_videos_autoplay">Otomatik oynatmada müzik videolarını filtrele</string>
     <string name="filter_music_videos_autoplay_subtitle">Otomatik oynatma ve radyo önerilerinde yalnızca ses parçalarını sıraya ekle, asla müzik videolarını ekleme</string>
+    <string name="telemetry_diagnostics">Anonim telemetri ve hata raporları</string>
+    <string name="telemetry_level_full">Tam</string>
+    <string name="telemetry_level_full_desc">Ayrıntılar, cihaz modeli ve sistem sürümüyle anonim kullanım ve hata raporları. Hataları düzeltmek için en yararlısı.</string>
+    <string name="telemetry_level_minimal">Asgari</string>
+    <string name="telemetry_level_minimal_desc">Yalnızca uygulamanın açık olduğu, sürümü ve platformuyla birlikte, her gün değişen bir kimlik altında. Hatalar türüne göre sayılır, ayrıntı olmadan.</string>
+    <string name="telemetry_level_off">Kapalı</string>
+    <string name="telemetry_level_off_desc">Hiçbir şey gönderilmez.</string>
+    <string name="telemetry_notice_title">Göremediğimizi düzeltmemize yardım edin</string>
+    <string name="telemetry_notice_body">BitChord-X küçük bir proje ve her telefonu ve sistemi test edemiyoruz. Bir şey başarısız olduğunda anonim bir rapor bize ne ve nerede olduğunu söyler: örneğin, “oynatıcı hatası, Pixel 7, Android 15, sürüm 1.9.3”. İçinde bundan fazlası yok. Hesabınızı, IP adresinizi, dinleme geçmişinizi veya çalma listelerinizi asla içermez. Bunu istediğiniz zaman Ayarlar\'dan değiştirebilirsiniz.</string>
+    <string name="telemetry_notice_ok">Anladım</string>
+    <string name="telemetry_notice_choose">Nelerin gönderileceğini seçin</string>
+    <string name="telemetry_plea_title">Kapatmadan önce</string>
+    <string name="telemetry_plea_body">Çökmelerin çoğu bizde olmayan telefon ve sistemlerde olur ve rapor çoğu zaman öğrenmenin tek yoludur. Her biri bir hata ve cihaz modeli içerir, sizinle ilgili hiçbir şey içermez ve tek bir rapor aynı cihazı kullanan herkes için bir hatayı düzeltebilir. Tam raporlar çok geliyorsa, Asgari yalnızca bir şeyin başarısız olduğunu sayar. Her iki durumda da karar sizin.</string>
+    <string name="telemetry_plea_keep">Açık bırak</string>
+    <string name="telemetry_plea_minimal">Bunun yerine asgariyi kullan</string>
+    <string name="telemetry_plea_confirm">Yine de değiştir</string>
+    <string name="telemetry_picker_message">Hesabınız, IP adresiniz, dinleme geçmişiniz veya çalma listeleriniz asla gönderilmez. Değişiklikler hemen uygulanır.</string>
 </resources>

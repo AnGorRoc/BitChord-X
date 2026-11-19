@@ -103,126 +103,95 @@ fun TranslationLanguageDialog(
         }
     }
 
-    Box(
-        modifier = modifier
-            .fillMaxSize()
-            .background(SCRIM_COLOR)
-            .clickable(
-                indication = null,
-                interactionSource = remember { MutableInteractionSource() },
-                onClick = onDismiss,
-            ),
-        contentAlignment = Alignment.Center,
-    ) {
+    AlertScaffold(hazeState = hazeState, onDismiss = onDismiss) {
         Column(
             modifier = Modifier
-                .width(ALERT_WIDTH)
-                .clip(shape)
-                .then(
-                    if (reduceDynamicBlur) {
-                        Modifier.background(MaterialTheme.colorScheme.surface)
-                    } else {
-                        Modifier.optimizedHazeEffect(
-                            state = hazeState,
-                            style = HazeMaterials.regular(MaterialTheme.colorScheme.surface),
-                        )
-                    },
-                )
-                .clickable(
-                    indication = null,
-                    interactionSource = remember { MutableInteractionSource() },
-                    onClick = {},
-                ),
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp, vertical = 19.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 19.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text(
-                    text = stringResource(R.string.translation_language),
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.W600,
-                    ),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = TextAlign.Center,
-                )
-                Text(
-                    text = stringResource(R.string.translation_language_description),
-                    modifier = Modifier.padding(top = 4.dp),
-                    style = MaterialTheme.typography.bodyMedium.copy(
-                        fontSize = 13.sp,
-                        lineHeight = 17.sp,
-                    ),
-                    color = MaterialTheme.colorScheme.onSurface,
-                    textAlign = TextAlign.Center,
-                )
-            }
+            Text(
+                text = stringResource(R.string.translation_language),
+                style = MaterialTheme.typography.bodyLarge.copy(
+                    fontSize = 17.sp,
+                    fontWeight = FontWeight.W600,
+                ),
+                color = dialogInk(),
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                text = stringResource(R.string.translation_language_description),
+                modifier = Modifier.padding(top = 4.dp),
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    fontSize = 13.sp,
+                    lineHeight = 17.sp,
+                ),
+                color = dialogInk(),
+                textAlign = TextAlign.Center,
+            )
+        }
 
-            AlertRule()
-            SearchField(query = query, onQueryChange = { query = it })
-            AlertRule()
+        AlertRule()
+        SearchField(query = query, onQueryChange = { query = it })
+        AlertRule()
 
-            LazyColumn(modifier = Modifier.heightIn(max = LIST_MAX_HEIGHT)) {
-                // Only with an empty field: it is the default rather than a
-                // language, so it has no name to match and filtering it in on a
-                // near-miss would be noise.
-                if (query.isBlank()) {
-                    item {
-                        LanguageChoiceRow(
-                            label = stringResource(R.string.translation_language_app_default),
-                            detail = stringResource(R.string.translation_language_subtitle),
-                            selected = selected.isBlank(),
-                            onClick = {
-                                AppSettings.setTranslationLanguage("")
-                                onDismiss()
-                            },
-                        )
-                    }
-                }
-                items(shown, key = { it.first.code }) { (language, name) ->
-                    AlertRule()
+        LazyColumn(modifier = Modifier.heightIn(max = LIST_MAX_HEIGHT)) {
+            // Only with an empty field: it is the default rather than a
+            // language, so it has no name to match and filtering it in on a
+            // near-miss would be noise.
+            if (query.isBlank()) {
+                item {
                     LanguageChoiceRow(
-                        label = name,
-                        // The English name under the localised one, the way a
-                        // source's detail sits under its label. Reading the app
-                        // in German, "Japanisch" is the row you want but
-                        // "Japanese" is what you were going to type.
-                        detail = language.fallbackName.takeIf { !it.equals(name, ignoreCase = true) }
-                            ?: language.code,
-                        selected = selected.equals(language.code, ignoreCase = true),
+                        label = stringResource(R.string.translation_language_app_default),
+                        detail = stringResource(R.string.translation_language_subtitle),
+                        selected = selected.isBlank(),
                         onClick = {
-                            AppSettings.setTranslationLanguage(language.code)
+                            AppSettings.setTranslationLanguage("")
                             onDismiss()
                         },
                     )
                 }
-                if (shown.isEmpty()) {
-                    item {
-                        Text(
-                            text = stringResource(R.string.no_languages_match),
-                            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
-                            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 18.dp),
-                        )
-                    }
+            }
+            items(shown, key = { it.first.code }) { (language, name) ->
+                AlertRule()
+                LanguageChoiceRow(
+                    label = name,
+                    // The English name under the localised one, the way a
+                    // source's detail sits under its label. Reading the app
+                    // in German, "Japanisch" is the row you want but
+                    // "Japanese" is what you were going to type.
+                    detail = language.fallbackName.takeIf { !it.equals(name, ignoreCase = true) }
+                        ?: language.code,
+                    selected = selected.equals(language.code, ignoreCase = true),
+                    onClick = {
+                        AppSettings.setTranslationLanguage(language.code)
+                        onDismiss()
+                    },
+                )
+            }
+            if (shown.isEmpty()) {
+                item {
+                    Text(
+                        text = stringResource(R.string.no_languages_match),
+                        style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp),
+                        color = dialogInk().copy(alpha = 0.6f),
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 18.dp),
+                    )
                 }
             }
-
-            // Pinned under the list rather than scrolling away with it: on a
-            // list this long the way out has to stay where it was put.
-            AlertRule()
-            AlertAction(
-                label = stringResource(R.string.done),
-                emphasised = true,
-                onClick = onDismiss,
-            )
         }
+
+        // Pinned under the list rather than scrolling away with it: on a
+        // list this long the way out has to stay where it was put.
+        AlertRule()
+        AlertAction(
+            label = stringResource(R.string.done),
+            emphasised = true,
+            onClick = onDismiss,
+        )
     }
 }
 
@@ -238,7 +207,7 @@ private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
         Icon(
             imageVector = Icons.Rounded.Search,
             contentDescription = null,
-            tint = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
+            tint = dialogInk().copy(alpha = 0.45f),
             modifier = Modifier.size(16.dp),
         )
         Spacer(Modifier.width(8.dp))
@@ -247,7 +216,7 @@ private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
                 Text(
                     text = stringResource(R.string.search_languages),
                     style = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.45f),
+                    color = dialogInk().copy(alpha = 0.45f),
                 )
             }
             BasicTextField(
@@ -256,7 +225,7 @@ private fun SearchField(query: String, onQueryChange: (String) -> Unit) {
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyLarge.copy(
                     fontSize = 15.sp,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = dialogInk(),
                 ),
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
@@ -281,7 +250,7 @@ private fun LanguageChoiceRow(
             .fillMaxWidth()
             .heightIn(min = ACTION_HEIGHT)
             .background(
-                if (pressed) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.09f) else Color.Transparent,
+                if (pressed) dialogInk().copy(alpha = 0.09f) else Color.Transparent,
             )
             .clickable(
                 indication = null,
@@ -295,14 +264,14 @@ private fun LanguageChoiceRow(
             Text(
                 text = label,
                 style = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
-                color = MaterialTheme.colorScheme.onSurface,
+                color = dialogInk(),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = detail,
                 style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp, lineHeight = 15.sp),
-                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+                color = dialogInk().copy(alpha = 0.55f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )

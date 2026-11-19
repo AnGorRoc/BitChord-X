@@ -1513,4 +1513,21 @@
     </plurals>
     <string name="filter_music_videos_autoplay">자동 재생에서 뮤직비디오 필터링</string>
     <string name="filter_music_videos_autoplay_subtitle">자동 재생 및 라디오 추천 시 뮤직비디오를 제외하고 오디오 트랙만 대기열에 추가합니다</string>
+    <string name="telemetry_diagnostics">익명 원격 측정 및 오류 보고</string>
+    <string name="telemetry_level_full">전체</string>
+    <string name="telemetry_level_full_desc">세부 정보, 기기 모델, 시스템 버전을 포함한 익명 사용 및 오류 보고서. 버그를 고치는 데 가장 유용합니다.</string>
+    <string name="telemetry_level_minimal">최소</string>
+    <string name="telemetry_level_minimal_desc">앱이 열려 있다는 사실만, 버전과 플랫폼과 함께, 매일 바뀌는 ID로 보냅니다. 오류는 유형별로만 집계하며 세부 정보는 없습니다.</string>
+    <string name="telemetry_level_off">끄기</string>
+    <string name="telemetry_level_off_desc">아무것도 보내지 않습니다.</string>
+    <string name="telemetry_notice_title">보이지 않는 문제를 고치도록 도와주세요</string>
+    <string name="telemetry_notice_body">BitChord-X는 작은 프로젝트라서 모든 휴대폰과 시스템에서 테스트할 수 없습니다. 문제가 생기면 익명 보고서가 무엇이 어디서 일어났는지 알려줍니다. 예: “플레이어 오류, Pixel 7, Android 15, 버전 1.9.3”. 담기는 내용은 이게 전부입니다. 계정, IP 주소, 청취 기록, 재생목록은 절대 포함되지 않습니다. 설정에서 언제든지 바꿀 수 있습니다.</string>
+    <string name="telemetry_notice_ok">알겠습니다</string>
+    <string name="telemetry_notice_choose">보낼 내용 선택</string>
+    <string name="telemetry_plea_title">끄기 전에</string>
+    <string name="telemetry_plea_body">충돌 대부분은 우리가 갖고 있지 않은 휴대폰과 시스템에서 일어나며, 보고서가 알 수 있는 유일한 방법인 경우가 많습니다. 각 보고서에는 오류와 기기 모델만 담기고 여러분에 관한 정보는 없으며, 보고서 하나로 같은 기기를 쓰는 모두의 버그가 고쳐질 수도 있습니다. 전체 보고서가 부담스럽다면 \'최소\'는 무언가 실패했다는 사실만 집계합니다. 어느 쪽이든 선택은 여러분의 몫입니다.</string>
+    <string name="telemetry_plea_keep">켜 둔 채로 두기</string>
+    <string name="telemetry_plea_minimal">대신 최소 사용</string>
+    <string name="telemetry_plea_confirm">그래도 변경</string>
+    <string name="telemetry_picker_message">계정, IP 주소, 청취 기록, 재생목록은 절대 보내지 않습니다. 변경 사항은 즉시 적용됩니다.</string>
 </resources>

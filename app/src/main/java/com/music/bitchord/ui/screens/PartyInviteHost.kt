@@ -1,5 +1,6 @@
 package com.music.bitchord.ui.screens
 
+import com.music.bitchord.ui.components.FrostAlertDialog
 import android.widget.Toast
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -127,7 +128,7 @@ internal fun PartyInviteHost() {
 
     pendingServerConsent?.let { (codeToJoin, serverToSet) ->
         val isSwitchToOfficial = serverToSet.isBlank() || PartyServers.isOriginalOfficial(serverToSet)
-        AlertDialog(
+        FrostAlertDialog(
             onDismissRequest = { pendingServerConsent = null },
             title = {
                 Text(
@@ -181,7 +182,6 @@ internal fun PartyInviteHost() {
                     Text(stringResource(R.string.cancel))
                 }
             },
-            containerColor = MaterialTheme.colorScheme.surface,
         )
     }
 

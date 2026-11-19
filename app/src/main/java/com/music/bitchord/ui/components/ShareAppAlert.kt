@@ -67,14 +67,14 @@ fun ShareAppAlert(
                 Text(
                     text = stringResource(R.string.share_app_choice_title),
                     style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, fontWeight = FontWeight.W600),
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = dialogInk(),
                     textAlign = TextAlign.Center,
                 )
                 Text(
                     text = stringResource(R.string.share_app_choice_message),
                     modifier = Modifier.padding(top = 4.dp),
                     style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, lineHeight = 17.sp),
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = dialogInk(),
                     textAlign = TextAlign.Center,
                 )
             }
@@ -106,7 +106,7 @@ private fun ShareOption(label: String, detail: String, onClick: () -> Unit) {
             .fillMaxWidth()
             .heightIn(min = ACTION_HEIGHT)
             // iOS washes the whole row instead of drawing a ripple inside it.
-            .background(if (pressed) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.09f) else Color.Transparent)
+            .background(if (pressed) dialogInk().copy(alpha = 0.09f) else Color.Transparent)
             .clickable(indication = null, interactionSource = interactionSource, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 9.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -120,7 +120,7 @@ private fun ShareOption(label: String, detail: String, onClick: () -> Unit) {
         Text(
             text = detail,
             style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp, lineHeight = 15.sp),
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+            color = dialogInk().copy(alpha = 0.55f),
             textAlign = TextAlign.Center,
         )
     }

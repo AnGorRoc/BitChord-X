@@ -3,6 +3,11 @@ package com.music.bitchord.ui.components
 import com.music.bitchord.R
 
 import androidx.compose.foundation.background
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.material.icons.rounded.RadioButtonUnchecked
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -79,15 +84,15 @@ fun ListenBrainzTokenAlert(
         ) {
             Text(
                 text = stringResource(R.string.listenbrainz_token),
-                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, fontWeight = FontWeight.W600),
-                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, fontSize = 20.sp),
+                color = dialogInk(),
                 textAlign = TextAlign.Center,
             )
             Text(
                 text = stringResource(R.string.listenbrainz_token_description),
                 modifier = Modifier.padding(top = 4.dp, bottom = 14.dp),
                 style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, lineHeight = 17.sp),
-                color = MaterialTheme.colorScheme.onSurface,
+                color = dialogInk().copy(alpha = 0.70f),
                 textAlign = TextAlign.Center,
             )
             PillTextField(
@@ -127,15 +132,15 @@ fun LastfmLoginAlert(
         ) {
             Text(
                 text = stringResource(R.string.lastfm_login),
-                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, fontWeight = FontWeight.W600),
-                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, fontSize = 20.sp),
+                color = dialogInk(),
                 textAlign = TextAlign.Center,
             )
             Text(
                 text = error ?: stringResource(R.string.lastfm_login_description),
                 modifier = Modifier.padding(top = 4.dp, bottom = 14.dp),
                 style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, lineHeight = 17.sp),
-                color = if (error != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+                color = if (error != null) MaterialTheme.colorScheme.error else dialogInk(),
                 textAlign = TextAlign.Center,
             )
             PillTextField(
@@ -203,15 +208,15 @@ fun DiscordTokenAlert(
         ) {
             Text(
                 text = stringResource(R.string.discord_token),
-                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, fontWeight = FontWeight.W600),
-                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, fontSize = 20.sp),
+                color = dialogInk(),
                 textAlign = TextAlign.Center,
             )
             Text(
                 text = error ?: stringResource(R.string.discord_token_description),
                 modifier = Modifier.padding(top = 4.dp, bottom = 14.dp),
                 style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, lineHeight = 17.sp),
-                color = if (error != null) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurface,
+                color = if (error != null) MaterialTheme.colorScheme.error else dialogInk(),
                 textAlign = TextAlign.Center,
             )
             PillTextField(
@@ -272,15 +277,15 @@ fun TextValueAlert(
         ) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, fontWeight = FontWeight.W600),
-                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, fontSize = 20.sp),
+                color = dialogInk(),
                 textAlign = TextAlign.Center,
             )
             Text(
                 text = message,
                 modifier = Modifier.padding(top = 4.dp, bottom = 14.dp),
                 style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, lineHeight = 17.sp),
-                color = MaterialTheme.colorScheme.onSurface,
+                color = dialogInk().copy(alpha = 0.70f),
                 textAlign = TextAlign.Center,
             )
             PillTextField(
@@ -356,8 +361,8 @@ fun ServerEditorAlert(
         ) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, fontWeight = FontWeight.W600),
-                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, fontSize = 20.sp),
+                color = dialogInk(),
                 textAlign = TextAlign.Center,
             )
             Text(
@@ -365,7 +370,7 @@ fun ServerEditorAlert(
                 modifier = Modifier.padding(top = 4.dp, bottom = 14.dp),
                 style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, lineHeight = 17.sp),
                 color = when {
-                    status == null -> MaterialTheme.colorScheme.onSurface
+                    status == null -> dialogInk()
                     statusIsGood -> MaterialTheme.colorScheme.primary
                     else -> MaterialTheme.colorScheme.error
                 },
@@ -615,15 +620,15 @@ fun WebDavConflictAlert(
         ) {
             Text(
                 text = stringResource(R.string.webdav_conflict_title, fileName),
-                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, fontWeight = FontWeight.W600),
-                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, fontSize = 20.sp),
+                color = dialogInk(),
                 textAlign = TextAlign.Center,
             )
             Text(
                 text = stringResource(R.string.webdav_conflict_message),
                 modifier = Modifier.padding(top = 4.dp, bottom = 14.dp),
                 style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, lineHeight = 17.sp),
-                color = MaterialTheme.colorScheme.onSurface,
+                color = dialogInk().copy(alpha = 0.70f),
                 textAlign = TextAlign.Center,
             )
         }
@@ -681,15 +686,15 @@ fun ConfirmationAlert(
         ) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, fontWeight = FontWeight.W600),
-                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, fontSize = 20.sp),
+                color = dialogInk(),
                 textAlign = TextAlign.Center,
             )
             Text(
                 text = description,
                 modifier = Modifier.padding(top = 4.dp),
                 style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, lineHeight = 17.sp),
-                color = MaterialTheme.colorScheme.onSurface,
+                color = dialogInk().copy(alpha = 0.70f),
                 textAlign = TextAlign.Center,
             )
         }
@@ -755,15 +760,15 @@ private fun InfoAlertFrame(
         ) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, fontWeight = FontWeight.W600),
-                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, fontSize = 20.sp),
+                color = dialogInk(),
                 textAlign = TextAlign.Center,
             )
             Text(
                 text = description,
                 modifier = Modifier.padding(top = 4.dp),
                 style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, lineHeight = 17.sp),
-                color = MaterialTheme.colorScheme.onSurface,
+                color = dialogInk().copy(alpha = 0.70f),
                 textAlign = TextAlign.Center,
             )
         }
@@ -802,8 +807,8 @@ fun <T> ChoiceAlert(
         ) {
             Text(
                 text = title,
-                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, fontWeight = FontWeight.W600),
-                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, fontSize = 20.sp),
+                color = dialogInk(),
                 textAlign = TextAlign.Center,
             )
             if (message != null) {
@@ -811,7 +816,7 @@ fun <T> ChoiceAlert(
                     text = message,
                     modifier = Modifier.padding(top = 4.dp),
                     style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, lineHeight = 17.sp),
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = dialogInk().copy(alpha = 0.70f),
                     textAlign = TextAlign.Center,
                 )
             }
@@ -837,51 +842,47 @@ private fun ChoiceRow(
     checked: Boolean,
     onClick: () -> Unit,
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val pressed by interactionSource.collectIsPressedAsState()
+    val shape = RoundedCornerShape(16.dp)
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = ACTION_HEIGHT)
-            // iOS washes the whole row instead of drawing a ripple inside it.
-            .background(
-                if (pressed) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.09f) else Color.Transparent,
-            )
-            .clickable(
-                indication = null,
-                interactionSource = interactionSource,
-                onClick = onClick,
-            )
-            .padding(horizontal = 16.dp, vertical = 9.dp),
+            .padding(horizontal = 16.dp)
+            .clip(shape)
+            .background(dialogInk().copy(alpha = if (checked) 0.14f else 0.05f))
+            .border(0.5.dp, dialogInk().copy(alpha = if (checked) 0.40f else 0.08f), shape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
             Text(
                 text = label,
-                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
-                color = MaterialTheme.colorScheme.onSurface,
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold, fontSize = 13.5.sp),
+                color = dialogInk(),
             )
             if (detail != null) {
                 Text(
                     text = detail,
-                    style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.sp, lineHeight = 15.sp),
-                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.55f),
+                    style = MaterialTheme.typography.bodySmall.copy(fontSize = 11.5.sp, lineHeight = 15.sp),
+                    color = dialogInk().copy(alpha = 0.65f),
                 )
             }
         }
-        Spacer(Modifier.width(10.dp))
-        if (checked) {
-            Icon(
-                imageVector = Icons.Rounded.Check,
-                contentDescription = stringResource(R.string.selected),
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(19.dp),
-            )
-        }
+        Spacer(Modifier.width(8.dp))
+        Icon(
+            imageVector = if (checked) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
+            contentDescription = if (checked) stringResource(R.string.selected) else null,
+            tint = if (checked) dialogInk() else dialogInk().copy(alpha = 0.25f),
+            modifier = Modifier.size(20.dp),
+        )
     }
 }
 
-/** The scrim + frosted card frame shared by every UIAlertController-style dialog. */
+/**
+ * The scrim and frosted card every floating dialog shares, in the shape the Spotify import uses: a 26dp
+ * card of the dialog grey (or the now-playing card shade), its hairline edge and a pill-shaped main
+ * button under the text.
+ */
 @OptIn(ExperimentalHazeMaterialsApi::class)
 @Composable
 internal fun AlertScaffold(
@@ -896,14 +897,13 @@ internal fun AlertScaffold(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
-    val shape = RoundedCornerShape(ALERT_CORNER)
-    // The card shade of what's playing, when the app is washed in it.
-    val cardFill = com.music.bitchord.ui.theme.cardSurfaceOrNull() ?: MaterialTheme.colorScheme.surface
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val fill = com.music.bitchord.ui.theme.cardSurfaceOrNull() ?: if (isDark) DIALOG_DARK_GREY else DIALOG_LIGHT_GREY
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(SCRIM_COLOR)
+            .background(Color.Black.copy(alpha = if (isDark) 0.55f else 0.28f))
             .clickable(
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() },
@@ -913,23 +913,23 @@ internal fun AlertScaffold(
     ) {
         Column(
             modifier = Modifier
-                .width(ALERT_WIDTH)
-                .clip(shape)
-                .then(
-                    if (reduceDynamicBlur || !frosted) {
-                        Modifier.background(cardFill)
-                    } else {
-                        Modifier.optimizedHazeEffect(
-                            state = hazeState,
-                            style = HazeMaterials.regular(cardFill),
-                        )
-                    },
+                .padding(horizontal = 24.dp)
+                .widthIn(min = 300.dp, max = 360.dp)
+                .fillMaxWidth()
+                .dialogFrostBackground(
+                    hazeState = if (frosted) hazeState else null,
+                    reduceDynamicBlur = reduceDynamicBlur,
+                    shape = RoundedCornerShape(ALERT_CORNER),
+                    fill = fill,
+                    borderColor = if (isDark) DIALOG_EDGE_COLOR else DIALOG_LIGHT_EDGE_COLOR,
+                    alpha = if (isDark) DIALOG_FROST_ALPHA else DIALOG_LIGHT_FROST_ALPHA,
                 )
                 .clickable(
                     indication = null,
                     interactionSource = remember { MutableInteractionSource() },
                     onClick = {},
-                ),
+                )
+                .padding(vertical = 8.dp),
             content = content,
         )
     }

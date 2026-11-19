@@ -686,4 +686,21 @@
     <string name="listen_together_open">साथ में सुनें</string>
     <string name="listen_together_open_count">साथ में सुन रहे हैं · %1$d</string>
     <string name="miscellaneous_footer">चालू होने पर, हाल के ऐप्स स्क्रीन से ऐप बंद करने पर संगीत प्लेबैक भी रुक जाएगा।</string>
+    <string name="telemetry_diagnostics">गुमनाम टेलीमेट्री और त्रुटि रिपोर्ट</string>
+    <string name="telemetry_level_full">पूर्ण</string>
+    <string name="telemetry_level_full_desc">विवरण, डिवाइस मॉडल और सिस्टम संस्करण के साथ गुमनाम उपयोग और त्रुटि रिपोर्ट। बग ठीक करने के लिए सबसे उपयोगी।</string>
+    <string name="telemetry_level_minimal">न्यूनतम</string>
+    <string name="telemetry_level_minimal_desc">केवल यह कि ऐप खुला है, उसके संस्करण और प्लेटफ़ॉर्म के साथ, एक ऐसी आईडी के तहत जो हर दिन बदलती है। त्रुटियाँ प्रकार के अनुसार गिनी जाती हैं, बिना विवरण के।</string>
+    <string name="telemetry_level_off">बंद</string>
+    <string name="telemetry_level_off_desc">कुछ भी नहीं भेजा जाता।</string>
+    <string name="telemetry_notice_title">जो हमें दिखता नहीं, उसे ठीक करने में मदद करें</string>
+    <string name="telemetry_notice_body">BitChord-X एक छोटा प्रोजेक्ट है और हम हर फ़ोन और सिस्टम पर टेस्ट नहीं कर सकते। जब कुछ विफल होता है, तो एक गुमनाम रिपोर्ट हमें बताती है कि क्या और कहाँ: उदाहरण के लिए, “प्लेयर त्रुटि, Pixel 7, Android 15, संस्करण 1.9.3”। उसमें बस इतना ही होता है। आपका खाता, IP पता, सुनने का इतिहास या प्लेलिस्ट कभी नहीं। आप इसे कभी भी सेटिंग्स में बदल सकते हैं।</string>
+    <string name="telemetry_notice_ok">समझ गया</string>
+    <string name="telemetry_notice_choose">चुनें कि क्या भेजा जाए</string>
+    <string name="telemetry_plea_title">इसे बंद करने से पहले</string>
+    <string name="telemetry_plea_body">ज़्यादातर क्रैश उन फ़ोन और सिस्टम पर होते हैं जो हमारे पास नहीं हैं, और रिपोर्ट अक्सर जानने का एकमात्र तरीका होती है। हर रिपोर्ट में एक त्रुटि और डिवाइस मॉडल होता है, आपके बारे में कुछ नहीं, और एक अकेली रिपोर्ट उसी डिवाइस वाले सभी के लिए बग ठीक कर सकती है। अगर पूरी रिपोर्टें ज़्यादा लगती हैं, तो न्यूनतम सिर्फ़ गिनता है कि कुछ विफल हुआ। हर हाल में फ़ैसला आपका है।</string>
+    <string name="telemetry_plea_keep">चालू रखें</string>
+    <string name="telemetry_plea_minimal">इसके बजाय न्यूनतम इस्तेमाल करें</string>
+    <string name="telemetry_plea_confirm">फिर भी बदलें</string>
+    <string name="telemetry_picker_message">आपका खाता, IP पता, सुनने का इतिहास या प्लेलिस्ट कभी नहीं। बदलाव तुरंत लागू होते हैं।</string>
 </resources>

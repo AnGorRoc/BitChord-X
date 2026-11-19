@@ -55,11 +55,10 @@
     }
     .brand { display: flex; align-items: center; gap: 11px; padding: 4px 6px; }
     .logo {
-      width: 36px; height: 36px; border-radius: 10px; flex-shrink: 0;
-      overflow: hidden; background: var(--surface-2); border: 1px solid var(--border);
+      width: 34px; height: 34px; flex-shrink: 0;
       display: grid; place-items: center;
     }
-    .logo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .logo img { width: 32px; height: 32px; object-fit: contain; display: block; }
     .brand h1 { margin: 0; font-size: 16px; font-weight: 700; letter-spacing: -0.02em; }
     .brand-sub { color: var(--muted); font-size: 11px; margin-top: 1px; }
 
@@ -281,6 +280,12 @@
           <span class="nav-left">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
             AI &amp; Direct API
+          </span>
+        </a>
+        <a href="/admin/system" data-page="system">
+          <span class="nav-left">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg>
+            Base de Datos
           </span>
         </a>
       </nav>
@@ -517,7 +522,76 @@
           </div>
         </div>
       </section>
+
+      <!-- PAGE: SYSTEM / DATABASE -->
+      <section class="view" id="view-system">
+        <div class="kpis" id="dbKpis"></div>
+        <div class="grid-eq">
+          <div class="card">
+            <div class="card-head">
+              <h3 class="card-title">Uso de tablas en PostgreSQL</h3>
+              <span class="card-hint" id="dbSizeHint">-</span>
+            </div>
+            <div class="mini-list" id="dbTableList"></div>
+          </div>
+          <div class="card" style="border-color:rgba(248,113,113,0.3)">
+            <div class="card-head">
+              <h3 class="card-title" style="color:var(--red)">Mantenimiento y Zona de Peligro</h3>
+              <span class="card-hint">Acciones irreversibles</span>
+            </div>
+            <div class="mini-list">
+              <div class="mini-item">
+                <div>
+                  <strong>Limpiar errores resueltos</strong>
+                  <div class="card-hint">Elimina solo los reportes marcados como resueltos.</div>
+                </div>
+                <button class="btn sm" id="btnPruneErrors">Limpiar</button>
+              </div>
+              <div class="mini-item">
+                <div>
+                  <strong>Depurar historial antiguo (&gt;30 dias)</strong>
+                  <div class="card-hint">Borra snapshots y eventos de conexion viejos sin tocar instalaciones.</div>
+                </div>
+                <button class="btn sm" id="btnPruneHistory">Depurar</button>
+              </div>
+              <div class="mini-item" style="border-color:rgba(248,113,113,0.35);background:var(--red-soft)">
+                <div>
+                  <strong style="color:#fecaca">Vaciar toda la base de datos</strong>
+                  <div class="card-hint" style="color:#fca5a5">Reinicia instalaciones, historial, snapshots y errores desde cero.</div>
+                </div>
+                <button class="btn sm" id="btnOpenReset" style="background:var(--red);border-color:var(--red);color:#fff">Eliminar datos</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
     </main>
+  </div>
+
+  <!-- Confirm Reset DB Modal -->
+  <div class="modal-bg" id="resetModal">
+    <div class="modal" style="max-width:460px">
+      <div class="modal-head">
+        <div>
+          <strong style="color:var(--red)">Confirmar reinicio de base de datos</strong>
+          <div class="card-hint">Esta accion no se puede deshacer</div>
+        </div>
+        <button class="btn sm" id="rClose">Cerrar</button>
+      </div>
+      <div class="modal-body">
+        <p style="margin:0;font-size:13px">
+          Se eliminaran todos los registros de <strong>installs</strong>, <strong>connection_events</strong>, <strong>concurrency_snapshots</strong> y <strong>error_reports</strong>.
+        </p>
+        <div>
+          <div class="card-hint" style="margin-bottom:6px">Escribe <span class="mono">RESET</span> para confirmar:</div>
+          <input type="text" id="resetConfirmInput" placeholder="RESET" style="width:100%" />
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" id="rCancel">Cancelar</button>
+        <button class="btn" id="rConfirm" style="background:var(--red);border-color:var(--red);color:#fff" disabled>Vaciar base de datos</button>
+      </div>
+    </div>
   </div>
 
   <!-- Error Detail Modal -->
@@ -557,7 +631,8 @@
       errors:   { title: 'Errores y Triage', desc: 'Inspeccion de fallos, dispositivos afectados y resolucion.' },
       installs: { title: 'Instalaciones y Retencion', desc: 'Usuarios activos, recurrentes, perdidos (>14d) y versiones.' },
       parties:  { title: 'Listen Together', desc: 'Salas activas, miembros y sockets en tiempo real.' },
-      ai:       { title: 'AI & Direct API', desc: 'Endpoints JSON y Markdown directos para agentes IA sin navegador.' }
+      ai:       { title: 'AI & Direct API', desc: 'Endpoints JSON y Markdown directos para agentes IA sin navegador.' },
+      system:   { title: 'Base de Datos', desc: 'Almacenamiento en PostgreSQL, depuracion y reinicio seguro.' }
     };
 
     const state = {
@@ -632,7 +707,7 @@
       renderKPIs(d);
       renderConcurrencyChart(d.concurrencySeries || []);
       renderHourlyChart(d.hourlyConnections || []);
-      renderVersions(d.versions || []);
+      renderVersions(d.versions || [], d);
       renderPlatforms(d.platforms || []);
       renderTopErrors(d.topErrors || []);
       renderDevices(d.errorDevices || []);
@@ -747,8 +822,8 @@
       }).join('')}</svg>`;
     }
 
-    function renderVersions(versions) {
-      $('versionsBox').innerHTML = versions.length ? versions.map(v => `
+    function renderVersions(versions, d) {
+      const bars = versions.length ? versions.map(v => `
         <div class="bar-row">
           <div class="bar-meta">
             <span><strong>${esc(v.version)}</strong> <span class="card-hint">(${fmtNum(v.active24h)} activas 24h)</span> ${v.errorCount > 0 ? `<span class="pill red">${fmtNum(v.errorCount)} err</span>` : ''}</span>
@@ -756,6 +831,20 @@
           </div>
           <div class="bar-track"><div class="bar-fill" style="width:${Math.max(2, v.pct).toFixed(1)}%"></div></div>
         </div>`).join('') : '<div class="card-hint">Sin instalaciones aun.</div>';
+
+      const upgrades = d?.upgrades || [];
+      let upgradeHtml = '';
+      if (d?.latestVersion || upgrades.length) {
+        upgradeHtml += `<div class="mini-list" style="margin-top:12px;padding-top:10px;border-top:1px solid var(--border)">`;
+        if (d.latestVersion) {
+          upgradeHtml += `<div class="mini-item"><span>Activos 7d en version anterior a <strong>${esc(d.latestVersion)}</strong></span><span class="pill ${d.outdatedActive7d > 0 ? 'amber' : 'green'}">${fmtNum(d.outdatedActive7d)}</span></div>`;
+        }
+        for (const u of upgrades) {
+          upgradeHtml += `<div class="mini-item"><span>Actualizacion <span class="mono">${esc(u.fromVersion)} &rarr; ${esc(u.toVersion)}</span></span><span class="pill green">+${fmtNum(u.count)}</span></div>`;
+        }
+        upgradeHtml += `</div>`;
+      }
+      $('versionsBox').innerHTML = bars + upgradeHtml;
     }
 
     function renderPlatforms(platforms) {
@@ -885,7 +974,7 @@
         <tr>
           <td class="mono">${esc(i.installId)}</td>
           <td>${esc(i.platform)}</td>
-          <td><span class="pill">${esc(i.appVersion || '-')}</span></td>
+          <td><span class="pill">${esc(i.appVersion || '-')}</span>${i.previousVersion ? ` <span class="card-hint mono">(de ${esc(i.previousVersion)})</span>` : ''}</td>
           <td class="mono">${fmtNum(i.sessionCount)}</td>
           <td class="mono">${esc(fmtTime(i.firstSeenAt))}</td>
           <td class="mono">${esc(fmtTime(i.lastSeenAt))}</td>
@@ -949,11 +1038,38 @@
     }
     function closeModal() { $('errModal').classList.remove('open'); state.selectedError = null; }
 
+    async function loadDatabase() {
+      const res = await fetch('/api/admin/database');
+      if (!res.ok) return;
+      const d = await res.json();
+      const mb = ((d.databaseSizeBytes || 0) / (1024 * 1024)).toFixed(2);
+      $('dbSizeHint').textContent = d.databaseEnabled ? `${mb} MB en disco` : 'PostgreSQL desactivado';
+      const totalRows = (d.installsCount || 0) + (d.connectionEventsCount || 0) + (d.snapshotsCount || 0) + (d.errorsCount || 0);
+      $('dbKpis').innerHTML = [
+        ['Tamano en disco', d.databaseEnabled ? `${mb} MB` : '-', 'PostgreSQL'],
+        ['Registros totales', fmtNum(totalRows), 'Todas las tablas'],
+        ['Instalaciones', fmtNum(d.installsCount), 'Tabla installs'],
+        ['Errores almacenados', fmtNum(d.errorsCount), `${fmtNum(d.resolvedErrorsCount)} resueltos`]
+      ].map(([l, v, sub]) => `<div class="card"><div class="kpi-label">${esc(l)}</div><div class="kpi-val">${esc(v)}</div><div class="kpi-sub">${esc(sub)}</div></div>`).join('');
+
+      $('dbTableList').innerHTML = [
+        ['installs', d.installsCount, 'UUIDs anonimos, versiones y sesiones'],
+        ['connection_events', d.connectionEventsCount, 'Eventos de apertura y cierre por hora'],
+        ['concurrency_snapshots', d.snapshotsCount, 'Muestras minuto a minuto de usuarios online'],
+        ['error_reports', d.errorsCount, 'Reportes de fallos y stacktraces']
+      ].map(([name, cnt, desc]) => `
+        <div class="mini-item">
+          <div><strong class="mono">${esc(name)}</strong><div class="card-hint">${esc(desc)}</div></div>
+          <span class="pill">${fmtNum(cnt)} filas</span>
+        </div>`).join('');
+    }
+
     async function loadCurrentPage() {
       await loadOverview();
       if (state.page === 'errors') await loadErrors();
       if (state.page === 'installs') await loadInstalls();
       if (state.page === 'ai') await loadAI();
+      if (state.page === 'system') await loadDatabase();
     }
 
     const wsEvents = [];
@@ -1065,6 +1181,50 @@
     $('copyBriefBtn').addEventListener('click', async () => {
       await navigator.clipboard.writeText($('aiBriefPreview').textContent);
       showToast('Resumen Markdown copiado al portapapeles');
+    });
+
+    function closeResetModal() {
+      $('resetModal').classList.remove('open');
+      $('resetConfirmInput').value = '';
+      $('rConfirm').disabled = true;
+    }
+    $('btnOpenReset').addEventListener('click', () => {
+      $('resetConfirmInput').value = '';
+      $('rConfirm').disabled = true;
+      $('resetModal').classList.add('open');
+      $('resetConfirmInput').focus();
+    });
+    $('rClose').addEventListener('click', closeResetModal);
+    $('rCancel').addEventListener('click', closeResetModal);
+    $('resetModal').addEventListener('click', (e) => { if (e.target === $('resetModal')) closeResetModal(); });
+    $('resetConfirmInput').addEventListener('input', (e) => {
+      $('rConfirm').disabled = e.target.value.trim() !== 'RESET';
+    });
+    $('rConfirm').addEventListener('click', async () => {
+      const res = await fetch('/api/admin/database/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ confirm: 'RESET' })
+      });
+      closeResetModal();
+      if (res.ok) {
+        showToast('Base de datos vaciada correctamente');
+        loadCurrentPage();
+      } else {
+        showToast('Error al vaciar la base de datos');
+      }
+    });
+    $('btnPruneErrors').addEventListener('click', async () => {
+      const res = await fetch('/api/admin/database/prune-errors', { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      showToast(`Errores resueltos eliminados: ${fmtNum(data.deleted || 0)}`);
+      loadCurrentPage();
+    });
+    $('btnPruneHistory').addEventListener('click', async () => {
+      const res = await fetch('/api/admin/database/prune-history', { method: 'POST' });
+      const data = await res.json().catch(() => ({}));
+      showToast(`Registros historicos depurados: ${fmtNum(data.deleted || 0)}`);
+      loadCurrentPage();
     });
 
     navigate(pageFromPath(), false);

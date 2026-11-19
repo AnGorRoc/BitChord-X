@@ -1,5 +1,6 @@
 package com.music.bitchord.ui.screens
 
+import com.music.bitchord.ui.components.FrostAlertDialog
 import com.music.bitchord.ui.components.FastScroller
 import com.music.bitchord.ui.components.SectionIndexer
 
@@ -1238,7 +1239,7 @@ private fun ReleaseHeader(
                         var confirmingDelete by remember { mutableStateOf(false) }
                         val isDownloaded = Downloads.recordIdOf(page.browseId) != null
                         if (confirmingDelete) {
-                            AlertDialog(
+                            FrostAlertDialog(
                                 onDismissRequest = { confirmingDelete = false },
                                 title = {
                                     Text(

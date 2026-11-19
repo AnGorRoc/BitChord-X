@@ -670,4 +670,21 @@
     <string name="listen_together_open">一起听</string>
     <string name="listen_together_open_count">一起听 · %1$d</string>
     <string name="miscellaneous_footer">启用后，从最近任务界面关闭应用也会停止音乐播放。</string>
+    <string name="telemetry_diagnostics">匿名遥测与错误报告</string>
+    <string name="telemetry_level_full">完整</string>
+    <string name="telemetry_level_full_desc">包含详细信息、设备型号和系统版本的匿名使用与错误报告。对修复问题最有帮助。</string>
+    <string name="telemetry_level_minimal">最少</string>
+    <string name="telemetry_level_minimal_desc">只说明应用已打开，附带版本和平台，使用每天都会变化的 ID。错误只按类型计数，不含任何详情。</string>
+    <string name="telemetry_level_off">关闭</string>
+    <string name="telemetry_level_off_desc">不发送任何内容。</string>
+    <string name="telemetry_notice_title">帮助我们修复看不到的问题</string>
+    <string name="telemetry_notice_body">BitChord-X 是一个小项目，我们无法在每一部手机和每一种系统上测试。出问题时，匿名报告会告诉我们是什么、在哪里：例如“播放器错误，Pixel 7，Android 15，版本 1.9.3”。报告里只有这些。绝不包含你的账号、IP 地址、收听历史或播放列表。你可以随时在设置中更改。</string>
+    <string name="telemetry_notice_ok">知道了</string>
+    <string name="telemetry_notice_choose">选择发送的内容</string>
+    <string name="telemetry_plea_title">关闭之前</string>
+    <string name="telemetry_plea_body">大多数崩溃发生在我们没有的手机和系统上，报告往往是我们得知的唯一方式。每份报告只包含错误和设备型号，不含任何关于你的信息，一份报告就可能为所有使用同款设备的人修复问题。如果完整报告太多，“最少”只会统计出现过故障。无论如何，选择权在你。</string>
+    <string name="telemetry_plea_keep">保持开启</string>
+    <string name="telemetry_plea_minimal">改用最少</string>
+    <string name="telemetry_plea_confirm">仍然更改</string>
+    <string name="telemetry_picker_message">绝不发送你的账号、IP 地址、收听历史或播放列表。更改立即生效。</string>
 </resources>

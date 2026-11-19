@@ -1520,5 +1520,20 @@
     <string name="tint_with_now_playing">Colours from what’s playing</string>
     <string name="tint_with_now_playing_subtitle">Tint the pages and bars with the cover of the song that’s playing</string>
     <string name="telemetry_diagnostics">Anonymous telemetry &amp; error reports</string>
-    <string name="telemetry_diagnostics_subtitle">Sends: random install ID, app version, platform, connection times, and on errors: error details, basic device model and Android version. Never sends your account, IP, listening history or playlists.</string>
+    <string name="telemetry_level_full">Full</string>
+    <string name="telemetry_level_full_desc">Anonymous usage and error reports with details, device model and system version. The most useful for fixing bugs.</string>
+    <string name="telemetry_level_minimal">Minimal</string>
+    <string name="telemetry_level_minimal_desc">Only that the app is open, with its version and platform, under an ID that changes every day. Errors are counted by type, with no details.</string>
+    <string name="telemetry_level_off">Off</string>
+    <string name="telemetry_level_off_desc">Nothing is sent.</string>
+    <string name="telemetry_notice_title">Help us fix what we can\'t see</string>
+    <string name="telemetry_notice_body">BitChord-X is a small project and we can\'t test every phone and system. When something fails, an anonymous report tells us what and where: for example, “player error, Pixel 7, Android 15, version 1.9.3”. That is all it holds. Never your account, IP address, listening history or playlists. You can change it any time in Settings.</string>
+    <string name="telemetry_notice_ok">Got it</string>
+    <string name="telemetry_notice_choose">Choose what is sent</string>
+    <string name="telemetry_plea_title">Before you turn this off</string>
+    <string name="telemetry_plea_body">Most crashes happen on phones and systems we don\'t own, and a report is often the only way we find out. Each one holds an error and a device model, nothing about you, and a single report can fix a bug for everybody on the same device. If full reports are too much, Minimal only counts that something failed. It is your choice either way.</string>
+    <string name="telemetry_plea_keep">Keep it on</string>
+    <string name="telemetry_plea_minimal">Use minimal instead</string>
+    <string name="telemetry_plea_confirm">Change anyway</string>
+    <string name="telemetry_picker_message">Never your account, IP address, listening history or playlists. Changes apply right away.</string>
 </resources>

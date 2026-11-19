@@ -1,5 +1,6 @@
 package com.music.bitchord.ui.screens
 
+import com.music.bitchord.ui.components.FrostAlertDialog
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
@@ -753,7 +754,7 @@ private fun UnmatchedTracksDialog(
     tracks: List<SpotifyTrack>,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
+    FrostAlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(

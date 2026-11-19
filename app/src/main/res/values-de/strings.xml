@@ -1678,4 +1678,21 @@
     </plurals>
     <string name="filter_music_videos_autoplay">Musikvideos in AutoPlay filtern</string>
     <string name="filter_music_videos_autoplay_subtitle">Nur Audiotitel in AutoPlay und Radio-Empfehlungen einreihen, niemals Musikvideos</string>
+    <string name="telemetry_diagnostics">Anonyme Telemetrie und Fehlerberichte</string>
+    <string name="telemetry_level_full">Vollständig</string>
+    <string name="telemetry_level_full_desc">Anonyme Nutzungs- und Fehlerberichte mit Details, Gerätemodell und Systemversion. Am nützlichsten, um Fehler zu beheben.</string>
+    <string name="telemetry_level_minimal">Minimal</string>
+    <string name="telemetry_level_minimal_desc">Nur, dass die App geöffnet ist, mit Version und Plattform, unter einer ID, die sich täglich ändert. Fehler werden nur nach Typ gezählt, ohne Details.</string>
+    <string name="telemetry_level_off">Aus</string>
+    <string name="telemetry_level_off_desc">Es wird nichts gesendet.</string>
+    <string name="telemetry_notice_title">Hilf uns, zu beheben, was wir nicht sehen</string>
+    <string name="telemetry_notice_body">BitChord-X ist ein kleines Projekt, und wir können nicht jedes Handy und jedes System testen. Wenn etwas fehlschlägt, sagt uns ein anonymer Bericht, was und wo: zum Beispiel „Player-Fehler, Pixel 7, Android 15, Version 1.9.3“. Mehr enthält er nicht. Nie dein Konto, deine IP-Adresse, dein Hörverlauf oder deine Playlists. Du kannst das jederzeit in den Einstellungen ändern.</string>
+    <string name="telemetry_notice_ok">Verstanden</string>
+    <string name="telemetry_notice_choose">Auswählen, was gesendet wird</string>
+    <string name="telemetry_plea_title">Bevor du das ausschaltest</string>
+    <string name="telemetry_plea_body">Die meisten Abstürze passieren auf Handys und Systemen, die wir nicht besitzen, und ein Bericht ist oft die einzige Möglichkeit, davon zu erfahren. Jeder enthält einen Fehler und ein Gerätemodell, nichts über dich, und ein einziger Bericht kann einen Fehler für alle mit demselben Gerät beheben. Wenn vollständige Berichte zu viel sind, zählt Minimal nur, dass etwas fehlgeschlagen ist. In jedem Fall entscheidest du.</string>
+    <string name="telemetry_plea_keep">Eingeschaltet lassen</string>
+    <string name="telemetry_plea_minimal">Stattdessen Minimal</string>
+    <string name="telemetry_plea_confirm">Trotzdem ändern</string>
+    <string name="telemetry_picker_message">Nie dein Konto, deine IP-Adresse, dein Hörverlauf oder deine Playlists. Änderungen gelten sofort.</string>
 </resources>

@@ -1,5 +1,7 @@
 package com.music.bitchord.ui.screens
 
+import com.music.bitchord.ui.components.TelemetryPrompts
+import com.music.bitchord.ui.components.telemetryLevelLabel
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -54,7 +56,7 @@ internal fun SettingsMiscellaneousSection(search: SettingsSearch) {
     val hideStatusBarInPlayer by AppSettings.hideStatusBarInPlayer.collectAsStateWithLifecycle()
     val showQueueHistory by AppSettings.showQueueHistory.collectAsStateWithLifecycle()
     val hideSongStatus by AppSettings.hideSongStatus.collectAsStateWithLifecycle()
-    val telemetryEnabled by AppSettings.telemetryEnabled.collectAsStateWithLifecycle()
+    val telemetryLevel by AppSettings.telemetryLevel.collectAsStateWithLifecycle()
 
     SearchableSettingsGroup(search, header = stringResource(R.string.miscellaneous)) {
         val swipeRightTitle = stringResource(R.string.swipe_right_action)
@@ -218,14 +220,8 @@ internal fun SettingsMiscellaneousSection(search: SettingsSearch) {
             SettingsRow(
                 icon = SfIcons.Info,
                 title = telemetryTitle,
-                subtitle = stringResource(R.string.telemetry_diagnostics_subtitle),
-                trailing = {
-                    IosSwitch(
-                        checked = telemetryEnabled,
-                        onCheckedChange = AppSettings::setTelemetryEnabled,
-                    )
-                },
-                onClick = { AppSettings.setTelemetryEnabled(!telemetryEnabled) },
+                value = telemetryLevelLabel(telemetryLevel),
+                onClick = TelemetryPrompts::openPicker,
             )
         }
     }

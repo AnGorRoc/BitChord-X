@@ -1707,4 +1707,21 @@
     </plurals>
     <string name="filter_music_videos_autoplay">Фильтровать клипы в автовоспроизведении</string>
     <string name="filter_music_videos_autoplay_subtitle">Добавлять в очередь только аудиодорожки в автовоспроизведении и радио, но не клипы</string>
+    <string name="telemetry_diagnostics">Анонимная телеметрия и отчёты об ошибках</string>
+    <string name="telemetry_level_full">Полная</string>
+    <string name="telemetry_level_full_desc">Анонимные отчёты об использовании и ошибках с подробностями, моделью устройства и версией системы. Самое полезное для исправления багов.</string>
+    <string name="telemetry_level_minimal">Минимальная</string>
+    <string name="telemetry_level_minimal_desc">Только то, что приложение открыто, с его версией и платформой, под ID, который меняется каждый день. Ошибки считаются по типу, без подробностей.</string>
+    <string name="telemetry_level_off">Выключена</string>
+    <string name="telemetry_level_off_desc">Ничего не отправляется.</string>
+    <string name="telemetry_notice_title">Помогите нам исправить то, чего мы не видим</string>
+    <string name="telemetry_notice_body">BitChord-X — маленький проект, и мы не можем проверить каждый телефон и каждую систему. Когда что-то ломается, анонимный отчёт говорит нам, что и где: например, «ошибка плеера, Pixel 7, Android 15, версия 1.9.3». Это всё, что в нём есть. Никогда ваш аккаунт, IP-адрес, история прослушивания или плейлисты. Это можно изменить в любой момент в Настройках.</string>
+    <string name="telemetry_notice_ok">Понятно</string>
+    <string name="telemetry_notice_choose">Выбрать, что отправляется</string>
+    <string name="telemetry_plea_title">Прежде чем отключить</string>
+    <string name="telemetry_plea_body">Большинство сбоев случается на телефонах и системах, которых у нас нет, и отчёт часто единственный способ о них узнать. В каждом — ошибка и модель устройства, ничего о вас, а один отчёт может исправить ошибку для всех с таким же устройством. Если полные отчёты — это слишком, режим «Минимальная» лишь считает, что что-то сломалось. В любом случае выбор за вами.</string>
+    <string name="telemetry_plea_keep">Оставить включённым</string>
+    <string name="telemetry_plea_minimal">Использовать минимальную</string>
+    <string name="telemetry_plea_confirm">Всё равно изменить</string>
+    <string name="telemetry_picker_message">Никогда не отправляются ваш аккаунт, IP-адрес, история прослушивания и плейлисты. Изменения действуют сразу.</string>
 </resources>

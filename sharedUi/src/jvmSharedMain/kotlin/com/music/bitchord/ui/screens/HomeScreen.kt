@@ -47,6 +47,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.flow.first
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -187,6 +189,22 @@ fun HomeScreen(
         state = pullState,
         modifier = modifier,
     ) {
+        // A feed opened at the top stays there until the listener scrolls it: the skeleton gives
+        // way to the real shelves (and Recents and Top Picks land above them) and the list may
+        // otherwise settle further down, on the spotlight. A feed that comes back scrolled, from
+        // another tab, is left where it was.
+        val openedAtTop = remember(listState) {
+            listState.firstVisibleItemIndex == 0 && listState.firstVisibleItemScrollOffset == 0
+        }
+        if (openedAtTop) {
+            LaunchedEffect(listState) {
+                var touched = false
+                launch { snapshotFlow { listState.isScrollInProgress }.first { it }; touched = true }
+                snapshotFlow { listState.firstVisibleItemIndex }.collect { index ->
+                    if (!touched && index != 0) listState.scrollToItem(0)
+                }
+            }
+        }
         val spotlightItem = remember(state) {
             (state as? UiState.Success)?.data
                 ?.firstOrNull { it.layout == ShelfLayout.CARDS && it.items.isNotEmpty() }

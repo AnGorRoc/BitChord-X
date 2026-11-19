@@ -672,4 +672,21 @@
     <string name="miscellaneous_footer">啟用後，從最近任務介面關閉應用也會停止音樂播放。</string>
     <string name="lyrics_original_title">用原標題搜歌詞</string>
     <string name="lyrics_original_title_desc">先還原 YouTube 原標題再搜歌詞，翻譯過的標題也能找到</string>
+    <string name="telemetry_diagnostics">匿名遙測與錯誤報告</string>
+    <string name="telemetry_level_full">完整</string>
+    <string name="telemetry_level_full_desc">包含詳細資訊、裝置型號和系統版本的匿名使用與錯誤報告。對修復問題最有幫助。</string>
+    <string name="telemetry_level_minimal">最少</string>
+    <string name="telemetry_level_minimal_desc">只說明應用程式已開啟，附帶版本和平台，使用每天都會變化的 ID。錯誤只按類型計數，不含任何詳情。</string>
+    <string name="telemetry_level_off">關閉</string>
+    <string name="telemetry_level_off_desc">不傳送任何內容。</string>
+    <string name="telemetry_notice_title">幫助我們修復看不到的問題</string>
+    <string name="telemetry_notice_body">BitChord-X 是一個小專案，我們無法在每一支手機和每一種系統上測試。出問題時，匿名報告會告訴我們是什麼、在哪裡：例如「播放器錯誤，Pixel 7，Android 15，版本 1.9.3」。報告裡只有這些。絕不包含你的帳號、IP 位址、收聽記錄或播放清單。你可以隨時在設定中變更。</string>
+    <string name="telemetry_notice_ok">知道了</string>
+    <string name="telemetry_notice_choose">選擇傳送的內容</string>
+    <string name="telemetry_plea_title">關閉之前</string>
+    <string name="telemetry_plea_body">大多數當機發生在我們沒有的手機和系統上，報告往往是我們得知的唯一方式。每份報告只包含錯誤和裝置型號，不含任何關於你的資訊，一份報告就可能為所有使用同款裝置的人修復問題。如果完整報告太多，「最少」只會統計出現過故障。無論如何，選擇權在你。</string>
+    <string name="telemetry_plea_keep">保持開啟</string>
+    <string name="telemetry_plea_minimal">改用最少</string>
+    <string name="telemetry_plea_confirm">仍然變更</string>
+    <string name="telemetry_picker_message">絕不傳送你的帳號、IP 位址、收聽記錄或播放清單。變更立即生效。</string>
 </resources>

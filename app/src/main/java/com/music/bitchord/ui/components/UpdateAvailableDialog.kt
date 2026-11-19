@@ -7,6 +7,11 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Button
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -59,9 +64,9 @@ import dev.chrisbanes.haze.materials.HazeMaterials
 import kotlinx.coroutines.launch
 
 /** UIAlertController's own metrics: fixed narrow width, 14pt corner, 44pt rows. */
-internal val ALERT_WIDTH = 270.dp
-internal val ALERT_CORNER = 14.dp
-internal val ACTION_HEIGHT = 44.dp
+internal val ALERT_WIDTH = 320.dp
+internal val ALERT_CORNER = 26.dp
+internal val ACTION_HEIGHT = 48.dp
 
 /**
  * The dim behind the alert. Flat on purpose — the glass is the card, and
@@ -157,10 +162,11 @@ fun UpdateAvailableDialog(
 
     BackHandler(enabled = true, onBack = handleDismiss)
 
-    val isDark = MaterialTheme.colorScheme.surface.luminance() < 0.5f
-    val borderColor = if (isDark) GLASS_EDGE_COLOR else Color.Black.copy(alpha = 0.08f)
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val dialogFill = com.music.bitchord.ui.theme.cardSurfaceOrNull() ?: if (isDark) DIALOG_DARK_GREY else DIALOG_LIGHT_GREY
+    val baseScrim = if (isDark) 0.55f else 0.28f
 
-    val scrimAlpha = if (reduceMotion) 0.28f else (0.28f * animProgress.value.coerceIn(0f, 1f))
+    val scrimAlpha = if (reduceMotion) baseScrim else (baseScrim * animProgress.value.coerceIn(0f, 1f))
     val cardScale = if (reduceMotion) 1f else (0.88f + 0.12f * animProgress.value)
     val cardAlpha = if (reduceMotion) 1f else animProgress.value.coerceIn(0f, 1f)
 
@@ -186,23 +192,16 @@ fun UpdateAvailableDialog(
                     scaleY = cardScale
                     alpha = cardAlpha
                 }
-                .width(ALERT_WIDTH)
-                .shadow(elevation = 16.dp, shape = shape)
-                .clip(shape)
-                .then(
-                    if (reduceDynamicBlur) {
-                        Modifier.background(MaterialTheme.colorScheme.surface)
-                    } else {
-                        Modifier.optimizedHazeEffect(
-                            state = hazeState,
-                            style = HazeMaterials.regular(MaterialTheme.colorScheme.surface),
-                        )
-                    },
-                )
-                .border(
-                    width = GLASS_EDGE_WIDTH,
-                    color = borderColor,
+                .padding(horizontal = 24.dp)
+                .widthIn(min = 300.dp, max = 360.dp)
+                .fillMaxWidth()
+                .dialogFrostBackground(
+                    hazeState = hazeState,
+                    reduceDynamicBlur = reduceDynamicBlur,
                     shape = shape,
+                    fill = dialogFill,
+                    borderColor = if (isDark) DIALOG_EDGE_COLOR else DIALOG_LIGHT_EDGE_COLOR,
+                    alpha = if (isDark) DIALOG_FROST_ALPHA else DIALOG_LIGHT_FROST_ALPHA,
                 )
                 // Swallows the tap before it reaches the scrim behind, so
                 // touching the card itself never dismisses it.
@@ -220,11 +219,11 @@ fun UpdateAvailableDialog(
             ) {
                 Text(
                     text = stringResource(R.string.software_update),
-                    style = MaterialTheme.typography.bodyLarge.copy(
-                        fontSize = 17.sp,
-                        fontWeight = FontWeight.W600,
+                    style = MaterialTheme.typography.titleLarge.copy(
+                        fontWeight = FontWeight.Bold,
+                        fontSize = 20.sp,
                     ),
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = dialogInk(),
                     textAlign = TextAlign.Center,
                 )
                 Text(
@@ -243,7 +242,7 @@ fun UpdateAvailableDialog(
                         fontSize = 13.sp,
                         lineHeight = 17.sp,
                     ),
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = dialogInk().copy(alpha = 0.70f),
                     textAlign = TextAlign.Center,
                 )
 
@@ -258,7 +257,7 @@ fun UpdateAvailableDialog(
                             .fillMaxWidth()
                             .height(DOWNLOAD_ROW_HEIGHT)
                             .clip(RoundedCornerShape(DOWNLOAD_ROW_HEIGHT / 2))
-                            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.14f)),
+                            .background(dialogInk().copy(alpha = 0.14f)),
                     ) {
                         if (downloading != null && downloading.fraction > 0f) {
                             Box(
@@ -266,7 +265,7 @@ fun UpdateAvailableDialog(
                                     .fillMaxWidth(downloading.fraction)
                                     .height(DOWNLOAD_ROW_HEIGHT)
                                     .clip(RoundedCornerShape(DOWNLOAD_ROW_HEIGHT / 2))
-                                    .background(MaterialTheme.colorScheme.primary),
+                                    .background(dialogInk()),
                             )
                         }
                     }
@@ -296,7 +295,7 @@ fun UpdateAvailableDialog(
                             fontSize = 12.sp,
                             fontWeight = FontWeight.W600,
                         ),
-                        color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f),
+                        color = dialogInk().copy(alpha = 0.6f),
                         textAlign = TextAlign.Start,
                     )
                     Box(
@@ -310,7 +309,7 @@ fun UpdateAvailableDialog(
                         // Column.background(...), not a Surface, so without
                         // this the notes render at LocalContentColor's black
                         // default regardless of theme.
-                        CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+                        CompositionLocalProvider(LocalContentColor provides dialogInk()) {
                             RichText(style = RichTextStyle.Default) {
                                 Markdown(notes)
                             }
@@ -345,14 +344,8 @@ fun UpdateAvailableDialog(
 }
 
 /**
- * Full-bleed action row. Tinted rather than filled, so the two read as equals
- * in weight and only the font differentiates the default action — the alert's
- * whole point is that neither choice is a trap.
- *
- * [destructive] is the one exception to that: an action that deletes something
- * is red in this lineage, because the point there *is* to break the symmetry.
- * It stays a plain row rather than a filled button, so it reads as a warning
- * and not as the thing to press.
+ * A dialog's action, in the Spotify import's shape: the main one is a pill filled with the dialog's ink,
+ * the others are plain text under it. [destructive] turns the pill, or the text, red.
  */
 @Composable
 internal fun AlertAction(
@@ -362,43 +355,51 @@ internal fun AlertAction(
     enabled: Boolean = true,
     destructive: Boolean = false,
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val pressed by interactionSource.collectIsPressedAsState()
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .height(ACTION_HEIGHT)
-            // iOS washes the whole row instead of drawing a ripple inside it.
-            .background(
-                if (pressed) MaterialTheme.colorScheme.onSurface.copy(alpha = 0.09f) else Color.Transparent,
-            )
-            .clickable(
-                enabled = enabled,
-                indication = null,
-                interactionSource = interactionSource,
-                onClick = onClick,
-            ),
-        contentAlignment = Alignment.Center,
+            .padding(horizontal = 16.dp, vertical = 2.dp),
     ) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.bodyLarge.copy(
-                fontSize = 17.sp,
-                fontWeight = if (emphasised) FontWeight.W600 else FontWeight.W400,
-            ),
-            color = (if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary)
-                .copy(alpha = if (enabled) 1f else 0.4f),
-        )
+        if (emphasised) {
+            Button(
+                onClick = onClick,
+                enabled = enabled,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(ACTION_HEIGHT),
+                shape = RoundedCornerShape(percent = 50),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = if (destructive) MaterialTheme.colorScheme.error else dialogInk(),
+                    contentColor = if (destructive) MaterialTheme.colorScheme.onError else dialogInkInverse(),
+                ),
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold, fontSize = 14.sp),
+                )
+            }
+        } else {
+            TextButton(
+                onClick = onClick,
+                enabled = enabled,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = if (destructive) {
+                        MaterialTheme.colorScheme.error
+                    } else {
+                        dialogInk().copy(alpha = if (enabled) 0.60f else 0.30f)
+                    },
+                )
+            }
+        }
     }
 }
 
-/** Hairline separator — [HorizontalDivider][androidx.compose.material3.HorizontalDivider]'s 1dp reads as a bar at this scale. */
+/** What separated a dialog's rows: a little air now, since the actions are buttons rather than ruled rows. */
 @Composable
 internal fun AlertRule(modifier: Modifier = Modifier) {
-    Box(
-        modifier
-            .fillMaxWidth()
-            .height(0.5.dp)
-            .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.14f)),
-    )
+    Spacer(modifier.fillMaxWidth().height(2.dp))
 }
