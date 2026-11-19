@@ -17,6 +17,7 @@ import com.music.bitchord.data.LikeState
 import com.music.bitchord.data.YtMusicRepository
 import com.music.bitchord.data.listentogether.DeviceGroup
 import com.music.bitchord.data.TopPicks
+import com.music.bitchord.data.CachedHomeFeed
 import com.music.bitchord.data.FeedCache
 import com.music.bitchord.data.AppleArtistPhotos
 import com.music.bitchord.data.model.ArtistRef
@@ -188,6 +189,22 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private val _topPicksLoading = MutableStateFlow(false)
     val topPicksLoading: StateFlow<Boolean> = _topPicksLoading.asStateFlow()
     private var topPicksJob: Job? = null
+
+    /**
+     * Whether Home has been given its first look: the saved feed and Top Picks
+     * read off disk together, or the skeleton when nothing was saved. The
+     * activity holds its first frame until then, so Home is drawn once, whole,
+     * instead of a frame of skeleton and then the rows landing one by one.
+     */
+    private val _homeReady = MutableStateFlow(false)
+    val homeReady: StateFlow<Boolean> = _homeReady.asStateFlow()
+
+    /**
+     * Covers already asked of Coil for Home. The first page is published in
+     * pieces as its requests land, and each piece used to re-ask for the covers
+     * of every shelf before it.
+     */
+    private val prefetchedHomeArt: MutableSet<String> = java.util.concurrent.ConcurrentHashMap.newKeySet()
 
     private val _explore = MutableStateFlow<UiState<List<MoodGenreSection>>>(UiState.Loading)
     val explore: StateFlow<UiState<List<MoodGenreSection>>> = _explore.asStateFlow()
@@ -2151,125 +2168,225 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val identity = listenerKey()
         val generation = homeLoadGeneration.incrementAndGet()
         homePagedThisGeneration = false
-        val cached = FeedCache.getHome(identity)
-        val hasCache = cached != null && cached.shelves.isNotEmpty()
+        viewModelScope.launch {
+            // What the first look is made of is read off disk in one go, off
+            // the main thread: the saved feed and the saved Top Picks row.
+            // Read apart, the feed was drawn first and the row landed a moment
+            // later above it, pushing the whole page down.
+            val look = withContext(Dispatchers.IO) {
+                HomeFirstLook(
+                    identity = identity,
+                    generation = generation,
+                    cached = FeedCache.getHome(identity)?.takeIf { it.shelves.isNotEmpty() },
+                    picks = StoredTopPicks(readStoredTopPicks(identity)),
+                ).also { pendingFirstLook.set(it) }
+            }
+            showFirstLook(look)
+        }
+    }
 
-        if (hasCache) {
-            _home.value = UiState.Success(cached.shelves)
-            prefetchHomeArtwork(cached.shelves)
-            homeContinuation = cached.continuation
+    /** What Home opens on, read and waiting to be put on screen. */
+    private class HomeFirstLook(
+        val identity: String?,
+        val generation: Long,
+        val cached: CachedHomeFeed?,
+        val picks: StoredTopPicks,
+    )
+
+    /**
+     * A first look read off disk and not yet shown. At launch the main thread
+     * is busy building the app for far longer than the read takes, so the
+     * coroutine that would show it only gets back after the first frame has
+     * gone out with the skeleton; [showPendingHomeNow] lets the activity put
+     * it on screen from inside that first frame instead.
+     */
+    private val pendingFirstLook = java.util.concurrent.atomic.AtomicReference<HomeFirstLook?>(null)
+
+    /** Main thread only. Shows [look] unless it has been shown already or a newer load took over. */
+    private fun showFirstLook(look: HomeFirstLook) {
+        if (!pendingFirstLook.compareAndSet(look, null)) return
+        if (!isCurrentHomeLoad(look.identity, look.generation)) return
+        // Both are published here, without a suspension between them, so
+        // they reach the screen in the same frame.
+        if (look.cached != null) {
+            showCachedHome(look.cached, look.identity, look.generation, look.picks)
+        } else {
+            loadFreshHome(look.identity, look.generation, look.picks)
+        }
+        _homeReady.value = true
+    }
+
+    /**
+     * Shows Home's first look now if it has been read and is only waiting on
+     * the main thread; whether Home is ready. For the activity's first frame.
+     */
+    @androidx.annotation.MainThread
+    fun showPendingHomeNow(): Boolean {
+        pendingFirstLook.get()?.let(::showFirstLook)
+        return _homeReady.value
+    }
+
+    /** The saved feed on screen at once, then revalidated without moving what is on screen. */
+    private fun showCachedHome(
+        cached: CachedHomeFeed,
+        identity: String?,
+        generation: Long,
+        storedPicks: StoredTopPicks,
+    ) {
+        _home.value = UiState.Success(cached.shelves)
+        homeContinuation = cached.continuation
+        homeSeenTitles.clear()
+        homeSeenTitles.addAll(cached.shelves.map { it.title.lowercase(Locale.ROOT) })
+        _homeLoadingMore.value = false
+        _homeRecentlyPlayedLoading.value = false
+        _homePendingShelves.value = 0
+        loadTopPicks(identity, rebuild = false, preread = storedPicks)
+        if (AppSettings.effectiveOffline.value) return
+
+        viewModelScope.launch {
+            val fetched = fetchHome()
+            if (!isCurrentHomeLoad(identity, generation)) return@launch
+
+            fetched.core.onSuccess { feed ->
+                val currentShelves = (_home.value as? UiState.Success)?.data.orEmpty()
+                val previousRecent = previousRecent(currentShelves)
+                val freshRecent = fetched.recentShelf(previous = previousRecent)
+                // A part of the feed that could not be fetched leaves the
+                // screen with fewer shelves than the saved feed has. The
+                // screen can show what arrived; what is saved must not be
+                // replaced by less than it held.
+                val partial = fetched.partial
+
+                if (feed.shelves.isEmpty()) {
+                    FeedCache.touchHome(identity)
+                    return@onSuccess
+                }
+
+                val assembled = assembleHomeShelves(freshRecent, feed.shelves, fetched.supplementShelves)
+
+                if (homePagedThisGeneration) {
+                    FeedCache.touchHome(identity)
+                    return@onSuccess
+                }
+
+                // The fresh feed in its own order is what the next open shows;
+                // this one keeps the order it was opened with.
+                val shown = stableHomeMerge(currentShelves, assembled, previousRecent, freshRecent)
+                if (!FeedCache.areShelvesEqual(currentShelves, shown)) {
+                    homeContinuation = feed.continuation
+                    homeSeenTitles.clear()
+                    homeSeenTitles.addAll(shown.map { it.title.lowercase(Locale.ROOT) })
+                    _home.value = UiState.Success(shown)
+                    prefetchHomeArtwork(shown)
+                } else if (homeContinuation == null) {
+                    homeContinuation = feed.continuation
+                }
+                when {
+                    FeedCache.areShelvesEqual(cached.shelves, assembled) -> FeedCache.touchHome(identity)
+                    !partial -> FeedCache.saveHome(identity, assembled, feed.continuation)
+                }
+            }.onFailure {
+                // Cached shelves remain visible; no error screen replacing cached content.
+            }
+        }
+        // After the request above is on its way, so the covers don't queue ahead of the feed.
+        prefetchHomeArtwork(cached.shelves)
+    }
+
+    /** Nothing saved: the skeleton, filled in as each part of the first page lands. */
+    private fun loadFreshHome(identity: String?, generation: Long, storedPicks: StoredTopPicks) {
+        if (AppSettings.effectiveOffline.value) {
+            _home.value = UiState.Error(text(R.string.listen_together_server_offline_dash))
+            homeContinuation = null
             homeSeenTitles.clear()
-            homeSeenTitles.addAll(cached.shelves.map { it.title.lowercase(Locale.ROOT) })
             _homeLoadingMore.value = false
             _homeRecentlyPlayedLoading.value = false
             _homePendingShelves.value = 0
-            loadTopPicks(identity, rebuild = false)
-
-            if (!AppSettings.effectiveOffline.value) {
-                viewModelScope.launch {
-                    val fetched = fetchHome()
-                    if (!isCurrentHomeLoad(identity, generation)) return@launch
-
-                    fetched.core.onSuccess { feed ->
-                        val currentShelves = (_home.value as? UiState.Success)?.data.orEmpty()
-                        val freshRecent = fetched.recentShelf(previous = previousRecent(currentShelves))
-                        // A part of the feed that could not be fetched leaves the
-                        // screen with fewer shelves than the saved feed has. The
-                        // screen can show what arrived; what is saved must not be
-                        // replaced by less than it held.
-                        val partial = fetched.partial
-
-                        if (feed.shelves.isEmpty()) {
-                            FeedCache.touchHome(identity)
-                            return@onSuccess
-                        }
-
-                        val assembled = assembleHomeShelves(freshRecent, feed.shelves, fetched.supplementShelves)
-
-                        if (homePagedThisGeneration) {
-                            FeedCache.touchHome(identity)
-                            return@onSuccess
-                        }
-
-                        if (!FeedCache.areShelvesEqual(currentShelves, assembled)) {
+            _topPicksLoading.value = false
+            return
+        }
+        _home.value = UiState.Loading
+        homeContinuation = null
+        homeSeenTitles.clear()
+        _homeLoadingMore.value = false
+        _homeRecentlyPlayedLoading.value = _signedIn.value
+        _homePendingShelves.value = 1 + YtMusicRepository.HOME_SUPPLEMENT_BROWSE_IDS.size
+        loadTopPicks(identity, rebuild = false, preread = storedPicks)
+        viewModelScope.launch {
+            launch {
+                try {
+                    YtMusicRepository.home()
+                        .onSuccess { feed ->
+                            if (!isCurrentHomeLoad(identity, generation)) return@onSuccess
                             homeContinuation = feed.continuation
-                            homeSeenTitles.clear()
-                            homeSeenTitles.addAll(assembled.map { it.title.lowercase(Locale.ROOT) })
-                            _home.value = UiState.Success(assembled)
-                            if (!partial) FeedCache.saveHome(identity, assembled, feed.continuation)
-                            prefetchHomeArtwork(assembled)
-                        } else {
-                            FeedCache.touchHome(identity)
-                            if (homeContinuation == null) homeContinuation = feed.continuation
+                            publishHomeShelves(feed.shelves)
                         }
-                    }.onFailure {
-                        // Cached shelves remain visible; no error screen replacing cached content.
-                    }
-                }
-            }
-        } else {
-            if (AppSettings.effectiveOffline.value) {
-                _home.value = UiState.Error(text(R.string.listen_together_server_offline_dash))
-                homeContinuation = null
-                homeSeenTitles.clear()
-                _homeLoadingMore.value = false
-                _homeRecentlyPlayedLoading.value = false
-                _homePendingShelves.value = 0
-                _topPicksLoading.value = false
-            } else {
-                _home.value = UiState.Loading
-                homeContinuation = null
-                homeSeenTitles.clear()
-                _homeLoadingMore.value = false
-                _homeRecentlyPlayedLoading.value = _signedIn.value
-                _homePendingShelves.value = 1 + YtMusicRepository.HOME_SUPPLEMENT_BROWSE_IDS.size
-                loadTopPicks(identity, rebuild = false)
-                viewModelScope.launch {
-                    launch {
-                        try {
-                            YtMusicRepository.home()
-                                .onSuccess { feed ->
-                                    if (!isCurrentHomeLoad(identity, generation)) return@onSuccess
-                                    homeContinuation = feed.continuation
-                                    publishHomeShelves(feed.shelves)
-                                }
-                                .onFailure { failure ->
-                                    if (isCurrentHomeLoad(identity, generation) && _home.value !is UiState.Success) {
-                                        _home.value = UiState.Error(failure.friendly())
-                                    }
-                                }
-                        } finally {
-                            homeShelfRequestSettled(identity, generation)
-                        }
-                    }
-                    if (_signedIn.value) {
-                        launch {
-                            YtMusicRepository.homeRecentlyPlayed()
-                                .onSuccess { shelf ->
-                                    if (isCurrentHomeLoad(identity, generation)) {
-                                        _homeRecentlyPlayedLoading.value = false
-                                        shelf?.let { publishHomeShelves(listOf(it), prepend = true) }
-                                    }
-                                }
-                                .onFailure {
-                                    if (isCurrentHomeLoad(identity, generation)) _homeRecentlyPlayedLoading.value = false
-                                }
-                        }
-                    }
-                    YtMusicRepository.HOME_SUPPLEMENT_BROWSE_IDS.forEach { browseId ->
-                        launch {
-                            try {
-                                YtMusicRepository.homeSupplement(browseId).onSuccess { shelves ->
-                                    if (isCurrentHomeLoad(identity, generation)) publishHomeShelves(shelves)
-                                }
-                            } finally {
-                                homeShelfRequestSettled(identity, generation)
+                        .onFailure { failure ->
+                            if (isCurrentHomeLoad(identity, generation) && _home.value !is UiState.Success) {
+                                _home.value = UiState.Error(failure.friendly())
                             }
                         }
+                } finally {
+                    homeShelfRequestSettled(identity, generation)
+                }
+            }
+            if (_signedIn.value) {
+                launch {
+                    YtMusicRepository.homeRecentlyPlayed()
+                        .onSuccess { shelf ->
+                            if (isCurrentHomeLoad(identity, generation)) {
+                                _homeRecentlyPlayedLoading.value = false
+                                shelf?.let { publishHomeShelves(listOf(it), prepend = true) }
+                            }
+                        }
+                        .onFailure {
+                            if (isCurrentHomeLoad(identity, generation)) _homeRecentlyPlayedLoading.value = false
+                        }
+                }
+            }
+            YtMusicRepository.HOME_SUPPLEMENT_BROWSE_IDS.forEach { browseId ->
+                launch {
+                    try {
+                        YtMusicRepository.homeSupplement(browseId).onSuccess { shelves ->
+                            if (isCurrentHomeLoad(identity, generation)) publishHomeShelves(shelves)
+                        }
+                    } finally {
+                        homeShelfRequestSettled(identity, generation)
                     }
                 }
             }
         }
+    }
+
+    /** The Top Picks row read off disk, or null when none was saved — read, either way. */
+    private class StoredTopPicks(val value: TopPicks.Stored?)
+
+    /** The saved Top Picks row when it is this listener's. Blocking: call off the main thread. */
+    private fun readStoredTopPicks(identity: String?): TopPicks.Stored? {
+        val file = File(getApplication<Application>().filesDir, TOP_PICKS_FILE)
+        return runCatching { file.takeIf { it.exists() }?.readText() }.getOrNull()
+            ?.let(TopPicks::decode)
+            ?.takeIf { it.listener == identity && it.picks.isNotEmpty() }
+    }
+
+    /**
+     * Puts the saved row on screen. True when it is this hour's and nothing
+     * more is to be built; otherwise the loading flag is set for the build.
+     */
+    private fun showStoredTopPicks(stored: TopPicks.Stored?, rebuild: Boolean, slot: String): Boolean {
+        stored?.let { AppleArtistPhotos.seed(it.photos) }
+        if (stored != null) {
+            _topPicks.value = stored.picks
+            topPicksSlotShown = stored.day
+        } else if (!rebuild) {
+            _topPicks.value = null
+        }
+        if (!rebuild && stored?.day == slot) {
+            _topPicksLoading.value = false
+            return true
+        }
+        _topPicksLoading.value = _topPicks.value == null
+        return false
     }
 
     /**
@@ -2278,31 +2395,22 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * the first open in a new hour builds the next one. Until that's ready the
      * last row stays up, so Home never waits on it; within the hour an open
      * makes no requests for it at all. [rebuild] builds one regardless.
+     * [preread] is the saved row when the caller has already read it, which
+     * is then shown at once rather than after a read of its own.
      */
-    private fun loadTopPicks(identity: String?, rebuild: Boolean) {
+    private fun loadTopPicks(identity: String?, rebuild: Boolean, preread: StoredTopPicks? = null) {
         topPicksJob?.cancel()
-        val file = File(getApplication<Application>().filesDir, TOP_PICKS_FILE)
         val slot = topPicksSlot()
+        if (preread != null && showStoredTopPicks(preread.value, rebuild, slot)) return
         topPicksJob = viewModelScope.launch {
-            val stored = withContext(Dispatchers.IO) {
-                runCatching { file.takeIf { it.exists() }?.readText() }.getOrNull()?.let(TopPicks::decode)
-            }?.takeIf { it.listener == identity && it.picks.isNotEmpty() }
-            stored?.let { AppleArtistPhotos.seed(it.photos) }
-            if (stored != null) {
-                _topPicks.value = stored.picks
-                topPicksSlotShown = stored.day
-            } else if (!rebuild) {
-                _topPicks.value = null
-            }
-            if (!rebuild && stored?.day == slot) {
-                _topPicksLoading.value = false
-                return@launch
+            if (preread == null) {
+                val stored = withContext(Dispatchers.IO) { readStoredTopPicks(identity) }
+                if (showStoredTopPicks(stored, rebuild, slot)) return@launch
             }
             if (AppSettings.effectiveOffline.value) {
                 _topPicksLoading.value = false
                 return@launch
             }
-            _topPicksLoading.value = _topPicks.value == null
             val picks = buildTopPicks()?.takeIf { it.isNotEmpty() }
             if (identity != listenerKey()) return@launch
             _topPicksLoading.value = false
@@ -2314,7 +2422,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             topPicksSlotShown = slot
             withContext(Dispatchers.IO) {
                 runCatching {
-                    file.writeText(TopPicks.encode(TopPicks.Stored(identity, slot, picks, AppleArtistPhotos.snapshot())))
+                    File(getApplication<Application>().filesDir, TOP_PICKS_FILE).writeText(
+                        TopPicks.encode(TopPicks.Stored(identity, slot, picks, AppleArtistPhotos.snapshot())),
+                    )
                 }
             }
         }
@@ -2434,6 +2544,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private fun prefetchHomeArtwork(shelves: List<HomeShelf>) {
         viewModelScope.launch(Dispatchers.IO) {
             val urls = buildList {
+                // The spotlight billboard at the top: the first card shelf's lead, at header size.
+                shelves.firstOrNull { it.layout == ShelfLayout.CARDS && it.items.isNotEmpty() }
+                    ?.items?.first()?.thumbnailUrl?.artworkAt(HEADER_ART_PX)
+                    ?.takeIf { prefetchedHomeArt.add(it) }
+                    ?.let(::add)
                 shelves.take(5).forEachIndexed { index, shelf ->
                     val count = minOf(shelf.items.size, 6)
                     shelf.items.take(count).forEach { item ->
@@ -2446,7 +2561,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                         } else {
                             item.thumbnailUrl.artworkAt(CARD_ART_PX)
                         }
-                        if (!url.isNullOrBlank()) add(url)
+                        if (!url.isNullOrBlank() && prefetchedHomeArt.add(url)) add(url)
                     }
                 }
             }
