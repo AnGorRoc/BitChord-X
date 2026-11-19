@@ -37,6 +37,7 @@ func NewAdminHandler(store *Store, liveHub *LiveHub, adminSecret string) http.Ha
 	mux.HandleFunc("GET /admin/installs", serveDashboard)
 	mux.HandleFunc("GET /admin/parties", serveDashboard)
 	mux.HandleFunc("GET /admin/ai", serveDashboard)
+	mux.HandleFunc("GET /admin/system", serveDashboard)
 	mux.HandleFunc("GET /logo.png", serveLogo)
 	mux.HandleFunc("GET /favicon.ico", serveLogo)
 
@@ -244,6 +245,58 @@ func NewAdminHandler(store *Store, liveHub *LiveHub, adminSecret string) http.Ha
 		w.Header().Set("Content-Disposition", `attachment; filename="bitchord-errors.csv"`)
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write(data)
+	})
+
+	// Database storage & maintenance
+	mux.HandleFunc("GET /api/admin/database", func(w http.ResponseWriter, r *http.Request) {
+		stats, err := store.GetDatabaseStats(r.Context())
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		writeJSON(w, http.StatusOK, stats)
+	})
+
+	mux.HandleFunc("POST /api/admin/database/prune-errors", func(w http.ResponseWriter, r *http.Request) {
+		deleted, err := store.PruneResolvedErrors(r.Context())
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		if liveHub != nil {
+			liveHub.Notify("error_deleted", map[string]interface{}{"deleted": deleted})
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{"ok": true, "deleted": deleted})
+	})
+
+	mux.HandleFunc("POST /api/admin/database/prune-history", func(w http.ResponseWriter, r *http.Request) {
+		deleted, err := store.PruneOldHistory(r.Context(), 30)
+		if err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		if liveHub != nil {
+			liveHub.Notify("snapshot", store.Live())
+		}
+		writeJSON(w, http.StatusOK, map[string]interface{}{"ok": true, "deleted": deleted})
+	})
+
+	mux.HandleFunc("POST /api/admin/database/reset", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Confirm string `json:"confirm"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil || body.Confirm != "RESET" {
+			writeJSON(w, http.StatusBadRequest, map[string]string{"error": "confirmation 'RESET' required"})
+			return
+		}
+		if err := store.ResetDatabase(r.Context()); err != nil {
+			writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+			return
+		}
+		if liveHub != nil {
+			liveHub.Notify("snapshot", store.Live())
+		}
+		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 	})
 
 	return authMiddleware(adminSecret, mux)

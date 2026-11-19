@@ -135,6 +135,12 @@ type DeviceStat struct {
 	Count       int    `json:"count"`
 }
 
+type UpgradeStat struct {
+	FromVersion string `json:"fromVersion"`
+	ToVersion   string `json:"toVersion"`
+	Count       int    `json:"count"`
+}
+
 type OverviewData struct {
 	Range             string           `json:"range"`
 	GeneratedAt       time.Time        `json:"generatedAt"`
@@ -146,6 +152,10 @@ type OverviewData struct {
 	ConcurrencySeries []SnapshotPoint  `json:"concurrencySeries"`
 	HourlyConnections []HourlyBucket   `json:"hourlyConnections"`
 	Versions          []VersionStat    `json:"versions"`
+	Upgrades          []UpgradeStat    `json:"upgrades"`
+	UpgradedInPeriod  int              `json:"upgradedInPeriod"`
+	OutdatedActive7d  int              `json:"outdatedActive7d"`
+	LatestVersion     string           `json:"latestVersion"`
 	Platforms         []PlatformStat   `json:"platforms"`
 	TopErrors         []ErrorGroupStat `json:"topErrors"`
 	ErrorDevices      []DeviceStat     `json:"errorDevices"`
@@ -226,11 +236,18 @@ CREATE TABLE IF NOT EXISTS installs (
 	install_id       TEXT PRIMARY KEY,
 	platform         TEXT NOT NULL,
 	app_version      TEXT NOT NULL DEFAULT '',
+	first_version    TEXT NOT NULL DEFAULT '',
+	previous_version TEXT NOT NULL DEFAULT '',
+	upgraded_at      TIMESTAMPTZ,
 	first_seen_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 	last_seen_at     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
 	session_count    BIGINT NOT NULL DEFAULT 1,
 	last_open_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+ALTER TABLE installs ADD COLUMN IF NOT EXISTS first_version TEXT NOT NULL DEFAULT '';
+ALTER TABLE installs ADD COLUMN IF NOT EXISTS previous_version TEXT NOT NULL DEFAULT '';
+ALTER TABLE installs ADD COLUMN IF NOT EXISTS upgraded_at TIMESTAMPTZ;
 
 CREATE INDEX IF NOT EXISTS idx_installs_last_seen ON installs (last_seen_at DESC);
 CREATE INDEX IF NOT EXISTS idx_installs_version ON installs (app_version);
@@ -358,10 +375,21 @@ func (s *Store) RecordPresence(installID, platform, appVersion string, open bool
 			// A new session is counted when the previous open was more than 10 minutes ago
 			// (a heartbeat is every ~5 minutes).
 			const upsertOpen = `
-INSERT INTO installs (install_id, platform, app_version, first_seen_at, last_seen_at, session_count, last_open_at)
-VALUES ($1, $2, $3, NOW(), NOW(), 1, NOW())
+INSERT INTO installs (install_id, platform, app_version, first_version, first_seen_at, last_seen_at, session_count, last_open_at)
+VALUES ($1, $2, $3, $3, NOW(), NOW(), 1, NOW())
 ON CONFLICT (install_id) DO UPDATE SET
 	platform = EXCLUDED.platform,
+	first_version = CASE WHEN installs.first_version = '' THEN EXCLUDED.app_version ELSE installs.first_version END,
+	previous_version = CASE
+		WHEN EXCLUDED.app_version <> '' AND installs.app_version <> '' AND EXCLUDED.app_version <> installs.app_version
+		THEN installs.app_version
+		ELSE installs.previous_version
+	END,
+	upgraded_at = CASE
+		WHEN EXCLUDED.app_version <> '' AND installs.app_version <> '' AND EXCLUDED.app_version <> installs.app_version
+		THEN NOW()
+		ELSE installs.upgraded_at
+	END,
 	app_version = CASE WHEN EXCLUDED.app_version <> '' THEN EXCLUDED.app_version ELSE installs.app_version END,
 	last_seen_at = NOW(),
 	session_count = CASE
@@ -471,6 +499,7 @@ func (s *Store) Overview(ctx context.Context, rangeStr string) (OverviewData, er
 		ConcurrencySeries: []SnapshotPoint{},
 		HourlyConnections: make([]HourlyBucket, 24),
 		Versions:          []VersionStat{},
+		Upgrades:          []UpgradeStat{},
 		Platforms:         []PlatformStat{},
 		TopErrors:         []ErrorGroupStat{},
 		ErrorDevices:      []DeviceStat{},
@@ -608,6 +637,35 @@ LIMIT 15;`
 				out.Versions = append(out.Versions, v)
 			}
 		}
+	}
+
+	// 4b. Version upgrades & outdated active installs
+	const upgradesQ = `
+SELECT previous_version, app_version, COUNT(*)::INT AS cnt
+FROM installs
+WHERE previous_version <> '' AND upgraded_at >= $1
+GROUP BY previous_version, app_version
+ORDER BY cnt DESC
+LIMIT 10;`
+	if rows, err := s.pool.Query(ctx, upgradesQ, since); err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var u UpgradeStat
+			if rows.Scan(&u.FromVersion, &u.ToVersion, &u.Count) == nil {
+				out.UpgradedInPeriod += u.Count
+				out.Upgrades = append(out.Upgrades, u)
+			}
+		}
+	}
+	latestVer := s.version
+	if latestVer == "" || latestVer == "dev" {
+		_ = s.pool.QueryRow(ctx, `SELECT app_version FROM installs WHERE app_version <> '' ORDER BY app_version DESC LIMIT 1`).Scan(&latestVer)
+	}
+	out.LatestVersion = latestVer
+	if latestVer != "" {
+		_ = s.pool.QueryRow(ctx, `
+SELECT COUNT(*)::INT FROM installs
+WHERE last_seen_at >= NOW() - INTERVAL '7 days' AND app_version <> '' AND app_version <> $1;`, latestVer).Scan(&out.OutdatedActive7d)
 	}
 
 	// 5. Platform split
@@ -757,6 +815,35 @@ LIMIT %s OFFSET %s;`, where, limitArg, offsetArg)
 			}
 		}
 	}
+
+	// 4b. Version upgrades & outdated active installs
+	const upgradesQ = `
+SELECT previous_version, app_version, COUNT(*)::INT AS cnt
+FROM installs
+WHERE previous_version <> '' AND upgraded_at >= $1
+GROUP BY previous_version, app_version
+ORDER BY cnt DESC
+LIMIT 10;`
+	if rows, err := s.pool.Query(ctx, upgradesQ, since); err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var u UpgradeStat
+			if rows.Scan(&u.FromVersion, &u.ToVersion, &u.Count) == nil {
+				out.UpgradedInPeriod += u.Count
+				out.Upgrades = append(out.Upgrades, u)
+			}
+		}
+	}
+	latestVer := s.version
+	if latestVer == "" || latestVer == "dev" {
+		_ = s.pool.QueryRow(ctx, `SELECT app_version FROM installs WHERE app_version <> '' ORDER BY app_version DESC LIMIT 1`).Scan(&latestVer)
+	}
+	out.LatestVersion = latestVer
+	if latestVer != "" {
+		_ = s.pool.QueryRow(ctx, `
+SELECT COUNT(*)::INT FROM installs
+WHERE last_seen_at >= NOW() - INTERVAL '7 days' AND app_version <> '' AND app_version <> $1;`, latestVer).Scan(&out.OutdatedActive7d)
+	}
 	if tRows, err := s.pool.Query(ctx, `SELECT DISTINCT error_type FROM error_reports ORDER BY error_type ASC LIMIT 50`); err == nil {
 		defer tRows.Close()
 		for tRows.Next() {
@@ -852,13 +939,15 @@ func (s *Store) BulkResolveByType(ctx context.Context, errorType string, resolve
 }
 
 type InstallRecord struct {
-	InstallID    string    `json:"installId"`
-	Platform     string    `json:"platform"`
-	AppVersion   string    `json:"appVersion"`
-	FirstSeenAt  time.Time `json:"firstSeenAt"`
-	LastSeenAt   time.Time `json:"lastSeenAt"`
-	SessionCount int64     `json:"sessionCount"`
-	Status       string    `json:"status"`
+	InstallID       string    `json:"installId"`
+	Platform        string    `json:"platform"`
+	AppVersion      string    `json:"appVersion"`
+	FirstVersion    string    `json:"firstVersion"`
+	PreviousVersion string    `json:"previousVersion"`
+	FirstSeenAt     time.Time `json:"firstSeenAt"`
+	LastSeenAt      time.Time `json:"lastSeenAt"`
+	SessionCount    int64     `json:"sessionCount"`
+	Status          string    `json:"status"`
 }
 
 type InstallFilter struct {
@@ -924,7 +1013,7 @@ func (s *Store) ListInstalls(ctx context.Context, f InstallFilter) (InstallListR
 	limitArg := addArg(f.Limit)
 	offsetArg := addArg(f.Offset)
 	listQ := fmt.Sprintf(`
-SELECT install_id, platform, app_version, first_seen_at, last_seen_at, session_count,
+SELECT install_id, platform, app_version, first_version, previous_version, first_seen_at, last_seen_at, session_count,
 	CASE
 		WHEN last_seen_at >= NOW() - INTERVAL '24 hours' THEN 'active24h'
 		WHEN last_seen_at < NOW() - INTERVAL '14 days' THEN 'lost'
@@ -941,7 +1030,7 @@ LIMIT %s OFFSET %s;`, where, limitArg, offsetArg)
 	defer rows.Close()
 	for rows.Next() {
 		var rec InstallRecord
-		if rows.Scan(&rec.InstallID, &rec.Platform, &rec.AppVersion, &rec.FirstSeenAt, &rec.LastSeenAt, &rec.SessionCount, &rec.Status) == nil {
+		if rows.Scan(&rec.InstallID, &rec.Platform, &rec.AppVersion, &rec.FirstVersion, &rec.PreviousVersion, &rec.FirstSeenAt, &rec.LastSeenAt, &rec.SessionCount, &rec.Status) == nil {
 			out.Items = append(out.Items, rec)
 		}
 	}
@@ -954,6 +1043,35 @@ LIMIT %s OFFSET %s;`, where, limitArg, offsetArg)
 				out.Versions = append(out.Versions, v)
 			}
 		}
+	}
+
+	// 4b. Version upgrades & outdated active installs
+	const upgradesQ = `
+SELECT previous_version, app_version, COUNT(*)::INT AS cnt
+FROM installs
+WHERE previous_version <> '' AND upgraded_at >= $1
+GROUP BY previous_version, app_version
+ORDER BY cnt DESC
+LIMIT 10;`
+	if rows, err := s.pool.Query(ctx, upgradesQ, since); err == nil {
+		defer rows.Close()
+		for rows.Next() {
+			var u UpgradeStat
+			if rows.Scan(&u.FromVersion, &u.ToVersion, &u.Count) == nil {
+				out.UpgradedInPeriod += u.Count
+				out.Upgrades = append(out.Upgrades, u)
+			}
+		}
+	}
+	latestVer := s.version
+	if latestVer == "" || latestVer == "dev" {
+		_ = s.pool.QueryRow(ctx, `SELECT app_version FROM installs WHERE app_version <> '' ORDER BY app_version DESC LIMIT 1`).Scan(&latestVer)
+	}
+	out.LatestVersion = latestVer
+	if latestVer != "" {
+		_ = s.pool.QueryRow(ctx, `
+SELECT COUNT(*)::INT FROM installs
+WHERE last_seen_at >= NOW() - INTERVAL '7 days' AND app_version <> '' AND app_version <> $1;`, latestVer).Scan(&out.OutdatedActive7d)
 	}
 	return out, nil
 }
@@ -977,7 +1095,13 @@ func (s *Store) FormatOverviewMarkdown(ctx context.Context, rangeStr string) (st
 	fmt.Fprintf(&b, "- New (%s): %d | Returning (%s): %d | Lost (>14d): %d | Retention: %.1f%%\n", d.Range, d.Summary.NewInPeriod, d.Range, d.Summary.ReturningInPeriod, d.Summary.LostInstalls, d.Summary.RetentionRatePct)
 	fmt.Fprintf(&b, "- Peak Online (%s): %d | Total Sessions: %d\n\n", d.Range, d.Summary.PeakOnline, d.Summary.TotalSessions)
 
-	b.WriteString("## Version Adoption\n")
+	b.WriteString("## Version Adoption & Upgrades\n")
+	if d.LatestVersion != "" {
+		fmt.Fprintf(&b, "- Latest Version: %s | Upgraded (%s): %d | Outdated active (7d): %d\n", d.LatestVersion, d.Range, d.UpgradedInPeriod, d.OutdatedActive7d)
+	}
+	for _, u := range d.Upgrades {
+		fmt.Fprintf(&b, "- Upgrade %s -> %s: %d installs\n", u.FromVersion, u.ToVersion, u.Count)
+	}
 	if len(d.Versions) == 0 {
 		b.WriteString("- (none)\n")
 	} else {
@@ -1041,6 +1165,78 @@ func FormatErrorDetailMarkdown(r ErrorReport) string {
 		fmt.Fprintf(&b, "\n## Stacktrace\n```\n%s\n```\n", r.Stacktrace)
 	}
 	return b.String()
+}
+
+type DatabaseStats struct {
+	DatabaseEnabled       bool  `json:"databaseEnabled"`
+	DatabaseSizeBytes     int64 `json:"databaseSizeBytes"`
+	InstallsCount         int64 `json:"installsCount"`
+	ConnectionEventsCount int64 `json:"connectionEventsCount"`
+	SnapshotsCount        int64 `json:"snapshotsCount"`
+	ErrorsCount           int64 `json:"errorsCount"`
+	ResolvedErrorsCount   int64 `json:"resolvedErrorsCount"`
+}
+
+func (s *Store) GetDatabaseStats(ctx context.Context) (DatabaseStats, error) {
+	out := DatabaseStats{DatabaseEnabled: s.pool != nil}
+	if s.pool == nil {
+		return out, nil
+	}
+	const q = `
+SELECT
+	pg_database_size(current_database())::BIGINT,
+	(SELECT COUNT(*)::BIGINT FROM installs),
+	(SELECT COUNT(*)::BIGINT FROM connection_events),
+	(SELECT COUNT(*)::BIGINT FROM concurrency_snapshots),
+	(SELECT COUNT(*)::BIGINT FROM error_reports),
+	(SELECT COUNT(*)::BIGINT FROM error_reports WHERE resolved);`
+	err := s.pool.QueryRow(ctx, q).Scan(
+		&out.DatabaseSizeBytes,
+		&out.InstallsCount,
+		&out.ConnectionEventsCount,
+		&out.SnapshotsCount,
+		&out.ErrorsCount,
+		&out.ResolvedErrorsCount,
+	)
+	return out, err
+}
+
+func (s *Store) PruneResolvedErrors(ctx context.Context) (int64, error) {
+	if s.pool == nil {
+		return 0, nil
+	}
+	tag, err := s.pool.Exec(ctx, `DELETE FROM error_reports WHERE resolved`)
+	if err != nil {
+		return 0, err
+	}
+	return tag.RowsAffected(), nil
+}
+
+func (s *Store) PruneOldHistory(ctx context.Context, days int) (int64, error) {
+	if s.pool == nil {
+		return 0, nil
+	}
+	if days <= 0 {
+		days = 30
+	}
+	cutoff := time.Now().UTC().Add(-time.Duration(days) * 24 * time.Hour)
+	t1, err := s.pool.Exec(ctx, `DELETE FROM concurrency_snapshots WHERE recorded_at < $1`, cutoff)
+	if err != nil {
+		return 0, err
+	}
+	t2, err := s.pool.Exec(ctx, `DELETE FROM connection_events WHERE created_at < $1`, cutoff)
+	if err != nil {
+		return t1.RowsAffected(), err
+	}
+	return t1.RowsAffected() + t2.RowsAffected(), nil
+}
+
+func (s *Store) ResetDatabase(ctx context.Context) error {
+	if s.pool == nil {
+		return nil
+	}
+	_, err := s.pool.Exec(ctx, `TRUNCATE TABLE installs, connection_events, concurrency_snapshots, error_reports RESTART IDENTITY;`)
+	return err
 }
 
 func truncate(s string, maxLen int) string {

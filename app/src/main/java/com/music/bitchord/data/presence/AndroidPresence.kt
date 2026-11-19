@@ -3,6 +3,7 @@ package com.music.bitchord.data.presence
 import android.app.Application
 import android.content.Context
 import android.os.Build
+import android.provider.Settings
 import androidx.lifecycle.DefaultLifecycleObserver
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.ProcessLifecycleOwner
@@ -77,9 +78,24 @@ object AndroidPresence {
         }
     }
 
-    /** Random and local to this install: not the device, and not the account. */
+    /**
+     * Stable app-scoped UUID derived from ANDROID_ID (hashed so the raw device
+     * ID never leaves the phone). On Android 8+, ANDROID_ID is scoped per
+     * app-signing-key + user, so it survives uninstall/reinstall and updates
+     * without requiring permissions or exposing cross-app tracking.
+     */
     private fun installId(context: Context): String {
         val prefs = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val androidId = runCatching {
+            Settings.Secure.getString(context.contentResolver, Settings.Secure.ANDROID_ID)
+        }.getOrNull()?.trim().orEmpty()
+        if (androidId.isNotEmpty() && androidId != "9774d56d682e549c") {
+            val derived = UUID.nameUUIDFromBytes("bitchord-x:$androidId".toByteArray(Charsets.UTF_8)).toString()
+            if (prefs.getString(KEY_INSTALL_ID, null) != derived) {
+                prefs.edit().putString(KEY_INSTALL_ID, derived).apply()
+            }
+            return derived
+        }
         prefs.getString(KEY_INSTALL_ID, null)?.let { return it }
         val id = UUID.randomUUID().toString()
         prefs.edit().putString(KEY_INSTALL_ID, id).apply()
