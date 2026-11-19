@@ -42,7 +42,7 @@ class TvActivity : ComponentActivity() {
                 // it (lyrics, mood sleeves) are set in SF Pro on its type scale.
                 BitChordTheme(darkTheme = true) {
                     val mediaController = rememberMediaController()
-                    val playerState = rememberPlayerState(mediaController)
+                    val playerState = rememberPlayerState(mediaController).value
 
                     TvApp(
                         viewModel = viewModel,

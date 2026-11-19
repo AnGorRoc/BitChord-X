@@ -1143,7 +1143,12 @@ private fun BitChordApp(
         }
     }
     val controller = rememberMediaController()
-    val player = rememberPlayerState(controller)
+    // Read through the delegate wherever `player.…` is used, never here: see
+    // [rememberPlayerState]. A read in this body is a read by the whole app.
+    val player by rememberPlayerState(controller)
+    // The one fact about the player this body does need, and it only flips
+    // when the queue empties or fills, not on every track.
+    val hasSong by remember { derivedStateOf { player.song != null } }
     // A music video's picture follows this controller's clock — see [MusicVideoEngine].
     DisposableEffect(controller) {
         MusicVideoEngine.attach(controller)
@@ -1154,8 +1159,9 @@ private fun BitChordApp(
     // the transport spends that round trip drawn as though the tap never landed.
     // Folded into the buffering flag every play button already answers to, since
     // to a listener the two are the same fact: it is coming, wait.
-    val awaitingPartyStart by ListenTogether.awaitingStart.collectAsStateWithLifecycle()
-    val playPauseBusy = player.isLoading || awaitingPartyStart
+    val awaitingPartyStart = ListenTogether.awaitingStart.collectAsStateWithLifecycle()
+    // Delegated, so it is read by the buttons that draw it, not by this body.
+    val playPauseBusy by remember { derivedStateOf { player.isLoading || awaitingPartyStart.value } }
     // Listening in a party whose host has taken the controls. Read once here
     // and handed to every surface, so the player, the mini player and the glass
     // bar can never disagree about whether this device may drive the music.
@@ -1288,11 +1294,13 @@ private fun BitChordApp(
     // Optimistically updated track for instant UI updates when switching versions
     var optimisticVersionSong by remember { mutableStateOf<Song?>(null) }
 
-    LyricsLoaderEffect(
-        viewModel = viewModel,
-        song = player.song,
-        durationMs = player.durationMs,
-    )
+    Isolated {
+        LyricsLoaderEffect(
+            viewModel = viewModel,
+            song = player.song,
+            durationMs = player.durationMs,
+        )
+    }
 
     val homeListState = rememberLazyListState()
     val exploreListState = rememberLazyListState()
@@ -1685,6 +1693,7 @@ private fun BitChordApp(
         )
         playFrom(songs, index, source)
     }
+    Isolated {
     LaunchedEffect(player.song?.videoId) {
         if (optimisticVersionSong?.videoId == player.song?.videoId ||
             (optimisticVersionSong != null && player.song?.videoId != convertedAudioId && player.song?.videoId != convertedVideoId && player.song?.videoId != keepVideoId)
@@ -1703,6 +1712,7 @@ private fun BitChordApp(
             convertedVideoId = null
             switchingAudioVersion = false
         }
+    }
     }
 
     /**
@@ -2614,9 +2624,9 @@ private fun BitChordApp(
             topBarContentPadding()
         },
         bottom = if (isLandscapeChrome) {
-            if (player.song != null) 110.dp else 36.dp
+            if (hasSong) 110.dp else 36.dp
         } else {
-            if (player.song != null) 210.dp else 140.dp
+            if (hasSong) 210.dp else 140.dp
         },
     )
     val floatingBarsHeight = remember { mutableIntStateOf(0) }
@@ -2635,7 +2645,7 @@ private fun BitChordApp(
     val searchListPadding = if (keyboardUp) {
         PaddingValues(
             top = listPadding.calculateTopPadding(),
-            bottom = if (isLandscapeChrome) 88.dp else if (player.song != null) 132.dp else 82.dp,
+            bottom = if (isLandscapeChrome) 88.dp else if (hasSong) 132.dp else 82.dp,
         )
     } else listPadding
 
@@ -2676,10 +2686,12 @@ private fun BitChordApp(
     // background drawn in its draw phase, a bar's container — so only those
     // follow the fade.
     val tintWithPlaying by AppSettings.tintWithNowPlaying.collectAsStateWithLifecycle()
+    // Asked for the artwork rather than handed it, so a new track's artwork —
+    // and the colours read off it a moment later — reach only what paints them.
     val playingPalette = com.music.bitchord.ui.theme.rememberArtworkPaletteState(
-        imageUrl = player.song?.thumbnailUrl?.takeIf { tintWithPlaying },
+        imageUrl = { player.song?.thumbnailUrl?.takeIf { tintWithPlaying } },
     )
-    val appTinted = tintWithPlaying && player.song != null
+    val appTinted = tintWithPlaying && hasSong
     val darkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
     // The page wash and the card shade one step off it. Provided around the
     // pages below, and again around the sheets and alerts this function opens
@@ -2713,6 +2725,7 @@ private fun BitChordApp(
     // mini player still costs nothing.
     val playerShowing = showNowPlaying
     var links by remember { mutableStateOf<Song?>(null) }
+    Isolated {
     LaunchedEffect(player.song?.videoId, playerShowing) {
         links = null
         linksLoading = false
@@ -2723,22 +2736,31 @@ private fun BitChordApp(
         links = YtMusicRepository.trackLinks(current.videoId).getOrNull()
         linksLoading = false
     }
-    val playerSong = player.song?.let { current ->
-        val extra = links?.takeIf { it.videoId == current.videoId } ?: return@let current
-        current.copy(
-            artistId = current.artistId ?: extra.artistId,
-            albumId = current.albumId ?: extra.albumId,
-            albumName = current.albumName ?: extra.albumName,
-        )
+    }
+    // Delegated like [player]: read by the sheet that shows it, not here.
+    val playerSong by remember {
+        derivedStateOf {
+            player.song?.let { current ->
+                val extra = links?.takeIf { it.videoId == current.videoId } ?: return@let current
+                current.copy(
+                    artistId = current.artistId ?: extra.artistId,
+                    albumId = current.albumId ?: extra.albumId,
+                    albumName = current.albumName ?: extra.albumName,
+                )
+            }
+        }
     }
     // The three-dot menu snapshots the track into songActions when it's opened,
     // so a menu opened before the lookup above resolves would otherwise be
     // stuck without album/artist rows even after the ids come in. Keep it in
     // sync while it's showing this track.
+    Isolated {
     LaunchedEffect(playerSong) {
-        if (playerSong != null && songActions?.videoId == playerSong.videoId) {
-            songActions = playerSong
+        val current = playerSong
+        if (current != null && songActions?.videoId == current.videoId) {
+            songActions = current
         }
+    }
     }
 
     // The player's whole parameter list, kept apart from the sheet that
@@ -4767,7 +4789,7 @@ private fun BitChordApp(
 
         }
 
-        val playerRaised = showNowPlaying && playerSong != null
+        val playerRaised = showNowPlaying && hasSong
 
         // ---- The page's still, for a menu hung over it ----
         // Taken as a ⋮ or ⋯ menu opens over a page, let go once it has played
@@ -5356,7 +5378,7 @@ private fun BitChordApp(
                         },
                     ) {
                         CompositionLocalProvider(LocalPlayerDock provides activeDock) {
-                            nowPlaying(playerSong)
+                            playerSong?.let { nowPlaying(it) }
                         }
                     }
                     IosMenuPopover(

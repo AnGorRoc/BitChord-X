@@ -8,6 +8,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
@@ -112,13 +114,13 @@ fun rememberArtworkPalette(
  */
 @Stable
 class ArtworkPaletteState internal constructor(
-    private val backgroundState: State<Color>,
-    private val washState: State<Color>,
-    private val elevatedState: State<Color>,
-    private val accentState: State<Color>,
-    private val onBackgroundState: State<Color>,
-    private val onBackgroundVariantState: State<Color>,
-    private val dividerState: State<Color>,
+    internal val backgroundState: State<Color>,
+    internal val washState: State<Color>,
+    internal val elevatedState: State<Color>,
+    internal val accentState: State<Color>,
+    internal val onBackgroundState: State<Color>,
+    internal val onBackgroundVariantState: State<Color>,
+    internal val dividerState: State<Color>,
 ) {
     val background: Color get() = backgroundState.value
     val elevated: Color get() = elevatedState.value
@@ -134,6 +136,51 @@ class ArtworkPaletteState internal constructor(
             onBackgroundVariant = onBackgroundVariantState.value,
             divider = dividerState.value,
         )
+}
+
+/**
+ * [rememberArtworkPaletteState] for an artwork the caller should not read
+ * itself: [imageUrl] is asked inside a scope of its own, so the caller — the
+ * app's root, following whatever is playing — is not recomposed each time the
+ * track changes, nor again when the new colours have been read. Only what
+ * reads the returned colours follows them.
+ */
+@Composable
+fun rememberArtworkPaletteState(
+    imageUrl: () -> String?,
+    dark: Boolean = MaterialTheme.colorScheme.background.luminance() < 0.5f,
+    artPx: Int = CARD_ART_PX,
+): ArtworkPaletteState {
+    val scheme = MaterialTheme.colorScheme
+    val slot = remember { mutableStateOf<ArtworkPaletteState?>(null) }
+    ArtworkPaletteDriver(slot, imageUrl, dark, artPx)
+    return remember(scheme) {
+        fun forward(fallback: Color, pick: (ArtworkPaletteState) -> State<Color>): State<Color> =
+            object : State<Color> {
+                override val value: Color get() = slot.value?.let { pick(it).value } ?: fallback
+            }
+        ArtworkPaletteState(
+            forward(scheme.background) { it.backgroundState },
+            forward(scheme.background) { it.washState },
+            forward(scheme.surfaceVariant) { it.elevatedState },
+            forward(scheme.primary) { it.accentState },
+            forward(scheme.onBackground) { it.onBackgroundState },
+            forward(scheme.onSurfaceVariant) { it.onBackgroundVariantState },
+            forward(scheme.outline) { it.dividerState },
+        )
+    }
+}
+
+/** Where [imageUrl] is read and the palette worked out — a restart scope of its own. */
+@Composable
+private fun ArtworkPaletteDriver(
+    slot: MutableState<ArtworkPaletteState?>,
+    imageUrl: () -> String?,
+    dark: Boolean,
+    artPx: Int,
+) {
+    val palette = rememberArtworkPaletteState(imageUrl(), dark, artPx)
+    SideEffect { if (slot.value !== palette) slot.value = palette }
 }
 
 @Composable

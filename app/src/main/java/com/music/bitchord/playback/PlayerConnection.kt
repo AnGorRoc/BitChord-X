@@ -12,6 +12,9 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.State
+import androidx.compose.runtime.snapshotFlow
+import kotlinx.coroutines.flow.collectLatest
 import androidx.compose.ui.platform.LocalContext
 import androidx.core.content.ContextCompat
 import androidx.core.net.toUri
@@ -316,11 +319,20 @@ fun MediaController.setQueueDragActive(active: Boolean) {
     )
 }
 
-/** Mirrors the controller into Compose state, polling position while playing. */
+/**
+ * Mirrors the controller into Compose state, polling position while playing.
+ *
+ * Handed back unread, as a [State]: the caller is the app's root, and reading
+ * the player there subscribed the whole app to it — every track change, every
+ * play and pause and every buffering flip re-ran the root and everything it
+ * passes the player to. Read through a delegate (`val player by …`), each
+ * `player.song` is read where it is used, and only that part follows it.
+ */
 @Composable
-fun rememberPlayerState(controller: MediaController?): PlayerState {
+fun rememberPlayerState(controller: MediaController?): State<PlayerState> {
     val position = remember { PlaybackPosition() }
-    var state by remember { mutableStateOf(PlayerState(position = position)) }
+    val stateHolder = remember { mutableStateOf(PlayerState(position = position)) }
+    var state by stateHolder
 
     DisposableEffect(controller) {
         val player = controller ?: return@DisposableEffect onDispose {}
@@ -441,16 +453,22 @@ fun rememberPlayerState(controller: MediaController?): PlayerState {
     val foreground = rememberIsForeground()
     // A length that is not known yet is read again until it is: a controller is only called back when
     // something it tracks changes, and the length of what another device plays arrives on its own.
-    val lengthUnknown = state.song != null && state.durationMs <= 0L
-    LaunchedEffect(controller, state.isPlaying, foreground, lengthUnknown) {
-        while (controller != null && (state.isPlaying || lengthUnknown) && foreground) {
-            position.report(controller.currentPosition.coerceAtLeast(0L))
-            val duration = controller.duration.coerceAtLeast(0L)
-            if (duration != state.durationMs) state = state.copy(durationMs = duration)
-            delay(500)
-        }
+    //
+    // Whether to poll is watched from inside the effect rather than keyed on
+    // in composition, so asking it does not read the player here.
+    LaunchedEffect(controller, foreground) {
+        if (controller == null || !foreground) return@LaunchedEffect
+        snapshotFlow { state.isPlaying || (state.song != null && state.durationMs <= 0L) }
+            .collectLatest { active ->
+                while (active) {
+                    position.report(controller.currentPosition.coerceAtLeast(0L))
+                    val duration = controller.duration.coerceAtLeast(0L)
+                    if (duration != state.durationMs) state = state.copy(durationMs = duration)
+                    delay(500)
+                }
+            }
     }
-    return state
+    return stateHolder
 }
 
 /**
