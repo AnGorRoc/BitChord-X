@@ -22,25 +22,30 @@ jobs:
       - run: go vet ./... && go test ./...
         working-directory: backend
 
+  # The server runs on Coolify (https://bitchord.pymp.net). Coolify can rebuild from the repository by
+  # itself; this step only asks it to do so after the tests pass, and is skipped until its two secrets exist:
+  #   COOLIFY_DEPLOY_WEBHOOK  the application's Webhooks > Deploy Webhook URL
+  #   COOLIFY_TOKEN           a token from Keys & Tokens > API tokens, with the deploy permission
   deploy:
     needs: test
     runs-on: ubuntu-latest
+    env:
+      WEBHOOK: ${{ secrets.COOLIFY_DEPLOY_WEBHOOK }}
+      TOKEN: ${{ secrets.COOLIFY_TOKEN }}
+      HEALTH_URL: ${{ vars.BACKEND_HEALTH_URL || 'https://bitchord.pymp.net/healthz' }}
     steps:
-      - name: Deploy to the Oracle VM
-        env:
-          KEY: ${{ secrets.ORACLE_DEPLOY_KEY }}
-          HOST: ${{ secrets.ORACLE_HOST }}
-          KNOWN_HOSTS: ${{ secrets.ORACLE_KNOWN_HOSTS }}
+      - name: Ask Coolify to deploy
         run: |
-          install -m 700 -d ~/.ssh
-          printf '%s\n' "$KEY" > ~/.ssh/deploy && chmod 600 ~/.ssh/deploy
-          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
-          # The key is pinned to /usr/local/sbin/bitchord-deploy on the VM.
-          ssh -i ~/.ssh/deploy deploy@"$HOST"
+          if [ -z "$WEBHOOK" ] || [ -z "$TOKEN" ]; then
+            echo "::notice::COOLIFY_DEPLOY_WEBHOOK or COOLIFY_TOKEN is not set; nothing deployed from here."
+            exit 0
+          fi
+          curl -fsS -H "Authorization: Bearer $TOKEN" "$WEBHOOK"
       - name: Health check
         run: |
-          for i in $(seq 1 12); do
-            curl -fsS https://api.bitchord.kushagrasingh.in/healthz && exit 0
-            sleep 5
+          if [ -z "$WEBHOOK" ] || [ -z "$TOKEN" ]; then exit 0; fi
+          for i in $(seq 1 24); do
+            curl -fsS "$HEALTH_URL" && exit 0
+            sleep 10
           done
           exit 1
