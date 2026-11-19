@@ -1,5 +1,6 @@
 package com.music.bitchord.ui.components
 
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -46,14 +47,20 @@ internal fun SongInfoDialog(song: Song, onDismiss: () -> Unit) {
         value = null
         value = SongInfoRepository.load(song)
     }
-    val onSurface = MaterialTheme.colorScheme.onSurface
+    val isDarkDialog = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val onSurface = dialogInk()
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Column(
             Modifier
                 .width(ALERT_WIDTH)
-                .clip(RoundedCornerShape(ALERT_CORNER))
-                .background(MaterialTheme.colorScheme.surface),
+                .dialogFrostBackground(
+                    hazeState = null,
+                    reduceDynamicBlur = true,
+                    shape = RoundedCornerShape(ALERT_CORNER),
+                    fill = if (isDarkDialog) DIALOG_DARK_GREY else DIALOG_LIGHT_GREY,
+                    borderColor = if (isDarkDialog) DIALOG_EDGE_COLOR else DIALOG_LIGHT_EDGE_COLOR,
+                ),
         ) {
             Column(
                 Modifier
@@ -63,7 +70,7 @@ internal fun SongInfoDialog(song: Song, onDismiss: () -> Unit) {
             ) {
                 Text(
                     text = stringResource(R.string.song_info),
-                    style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, fontWeight = FontWeight.W600),
+                    style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, fontSize = 20.sp),
                     color = onSurface,
                     textAlign = TextAlign.Center,
                 )
@@ -132,7 +139,8 @@ internal fun SongInfoDialog(song: Song, onDismiss: () -> Unit) {
 /** Label on the left, value on the right; a small spinner stands in for the value while it loads. */
 @Composable
 private fun SongInfoRow(label: String, value: String?) {
-    val onSurface = MaterialTheme.colorScheme.onSurface
+    val isDarkDialog = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val onSurface = dialogInk()
     Row(
         Modifier
             .fillMaxWidth()

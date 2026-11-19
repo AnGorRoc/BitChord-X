@@ -554,6 +554,7 @@ internal fun DestinationOptionCard(
     selected: Boolean,
     enabled: Boolean,
     onClick: () -> Unit,
+    subtitleMaxLines: Int = 1,
 ) {
     val cardShape = RoundedCornerShape(16.dp)
     val containerColor = if (selected) {
@@ -613,7 +614,7 @@ internal fun DestinationOptionCard(
                     lineHeight = 15.sp,
                 ),
                 color = if (enabled) dialogInk().copy(alpha = 0.65f) else dialogInk().copy(alpha = 0.35f),
-                maxLines = 1,
+                maxLines = subtitleMaxLines,
                 overflow = TextOverflow.Ellipsis,
             )
         }

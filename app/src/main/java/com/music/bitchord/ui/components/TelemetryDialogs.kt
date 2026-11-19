@@ -1,14 +1,26 @@
 package com.music.bitchord.ui.components
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Block
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.Insights
+import androidx.compose.material.icons.rounded.Security
+import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -66,7 +78,13 @@ private fun telemetryLevelDetail(level: TelemetryLevel): String = stringResource
     },
 )
 
-/** The telemetry dialogs, in the frosted alert shell every other dialog here uses. */
+private fun telemetryLevelIcon(level: TelemetryLevel): ImageVector = when (level) {
+    TelemetryLevel.FULL -> Icons.Rounded.Insights
+    TelemetryLevel.MINIMAL -> Icons.Rounded.Tune
+    TelemetryLevel.OFF -> Icons.Rounded.Block
+}
+
+/** The telemetry dialogs, in the card the Spotify import uses. */
 @Composable
 fun TelemetryDialogHost(hazeState: HazeState) {
     val prompt by TelemetryPrompts.current.collectAsStateWithLifecycle()
@@ -78,109 +96,118 @@ fun TelemetryDialogHost(hazeState: HazeState) {
 
         TelemetryPrompt.Notice -> {
             val seen = { AppSettings.markTelemetryNoticeSeen() }
-            TelemetryAlert(
-                hazeState = hazeState,
-                title = stringResource(R.string.telemetry_notice_title),
-                description = stringResource(R.string.telemetry_notice_body),
-                onDismiss = { seen(); close() },
-                actions = listOf(
-                    TelemetryAction(stringResource(R.string.telemetry_notice_ok), emphasised = true) {
-                        seen(); close()
-                    },
-                    TelemetryAction(stringResource(R.string.telemetry_notice_choose), emphasised = false) {
-                        seen(); TelemetryPrompts.openPicker()
-                    },
-                ),
-            )
+            AlertScaffold(hazeState = hazeState, onDismiss = { seen(); close() }) {
+                DialogHeading(
+                    icon = Icons.Rounded.Security,
+                    title = stringResource(R.string.telemetry_notice_title),
+                    description = stringResource(R.string.telemetry_notice_body),
+                )
+                AlertAction(label = stringResource(R.string.telemetry_notice_ok), emphasised = true, onClick = { seen(); close() })
+                AlertAction(
+                    label = stringResource(R.string.telemetry_notice_choose),
+                    emphasised = false,
+                    onClick = { seen(); TelemetryPrompts.openPicker() },
+                )
+            }
         }
 
         TelemetryPrompt.Picker -> {
-            val labels = TelemetryLevel.values().associateWith { telemetryLevelLabel(it) }
-            val details = TelemetryLevel.values().associateWith { telemetryLevelDetail(it) }
-            ChoiceAlert(
-            hazeState = hazeState,
-            title = stringResource(R.string.telemetry_diagnostics),
-            message = stringResource(R.string.telemetry_picker_message),
-            options = TelemetryLevel.values().toList(),
-            selected = level,
-            label = { labels.getValue(it) },
-            detail = { details.getValue(it) },
-            onSelect = { chosen ->
-                when {
-                    chosen == level -> close()
-                    // Sharing less: ask first. Sharing more needs no persuading.
-                    level.isMoreThan(chosen) -> TelemetryPrompts.current.value = TelemetryPrompt.Plea(chosen)
-                    else -> {
-                        AppSettings.setTelemetryLevel(chosen)
-                        close()
+            AlertScaffold(hazeState = hazeState, onDismiss = close) {
+                DialogHeading(
+                    icon = Icons.Rounded.Security,
+                    title = stringResource(R.string.telemetry_diagnostics),
+                    description = stringResource(R.string.telemetry_picker_message),
+                )
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    TelemetryLevel.values().forEach { option ->
+                        DestinationOptionCard(
+                            title = telemetryLevelLabel(option),
+                            subtitle = telemetryLevelDetail(option),
+                            icon = telemetryLevelIcon(option),
+                            selected = option == level,
+                            enabled = true,
+                            subtitleMaxLines = 4,
+                            onClick = {
+                                when {
+                                    option == level -> close()
+                                    // Sharing less: say why it matters first. Sharing more needs no persuading.
+                                    level.isMoreThan(option) -> TelemetryPrompts.current.value = TelemetryPrompt.Plea(option)
+                                    else -> {
+                                        AppSettings.setTelemetryLevel(option)
+                                        close()
+                                    }
+                                }
+                            },
+                        )
                     }
                 }
-            },
-            onDismiss = close,
-            )
+                Spacer(Modifier.height(8.dp))
+                AlertAction(label = stringResource(R.string.cancel), emphasised = false, onClick = close)
+            }
         }
 
-        is TelemetryPrompt.Plea -> TelemetryAlert(
-            hazeState = hazeState,
-            title = stringResource(R.string.telemetry_plea_title),
-            description = stringResource(R.string.telemetry_plea_body),
-            onDismiss = close,
-            actions = buildList {
-                add(TelemetryAction(stringResource(R.string.telemetry_plea_keep), emphasised = true, onClick = close))
-                if (p.target == TelemetryLevel.OFF && level == TelemetryLevel.FULL) {
-                    add(
-                        TelemetryAction(stringResource(R.string.telemetry_plea_minimal), emphasised = false) {
-                            AppSettings.setTelemetryLevel(TelemetryLevel.MINIMAL)
-                            close()
-                        },
-                    )
-                }
-                add(
-                    TelemetryAction(stringResource(R.string.telemetry_plea_confirm), emphasised = false) {
-                        AppSettings.setTelemetryLevel(p.target)
+        is TelemetryPrompt.Plea -> AlertScaffold(hazeState = hazeState, onDismiss = close) {
+            DialogHeading(
+                icon = Icons.Rounded.Favorite,
+                title = stringResource(R.string.telemetry_plea_title),
+                description = stringResource(R.string.telemetry_plea_body),
+            )
+            AlertAction(label = stringResource(R.string.telemetry_plea_keep), emphasised = true, onClick = close)
+            if (p.target == TelemetryLevel.OFF && level == TelemetryLevel.FULL) {
+                AlertAction(
+                    label = stringResource(R.string.telemetry_plea_minimal),
+                    emphasised = false,
+                    onClick = {
+                        AppSettings.setTelemetryLevel(TelemetryLevel.MINIMAL)
                         close()
                     },
                 )
-            },
-        )
+            }
+            AlertAction(
+                label = stringResource(R.string.telemetry_plea_confirm),
+                emphasised = false,
+                onClick = {
+                    AppSettings.setTelemetryLevel(p.target)
+                    close()
+                },
+            )
+        }
     }
 }
 
-private class TelemetryAction(val label: String, val emphasised: Boolean, val onClick: () -> Unit)
-
-/** Title, text and stacked full-width actions: the shape of [ConfirmationAlert] with any number of actions. */
+/** An icon, a title and a paragraph, centred: the head of every dialog in this style. */
 @Composable
-private fun TelemetryAlert(
-    hazeState: HazeState,
-    title: String,
-    description: String,
-    onDismiss: () -> Unit,
-    actions: List<TelemetryAction>,
-) {
-    AlertScaffold(hazeState = hazeState, onDismiss = onDismiss) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 19.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge.copy(fontSize = 17.sp, fontWeight = FontWeight.W600),
-                color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center,
+internal fun DialogHeading(icon: ImageVector?, title: String, description: String) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 22.dp, end = 22.dp, top = 16.dp, bottom = 16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        if (icon != null) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = dialogInk(),
+                modifier = Modifier.size(42.dp),
             )
-            Text(
-                text = description,
-                modifier = Modifier.padding(top = 4.dp),
-                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, lineHeight = 17.sp),
-                color = MaterialTheme.colorScheme.onSurface,
-                textAlign = TextAlign.Center,
-            )
+            Spacer(Modifier.height(14.dp))
         }
-        actions.forEach { action ->
-            AlertRule()
-            AlertAction(label = action.label, emphasised = action.emphasised, onClick = action.onClick)
-        }
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, fontSize = 20.sp),
+            color = dialogInk(),
+            textAlign = TextAlign.Center,
+        )
+        Text(
+            text = description,
+            style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, lineHeight = 17.sp),
+            color = dialogInk().copy(alpha = 0.70f),
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(top = 6.dp),
+        )
     }
 }

@@ -1,5 +1,6 @@
 package com.music.bitchord.ui.screens
 
+import com.music.bitchord.ui.components.FrostAlertDialog
 import com.music.bitchord.ui.icons.SfIcons
 import android.content.Intent
 import android.text.format.DateFormat
@@ -169,7 +170,7 @@ private fun NameDialog(
     onDismiss: () -> Unit,
 ) {
     var value by remember { mutableStateOf(initial) }
-    AlertDialog(
+    FrostAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {

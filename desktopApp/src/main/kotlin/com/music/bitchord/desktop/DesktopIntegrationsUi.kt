@@ -293,7 +293,7 @@ internal fun DesktopListenBrainzTokenDialog(onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun DialogHeading(title: String, message: String, isError: Boolean = false) {
+internal fun DialogHeading(title: String, message: String, isError: Boolean = false) {
     Column(
         Modifier.fillMaxWidth().padding(horizontal = panelInset(22.dp), vertical = 18.dp),
         horizontalAlignment = if (LocalDesktopPanelIsPage.current) Alignment.Start else Alignment.CenterHorizontally,

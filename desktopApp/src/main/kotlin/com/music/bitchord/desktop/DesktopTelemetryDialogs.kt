@@ -78,28 +78,13 @@ internal fun DesktopTelemetryDialogHost() {
         }
 
         DesktopTelemetryPrompt.Picker -> DesktopDialogPanel(onDismiss = close, maxWidth = 400, popup = true) {
-            Column(
-                Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 18.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text(
-                    DesktopStrings["telemetry_diagnostics", "Anonymous telemetry and error reports"],
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = Color.White,
-                    textAlign = TextAlign.Center,
-                )
-                Text(
-                    DesktopStrings[
-                        "telemetry_picker_message",
-                        "Never your account, IP address, listening history or playlists. Changes apply right away.",
-                    ],
-                    modifier = Modifier.padding(top = 5.dp),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = DesktopSecondary,
-                    textAlign = TextAlign.Center,
-                )
-            }
+            DialogHeading(
+                title = DesktopStrings["telemetry_diagnostics", "Anonymous telemetry and error reports"],
+                message = DesktopStrings[
+                    "telemetry_picker_message",
+                    "Never your account, IP address, listening history or playlists. Changes apply right away.",
+                ],
+            )
             TelemetryLevel.values().forEach { option ->
                 DesktopCardRule()
                 Row(
@@ -172,7 +157,8 @@ internal fun DesktopTelemetryDialogHost() {
     }
 }
 
-/** Title, text and stacked full-width actions, the shape [DesktopChoiceDialog] gives its list. */
+/** The shared heading, then the actions at the right, as the Spotify import's dialog has them. */
+@OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 private fun TelemetryAlert(
     title: String,
@@ -180,37 +166,22 @@ private fun TelemetryAlert(
     onDismiss: () -> Unit,
     actions: List<TelemetryAction>,
 ) {
-    DesktopDialogPanel(onDismiss = onDismiss, maxWidth = 380, popup = true) {
-        Column(
-            Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 18.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+    DesktopDialogPanel(onDismiss = onDismiss, maxWidth = 400, popup = true) {
+        DialogHeading(title = title, message = description)
+        androidx.compose.foundation.layout.FlowRow(
+            Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+            horizontalArrangement = Arrangement.End,
+            verticalArrangement = Arrangement.Center,
         ) {
-            Text(
-                title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold,
-                color = Color.White,
-                textAlign = TextAlign.Center,
-            )
-            Text(
-                description,
-                modifier = Modifier.padding(top = 5.dp),
-                style = MaterialTheme.typography.bodySmall,
-                color = DesktopSecondary,
-                textAlign = TextAlign.Center,
-            )
-        }
-        actions.forEach { action ->
-            DesktopCardRule()
-            Row(
-                Modifier.fillMaxWidth().clickable(onClick = action.onClick).padding(horizontal = 20.dp, vertical = 13.dp),
-                horizontalArrangement = Arrangement.Center,
-            ) {
-                Text(
-                    action.label,
-                    color = if (action.emphasised) DesktopAccent else Color.White,
-                    fontWeight = if (action.emphasised) FontWeight.SemiBold else FontWeight.Normal,
-                )
+            // The main action is last, at the right edge, in the accent colour.
+            actions.sortedBy { it.emphasised }.forEach { action ->
+                androidx.compose.material3.TextButton(onClick = action.onClick) {
+                    Text(
+                        action.label,
+                        color = if (action.emphasised) DesktopAccent else DesktopSecondary,
+                        fontWeight = if (action.emphasised) FontWeight.SemiBold else FontWeight.Normal,
+                    )
+                }
             }
         }
     }

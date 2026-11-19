@@ -586,14 +586,16 @@ fun BitChordDesktopApp() {
     var availableUpdate by remember { mutableStateOf<DesktopUpdateChecker.UpdateInfo?>(null) }
     LaunchedEffect(Unit) { availableUpdate = DesktopUpdateChecker.check() }
     availableUpdate?.let { update ->
-        AlertDialog(
+        DesktopAlertDialog(
             onDismissRequest = { availableUpdate = null },
             title = { Text(DesktopStrings["d_update_available", "Update available"]) },
             text = {
-                Text(
-                    "BitChord ${update.version} is out — you have ${DesktopUpdateChecker.currentVersion}." +
-                        (update.notes?.takeIf { it.isNotBlank() }?.let { "\n\n${it.take(600)}" } ?: ""),
-                )
+                Column(Modifier.heightIn(max = 260.dp).verticalScroll(rememberScrollState())) {
+                    Text(
+                        "BitChord ${update.version} is out — you have ${DesktopUpdateChecker.currentVersion}." +
+                            (update.notes?.takeIf { it.isNotBlank() }?.let { "\n\n${it.take(600)}" } ?: ""),
+                    )
+                }
             },
             confirmButton = {
                 TextButton(onClick = {
@@ -7365,9 +7367,8 @@ private fun DesktopLocalMusicPage(
         }
     }
     if (createOfflinePlaylistOpen) {
-        AlertDialog(
+        DesktopAlertDialog(
             onDismissRequest = { createOfflinePlaylistOpen = false },
-            containerColor = DesktopSurface,
             title = { Text(DesktopStrings["new_playlist", "New playlist"]) },
             text = {
                 OutlinedTextField(
@@ -8630,7 +8631,7 @@ private fun DesktopSettingsScreen(
 
                         if (editingSignaturesUrl) {
                             var draftUrl by remember { mutableStateOf(signaturesUrl) }
-                            AlertDialog(
+                            DesktopAlertDialog(
                                 onDismissRequest = { editingSignaturesUrl = false },
                                 title = { Text("Artist Signatures API") },
                                 text = {
@@ -8660,7 +8661,7 @@ private fun DesktopSettingsScreen(
 
                         if (editingPaxKey) {
                             var draftKey by remember { mutableStateOf(paxKey) }
-                            AlertDialog(
+                            DesktopAlertDialog(
                                 onDismissRequest = { editingPaxKey = false },
                                 title = { Text("PaxSenix API Key") },
                                 text = {
@@ -9005,7 +9006,7 @@ private fun DesktopSourceEditorDialog(
         }
     }
 
-    AlertDialog(
+    DesktopAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(if (isNew) "Add a source" else config.displayName) },
         text = {

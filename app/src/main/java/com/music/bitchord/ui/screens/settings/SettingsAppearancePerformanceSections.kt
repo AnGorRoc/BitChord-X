@@ -1,5 +1,6 @@
 package com.music.bitchord.ui.screens
 
+import com.music.bitchord.ui.components.FrostAlertDialog
 import android.content.Intent
 import android.net.Uri
 import android.provider.Settings
@@ -608,7 +609,7 @@ internal fun SettingsPerformanceSection(search: SettingsSearch) {
     }
 
     if (showPerformanceWarning) {
-        AlertDialog(
+        FrostAlertDialog(
             onDismissRequest = { showPerformanceWarning = false },
             title = { Text(stringResource(R.string.high_performance_before_enabling)) },
             text = { Text(stringResource(R.string.high_performance_battery_warning)) },
@@ -637,7 +638,7 @@ internal fun SettingsPerformanceSection(search: SettingsSearch) {
     }
 
     if (showPerformanceConfirmation) {
-        AlertDialog(
+        FrostAlertDialog(
             onDismissRequest = { showPerformanceConfirmation = false },
             title = { Text(stringResource(R.string.enable_high_performance_title)) },
             text = { Text(stringResource(R.string.enable_high_performance_confirmation)) },

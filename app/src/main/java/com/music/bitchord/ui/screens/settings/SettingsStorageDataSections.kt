@@ -1,5 +1,6 @@
 package com.music.bitchord.ui.screens
 
+import com.music.bitchord.ui.components.FrostAlertDialog
 import android.content.Intent
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -243,7 +244,7 @@ internal fun SettingsStorageSection(
     }
 
     if (confirmClearSongCache) {
-        AlertDialog(
+        FrostAlertDialog(
             onDismissRequest = { confirmClearSongCache = false },
             title = { Text(stringResource(R.string.clear_song_cache_title)) },
             text = { Text(stringResource(R.string.clear_song_cache_warning)) },
@@ -359,7 +360,7 @@ internal fun SettingsYourDataSection(
     }
 
     if (confirmImport) {
-        AlertDialog(
+        FrostAlertDialog(
             onDismissRequest = { confirmImport = false },
             title = { Text(stringResource(R.string.import_backup_title)) },
             text = { Text(stringResource(R.string.import_backup_warning)) },
