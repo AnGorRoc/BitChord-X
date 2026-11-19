@@ -186,6 +186,8 @@ class BitChordApplication : Application(), SingletonImageLoader.Factory {
         ArtistFacts.replayGenresEnabledProvider = { com.music.bitchord.data.settings.AppSettings.replayGenres.value }
         ArtistFacts.userAgentProvider = { "BitChord/${BuildConfig.VERSION_NAME}" }
         ArtistFacts.init(this)
+        // Artist, album and playlist pages already read once, so they open at once next time.
+        com.music.bitchord.data.BrowseCache.init(java.io.File(filesDir, "browse_cache"))
         com.music.bitchord.data.stats.initAndroidBackup()
         // One cache directory can only be opened once per process, and
         // PlaybackService shares this one — so it's opened here, not there.

@@ -60,6 +60,8 @@ import com.music.bitchord.data.model.HomeFeed
 import com.music.bitchord.data.model.HomeShelf
 import com.music.bitchord.data.model.withoutRepeatsOf
 import com.music.bitchord.data.model.albumNeedsArtistShelves
+import com.music.bitchord.data.model.ArtistPage
+import com.music.bitchord.data.BrowsePrefetcher
 import com.music.bitchord.data.model.albumShelvesFromArtist
 import com.music.bitchord.data.model.withoutRelease
 import com.music.bitchord.data.model.LibraryPage
@@ -1620,6 +1622,18 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         viewModelScope.launch {
             // drop(1): the current value is just the count so far, not a play.
             PlaybackTracker.registeredPlays.drop(1).collect { homeStale = true }
+        }
+        viewModelScope.launch {
+            // The Spotify library is read ahead whenever there is an account to read it from.
+            AppSettings.spotifySpdcToken.collect { cookie ->
+                if (cookie.isBlank()) {
+                    com.music.bitchord.data.spotify.SpotifyPrefetch.stop()
+                } else {
+                    com.music.bitchord.data.spotify.SpotifyPrefetch.start { playlistId ->
+                        _detailStack.value.any { it.browseId == SPOTIFY_PAGE_PREFIX + playlistId }
+                    }
+                }
+            }
         }
         viewModelScope.launch {
             BoundedContextRequests.snapshot.collect { snapshot ->
@@ -3244,31 +3258,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             return
         }
         val resolved = browseTypeOf(browseId, type)
-        if (resolved == BrowseType.ARTIST) {
-            YtMusicRepository.cachedArtistPage(browseId)?.let { cached ->
-                val resolvedArtwork = cached.thumbnailUrl ?: thumbnailUrl
-                val songsState = if (cached.songs.isEmpty()) {
-                    UiState.Error(text(R.string.no_tracks_here))
-                } else {
-                    prefetchArtistSongs(cached.songs)
-                    UiState.Success(cached.songs.withArtwork(thumbnailUrl ?: cached.thumbnailUrl))
-                }
-                _detailStack.value += DetailPage(
-                    browseId = browseId,
-                    title = cached.name ?: title,
-                    subtitle = subtitle,
-                    thumbnailUrl = resolvedArtwork,
-                    songs = songsState,
-                    sections = cached.sections,
-                    description = cached.description,
-                    subscriberCountText = cached.subscriberCountText,
-                    monthlyListenerCount = cached.monthlyListenerCount,
-                    subscription = cached.subscription,
-                    type = resolved,
-                )
-                return
-            }
+        if (resolved == BrowseType.ARTIST && browseId.startsWith("UC")) {
+            openArtistDetail(browseId, title, subtitle, thumbnailUrl)
+            return
         }
+        if (openKeptCollection(browseId, title, subtitle, thumbnailUrl, resolved)) return
         _detailStack.value += DetailPage(
             browseId = browseId,
             title = title,
@@ -3433,22 +3427,232 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             // Only once the first page is on screen: [fillIn] appends to it,
             // and has nothing to append to before this.
             more?.let { fillIn(browseId, it, thumbnailUrl ?: artwork) }
+            // Read whole in one response — most albums: kept now, so the next
+            // open shows it at once. A longer one is kept once [fillIn] ends.
+            if (more == null && state is UiState.Success && local == null && onDevice.isEmpty()) {
+                keepOpenCollection(browseId)
+            }
 
             if (resolved == BrowseType.ALBUM && state is UiState.Success) {
-                val artistId = state.data.firstNotNullOfOrNull { it.artistId }
-                if (artistId != null && albumNeedsArtistShelves(sections, browseId)) {
-                    viewModelScope.launch {
-                        YtMusicRepository.artistPage(artistId).onSuccess { artistPage ->
-                            _detailStack.value = _detailStack.value.map { pageItem ->
-                                if (pageItem.browseId != browseId) return@map pageItem
-                                val extra = albumShelvesFromArtist(pageItem.sections, browseId, artistPage)
-                                if (extra.isEmpty()) pageItem else pageItem.copy(sections = pageItem.sections + extra)
-                            }
-                        }
-                    }
-                }
+                addArtistShelvesToAlbum(browseId, state.data, sections)
             }
         }
+    }
+
+    /**
+     * An album page's own carousels are often thin. When it names no other
+     * releases or no similar artists, they come from its artist's page — kept
+     * after the first read, so usually without a request.
+     */
+    private fun addArtistShelvesToAlbum(browseId: String, songs: List<Song>, sections: List<HomeShelf>) {
+        val artistId = songs.firstNotNullOfOrNull { it.artistId } ?: return
+        if (!albumNeedsArtistShelves(sections, browseId)) return
+        viewModelScope.launch {
+            val artistPage = YtMusicRepository.cachedArtistPage(artistId)
+                ?: YtMusicRepository.artistPage(artistId).getOrNull()
+                ?: return@launch
+            _detailStack.value = _detailStack.value.map { pageItem ->
+                if (pageItem.browseId != browseId) return@map pageItem
+                val extra = albumShelvesFromArtist(pageItem.sections, browseId, artistPage)
+                if (extra.isEmpty()) pageItem else pageItem.copy(sections = pageItem.sections + extra)
+            }
+        }
+    }
+
+    /**
+     * Reads ahead what the player's credits lead to — the playing track's
+     * artist and album — so tapping either opens a page already read.
+     */
+    fun warmForNowPlaying(song: Song) {
+        song.artistId?.let(BrowsePrefetcher::warmArtistNow)
+        song.albumId?.let(BrowsePrefetcher::warmCollectionNow)
+    }
+
+    /**
+     * An artist's page, opened on whatever is kept of it.
+     *
+     * A page read before goes up whole at once, at any age, and is read again
+     * behind it when it is no longer current. One never read opens on its
+     * landing — one request: photo, name, first songs, first card of every
+     * shelf — and fills in with the full song list and discography when those
+     * arrive, rather than holding a spinner until the last of them has.
+     */
+    private fun openArtistDetail(browseId: String, title: String, subtitle: String, thumbnailUrl: String?) {
+        // A fast double tap: the page is already on top, drawn from what was kept.
+        if (_detailStack.value.lastOrNull()?.browseId == browseId) return
+        val kept = YtMusicRepository.cachedArtist(browseId)
+        _detailStack.value += DetailPage(
+            browseId = browseId,
+            title = title,
+            subtitle = subtitle,
+            thumbnailUrl = thumbnailUrl,
+            songs = UiState.Loading,
+            type = BrowseType.ARTIST,
+        )
+        kept?.let { applyArtistPage(browseId, thumbnailUrl, it.value, whole = it.complete) }
+        if (kept != null && kept.complete && kept.ageMs() < YtMusicRepository.ARTIST_FRESH_MS) return
+        // Only a page with nothing better on it takes a landing: one showing a
+        // whole page, if an old one, would lose most of its songs to it.
+        val takesLanding = kept?.complete != true
+        viewModelScope.launch {
+            YtMusicRepository.artistPage(browseId) { landing ->
+                if (takesLanding) applyArtistPage(browseId, thumbnailUrl, landing, whole = false)
+            }.fold(
+                onSuccess = { page -> applyArtistPage(browseId, thumbnailUrl, page, whole = true) },
+                onFailure = { error ->
+                    // Whatever was kept stays up; only an empty page says it failed.
+                    _detailStack.value = _detailStack.value.map {
+                        if (it.browseId == browseId && it.songs is UiState.Loading) {
+                            it.copy(songs = UiState.Error(error.friendly()))
+                        } else {
+                            it
+                        }
+                    }
+                },
+            )
+        }
+    }
+
+    /** Puts [page] on every open copy of the artist [browseId]; [whole] says it is all there is. */
+    private fun applyArtistPage(browseId: String, thumbnailUrl: String?, page: ArtistPage, whole: Boolean) {
+        val songsState: UiState<List<Song>>? = when {
+            page.songs.isNotEmpty() -> UiState.Success(page.songs.withArtwork(thumbnailUrl ?: page.thumbnailUrl))
+            // A landing with no songs may still be followed by a list that has some.
+            whole -> UiState.Error(text(R.string.no_tracks_here))
+            else -> null
+        }
+        _detailStack.value = _detailStack.value.map {
+            if (it.browseId != browseId) return@map it
+            it.copy(
+                title = page.name ?: it.title,
+                thumbnailUrl = page.thumbnailUrl ?: it.thumbnailUrl,
+                songs = songsState ?: it.songs,
+                sections = page.sections,
+                description = page.description ?: it.description,
+                subscriberCountText = page.subscriberCountText ?: it.subscriberCountText,
+                monthlyListenerCount = page.monthlyListenerCount ?: it.monthlyListenerCount,
+                subscription = page.subscription ?: it.subscription,
+            )
+        }
+        if (whole && page.songs.isNotEmpty()) prefetchArtistSongs(page.songs)
+    }
+
+    /**
+     * An album or playlist read before, opened on its kept copy — every row,
+     * at once — and read again behind it; the page changes only if YouTube's
+     * copy did. False when nothing is kept (or the page is not YouTube's), and
+     * [openDetail] goes on to read it as usual.
+     */
+    private fun openKeptCollection(
+        browseId: String,
+        title: String,
+        subtitle: String,
+        thumbnailUrl: String?,
+        resolved: BrowseType,
+    ): Boolean {
+        if (!YtMusicRepository.isKeptCollection(browseId)) return false
+        if (OfflinePlaylists.isOfflinePlaylist(browseId) ||
+            com.music.bitchord.data.spotify.LocalPlaylistStore.getPlaylist(browseId) != null ||
+            remoteLibrary(browseId) != null
+        ) {
+            return false
+        }
+        val kept = YtMusicRepository.cachedCollection(browseId) ?: return false
+        // A fast double tap: the page is already on top, drawn from what was kept.
+        if (_detailStack.value.lastOrNull()?.browseId == browseId) return true
+        val base = DetailPage(
+            browseId = browseId,
+            title = title,
+            subtitle = subtitle,
+            thumbnailUrl = thumbnailUrl,
+            songs = UiState.Loading,
+            type = resolved,
+        )
+        val shown = collectionPage(base, kept.value, title, subtitle, thumbnailUrl, resolved)
+        _detailStack.value += shown
+        kept.value.owned?.let { setPlaylistOwned(browseId, it) }
+        val shownSongs = (shown.songs as? UiState.Success)?.data
+        if (resolved == BrowseType.ALBUM && shownSongs != null) {
+            addArtistShelvesToAlbum(browseId, shownSongs, shown.sections)
+        }
+        viewModelScope.launch {
+            val fresh = YtMusicRepository.collectionFull(browseId).getOrNull() ?: return@launch
+            fresh.owned?.let { setPlaylistOwned(browseId, it) }
+            _detailStack.value = _detailStack.value.map { current ->
+                if (current.browseId != browseId) return@map current
+                val updated = collectionPage(current, fresh, title, subtitle, thumbnailUrl, resolved)
+                val unchanged = updated.songs == current.songs &&
+                    updated.suggestedSongs == current.suggestedSongs &&
+                    updated.library == current.library &&
+                    updated.description == current.description
+                // The carousels stay as drawn: an album's own come back the same, and
+                // the artist's added on top would otherwise be lost to the re-read.
+                if (unchanged) current else updated.copy(sections = current.sections)
+            }
+        }
+        return true
+    }
+
+    /** [base] filled from a whole [page], the way [openDetail] fills one from its first response. */
+    private fun collectionPage(
+        base: DetailPage,
+        page: YtMusicRepository.SongPage,
+        title: String,
+        subtitle: String,
+        thumbnailUrl: String?,
+        resolved: BrowseType,
+    ): DetailPage {
+        val header = page.header
+        val artwork = thumbnailUrl ?: header?.thumbnailUrl ?: base.thumbnailUrl
+        val credit = when {
+            header == null -> base.subtitle
+            resolved == BrowseType.ALBUM && header.subtitle.isNotBlank() -> header.subtitle
+            subtitle.isBlank() -> header.subtitle
+            else -> base.subtitle
+        }
+        return base.copy(
+            title = if (title.isBlank()) header?.title ?: base.title else base.title,
+            subtitle = credit,
+            thumbnailUrl = artwork,
+            songs = if (page.songs.isEmpty()) {
+                UiState.Error(text(R.string.no_tracks_here))
+            } else {
+                UiState.Success(page.songs.withArtwork(artwork))
+            },
+            suggestedSongs = page.suggested.withArtwork(artwork),
+            continuation = null,
+            library = page.library ?: base.library,
+            description = page.description ?: base.description,
+            sections = if (resolved == BrowseType.ALBUM) page.sections.withoutRelease(base.browseId) else base.sections,
+        )
+    }
+
+    /**
+     * Keeps an open album or playlist once every row of it is on the page, so
+     * the next visit opens on it at once — see [openKeptCollection].
+     */
+    private fun keepOpenCollection(browseId: String) {
+        if (!YtMusicRepository.isKeptCollection(browseId)) return
+        val page = _detailStack.value.lastOrNull { it.browseId == browseId } ?: return
+        if (page.continuation != null) return
+        val songs = (page.songs as? UiState.Success)?.data?.takeIf { it.isNotEmpty() } ?: return
+        YtMusicRepository.keepCollection(
+            browseId,
+            YtMusicRepository.SongPage(
+                songs = songs,
+                continuation = null,
+                suggested = page.suggestedSongs,
+                library = page.library,
+                owned = _playlistOwned.value[browseId],
+                header = com.music.bitchord.data.innertube.InnertubeParser.BrowseHeader(
+                    page.title,
+                    page.subtitle,
+                    page.thumbnailUrl,
+                ),
+                description = page.description,
+                sections = page.sections,
+            ),
+        )
     }
 
     /**
@@ -3986,10 +4190,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 }
                 // A page with nothing new for any copy means the feed has looped
                 // back rather than run dry with a token still attached.
-                if (!progressed) return@launch
+                if (!progressed) break
                 _detailStack.value = updated
                 next = fetched.continuation
             }
+            // Every row is on the page now: kept, so the next visit has them all at once.
+            _detailStack.value = _detailStack.value.map {
+                if (it.browseId == browseId && it.continuation != null) it.copy(continuation = null) else it
+            }
+            keepOpenCollection(browseId)
         }.also { job ->
             job.invokeOnCompletion {
                 if (fillInJobs[browseId] === job) fillInJobs.remove(browseId)
@@ -4037,6 +4246,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 continuation = continuation,
             )
         }
+        if (continuation == null) keepOpenCollection(browseId)
     }
 
     /**

@@ -102,6 +102,11 @@ internal fun LyricsLoaderEffect(
             )
         }
     }
+    // The pages the player's credits lead to are the ones most likely to be opened next: the
+    // artist and the album of what is playing are read ahead, once per track.
+    LaunchedEffect(song?.videoId) {
+        song?.let { viewModel.warmForNowPlaying(it) }
+    }
 }
 
 @Composable
