@@ -1,5 +1,8 @@
 package com.music.bitchord.ui.screens
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import com.music.bitchord.sharedui.resources.*
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.foundation.BorderStroke
@@ -543,6 +546,7 @@ fun ExploreScreen(
     onOpenTrendingPlaylist: ((regionCode: String?, regionName: String, allSongs: List<ShelfItem>, videoShelf: HomeShelf?, artistShelf: HomeShelf?) -> Unit)? = null,
     onOpenTopicPlaylist: ((topicTitle: String, searchQuery: String, coverUrl: String?) -> Unit)? = null,
 ) {
+    val isOffline = AppUi.host.isOffline()
     var showChartOptionsModal by remember { mutableStateOf(false) }
 
     val chartShelves = (chartsState as? UiState.Success)?.data.orEmpty()
@@ -794,7 +798,7 @@ fun ExploreScreen(
                 }
 
                 when (chartsState) {
-                    UiState.Loading -> item(key = "charts-loading") {
+                    UiState.Loading -> if (!isOffline) item(key = "charts-loading") {
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -811,7 +815,7 @@ fun ExploreScreen(
                             }
                         }
                     }
-                    is UiState.Error -> item(key = "charts-error") {
+                    is UiState.Error -> if (!isOffline) item(key = "charts-error") {
                         MessageState(
                             message = chartsState.message,
                             actionLabel = stringResource(Res.string.retry),
@@ -1065,8 +1069,8 @@ fun ExploreScreen(
                 }
 
                 when (state) {
-                    UiState.Loading -> item { ExploreSkeletonRows(columns) }
-                    is UiState.Error -> item {
+                    UiState.Loading -> if (!isOffline) item { ExploreSkeletonRows(columns) }
+                    is UiState.Error -> if (!isOffline) item {
                         MessageState(
                             state.message,
                             actionLabel = stringResource(Res.string.retry),
@@ -1085,6 +1089,16 @@ fun ExploreScreen(
                         }
                     }
                 }
+
+                if (isOffline && chartsState !is UiState.Success && state !is UiState.Success && freshReleases.isEmpty()) {
+                    item(key = "offline-explore-empty") {
+                        MessageState(
+                            message = stringResource(Res.string.offline_empty),
+                            actionLabel = stringResource(Res.string.retry),
+                            onAction = onRetry,
+                        )
+                    }
+                }
             }
     }
 }
@@ -1098,6 +1112,11 @@ private fun TopTrendingRow(
     modifier: Modifier = Modifier,
 ) {
     val offlineBlocked = AppUi.host.unplayableOffline(videoId = item.videoId, browseId = item.browseId)
+    val dimAlpha by animateFloatAsState(
+        targetValue = if (offlineBlocked) 0.38f else 1f,
+        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+        label = "chartsRowDim",
+    )
     val rankColor = when (rank) {
         1 -> Color(0xFFFFB800)
         2 -> Color(0xFFCBD5E1)
@@ -1109,7 +1128,7 @@ private fun TopTrendingRow(
         modifier = modifier
             .fillMaxWidth()
             .requiredHeight(66.dp)
-            .alpha(if (offlineBlocked) 0.38f else 1f)
+            .alpha(dimAlpha)
             .then(if (offlineBlocked) Modifier else Modifier.clickable(onClick = onClick)),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -1190,10 +1209,15 @@ private fun NewReleaseCard(
     onClick: () -> Unit,
 ) {
     val offlineBlocked = AppUi.host.unplayableOffline(videoId = item.videoId, browseId = item.browseId)
+    val dimAlpha by animateFloatAsState(
+        targetValue = if (offlineBlocked) 0.38f else 1f,
+        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+        label = "exploreCardDim",
+    )
     Column(
         modifier = Modifier
             .width(136.dp)
-            .alpha(if (offlineBlocked) 0.38f else 1f)
+            .alpha(dimAlpha)
             .then(if (offlineBlocked) Modifier else Modifier.clickable(onClick = onClick)),
     ) {
         Box(
@@ -1248,6 +1272,11 @@ fun DailyTopicGlassCard(
         )
     }
     val offlineBlocked = AppUi.host.unplayableOffline(videoId = null, browseId = "topic:${topic.searchQuery}")
+    val dimAlpha by animateFloatAsState(
+        targetValue = if (offlineBlocked) 0.38f else 1f,
+        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+        label = "dailyTopicDim",
+    )
     Box(
         modifier = modifier
             .width(210.dp)
@@ -1255,7 +1284,7 @@ fun DailyTopicGlassCard(
             .clip(EXPLORE_CARD_SHAPE)
             .background(backgroundBrush)
             .border(DAILY_CARD_BORDER, EXPLORE_CARD_SHAPE)
-            .alpha(if (offlineBlocked) 0.38f else 1f)
+            .alpha(dimAlpha)
             .then(if (offlineBlocked) Modifier else Modifier.clickable(onClick = onClick)),
     ) {
         Column(

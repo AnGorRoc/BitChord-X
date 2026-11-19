@@ -1,5 +1,9 @@
 package com.music.bitchord.ui.screens
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.getValue
 import com.music.bitchord.ui.components.trackArtSize
 import androidx.compose.ui.layout.ContentScale
 import com.music.bitchord.data.model.toSong
@@ -706,15 +710,29 @@ private fun TypeaheadSongRow(
     isCurrent: Boolean = false,
     isPlaying: Boolean = false,
 ) {
+    val offlineBlocked = AppUi.host.unplayableOffline(song)
+    val dimAlpha by animateFloatAsState(
+        targetValue = if (offlineBlocked) 0.38f else 1f,
+        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+        label = "typeaheadSongDim",
+    )
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .longPressMenuClickable(
-                onClick = onClick,
-                onLongClick = onLongPress,
-                liftPadding = PaddingValues(horizontal = PAGE_GUTTER),
+            .then(
+                if (offlineBlocked) {
+                    Modifier
+                } else {
+                    Modifier
+                        .longPressMenuClickable(
+                            onClick = onClick,
+                            onLongClick = onLongPress,
+                            liftPadding = PaddingValues(horizontal = PAGE_GUTTER),
+                        )
+                        .contextClick(onLongPress)
+                },
             )
-            .contextClick(onLongPress)
+            .alpha(dimAlpha)
             .padding(horizontal = PAGE_GUTTER, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -916,6 +934,11 @@ private fun RecentSearchEntityRow(
             AppUi.host.unplayableOffline(videoId = null, browseId = entity.id)
         EntityType.OTHER -> false
     }
+    val dimAlpha by animateFloatAsState(
+        targetValue = if (offlineBlocked) 0.38f else 1f,
+        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+        label = "searchEntityDim",
+    )
     SwipeToQueueBox(
         onSwipeToQueue = onSwipeToQueue.takeUnless { offlineBlocked },
         onSwipeAction = onSwipeAction.takeUnless { offlineBlocked },
@@ -942,7 +965,7 @@ private fun RecentSearchEntityRow(
                 .padding(start = PAGE_GUTTER, end = 8.dp, top = 6.dp, bottom = 6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(Modifier.size(52.dp).alpha(if (offlineBlocked) 0.38f else 1f)) {
+            Box(Modifier.size(52.dp).alpha(dimAlpha)) {
                 AsyncImage(
                     model = entity.artworkUrl,
                     contentDescription = null,
@@ -957,7 +980,7 @@ private fun RecentSearchEntityRow(
                 }
             }
             Spacer(Modifier.width(14.dp))
-            Column(Modifier.weight(1f).alpha(if (offlineBlocked) 0.38f else 1f)) {
+            Column(Modifier.weight(1f).alpha(dimAlpha)) {
                 Text(
                     text = entity.title,
                     style = MaterialTheme.typography.titleMedium,
@@ -995,15 +1018,29 @@ private fun RecentSearchEntityRow(
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 private fun BrowseRow(item: BrowseItem, onClick: () -> Unit, onLongPress: (() -> Unit)? = null) {
+    val offlineBlocked = AppUi.host.unplayableOffline(videoId = null, browseId = item.browseId)
+    val dimAlpha by animateFloatAsState(
+        targetValue = if (offlineBlocked) 0.38f else 1f,
+        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+        label = "browseRowDim",
+    )
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .longPressMenuClickable(
-                onClick = onClick,
-                onLongClick = onLongPress,
-                liftPadding = PaddingValues(horizontal = PAGE_GUTTER),
+            .then(
+                if (offlineBlocked) {
+                    Modifier
+                } else {
+                    Modifier
+                        .longPressMenuClickable(
+                            onClick = onClick,
+                            onLongClick = onLongPress,
+                            liftPadding = PaddingValues(horizontal = PAGE_GUTTER),
+                        )
+                        .contextClick(onLongPress)
+                },
             )
-            .contextClick(onLongPress)
+            .alpha(dimAlpha)
             .padding(horizontal = PAGE_GUTTER, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

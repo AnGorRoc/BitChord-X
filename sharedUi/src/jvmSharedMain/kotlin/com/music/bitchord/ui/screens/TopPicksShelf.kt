@@ -1,5 +1,8 @@
 package com.music.bitchord.ui.screens
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.ui.draw.alpha
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -287,13 +290,18 @@ private fun TopPickCard(
     val text = cardText(pick, listenerName)
     val longPress = onLongPress?.let { { it(pick) } }
     val offlineBlocked = AppUi.host.unplayableOffline(videoId = null, browseId = pick.browseId)
+    val dimAlpha by animateFloatAsState(
+        targetValue = if (offlineBlocked) 0.38f else 1f,
+        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+        label = "topPickDim",
+    )
     Box(
         modifier = modifier
             .aspectRatio(TOP_PICK_RATIO)
             .clip(TopPickShape)
             .thumbnailBorder(TopPickShape)
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .alpha(if (offlineBlocked) 0.38f else 1f)
+            .alpha(dimAlpha)
             .then(
                 if (offlineBlocked) {
                     Modifier

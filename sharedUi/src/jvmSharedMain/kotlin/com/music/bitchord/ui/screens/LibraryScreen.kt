@@ -136,6 +136,7 @@ fun LibraryScreen(
     /** The big "Library" heading; the desktop's pages carry none. */
     showTitle: Boolean = true,
 ) {
+    val isOffline = AppUi.host.isOffline()
     val pinnedPlaylists by AppUi.host.pinnedPlaylists.collectAsStateWithLifecycle()
     val onDevice = stringResource(Res.string.on_device)
     val successLibrary = (state as? UiState.Success)?.data
@@ -215,8 +216,8 @@ fun LibraryScreen(
                 return@LazyColumn
             }
             when (state) {
-                is UiState.Loading -> librarySkeleton()
-                is UiState.Error -> item {
+                is UiState.Loading -> if (!isOffline) librarySkeleton()
+                is UiState.Error -> if (!isOffline) item {
                     MessageState(state.message, actionLabel = stringResource(Res.string.retry), onAction = onRetry)
                 }
                 is UiState.Success -> {
@@ -525,6 +526,7 @@ fun LibraryGridPage(
     // is opened from a snapshot (see `AppRoute.LibraryShowAll`), and a
     // pin toggled from this page's own long-press menu must move the card
     // immediately rather than waiting for the row underneath to be revisited.
+    val isOffline = AppUi.host.isOffline()
     val pinnedPlaylists by AppUi.host.pinnedPlaylists.collectAsStateWithLifecycle()
     val librarySort by AppUi.host.librarySort.collectAsStateWithLifecycle()
     val list = AppUi.host.libraryViewType.collectAsStateWithLifecycle().value == LibraryViewType.LIST

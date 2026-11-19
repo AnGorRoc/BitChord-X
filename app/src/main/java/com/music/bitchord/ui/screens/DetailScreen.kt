@@ -10,7 +10,10 @@ import com.music.bitchord.R
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import com.music.bitchord.ui.AppUi
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
@@ -2212,10 +2215,23 @@ private fun CompactSongRow(
     isCurrent: Boolean = false,
     isPlaying: Boolean = false,
 ) {
+    val offlineBlocked = AppUi.host.unplayableOffline(song)
+    val dimAlpha by animateFloatAsState(
+        targetValue = if (offlineBlocked) 0.38f else 1f,
+        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+        label = "compactSongDim",
+    )
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .longPressMenuClickable(onClick = onClick, onLongClick = onLongPress)
+            .then(
+                if (offlineBlocked) {
+                    Modifier
+                } else {
+                    Modifier.longPressMenuClickable(onClick = onClick, onLongClick = onLongPress)
+                },
+            )
+            .alpha(dimAlpha)
             .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -2272,14 +2288,27 @@ private fun SuggestedSongRow(
     isCurrent: Boolean = false,
     isPlaying: Boolean = false,
 ) {
+    val offlineBlocked = AppUi.host.unplayableOffline(song)
+    val dimAlpha by animateFloatAsState(
+        targetValue = if (offlineBlocked) 0.38f else 1f,
+        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+        label = "suggestedSongDim",
+    )
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .longPressMenuClickable(
-                onClick = onClick,
-                onLongClick = onLongPress,
-                liftPadding = PaddingValues(horizontal = PAGE_GUTTER),
+            .then(
+                if (offlineBlocked) {
+                    Modifier
+                } else {
+                    Modifier.longPressMenuClickable(
+                        onClick = onClick,
+                        onLongClick = onLongPress,
+                        liftPadding = PaddingValues(horizontal = PAGE_GUTTER),
+                    )
+                },
             )
+            .alpha(dimAlpha)
             .padding(horizontal = PAGE_GUTTER, vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

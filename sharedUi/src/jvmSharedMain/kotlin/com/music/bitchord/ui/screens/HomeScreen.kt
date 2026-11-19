@@ -1,5 +1,8 @@
 package com.music.bitchord.ui.screens
 
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.rounded.CloudOff
 import com.music.bitchord.ui.components.trackArtSize
 import com.music.bitchord.ui.components.contextClick
@@ -176,6 +179,7 @@ fun HomeScreen(
     artworkMotion: Boolean = true,
     onOpenDownloads: (() -> Unit)? = null,
 ) {
+    val isOffline = AppUi.host.isOffline()
     // Top Picks' pictures and motion wait for the feed — see LocalArtworkImages.
     val feedReady = state !is UiState.Loading
     CompositionLocalProvider(
@@ -251,12 +255,22 @@ fun HomeScreen(
                             onLongPress = onTopPickLongPress,
                         )
                     }
-                    topPicks == null && topPicksLoading -> topPicksSkeleton()
+                    topPicks == null && topPicksLoading && !isOffline -> topPicksSkeleton()
                 }
             }
             when (state) {
                 is UiState.Loading -> {
-                    if (recentlyPlayedLoading) {
+                    if (isOffline) {
+                        item(key = "offline-home-empty") {
+                            MessageState(
+                                message = stringResource(Res.string.offline_empty),
+                                actionLabel = stringResource(Res.string.retry),
+                                onAction = onRetry,
+                                secondaryActionLabel = if (onOpenDownloads != null) stringResource(Res.string.downloaded) else null,
+                                onSecondaryAction = onOpenDownloads,
+                            )
+                        }
+                    } else if (recentlyPlayedLoading) {
                         recentlyPlayedSkeleton()
                         // Recents owns the leading layout while its request is
                         // pending, so the feed behind it starts with ordinary
@@ -276,7 +290,7 @@ fun HomeScreen(
                     )
                 }
                 is UiState.Success -> {
-                    if (recentlyPlayedLoading) {
+                    if (recentlyPlayedLoading && !isOffline) {
                         recentlyPlayedSkeleton()
                     }
                     if (spotlightItem != null) {
@@ -304,9 +318,9 @@ fun HomeScreen(
                         onItemLongPress = onItemLongPress,
                         currentSong = currentSong,
                         isPlaying = isPlaying,
-                        firstIsHero = leadHero && !recentlyPlayedLoading,
+                        firstIsHero = leadHero && (!recentlyPlayedLoading || isOffline),
                     )
-                    if (loadingMore) feedMoreSkeleton()
+                    if (loadingMore && !isOffline) feedMoreSkeleton()
                 }
             }
         }
@@ -348,12 +362,12 @@ fun HomeScreen(
         // skeleton and no request in flight to explain it. Restarting on
         // [loadingMore] re-checks the moment a page settles, so the next one is
         // asked for while the tail is still on screen to show it loading.
-        LaunchedEffect(listState, loadingMore) {
+        LaunchedEffect(listState, loadingMore, isOffline) {
             snapshotFlow {
                 val layout = listState.layoutInfo
                 (layout.visibleItemsInfo.lastOrNull()?.index ?: -1) to layout.totalItemsCount
             }.collect { (lastVisible, total) ->
-                if (!loadingMore && total > 0 && lastVisible >= total - 3) loadMore()
+                if (!isOffline && !loadingMore && total > 0 && lastVisible >= total - 3) loadMore()
             }
         }
     }
@@ -527,6 +541,11 @@ fun CompactTrackRow(
     isVideo: Boolean = false,
     dimmed: Boolean = false,
 ) {
+    val dimAlpha by animateFloatAsState(
+        targetValue = if (dimmed) 0.38f else 1f,
+        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+        label = "compactTrackDim",
+    )
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -539,7 +558,7 @@ fun CompactTrackRow(
                         .contextClick(onLongPress)
                 },
             )
-            .alpha(if (dimmed) 0.38f else 1f)
+            .alpha(dimAlpha)
             .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -882,13 +901,18 @@ private fun HeroBillboardSpotlight(
     modifier: Modifier = Modifier,
 ) {
     val offlineBlocked = AppUi.host.unplayableOffline(videoId = item.videoId, browseId = item.browseId)
+    val dimAlpha by animateFloatAsState(
+        targetValue = if (offlineBlocked) 0.38f else 1f,
+        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+        label = "headerDim",
+    )
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(210.dp)
             .clip(RoundedCornerShape(24.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-            .alpha(if (offlineBlocked) 0.38f else 1f)
+            .alpha(dimAlpha)
             .then(if (offlineBlocked) Modifier else Modifier.clickable(onClick = onClick)),
     ) {
         AsyncImage(
@@ -1112,10 +1136,24 @@ fun VideoShelfCard(
     subtitleColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     placeholderColor: Color = MaterialTheme.colorScheme.surfaceVariant,
 ) {
+    val offlineBlocked = AppUi.host.unplayableOffline(videoId = item.videoId, browseId = item.browseId)
+    val dimAlpha by animateFloatAsState(
+        targetValue = if (offlineBlocked) 0.38f else 1f,
+        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+        label = "videoCardDim",
+    )
     Column(
         modifier = modifier
-            .longPressMenuClickable(onClick = onClick, onLongClick = onLongPress)
-            .contextClick(onLongPress),
+            .then(
+                if (offlineBlocked) {
+                    Modifier
+                } else {
+                    Modifier
+                        .longPressMenuClickable(onClick = onClick, onLongClick = onLongPress)
+                        .contextClick(onLongPress)
+                },
+            )
+            .alpha(dimAlpha),
     ) {
         Box(
             modifier = Modifier
@@ -1264,6 +1302,11 @@ internal fun ShelfCard(
     isPlaying: Boolean = false,
 ) {
     val offlineBlocked = AppUi.host.unplayableOffline(videoId = item.videoId, browseId = item.browseId)
+    val dimAlpha by animateFloatAsState(
+        targetValue = if (offlineBlocked) 0.38f else 1f,
+        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+        label = "shelfCardDim",
+    )
     Column(
         modifier = modifier
             .then(
@@ -1275,7 +1318,7 @@ internal fun ShelfCard(
                         .contextClick(onLongPress)
                 },
             )
-            .alpha(if (offlineBlocked) 0.38f else 1f),
+            .alpha(dimAlpha),
     ) {
         when (item.browseId) {
             "local:downloads" -> {
@@ -1453,6 +1496,11 @@ internal fun ShelfListRow(
     isPinned: Boolean = false,
 ) {
     val offlineBlocked = AppUi.host.unplayableOffline(videoId = item.videoId, browseId = item.browseId)
+    val dimAlpha by animateFloatAsState(
+        targetValue = if (offlineBlocked) 0.38f else 1f,
+        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+        label = "shelfListRowDim",
+    )
     val shape = if (item.browseId?.startsWith("UC") == true) CircleShape else RoundedCornerShape(LIST_COVER_RADIUS)
     Row(
         modifier = modifier
@@ -1466,7 +1514,7 @@ internal fun ShelfListRow(
                         .contextClick(onLongPress)
                 },
             )
-            .alpha(if (offlineBlocked) 0.38f else 1f)
+            .alpha(dimAlpha)
             .padding(horizontal = PAGE_GUTTER, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

@@ -32,6 +32,12 @@ object AndroidAppUiHost : AppUiHost {
     }
 
     @Composable
+    override fun isOffline(): Boolean {
+        val offline by AppSettings.effectiveOffline.collectAsStateWithLifecycle()
+        return offline
+    }
+
+    @Composable
     override fun unplayableOffline(song: Song): Boolean {
         val playable by OfflineLibrary.playable.collectAsStateWithLifecycle()
         return !OfflineLibrary.isPlayable(song, playable)

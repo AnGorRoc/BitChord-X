@@ -43,6 +43,12 @@ interface AppUiHost {
     fun downloadedIds(): Set<String>
 
     /**
+     * True while the app is in offline mode (either manually or detected network loss).
+     */
+    @Composable
+    fun isOffline(): Boolean = false
+
+    /**
      * True while the app is offline and [song] is not saved on the phone: its row is shown dimmed, and it
      * can be neither played nor queued. False online, and always on the desktop.
      */

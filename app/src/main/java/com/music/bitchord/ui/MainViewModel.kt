@@ -74,6 +74,7 @@ import com.music.bitchord.data.model.SearchFilter
 import com.music.bitchord.data.model.SearchResult
 import com.music.bitchord.data.model.ShelfItem
 import com.music.bitchord.data.model.ShelfLayout
+import com.music.bitchord.data.model.AVATAR_ART_PX
 import com.music.bitchord.data.model.CARD_ART_PX
 import com.music.bitchord.data.model.HEADER_ART_PX
 import com.music.bitchord.data.model.ROW_ART_PX
@@ -614,7 +615,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             Account(
                 name = profile?.name?.ifBlank { null } ?: session.name,
                 email = profile?.handle?.ifBlank { null } ?: session.email,
-                thumbnailUrl = profile?.avatar,
+                thumbnailUrl = profile?.avatar.artworkAt(AVATAR_ART_PX),
             ).takeIf { it.name.isNotBlank() || !it.thumbnailUrl.isNullOrBlank() }
         }
 
@@ -1618,6 +1619,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             loadLibrary()
             loadAccount()
             loadPlaylists()
+            loadChannels()
         }
         viewModelScope.launch {
             // drop(1): the current value is just the count so far, not a play.
@@ -1657,6 +1659,24 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 } else if (_detailStack.value.any { page -> page.browseId == id }) {
                     reloadLocalDetail(id)
                 }
+            }
+        }
+        viewModelScope.launch {
+            var wasOffline = AppSettings.effectiveOffline.value
+            AppSettings.effectiveOffline.collect { offline ->
+                if (wasOffline && !offline) {
+                    // Connection restored: reload sections that were deferred while offline
+                    loadHome()
+                    if (exploreRequested) loadExplore()
+                    if (_signedIn.value && _library.value !is UiState.Success) loadLibrary()
+                } else if (!wasOffline && offline) {
+                    // Went offline: discard pending loading skeletons
+                    _homeRecentlyPlayedLoading.value = false
+                    _topPicksLoading.value = false
+                    _homeLoadingMore.value = false
+                    _homePendingShelves.value = 0
+                }
+                wasOffline = offline
             }
         }
         viewModelScope.launch {
@@ -1732,9 +1752,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private fun loadAccount() {
         val identity = listenerKey()
         viewModelScope.launch {
-            val account = YtMusicRepository.account().getOrNull()
+            val rawAccount = YtMusicRepository.account().getOrNull()
             if (identity != listenerKey()) return@launch
-            _account.value = account
+            val account = rawAccount?.copy(
+                thumbnailUrl = rawAccount.thumbnailUrl.artworkAt(AVATAR_ART_PX),
+            )
+            if (account != null && _account.value != account) {
+                _account.value = account
+            }
             // A channel picked in the in-app browser arrives as ids and nothing
             // else — the page's `ytcfg` never says what the channel is called.
             // The account menu, asked *as* that channel, answers with its name,
@@ -1748,7 +1773,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     name = account.name, email = account.email,
                     profiles = saved.profiles.map { profile ->
                         if (profile.profileId == profileId) profile.copy(
-                            name = account.name, handle = account.email, avatar = account.thumbnailUrl,
+                            name = account.name, handle = account.email, avatar = account.thumbnailUrl.artworkAt(AVATAR_ART_PX),
                         ) else profile
                     },
                 ) }
@@ -1813,15 +1838,23 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             if (urls.isNotEmpty()) {
                 prefetchArtwork(getApplication(), urls)
             }
+        } else if (AppSettings.effectiveOffline.value) {
+            _explore.value = UiState.Error(text(R.string.listen_together_server_offline_dash))
         } else {
             _explore.value = UiState.Loading
         }
-        if (exploreFetchJob?.isActive != true) {
+        if (!AppSettings.effectiveOffline.value && exploreFetchJob?.isActive != true) {
             exploreFetchJob = viewModelScope.launch { fetchExplore() }
         }
     }
 
     fun loadCharts(force: Boolean = false) {
+        if (AppSettings.effectiveOffline.value) {
+            if (_charts.value !is UiState.Success) {
+                _charts.value = UiState.Error(text(R.string.listen_together_server_offline_dash))
+            }
+            return
+        }
         val region = _chartsRegion.value
         if (chartsFetchJob?.isActive == true && !force) return
         chartsFetchJob = viewModelScope.launch {
@@ -1860,6 +1893,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     fun loadNewReleases(force: Boolean = false) {
+        if (AppSettings.effectiveOffline.value) {
+            if (_newReleases.value !is UiState.Success) {
+                _newReleases.value = UiState.Error(text(R.string.listen_together_server_offline_dash))
+            }
+            return
+        }
         val region = _chartsRegion.value
         if (newReleasesFetchJob?.isActive == true && !force) return
         newReleasesFetchJob = viewModelScope.launch {
@@ -2126,94 +2165,106 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             _homePendingShelves.value = 0
             loadTopPicks(identity, rebuild = false)
 
-            viewModelScope.launch {
-                val fetched = fetchHome()
-                if (!isCurrentHomeLoad(identity, generation)) return@launch
+            if (!AppSettings.effectiveOffline.value) {
+                viewModelScope.launch {
+                    val fetched = fetchHome()
+                    if (!isCurrentHomeLoad(identity, generation)) return@launch
 
-                fetched.core.onSuccess { feed ->
-                    val currentShelves = (_home.value as? UiState.Success)?.data.orEmpty()
-                    val freshRecent = fetched.recentShelf(previous = previousRecent(currentShelves))
-                    // A part of the feed that could not be fetched leaves the
-                    // screen with fewer shelves than the saved feed has. The
-                    // screen can show what arrived; what is saved must not be
-                    // replaced by less than it held.
-                    val partial = fetched.partial
+                    fetched.core.onSuccess { feed ->
+                        val currentShelves = (_home.value as? UiState.Success)?.data.orEmpty()
+                        val freshRecent = fetched.recentShelf(previous = previousRecent(currentShelves))
+                        // A part of the feed that could not be fetched leaves the
+                        // screen with fewer shelves than the saved feed has. The
+                        // screen can show what arrived; what is saved must not be
+                        // replaced by less than it held.
+                        val partial = fetched.partial
 
-                    if (feed.shelves.isEmpty()) {
-                        FeedCache.touchHome(identity)
-                        return@onSuccess
+                        if (feed.shelves.isEmpty()) {
+                            FeedCache.touchHome(identity)
+                            return@onSuccess
+                        }
+
+                        val assembled = assembleHomeShelves(freshRecent, feed.shelves, fetched.supplementShelves)
+
+                        if (homePagedThisGeneration) {
+                            FeedCache.touchHome(identity)
+                            return@onSuccess
+                        }
+
+                        if (!FeedCache.areShelvesEqual(currentShelves, assembled)) {
+                            homeContinuation = feed.continuation
+                            homeSeenTitles.clear()
+                            homeSeenTitles.addAll(assembled.map { it.title.lowercase(Locale.ROOT) })
+                            _home.value = UiState.Success(assembled)
+                            if (!partial) FeedCache.saveHome(identity, assembled, feed.continuation)
+                            prefetchHomeArtwork(assembled)
+                        } else {
+                            FeedCache.touchHome(identity)
+                            if (homeContinuation == null) homeContinuation = feed.continuation
+                        }
+                    }.onFailure {
+                        // Cached shelves remain visible; no error screen replacing cached content.
                     }
-
-                    val assembled = assembleHomeShelves(freshRecent, feed.shelves, fetched.supplementShelves)
-
-                    if (homePagedThisGeneration) {
-                        FeedCache.touchHome(identity)
-                        return@onSuccess
-                    }
-
-                    if (!FeedCache.areShelvesEqual(currentShelves, assembled)) {
-                        homeContinuation = feed.continuation
-                        homeSeenTitles.clear()
-                        homeSeenTitles.addAll(assembled.map { it.title.lowercase(Locale.ROOT) })
-                        _home.value = UiState.Success(assembled)
-                        if (!partial) FeedCache.saveHome(identity, assembled, feed.continuation)
-                        prefetchHomeArtwork(assembled)
-                    } else {
-                        FeedCache.touchHome(identity)
-                        if (homeContinuation == null) homeContinuation = feed.continuation
-                    }
-                }.onFailure {
-                    // Cached shelves remain visible; no error screen replacing cached content.
                 }
             }
         } else {
-            _home.value = UiState.Loading
-            homeContinuation = null
-            homeSeenTitles.clear()
-            _homeLoadingMore.value = false
-            _homeRecentlyPlayedLoading.value = _signedIn.value
-            _homePendingShelves.value = 1 + YtMusicRepository.HOME_SUPPLEMENT_BROWSE_IDS.size
-            loadTopPicks(identity, rebuild = false)
-            viewModelScope.launch {
-                launch {
-                    try {
-                        YtMusicRepository.home()
-                            .onSuccess { feed ->
-                                if (!isCurrentHomeLoad(identity, generation)) return@onSuccess
-                                homeContinuation = feed.continuation
-                                publishHomeShelves(feed.shelves)
-                            }
-                            .onFailure { failure ->
-                                if (isCurrentHomeLoad(identity, generation) && _home.value !is UiState.Success) {
-                                    _home.value = UiState.Error(failure.friendly())
-                                }
-                            }
-                    } finally {
-                        homeShelfRequestSettled(identity, generation)
-                    }
-                }
-                if (_signedIn.value) {
-                    launch {
-                        YtMusicRepository.homeRecentlyPlayed()
-                            .onSuccess { shelf ->
-                                if (isCurrentHomeLoad(identity, generation)) {
-                                    _homeRecentlyPlayedLoading.value = false
-                                    shelf?.let { publishHomeShelves(listOf(it), prepend = true) }
-                                }
-                            }
-                            .onFailure {
-                                if (isCurrentHomeLoad(identity, generation)) _homeRecentlyPlayedLoading.value = false
-                            }
-                    }
-                }
-                YtMusicRepository.HOME_SUPPLEMENT_BROWSE_IDS.forEach { browseId ->
+            if (AppSettings.effectiveOffline.value) {
+                _home.value = UiState.Error(text(R.string.listen_together_server_offline_dash))
+                homeContinuation = null
+                homeSeenTitles.clear()
+                _homeLoadingMore.value = false
+                _homeRecentlyPlayedLoading.value = false
+                _homePendingShelves.value = 0
+                _topPicksLoading.value = false
+            } else {
+                _home.value = UiState.Loading
+                homeContinuation = null
+                homeSeenTitles.clear()
+                _homeLoadingMore.value = false
+                _homeRecentlyPlayedLoading.value = _signedIn.value
+                _homePendingShelves.value = 1 + YtMusicRepository.HOME_SUPPLEMENT_BROWSE_IDS.size
+                loadTopPicks(identity, rebuild = false)
+                viewModelScope.launch {
                     launch {
                         try {
-                            YtMusicRepository.homeSupplement(browseId).onSuccess { shelves ->
-                                if (isCurrentHomeLoad(identity, generation)) publishHomeShelves(shelves)
-                            }
+                            YtMusicRepository.home()
+                                .onSuccess { feed ->
+                                    if (!isCurrentHomeLoad(identity, generation)) return@onSuccess
+                                    homeContinuation = feed.continuation
+                                    publishHomeShelves(feed.shelves)
+                                }
+                                .onFailure { failure ->
+                                    if (isCurrentHomeLoad(identity, generation) && _home.value !is UiState.Success) {
+                                        _home.value = UiState.Error(failure.friendly())
+                                    }
+                                }
                         } finally {
                             homeShelfRequestSettled(identity, generation)
+                        }
+                    }
+                    if (_signedIn.value) {
+                        launch {
+                            YtMusicRepository.homeRecentlyPlayed()
+                                .onSuccess { shelf ->
+                                    if (isCurrentHomeLoad(identity, generation)) {
+                                        _homeRecentlyPlayedLoading.value = false
+                                        shelf?.let { publishHomeShelves(listOf(it), prepend = true) }
+                                    }
+                                }
+                                .onFailure {
+                                    if (isCurrentHomeLoad(identity, generation)) _homeRecentlyPlayedLoading.value = false
+                                }
+                        }
+                    }
+                    YtMusicRepository.HOME_SUPPLEMENT_BROWSE_IDS.forEach { browseId ->
+                        launch {
+                            try {
+                                YtMusicRepository.homeSupplement(browseId).onSuccess { shelves ->
+                                    if (isCurrentHomeLoad(identity, generation)) publishHomeShelves(shelves)
+                                }
+                            } finally {
+                                homeShelfRequestSettled(identity, generation)
+                            }
                         }
                     }
                 }
@@ -2244,6 +2295,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 _topPicks.value = null
             }
             if (!rebuild && stored?.day == slot) {
+                _topPicksLoading.value = false
+                return@launch
+            }
+            if (AppSettings.effectiveOffline.value) {
                 _topPicksLoading.value = false
                 return@launch
             }
@@ -2550,6 +2605,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun loadHistory() {
         if (!_signedIn.value) {
             _history.value = UiState.Error(text(R.string.history_sign_in_required))
+            return
+        }
+        if (AppSettings.effectiveOffline.value) {
+            _history.value = UiState.Error(text(R.string.listen_together_server_offline_dash))
             return
         }
         val identity = listenerKey()
@@ -4372,7 +4431,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val accountId = _activeAccountId.value ?: return
         val profile = YouTubeProfile(
             profileId = profileId(channel.pageId, channel.dataSyncId, channel.name),
-            name = channel.name, handle = channel.subtitle, avatar = channel.thumbnailUrl,
+            name = channel.name, handle = channel.subtitle, avatar = channel.thumbnailUrl.artworkAt(AVATAR_ART_PX),
             pageId = channel.pageId, dataSyncId = channel.dataSyncId,
             isBrandAccount = channel.pageId != null,
         )
@@ -4467,7 +4526,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                 profileId = selectedProfileId,
                 name = account.name,
                 handle = account.email,
-                avatar = account.thumbnailUrl,
+                avatar = account.thumbnailUrl.artworkAt(AVATAR_ART_PX),
                 pageId = session.pageId,
                 dataSyncId = session.dataSyncId,
                 authUser = session.authUser,
@@ -4569,7 +4628,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         val current = authStore.sessions.firstOrNull { it.accountId == accountId } ?: return
         val detected = channels.map { channel -> YouTubeProfile(
             profileId(channel.pageId, channel.dataSyncId, channel.name), channel.name, channel.subtitle,
-            channel.thumbnailUrl, channel.pageId, channel.dataSyncId,
+            channel.thumbnailUrl.artworkAt(AVATAR_ART_PX), channel.pageId, channel.dataSyncId,
             isBrandAccount = channel.pageId != null,
         ) }
         // A profile captured before its channel existed carries a provisional,
@@ -4595,6 +4654,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         } ?: profiles.firstOrNull()?.profileId
         authStore.upsertSession(current.copy(profiles = profiles, activeProfileId = selected), activate = false)
         _googleAccounts.value = authStore.sessions
+        val activeAcc = activeSessionAccount()
+        if (activeAcc != null && _account.value != activeAcc) {
+            _account.value = activeAcc
+        }
     }
 
     /**

@@ -3953,15 +3953,21 @@ private fun BitChordApp(
                         )
                     }
                     else -> {
-                        TopBarAnchor.Profile(
-                            account = account,
-                            onClick = {
+                        val onProfileClick = remember(signedIn) {
+                            {
                                 if (signedIn) {
                                     viewModel.loadChannels()
                                     showAccountSelector = true
                                 } else navigator.push(AppRoute.Settings)
-                            },
-                            onSwipeProfile = { forward -> viewModel.stepProfile(forward) },
+                            }
+                        }
+                        val onProfileSwipe = remember {
+                            { forward: Boolean -> viewModel.stepProfile(forward) }
+                        }
+                        TopBarAnchor.Profile(
+                            account = account,
+                            onClick = onProfileClick,
+                            onSwipeProfile = onProfileSwipe,
                         )
                     }
                 }

@@ -1,8 +1,10 @@
 package com.music.bitchord.data.innertube
 
 import com.music.bitchord.auth.normalizeDataSyncId
+import com.music.bitchord.data.model.AVATAR_ART_PX
 import com.music.bitchord.data.model.Account
 import com.music.bitchord.data.model.AccountChannel
+import com.music.bitchord.data.model.artworkAt
 import com.music.bitchord.data.model.ArtistNameIndex
 import com.music.bitchord.data.model.ArtistPage
 import com.music.bitchord.data.model.ArtistRef
@@ -1258,7 +1260,7 @@ object InnertubeParser {
         return Account(
             name = name,
             email = email,
-            thumbnailUrl = header.o("accountPhoto").a("thumbnails").best(),
+            thumbnailUrl = header.o("accountPhoto").a("thumbnails").best().artworkAt(AVATAR_ART_PX),
         )
     }
 
@@ -1294,7 +1296,7 @@ object InnertubeParser {
                     .ifBlank { item.o("channelHandle").s("simpleText").orEmpty() }
                     .ifBlank { item.o("accountByline").runs() }
                     .ifBlank { item.o("accountByline").s("simpleText").orEmpty() },
-                thumbnailUrl = item.o("accountPhoto").a("thumbnails").best(),
+                thumbnailUrl = item.o("accountPhoto").a("thumbnails").best().artworkAt(AVATAR_ART_PX),
                 pageId = pageId,
                 dataSyncId = dataSyncId,
                 activeOnWeb = (item["isSelected"] as? JsonPrimitive)?.content == "true",

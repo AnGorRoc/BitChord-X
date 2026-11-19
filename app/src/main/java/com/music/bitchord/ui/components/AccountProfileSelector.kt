@@ -3,6 +3,7 @@ package com.music.bitchord.ui.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -23,6 +24,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -40,9 +42,12 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import coil3.compose.AsyncImage
+import coil3.request.crossfade
 import com.music.bitchord.R
 import com.music.bitchord.auth.GoogleAccountSession
 import com.music.bitchord.auth.YouTubeProfile
+import com.music.bitchord.data.model.AVATAR_ART_PX
+import com.music.bitchord.data.model.artworkAt
 import com.music.bitchord.data.settings.AppSettings
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import dev.chrisbanes.haze.HazeState
@@ -86,6 +91,13 @@ fun AccountProfileSelector(
             fallbackTint = material.fallbackTint,
         )
     }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    LaunchedEffect(accounts) {
+        val urls = accounts.flatMap { acc -> acc.profiles.mapNotNull { it.avatar.artworkAt(AVATAR_ART_PX) } }
+        if (urls.isNotEmpty()) {
+            prefetchArtwork(context, urls)
+        }
+    }
     Column(
         modifier = modifier.fillMaxSize().background(MaterialTheme.colorScheme.scrim.copy(alpha = .48f))
             .clickable(onClick = onDismiss),
@@ -122,26 +134,41 @@ fun AccountProfileSelector(
             // Room under the last row to match the space between rows, so the
             // list doesn't stop short against the card's edge.
             LazyColumn(contentPadding = PaddingValues(bottom = 14.dp)) {
-                item { Text(stringResource(R.string.switch_account), style = MaterialTheme.typography.titleLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(20.dp, 18.dp, 20.dp, 8.dp)) }
+                item(key = "header:title") {
+                    Text(
+                        stringResource(R.string.switch_account),
+                        style = MaterialTheme.typography.titleLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.padding(20.dp, 18.dp, 20.dp, 8.dp),
+                    )
+                }
                 accounts.forEach { account ->
-                item {
-                    Text(account.email.ifBlank { account.name.ifBlank { stringResource(R.string.accounts) } },
-                        style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(20.dp, 12.dp, 20.dp, 4.dp))
+                    item(key = "header:acc:${account.accountId}") {
+                        Text(
+                            account.email.ifBlank { account.name.ifBlank { stringResource(R.string.accounts) } },
+                            style = MaterialTheme.typography.labelLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(20.dp, 12.dp, 20.dp, 4.dp),
+                        )
+                    }
+                    items(
+                        count = account.profiles.size,
+                        key = { index -> "profile:${account.accountId}:${account.profiles[index].profileId}" },
+                    ) { index ->
+                        val profile = account.profiles[index]
+                        ProfileRow(
+                            profile,
+                            account.accountId == activeAccountId && profile.profileId == activeProfileId,
+                            managing,
+                            { onSelect(account, profile); onDismiss() },
+                            { onRemoveAccount(account) },
+                        )
+                    }
                 }
-                items(account.profiles.size) { index ->
-                    val profile = account.profiles[index]
-                    ProfileRow(profile, account.accountId == activeAccountId && profile.profileId == activeProfileId,
-                        managing, { onSelect(account, profile); onDismiss() }, { onRemoveAccount(account) })
-                }
-                }
-                item { SelectorAction(SfIcons.AddAccount, stringResource(R.string.add_account), onClick = onAddAccount) }
+                item(key = "action:add") { SelectorAction(SfIcons.AddAccount, stringResource(R.string.add_account), onClick = onAddAccount) }
                 // A wide glyph — two people and a gear — drawn a size up to match the others.
-                item { SelectorAction(SfIcons.ManageAccounts, stringResource(R.string.manage_accounts), iconSize = 28.dp) { managing = !managing } }
-                item { SelectorAction(SfIcons.Settings, stringResource(R.string.settings), onClick = onOpenSettings) }
+                item(key = "action:manage") { SelectorAction(SfIcons.ManageAccounts, stringResource(R.string.manage_accounts), iconSize = 28.dp) { managing = !managing } }
+                item(key = "action:settings") { SelectorAction(SfIcons.Settings, stringResource(R.string.settings), onClick = onOpenSettings) }
             }
         }
     }
@@ -153,17 +180,24 @@ fun AccountProfileSelector(
     Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.RadioButton, onClick = if (managing) onRemove else onClick)
         .semantics { contentDescription = description }
         .padding(horizontal = 20.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-        if (profile.avatar != null) {
+        val avatarUrl = remember(profile.avatar) { profile.avatar.artworkAt(AVATAR_ART_PX) }
+        if (avatarUrl != null) {
             val context = androidx.compose.ui.platform.LocalContext.current
-            val request = remember(profile.avatar) {
+            val request = remember(avatarUrl) {
                 coil3.request.ImageRequest.Builder(context)
-                    .data(profile.avatar)
+                    .data(avatarUrl)
                     .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
                     .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
                     .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
+                    .crossfade(false)
                     .build()
             }
-            AsyncImage(request, null, Modifier.size(38.dp).clip(MaterialTheme.shapes.extraLarge))
+            AsyncImage(
+                model = request,
+                contentDescription = null,
+                contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                modifier = Modifier.size(38.dp).clip(CircleShape),
+            )
         }
         else Icon(SfIcons.AccountPlaceholder, null, Modifier.size(38.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         Spacer(Modifier.width(12.dp)); Column(Modifier.weight(1f)) {

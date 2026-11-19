@@ -11,9 +11,11 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -800,10 +802,16 @@ private fun SongRowContent(
     // has no match: shown, but not something a tap or a menu can act on.
     val matching = song.isMatchPending
     val unavailable = song.isMatchMissing
+    val targetDimAlpha = if (dimmed) 0.38f else if (unavailable) 0.45f else 1f
+    val dimAlpha by animateFloatAsState(
+        targetValue = targetDimAlpha,
+        animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+        label = "songRowDim",
+    )
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .alpha(if (dimmed) 0.38f else if (unavailable) 0.45f else 1f)
+            .alpha(dimAlpha)
             .background(activeBackground)
             .longPressMenuClickable(
                 onClick = onClick,

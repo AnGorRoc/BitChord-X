@@ -2,6 +2,8 @@ package com.music.bitchord.ui.components
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
@@ -85,9 +87,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.max
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import coil3.compose.AsyncImage
+import coil3.request.crossfade
 import kotlinx.coroutines.launch
 import com.music.bitchord.R
+import com.music.bitchord.data.model.AVATAR_ART_PX
 import com.music.bitchord.data.model.Account
+import com.music.bitchord.data.model.artworkAt
 import com.music.bitchord.data.settings.AppSettings
 import com.music.bitchord.ui.theme.stableStatusBarInsets
 import dev.chrisbanes.haze.HazeState
@@ -534,11 +539,19 @@ private fun ArtworkPageActions(
 
 sealed interface TopBarAnchor {
     data object None : TopBarAnchor
-    data class Profile(
+    class Profile(
         val account: Account?,
         val onClick: () -> Unit,
         val onSwipeProfile: ((forward: Boolean) -> Boolean)? = null,
-    ) : TopBarAnchor
+    ) : TopBarAnchor {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (other !is Profile) return false
+            return account == other.account
+        }
+
+        override fun hashCode(): Int = account?.hashCode() ?: 0
+    }
     data class More(
         val onClick: () -> Unit,
     ) : TopBarAnchor
@@ -713,10 +726,14 @@ internal fun TopBarAnchorSlot(
             AnimatedContent(
                 targetState = anchor,
                 transitionSpec = {
-                    (fadeIn(animationSpec = tween(260, delayMillis = 50, easing = LinearOutSlowInEasing)) +
-                        scaleIn(initialScale = 0.7f, animationSpec = spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow))) togetherWith
-                    (fadeOut(animationSpec = tween(180, easing = FastOutLinearInEasing)) +
-                        scaleOut(targetScale = 0.7f, animationSpec = tween(180, easing = FastOutLinearInEasing)))
+                    if (initialState is TopBarAnchor.Profile && targetState is TopBarAnchor.Profile) {
+                        EnterTransition.None togetherWith ExitTransition.None
+                    } else {
+                        (fadeIn(animationSpec = tween(260, delayMillis = 50, easing = LinearOutSlowInEasing)) +
+                            scaleIn(initialScale = 0.7f, animationSpec = spring(dampingRatio = 0.75f, stiffness = Spring.StiffnessMediumLow))) togetherWith
+                        (fadeOut(animationSpec = tween(180, easing = FastOutLinearInEasing)) +
+                            scaleOut(targetScale = 0.7f, animationSpec = tween(180, easing = FastOutLinearInEasing)))
+                    }
                 },
                 contentKey = {
                     when (it) {
@@ -949,15 +966,22 @@ fun TopBarAccountButton(
                 )
             },
     ) {
-        val photo = account?.thumbnailUrl
+        val rawPhoto = account?.thumbnailUrl
+        val photo = remember(rawPhoto) { rawPhoto.artworkAt(AVATAR_ART_PX) }
+        val context = androidx.compose.ui.platform.LocalContext.current
+        androidx.compose.runtime.LaunchedEffect(photo) {
+            if (photo != null) {
+                prefetchArtwork(context, listOf(photo))
+            }
+        }
         if (photo != null) {
-            val context = androidx.compose.ui.platform.LocalContext.current
             val request = remember(photo) {
                 coil3.request.ImageRequest.Builder(context)
                     .data(photo)
                     .memoryCachePolicy(coil3.request.CachePolicy.ENABLED)
                     .diskCachePolicy(coil3.request.CachePolicy.ENABLED)
                     .networkCachePolicy(coil3.request.CachePolicy.ENABLED)
+                    .crossfade(false)
                     .build()
             }
             AsyncImage(

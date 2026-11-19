@@ -331,6 +331,9 @@ private val PARAM_SIZE_HINT = Regex("""=s\d+""")
  */
 const val ROW_ART_PX = 160
 
+/** Artwork for user and channel profile avatars across top bar, switcher and session cards. */
+const val AVATAR_ART_PX = 160
+
 /** Artwork for a shelf card: 166dp wide, so a little under 450px at 3x. */
 const val CARD_ART_PX = 480
 
