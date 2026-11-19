@@ -1725,12 +1725,12 @@
     <string name="telemetry_level_minimal_desc">Tylko informacja, że aplikacja jest otwarta, z jej wersją i platformą, pod identyfikatorem zmieniającym się codziennie. Błędy są liczone według typu, bez szczegółów.</string>
     <string name="telemetry_level_off">Wyłączona</string>
     <string name="telemetry_level_off_desc">Nic nie jest wysyłane.</string>
-    <string name="telemetry_notice_title">Pomóż naprawiać błędy</string>
-    <string name="telemetry_notice_body">BitChord-X wysyła anonimową diagnostykę, aby można było znajdować i naprawiać awarie i błędy. Nigdy nie obejmuje ona Twojego konta, adresu IP, historii odtwarzania ani playlist. Możesz to zmienić w dowolnej chwili w Ustawieniach.</string>
+    <string name="telemetry_notice_title">Pomóż nam naprawiać to, czego nie widzimy</string>
+    <string name="telemetry_notice_body">BitChord-X to mały projekt i nie możemy przetestować każdego telefonu i systemu. Gdy coś zawodzi, anonimowy raport mówi nam co i gdzie: na przykład „błąd odtwarzacza, Pixel 7, Android 15, wersja 1.9.3”. To wszystko, co zawiera. Nigdy Twojego konta, adresu IP, historii odtwarzania ani playlist. Możesz to zmienić w dowolnej chwili w Ustawieniach.</string>
     <string name="telemetry_notice_ok">Rozumiem</string>
     <string name="telemetry_notice_choose">Wybierz, co jest wysyłane</string>
-    <string name="telemetry_plea_title">Prosimy, zostaw to włączone</string>
-    <string name="telemetry_plea_body">BitChord-X to bardzo mały projekt, a te raporty pozwalają nam znajdować awarie, których sami nigdy byśmy nie odtworzyli. Nie zawierają danych osobowych, a jeden raport może naprawić błąd dla wszystkich. Jeśli mimo to wolisz wysyłać mniej, rozumiemy.</string>
+    <string name="telemetry_plea_title">Zanim to wyłączysz</string>
+    <string name="telemetry_plea_body">Większość awarii zdarza się na telefonach i systemach, których nie mamy, a raport jest często jedynym sposobem, by się o nich dowiedzieć. Każdy zawiera błąd i model urządzenia, nic o Tobie, a jeden raport może naprawić błąd dla wszystkich z tym samym urządzeniem. Jeśli pełne raporty to za dużo, tryb Minimalna tylko zlicza, że coś zawiodło. W każdym przypadku decyzja należy do Ciebie.</string>
     <string name="telemetry_plea_keep">Zostaw włączone</string>
     <string name="telemetry_plea_minimal">Użyj minimalnej</string>
     <string name="telemetry_plea_confirm">Zmień mimo to</string>

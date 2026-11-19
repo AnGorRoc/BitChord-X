@@ -1664,12 +1664,12 @@
     <string name="telemetry_level_minimal_desc">只說明應用程式已開啟，附帶版本和平台，使用每天都會變化的 ID。錯誤只按類型計數，不含任何詳情。</string>
     <string name="telemetry_level_off">關閉</string>
     <string name="telemetry_level_off_desc">不傳送任何內容。</string>
-    <string name="telemetry_notice_title">幫助修復問題</string>
-    <string name="telemetry_notice_body">BitChord-X 會傳送匿名診斷資訊，以便發現並修復當機和問題。其中絕不包含你的帳號、IP 位址、收聽記錄或播放清單。你可以隨時在設定中變更。</string>
+    <string name="telemetry_notice_title">幫助我們修復看不到的問題</string>
+    <string name="telemetry_notice_body">BitChord-X 是一個小專案，我們無法在每一支手機和每一種系統上測試。出問題時，匿名報告會告訴我們是什麼、在哪裡：例如「播放器錯誤，Pixel 7，Android 15，版本 1.9.3」。報告裡只有這些。絕不包含你的帳號、IP 位址、收聽記錄或播放清單。你可以隨時在設定中變更。</string>
     <string name="telemetry_notice_ok">知道了</string>
     <string name="telemetry_notice_choose">選擇傳送的內容</string>
-    <string name="telemetry_plea_title">請保持開啟</string>
-    <string name="telemetry_plea_body">BitChord-X 是一個很小的專案，這些報告是我們發現自己永遠無法重現的當機的方式。它們不含個人資料，一份報告就可能為所有人修復一個問題。如果你仍想少傳送一些，我們理解。</string>
+    <string name="telemetry_plea_title">關閉之前</string>
+    <string name="telemetry_plea_body">大多數當機發生在我們沒有的手機和系統上，報告往往是我們得知的唯一方式。每份報告只包含錯誤和裝置型號，不含任何關於你的資訊，一份報告就可能為所有使用同款裝置的人修復問題。如果完整報告太多，「最少」只會統計出現過故障。無論如何，選擇權在你。</string>
     <string name="telemetry_plea_keep">保持開啟</string>
     <string name="telemetry_plea_minimal">改用最少</string>
     <string name="telemetry_plea_confirm">仍然變更</string>

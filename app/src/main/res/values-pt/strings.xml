@@ -1690,12 +1690,12 @@
     <string name="telemetry_level_minimal_desc">Apenas que o app está aberto, com sua versão e plataforma, sob um ID que muda todos os dias. Os erros são contados por tipo, sem detalhes.</string>
     <string name="telemetry_level_off">Desativada</string>
     <string name="telemetry_level_off_desc">Nada é enviado.</string>
-    <string name="telemetry_notice_title">Ajude a corrigir falhas</string>
-    <string name="telemetry_notice_body">O BitChord-X envia diagnósticos anônimos para que travamentos e falhas possam ser encontrados e corrigidos. Eles nunca incluem sua conta, endereço IP, histórico de reprodução ou playlists. Você pode mudar isso a qualquer momento em Configurações.</string>
+    <string name="telemetry_notice_title">Ajude-nos a corrigir o que não vemos</string>
+    <string name="telemetry_notice_body">O BitChord-X é um projeto pequeno e não conseguimos testar todos os celulares e sistemas. Quando algo falha, um relatório anônimo nos diz o quê e onde: por exemplo, “erro do player, Pixel 7, Android 15, versão 1.9.3”. Isso é tudo o que ele contém. Nunca sua conta, endereço IP, histórico de reprodução ou playlists. Você pode mudar isso a qualquer momento em Configurações.</string>
     <string name="telemetry_notice_ok">Entendi</string>
     <string name="telemetry_notice_choose">Escolher o que é enviado</string>
-    <string name="telemetry_plea_title">Por favor, mantenha ativado</string>
-    <string name="telemetry_plea_body">O BitChord-X é um projeto muito pequeno, e esses relatórios são como encontramos travamentos que nunca conseguiríamos reproduzir sozinhos. Eles não levam dados pessoais, e um único relatório pode corrigir uma falha para todos. Se ainda assim preferir enviar menos, entendemos.</string>
+    <string name="telemetry_plea_title">Antes de desativar</string>
+    <string name="telemetry_plea_body">A maioria dos travamentos acontece em celulares e sistemas que não temos, e um relatório costuma ser a única forma de descobrirmos. Cada um contém um erro e o modelo do dispositivo, nada sobre você, e um único relatório pode corrigir uma falha para todos que usam o mesmo dispositivo. Se relatórios completos são demais, o modo Mínima apenas conta que algo falhou. A escolha é sua de qualquer forma.</string>
     <string name="telemetry_plea_keep">Manter ativado</string>
     <string name="telemetry_plea_minimal">Usar a mínima</string>
     <string name="telemetry_plea_confirm">Mudar mesmo assim</string>

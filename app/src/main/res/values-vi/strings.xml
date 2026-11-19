@@ -1604,12 +1604,12 @@
     <string name="telemetry_level_minimal_desc">Chỉ cho biết ứng dụng đang mở, kèm phiên bản và nền tảng, dưới một ID thay đổi mỗi ngày. Lỗi chỉ được đếm theo loại, không có chi tiết.</string>
     <string name="telemetry_level_off">Tắt</string>
     <string name="telemetry_level_off_desc">Không gửi gì cả.</string>
-    <string name="telemetry_notice_title">Giúp sửa lỗi</string>
-    <string name="telemetry_notice_body">BitChord-X gửi dữ liệu chẩn đoán ẩn danh để có thể tìm và sửa sự cố và lỗi. Dữ liệu này không bao giờ gồm tài khoản, địa chỉ IP, lịch sử nghe hay danh sách phát của bạn. Bạn có thể thay đổi bất cứ lúc nào trong Cài đặt.</string>
+    <string name="telemetry_notice_title">Giúp chúng tôi sửa những gì chúng tôi không thấy</string>
+    <string name="telemetry_notice_body">BitChord-X là một dự án nhỏ và chúng tôi không thể thử trên mọi điện thoại và hệ thống. Khi có gì đó lỗi, một báo cáo ẩn danh cho chúng tôi biết lỗi gì và ở đâu: ví dụ, “lỗi trình phát, Pixel 7, Android 15, phiên bản 1.9.3”. Chỉ có vậy. Không bao giờ có tài khoản, địa chỉ IP, lịch sử nghe hay danh sách phát của bạn. Bạn có thể đổi bất cứ lúc nào trong Cài đặt.</string>
     <string name="telemetry_notice_ok">Đã hiểu</string>
     <string name="telemetry_notice_choose">Chọn nội dung được gửi</string>
-    <string name="telemetry_plea_title">Xin hãy để bật</string>
-    <string name="telemetry_plea_body">BitChord-X là một dự án rất nhỏ, và các báo cáo này là cách chúng tôi tìm ra những sự cố mà chính mình không thể tái hiện. Chúng không chứa dữ liệu cá nhân, và chỉ một báo cáo cũng có thể sửa lỗi cho tất cả mọi người. Nếu bạn vẫn muốn gửi ít hơn, chúng tôi hiểu.</string>
+    <string name="telemetry_plea_title">Trước khi bạn tắt</string>
+    <string name="telemetry_plea_body">Phần lớn sự cố xảy ra trên điện thoại và hệ thống chúng tôi không có, và báo cáo thường là cách duy nhất để chúng tôi biết. Mỗi báo cáo chứa một lỗi và mẫu thiết bị, không có gì về bạn, và chỉ một báo cáo cũng có thể sửa lỗi cho mọi người dùng cùng thiết bị. Nếu báo cáo đầy đủ là quá nhiều, mức Tối thiểu chỉ đếm việc có gì đó đã lỗi. Dù thế nào, quyết định vẫn là của bạn.</string>
     <string name="telemetry_plea_keep">Giữ bật</string>
     <string name="telemetry_plea_minimal">Dùng mức tối thiểu</string>
     <string name="telemetry_plea_confirm">Vẫn thay đổi</string>

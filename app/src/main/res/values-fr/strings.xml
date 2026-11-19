@@ -1686,12 +1686,12 @@
     <string name="telemetry_level_minimal_desc">Seulement le fait que l\'app est ouverte, avec sa version et sa plateforme, sous un ID qui change chaque jour. Les erreurs sont comptées par type, sans détails.</string>
     <string name="telemetry_level_off">Désactivée</string>
     <string name="telemetry_level_off_desc">Rien n\'est envoyé.</string>
-    <string name="telemetry_notice_title">Aidez-nous à corriger les bugs</string>
-    <string name="telemetry_notice_body">BitChord-X envoie des diagnostics anonymes pour que les plantages et les bugs puissent être trouvés et corrigés. Ils n\'incluent jamais votre compte, votre adresse IP, votre historique d\'écoute ni vos playlists. Vous pouvez changer cela à tout moment dans les Réglages.</string>
+    <string name="telemetry_notice_title">Aidez-nous à corriger ce que nous ne voyons pas</string>
+    <string name="telemetry_notice_body">BitChord-X est un petit projet et nous ne pouvons pas tester chaque téléphone et chaque système. Quand quelque chose échoue, un rapport anonyme nous dit quoi et où : par exemple, « erreur du lecteur, Pixel 7, Android 15, version 1.9.3 ». C\'est tout ce qu\'il contient. Jamais votre compte, votre adresse IP, votre historique d\'écoute ni vos playlists. Vous pouvez le changer à tout moment dans les Réglages.</string>
     <string name="telemetry_notice_ok">Compris</string>
     <string name="telemetry_notice_choose">Choisir ce qui est envoyé</string>
-    <string name="telemetry_plea_title">Merci de laisser cette option activée</string>
-    <string name="telemetry_plea_body">BitChord-X est un tout petit projet, et ces rapports sont la façon dont nous trouvons des plantages que nous ne pourrions jamais reproduire nous-mêmes. Ils ne contiennent aucune donnée personnelle, et un seul peut corriger un bug pour tout le monde. Si vous préférez en envoyer moins, nous le comprenons.</string>
+    <string name="telemetry_plea_title">Avant de le désactiver</string>
+    <string name="telemetry_plea_body">La plupart des plantages surviennent sur des téléphones et des systèmes que nous n\'avons pas, et un rapport est souvent le seul moyen de les découvrir. Chacun contient une erreur et un modèle d\'appareil, rien sur vous, et un seul rapport peut corriger un bug pour tous ceux qui ont le même appareil. Si les rapports complets sont trop, le mode Minimale compte seulement qu\'il y a eu un échec. C\'est votre choix dans tous les cas.</string>
     <string name="telemetry_plea_keep">La laisser activée</string>
     <string name="telemetry_plea_minimal">Utiliser la minimale</string>
     <string name="telemetry_plea_confirm">Changer quand même</string>

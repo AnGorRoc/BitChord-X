@@ -697,12 +697,12 @@
     <string name="telemetry_level_minimal_desc">רק שהאפליקציה פתוחה, עם הגרסה והפלטפורמה, תחת מזהה שמשתנה בכל יום. שגיאות נספרות לפי סוג, בלי פרטים.</string>
     <string name="telemetry_level_off">כבויה</string>
     <string name="telemetry_level_off_desc">שום דבר לא נשלח.</string>
-    <string name="telemetry_notice_title">עזרו לתקן באגים</string>
-    <string name="telemetry_notice_body">BitChord-X שולח אבחון אנונימי כדי שאפשר יהיה למצוא ולתקן קריסות ובאגים. הוא לעולם לא כולל את החשבון שלך, כתובת ה-IP, היסטוריית ההאזנה או הפלייליסטים. אפשר לשנות זאת בכל עת בהגדרות.</string>
+    <string name="telemetry_notice_title">עזרו לנו לתקן מה שאיננו רואים</string>
+    <string name="telemetry_notice_body">BitChord-X הוא פרויקט קטן ואיננו יכולים לבדוק כל טלפון וכל מערכת. כשמשהו נכשל, דוח אנונימי אומר לנו מה ואיפה: למשל, ״שגיאת נגן, Pixel 7, Android 15, גרסה 1.9.3״. זה כל מה שהוא מכיל. לעולם לא החשבון, כתובת ה-IP, היסטוריית ההאזנה או הפלייליסטים. אפשר לשנות זאת בכל עת בהגדרות.</string>
     <string name="telemetry_notice_ok">הבנתי</string>
     <string name="telemetry_notice_choose">בחירת מה נשלח</string>
-    <string name="telemetry_plea_title">בבקשה השאירו את זה פעיל</string>
-    <string name="telemetry_plea_body">BitChord-X הוא פרויקט קטן מאוד, והדוחות האלה הם הדרך שלנו למצוא קריסות שלעולם לא היינו מצליחים לשחזר בעצמנו. הם לא כוללים מידע אישי, ודוח אחד יכול לתקן באג עבור כולם. אם בכל זאת אתם מעדיפים לשלוח פחות, אנחנו מבינים.</string>
+    <string name="telemetry_plea_title">לפני שמכבים</string>
+    <string name="telemetry_plea_body">רוב הקריסות קורות בטלפונים ובמערכות שאין לנו, ודוח הוא לרוב הדרך היחידה שלנו לגלות אותן. כל אחד מכיל שגיאה ודגם מכשיר, שום דבר עליכם, ודוח אחד יכול לתקן באג לכל מי שמשתמש באותו מכשיר. אם דוחות מלאים זה יותר מדי, ״מינימלית״ רק סופרת שמשהו נכשל. בכל מקרה, ההחלטה שלכם.</string>
     <string name="telemetry_plea_keep">להשאיר פעיל</string>
     <string name="telemetry_plea_minimal">להשתמש במינימלית</string>
     <string name="telemetry_plea_confirm">לשנות בכל זאת</string>

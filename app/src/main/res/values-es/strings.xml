@@ -1658,12 +1658,12 @@
     <string name="telemetry_level_minimal_desc">Solo que la app está abierta, con su versión y plataforma, bajo un ID que cambia cada día. Los errores se cuentan por tipo, sin detalles.</string>
     <string name="telemetry_level_off">Desactivada</string>
     <string name="telemetry_level_off_desc">No se envía nada.</string>
-    <string name="telemetry_notice_title">Ayuda a corregir errores</string>
-    <string name="telemetry_notice_body">BitChord-X envía diagnósticos anónimos para poder encontrar y corregir fallos. Nunca incluye tu cuenta, dirección IP, historial de reproducción ni playlists. Puedes cambiarlo cuando quieras en Ajustes.</string>
+    <string name="telemetry_notice_title">Ayúdanos a corregir lo que no vemos</string>
+    <string name="telemetry_notice_body">BitChord-X es un proyecto pequeño y no podemos probar todos los teléfonos y sistemas. Cuando algo falla, un informe anónimo nos dice qué y dónde: por ejemplo, “error del reproductor, Pixel 7, Android 15, versión 1.9.3”. Eso es todo lo que contiene. Nunca tu cuenta, dirección IP, historial de reproducción ni playlists. Puedes cambiarlo cuando quieras en Ajustes.</string>
     <string name="telemetry_notice_ok">Entendido</string>
     <string name="telemetry_notice_choose">Elegir qué se envía</string>
-    <string name="telemetry_plea_title">Por favor, déjala activada</string>
-    <string name="telemetry_plea_body">BitChord-X es un proyecto muy pequeño y estos informes son la forma en que encontramos fallos que nunca podríamos reproducir nosotros. No llevan datos personales y uno solo puede arreglar un error para todos. Si aun así prefieres enviar menos, lo entendemos.</string>
+    <string name="telemetry_plea_title">Antes de desactivarlo</string>
+    <string name="telemetry_plea_body">La mayoría de los fallos ocurren en teléfonos y sistemas que no tenemos, y un informe suele ser la única forma de enterarnos. Cada uno contiene un error y el modelo del dispositivo, nada sobre ti, y un solo informe puede arreglar un fallo para todos los que usan ese mismo dispositivo. Si los informes completos te parecen demasiado, la opción Mínima solo cuenta que algo falló. Tú decides en cualquier caso.</string>
     <string name="telemetry_plea_keep">Dejarla activada</string>
     <string name="telemetry_plea_minimal">Usar la mínima</string>
     <string name="telemetry_plea_confirm">Cambiar de todos modos</string>

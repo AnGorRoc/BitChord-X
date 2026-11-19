@@ -1685,12 +1685,12 @@
     <string name="telemetry_level_minimal_desc">केवल यह कि ऐप खुला है, उसके संस्करण और प्लेटफ़ॉर्म के साथ, एक ऐसी आईडी के तहत जो हर दिन बदलती है। त्रुटियाँ प्रकार के अनुसार गिनी जाती हैं, बिना विवरण के।</string>
     <string name="telemetry_level_off">बंद</string>
     <string name="telemetry_level_off_desc">कुछ भी नहीं भेजा जाता।</string>
-    <string name="telemetry_notice_title">बग ठीक करने में मदद करें</string>
-    <string name="telemetry_notice_body">BitChord-X गुमनाम डायग्नोस्टिक्स भेजता है ताकि क्रैश और बग खोजे और ठीक किए जा सकें। इनमें आपका खाता, IP पता, सुनने का इतिहास या प्लेलिस्ट कभी शामिल नहीं होते। आप इसे कभी भी सेटिंग्स में बदल सकते हैं।</string>
+    <string name="telemetry_notice_title">जो हमें दिखता नहीं, उसे ठीक करने में मदद करें</string>
+    <string name="telemetry_notice_body">BitChord-X एक छोटा प्रोजेक्ट है और हम हर फ़ोन और सिस्टम पर टेस्ट नहीं कर सकते। जब कुछ विफल होता है, तो एक गुमनाम रिपोर्ट हमें बताती है कि क्या और कहाँ: उदाहरण के लिए, “प्लेयर त्रुटि, Pixel 7, Android 15, संस्करण 1.9.3”। उसमें बस इतना ही होता है। आपका खाता, IP पता, सुनने का इतिहास या प्लेलिस्ट कभी नहीं। आप इसे कभी भी सेटिंग्स में बदल सकते हैं।</string>
     <string name="telemetry_notice_ok">समझ गया</string>
     <string name="telemetry_notice_choose">चुनें कि क्या भेजा जाए</string>
-    <string name="telemetry_plea_title">कृपया इसे चालू रखें</string>
-    <string name="telemetry_plea_body">BitChord-X एक बहुत छोटा प्रोजेक्ट है, और ये रिपोर्ट ही हमें वे क्रैश खोजने में मदद करती हैं जिन्हें हम खुद कभी दोहरा नहीं सकते। इनमें कोई निजी डेटा नहीं होता, और एक अकेली रिपोर्ट सबके लिए एक बग ठीक कर सकती है। फिर भी आप कम भेजना चाहें, तो हम समझते हैं।</string>
+    <string name="telemetry_plea_title">इसे बंद करने से पहले</string>
+    <string name="telemetry_plea_body">ज़्यादातर क्रैश उन फ़ोन और सिस्टम पर होते हैं जो हमारे पास नहीं हैं, और रिपोर्ट अक्सर जानने का एकमात्र तरीका होती है। हर रिपोर्ट में एक त्रुटि और डिवाइस मॉडल होता है, आपके बारे में कुछ नहीं, और एक अकेली रिपोर्ट उसी डिवाइस वाले सभी के लिए बग ठीक कर सकती है। अगर पूरी रिपोर्टें ज़्यादा लगती हैं, तो न्यूनतम सिर्फ़ गिनता है कि कुछ विफल हुआ। हर हाल में फ़ैसला आपका है।</string>
     <string name="telemetry_plea_keep">चालू रखें</string>
     <string name="telemetry_plea_minimal">इसके बजाय न्यूनतम इस्तेमाल करें</string>
     <string name="telemetry_plea_confirm">फिर भी बदलें</string>

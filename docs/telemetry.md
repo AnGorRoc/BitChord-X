@@ -18,7 +18,7 @@ the listening history or the playlists.
 
 Full is what makes bugs fixable: a stack trace and the device it happened on are usually what it takes to reproduce a
 crash. Minimal keeps the headcount and a count of errors by type, which tells us that something is failing and how
-often, but not where. Turning it down asks for a second confirmation and offers Minimal before Off.
+often, but not where. Turning it down asks for a second confirmation, explains why the reports matter and offers Minimal before Off. The wording describes what a report is and what it is for; it does not hide the options or make the choice harder than one tap.
 
 ## What the client does
 
@@ -30,6 +30,21 @@ often, but not where. Turning it down asks for a second confirmation and offers 
   and the type, with `level: "minimal"`, and no ID, message, stack trace or device fields.
 - **Off.** Opens no connection and sends nothing. Switching to Off while the app is open takes it off the live count
   at once.
+
+## What Minimal can and cannot tell us
+
+The daily ID does not create a new "user" in the database: Minimal never writes to `installs`, so there is no row to
+multiply. What it writes is a counter per day. That has a consequence worth knowing:
+
+- It answers: how many devices opened the app on a given day (daily active devices), on which version and platform, and
+  how often each error type happens.
+- It cannot answer: how many different people used the app over a week or a month, how many are new or returning,
+  retention, or which version an install upgraded from. Adding up a week of Minimal gives device-days, not people, so the
+  overview calls it `deviceDays` and never mixes it into the unique-install figures that Full produces.
+- A person who switches between levels is counted as one install while on Full and as device-days while on Minimal.
+  The two are shown apart and are not merged.
+
+That is the price of not being able to follow anyone, and it is deliberate.
 
 ## What the server does
 

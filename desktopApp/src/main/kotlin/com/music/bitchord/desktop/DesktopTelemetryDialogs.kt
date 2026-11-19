@@ -62,10 +62,10 @@ internal fun DesktopTelemetryDialogHost() {
         DesktopTelemetryPrompt.Notice -> {
             val seen = { DesktopPresence.markNoticeSeen() }
             TelemetryAlert(
-                title = DesktopStrings["telemetry_notice_title", "Help fix bugs"],
+                title = DesktopStrings["telemetry_notice_title", "Help us fix what we can't see"],
                 description = DesktopStrings[
                     "telemetry_notice_body",
-                    "BitChord-X sends anonymous diagnostics so crashes and bugs can be found and fixed. It never includes your account, IP address, listening history or playlists. You can change this anytime in Settings.",
+                    "BitChord-X is a small project and we can't test every phone and system. When something fails, an anonymous report tells us what and where: for example, “player error, Pixel 7, Android 15, version 1.9.3”. That is all it holds. Never your account, IP address, listening history or playlists. You can change it any time in Settings.",
                 ],
                 onDismiss = { seen(); close() },
                 actions = listOf(
@@ -145,10 +145,10 @@ internal fun DesktopTelemetryDialogHost() {
         }
 
         is DesktopTelemetryPrompt.Plea -> TelemetryAlert(
-            title = DesktopStrings["telemetry_plea_title", "Please keep this on"],
+            title = DesktopStrings["telemetry_plea_title", "Before you turn this off"],
             description = DesktopStrings[
                 "telemetry_plea_body",
-                "BitChord-X is a very small project, and these reports are how we find crashes we could never reproduce ourselves. They carry no personal data, and a single one can fix a bug for everybody. If you still prefer less, we understand.",
+                "Most crashes happen on phones and systems we don't own, and a report is often the only way we find out. Each one holds an error and a device model, nothing about you, and a single report can fix a bug for everybody on the same device. If full reports are too much, Minimal only counts that something failed. It is your choice either way.",
             ],
             onDismiss = close,
             actions = buildList {
