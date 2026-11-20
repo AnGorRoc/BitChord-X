@@ -78,6 +78,13 @@ fun GlassLogo(
     hazeState: HazeState?,
     modifier: Modifier = Modifier,
 ) {
+    // Under the easter egg's colours the mark is a neon sign instead.
+    val viceTheme by AppSettings.viceTheme.collectAsStateWithLifecycle()
+    val viceUnlocked by AppSettings.viceUnlocked.collectAsStateWithLifecycle()
+    if (viceTheme && viceUnlocked) {
+        com.music.bitchord.ui.easteregg.ViceNeonLogo(modifier)
+        return
+    }
     val painter = painterResource(R.drawable.ic_logo)
     val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
     val glassPerformance by AppSettings.glassPerformance.collectAsStateWithLifecycle()

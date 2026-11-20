@@ -203,16 +203,32 @@ private fun QuickSetting.choice(): QuickChoice? = when (this) {
     }
     QuickSetting.THEME -> {
         val current by AppSettings.themeMode.collectAsStateWithLifecycle()
+        val viceUnlocked by AppSettings.viceUnlocked.collectAsStateWithLifecycle()
+        val viceTheme by AppSettings.viceTheme.collectAsStateWithLifecycle()
+        val context = androidx.compose.ui.platform.LocalContext.current
+        // Once found, the easter egg is a fourth theme here: the tile names it
+        // while it is on, and picking a plain theme takes it off again.
+        val vice = viceUnlocked && viceTheme
+        val viceLabel = stringResource(R.string.app_icon_vice)
         QuickChoice(
-            icon = when (current) {
-                ThemeMode.LIGHT -> Icons.Rounded.LightMode
-                ThemeMode.DARK -> Icons.Rounded.DarkMode
+            icon = when {
+                vice -> SfIcons.AutoAwesome
+                current == ThemeMode.LIGHT -> Icons.Rounded.LightMode
+                current == ThemeMode.DARK -> Icons.Rounded.DarkMode
                 else -> Icons.Rounded.BrightnessAuto
             },
-            value = current.localizedLabel(),
-            options = ThemeMode.entries.map { QuickOption(it.localizedLabel(), null) },
-            selected = ThemeMode.entries.indexOf(current),
-            onPick = { AppSettings.setThemeMode(ThemeMode.entries[it]) },
+            value = if (vice) viceLabel else current.localizedLabel(),
+            options = ThemeMode.entries.map { QuickOption(it.localizedLabel(), null) } +
+                (if (viceUnlocked) listOf(QuickOption(viceLabel, null)) else emptyList()),
+            selected = if (vice) ThemeMode.entries.size else ThemeMode.entries.indexOf(current),
+            onPick = {
+                if (it == ThemeMode.entries.size) {
+                    com.music.bitchord.ui.easteregg.ViceEasterEgg.turnOn(context)
+                } else {
+                    if (vice) com.music.bitchord.ui.easteregg.ViceEasterEgg.turnOff(context)
+                    AppSettings.setThemeMode(ThemeMode.entries[it])
+                }
+            },
         )
     }
     QuickSetting.PLAYER_THEME -> {
@@ -526,6 +542,9 @@ private fun QuickSettingTile(
     // A reader, read where the tile is drawn, so the tint's fade between
     // records repaints the tile without recomposing it.
     val pageTint = com.music.bitchord.ui.theme.LocalPageBackground.current
+    val themeAccent = scheme.primary.takeIf { primary ->
+        FloatArray(3).also { ColorUtils.colorToHSL(primary.toArgb(), it) }[1] > 0.3f
+    }
     val flat = scheme.onBackground.copy(alpha = 0.05f)
     val activeness by animateFloatAsState(if (active) 1f else 0f, label = "quickTileActive")
     Row(
@@ -533,7 +552,9 @@ private fun QuickSettingTile(
             .height(TILE_HEIGHT)
             .clip(TileShape)
             .drawBehind {
-                val tinted = activeTileColour(pageTint(), dark)
+                // No record's colour on the page: a coloured theme's own accent
+                // (the easter egg's neon pink) stands in, a plain one stays neutral.
+                val tinted = activeTileColour(pageTint() ?: themeAccent, dark)
                 drawRect(lerp(flat, tinted, activeness))
             }
             .then(if (active && glass) Modifier.liquidGlassRim(TileShape) else Modifier)

@@ -1639,4 +1639,8 @@
     <string name="quick_settings_hold_hint">Chạm để đổi. Nhấn giữ để mở cài đặt.</string>
     <string name="dolby_atmos_no_source">Không nguồn nào của bạn có Dolby Atmos. YouTube không hỗ trợ; hãy thêm addon có hỗ trợ trong Nguồn.</string>
     <string name="dolby_atmos_needs_source">Cần nguồn</string>
+    <string name="app_icon_vice">Vice</string>
+    <string name="vice_switch_subtitle">Màu neon khắp ứng dụng và biểu tượng hoàng hôn trên màn hình chính</string>
+    <string name="vice_welcome">Chào mừng đến Vice. Màu và biểu tượng đã bật; bạn có thể tắt trong Giao diện.</string>
+    <string name="vice_on_again">Vice đang bật. Bạn có thể tắt trong Giao diện.</string>
 </resources>

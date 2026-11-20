@@ -1,5 +1,6 @@
 package com.music.bitchord.ui.components
 
+import com.music.bitchord.ui.theme.pageBackdrop
 import androidx.compose.ui.layout.ContentScale
 import com.music.bitchord.ui.LocalPullToRefreshEnabled
 import com.music.bitchord.ui.AppUiHost
@@ -409,6 +410,8 @@ fun SongRow(
             dimmed = offlineBlocked,
             modifier = when {
                 !swipeActive -> modifier
+                // The page's own colour: painted as the page, so a gradient page keeps its gradient.
+                rowBackground == com.music.bitchord.ui.theme.pageBackground() -> Modifier.pageBackdrop()
                 rowBackground != Color.Transparent -> Modifier.background(rowBackground)
                 else -> Modifier
             },

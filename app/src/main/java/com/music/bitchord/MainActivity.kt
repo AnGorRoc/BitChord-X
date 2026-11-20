@@ -1,4 +1,5 @@
 package com.music.bitchord
+import com.music.bitchord.ui.theme.drawPageWash
 import androidx.compose.ui.res.painterResource
 
 import android.Manifest
@@ -411,6 +412,7 @@ import com.music.bitchord.ui.theme.rememberArtworkPalette
 import com.music.bitchord.data.canvas.AppleArtistArtRepository
 import com.music.bitchord.data.canvas.keyColors
 import com.music.bitchord.ui.theme.SystemBarIcons
+import com.music.bitchord.ui.easteregg.viceEasterEgg
 import com.music.bitchord.ui.utils.guardSheetFromContentTouches
 import com.music.bitchord.ui.utils.rememberIosOverscrollFactory
 import com.music.bitchord.ui.performance.resolvePerformanceRefreshRate
@@ -458,9 +460,14 @@ class MainActivity : AppCompatActivity() {
             ThemeMode.LIGHT -> false
             ThemeMode.DARK -> true
         }
+        val vice = AppSettings.viceTheme.value && AppSettings.viceUnlocked.value
         window.setBackgroundDrawable(
             android.graphics.drawable.ColorDrawable(
-                if (dark) android.graphics.Color.BLACK else android.graphics.Color.WHITE,
+                when {
+                    vice -> com.music.bitchord.ui.theme.ViceBackground.value.shr(32).toInt()
+                    dark -> android.graphics.Color.BLACK
+                    else -> android.graphics.Color.WHITE
+                },
             ),
         )
     }
@@ -522,12 +529,16 @@ class MainActivity : AppCompatActivity() {
             LaunchedEffect(highPerformance, performanceRefreshRate, composeView) {
                 applyPerformanceMode(highPerformance, performanceRefreshRate, composeView)
             }
-            val darkTheme = when (theme) {
+            val viceTheme by AppSettings.viceTheme.collectAsStateWithLifecycle()
+            val viceUnlocked by AppSettings.viceUnlocked.collectAsStateWithLifecycle()
+            // The easter egg's neon night: always dark, whatever Theme says.
+            val vice = viceTheme && viceUnlocked
+            val darkTheme = vice || when (theme) {
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
                 ThemeMode.LIGHT -> false
                 ThemeMode.DARK -> true
             }
-            BitChordTheme(darkTheme = darkTheme, font = appFont) {
+            BitChordTheme(darkTheme = darkTheme, font = appFont, vice = vice) {
                 // The glass surfaces sample this layer, and a layer records only
                 // what is drawn into it — which, for BitChord, is a page that
                 // paints no background of its own. Everywhere a page is not
@@ -2685,7 +2696,13 @@ private fun BitChordApp(
     // They go down as readers instead, called by whatever paints them — a
     // background drawn in its draw phase, a bar's container — so only those
     // follow the fade.
-    val tintWithPlaying by AppSettings.tintWithNowPlaying.collectAsStateWithLifecycle()
+    val tintSetting by AppSettings.tintWithNowPlaying.collectAsStateWithLifecycle()
+    val viceTheme by AppSettings.viceTheme.collectAsStateWithLifecycle()
+    val viceUnlocked by AppSettings.viceUnlocked.collectAsStateWithLifecycle()
+    // Under the easter egg's neon the pages keep their violet: a record's colour
+    // washed over them would hide the theme the listener went looking for.
+    val vice = viceTheme && viceUnlocked
+    val tintWithPlaying = tintSetting && !vice
     // Asked for the artwork rather than handed it, so a new track's artwork —
     // and the colours read off it a moment later — reach only what paints them.
     val playingPalette = com.music.bitchord.ui.theme.rememberArtworkPaletteState(
@@ -2699,12 +2716,21 @@ private fun BitChordApp(
     val pageTint: () -> Color? = remember(appTinted, playingPalette) {
         { if (appTinted) playingPalette.background else null }
     }
-    val cardTint: () -> Color? = remember(pageTint, darkTheme) {
-        { pageTint()?.let { com.music.bitchord.ui.theme.cardShadeOf(it, darkTheme) } }
+    val cardTint: () -> Color? = remember(pageTint, darkTheme, vice) {
+        if (vice) {
+            // Over the easter egg's gradient the cards are frosted panes the
+            // neon shows through, as Discord's themed lists are, not slabs of violet.
+            { com.music.bitchord.ui.theme.ViceCard }
+        } else {
+            { pageTint()?.let { com.music.bitchord.ui.theme.cardShadeOf(it, darkTheme) } }
+        }
     }
     val tintLocals = arrayOf(
         com.music.bitchord.ui.theme.LocalPageBackground provides pageTint,
         com.music.bitchord.ui.theme.LocalCardSurface provides cardTint,
+        // Rows that paint "the page" paint their slice of the gradient under Vice.
+        com.music.bitchord.ui.theme.LocalPageGradient provides
+            (if (vice) com.music.bitchord.ui.theme.ViceGradient else null),
     )
 
     // One set of numbers for the cards, the page, the stories and the shared
@@ -3154,7 +3180,7 @@ private fun BitChordApp(
             // them. A release page paints its own artwork's colour over it.
             // Drawn, not composed: the colour is read in the draw phase, so its
             // fade redraws this layer and recomposes nothing.
-            Box(Modifier.weight(1f).fillMaxHeight().drawBehind { drawRect(playingPalette.background) }) {
+            Box(Modifier.weight(1f).fillMaxHeight().drawBehind { drawPageWash(playingPalette.background, vice) }) {
                 AnimatedContent(
                     // Whatever is on top of the back stack — see [AppNavigator].
                     targetState = when {
@@ -3266,7 +3292,7 @@ private fun BitChordApp(
                         // cover the wash painted under it and leave the pages
                         // black — and the glass refracting black — with Liquid
                         // Glass on. Off, this is the same colour drawn twice.
-                        .drawBehind { drawRect(playingPalette.background) }
+                        .drawBehind { drawPageWash(playingPalette.background, vice) }
                         // Every page's scroll passes through here, so
                         // the dock collapses on all of them
                         // without each one having to know about it.
@@ -4001,7 +4027,8 @@ private fun BitChordApp(
                             modifier = Modifier
                                 .padding(start = if (isLandscapeChrome) 0.dp else 4.dp)
                                 .size(width = 30.dp, height = 30.dp)
-                                .semantics { contentDescription = "BitChord" },
+                                .semantics { contentDescription = "BitChord" }
+                                .viceEasterEgg(),
                         )
                     }
                 } else null
@@ -4640,7 +4667,8 @@ private fun BitChordApp(
                                     modifier = Modifier
                                         .padding(start = 4.dp)
                                         .size(width = 30.dp, height = 30.dp)
-                                        .semantics { contentDescription = "BitChord" },
+                                        .semantics { contentDescription = "BitChord" }
+                                        .viceEasterEgg(),
                                 )
                             }
                         } else null,

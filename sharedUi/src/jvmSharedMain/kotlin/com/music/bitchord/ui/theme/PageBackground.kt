@@ -2,9 +2,21 @@ package com.music.bitchord.ui.theme
 
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.staticCompositionLocalOf
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.findRootCoordinates
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.positionInRoot
 import com.music.bitchord.ui.graphics.ColorUtils
 
 /**
@@ -23,9 +35,73 @@ import com.music.bitchord.ui.graphics.ColorUtils
  */
 val LocalPageBackground = staticCompositionLocalOf<() -> Color?> { { null } }
 
+/**
+ * The page's wash when it is a gradient, top of the window to its foot, rather
+ * than one colour — the Vice theme's. Null for a flat page.
+ *
+ * What paints "the page" over something ([pageBackdrop]) paints its own slice
+ * of this, so the slice lines up with the page around it instead of laying a
+ * flat block across the gradient.
+ */
+val LocalPageGradient = staticCompositionLocalOf<List<Color>?> { null }
+
 /** [LocalPageBackground], or the theme's background where nothing set one. */
 @Composable
 fun pageBackground(): Color = LocalPageBackground.current() ?: MaterialTheme.colorScheme.background
+
+/**
+ * Fills this element with the page it sits on: [pageBackground] on a flat
+ * page, or, on a [LocalPageGradient] page, the part of the gradient that is
+ * behind it in the window, so the fill disappears into the page.
+ *
+ * [fade], when given, is an alpha mask over the element (opaque where it is
+ * opaque): a fade into the page, rather than a block of it.
+ */
+@Composable
+fun Modifier.pageBackdrop(fade: Brush? = null): Modifier {
+    val gradient = LocalPageGradient.current
+    val flat = LocalPageBackground.current
+    val fallback = MaterialTheme.colorScheme.background
+    if (gradient == null) {
+        return if (fade == null) {
+            then(Modifier.drawBehind { drawRect(flat() ?: fallback) })
+        } else {
+            then(
+                Modifier
+                    .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                    .drawWithContent {
+                        drawRect(flat() ?: fallback)
+                        drawRect(fade, blendMode = BlendMode.DstIn)
+                        drawContent()
+                    },
+            )
+        }
+    }
+    // Where the element sits in the window, read at draw time so scrolling
+    // only redraws it.
+    val top = remember { mutableFloatStateOf(0f) }
+    val windowHeight = remember { mutableFloatStateOf(0f) }
+    return then(
+        Modifier
+            .onGloballyPositioned {
+                top.floatValue = it.positionInRoot().y
+                windowHeight.floatValue = it.findRootCoordinates().size.height.toFloat()
+            }
+            .then(if (fade != null) Modifier.graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen } else Modifier)
+            .drawWithContent {
+                val height = windowHeight.floatValue.takeIf { it > 0f } ?: size.height
+                drawRect(
+                    Brush.verticalGradient(
+                        gradient,
+                        startY = -top.floatValue,
+                        endY = height - top.floatValue,
+                    ),
+                )
+                if (fade != null) drawRect(fade, blendMode = BlendMode.DstIn)
+                drawContent()
+            },
+    )
+}
 
 /**
  * The fill for grouped cards (Settings' rows) sitting on a washed page: the

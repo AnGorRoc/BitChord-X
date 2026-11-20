@@ -183,7 +183,9 @@ internal fun TelemetryRow(title: String) {
 @Composable
 internal fun AppIconPicker(title: String) {
     val context = LocalContext.current
-    var selectedIcon by remember { mutableStateOf(AppIcon.current(context)) }
+    // Read again when the Vice switch puts its icon on or takes it off.
+    val viceTheme by AppSettings.viceTheme.collectAsStateWithLifecycle()
+    var selectedIcon by remember(viceTheme) { mutableStateOf(AppIcon.current(context)) }
     SettingsRow(icon = SfIcons.Apps, title = title)
     Row(
         modifier = Modifier
@@ -192,7 +194,8 @@ internal fun AppIconPicker(title: String) {
             .padding(start = ROW_INSET, end = ROW_INSET, bottom = 14.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        AppIcon.entries.forEach { option ->
+        val viceUnlocked by AppSettings.viceUnlocked.collectAsStateWithLifecycle()
+        AppIcon.entries.filter { !it.hidden || viceUnlocked || it == selectedIcon }.forEach { option ->
             val selected = option == selectedIcon
             Column(
                 modifier = Modifier

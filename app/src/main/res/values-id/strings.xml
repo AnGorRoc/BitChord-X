@@ -1699,4 +1699,8 @@
     <string name="quick_settings_hold_hint">Ketuk untuk mengubah. Tahan untuk membuka setelannya.</string>
     <string name="dolby_atmos_no_source">Tidak ada sumber Anda yang punya Dolby Atmos. YouTube tidak menyediakannya; tambahkan addon yang punya di Sumber.</string>
     <string name="dolby_atmos_needs_source">Perlu sumber</string>
+    <string name="app_icon_vice">Vice</string>
+    <string name="vice_switch_subtitle">Warna neon di seluruh aplikasi dan ikon matahari terbenam di layar utama</string>
+    <string name="vice_welcome">Selamat datang di Vice. Warna dan ikonnya sudah aktif; matikan di Tampilan.</string>
+    <string name="vice_on_again">Vice aktif. Matikan di Tampilan.</string>
 </resources>

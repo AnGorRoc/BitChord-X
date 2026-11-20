@@ -26,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import com.music.bitchord.ui.easteregg.ViceEasterEgg
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
@@ -155,6 +156,8 @@ internal fun SettingsAppearanceSection(
     val navLabels by AppSettings.showNavLabels.collectAsStateWithLifecycle()
     val tintWithPlaying by AppSettings.tintWithNowPlaying.collectAsStateWithLifecycle()
     val squareVideoThumbnails by AppSettings.squareVideoThumbnails.collectAsStateWithLifecycle()
+    val viceUnlocked by AppSettings.viceUnlocked.collectAsStateWithLifecycle()
+    val viceTheme by AppSettings.viceTheme.collectAsStateWithLifecycle()
 
     SearchableSettingsGroup(search, header = stringResource(R.string.appearance)) {
         val themeTitle = stringResource(R.string.theme)
@@ -166,6 +169,24 @@ internal fun SettingsAppearanceSection(
                 onSelect = { AppSettings.setThemeMode(ThemeMode.entries[it]) },
                 modifier = Modifier.padding(start = ROW_INSET, end = ROW_INSET, bottom = 14.dp),
             )
+        }
+        // The easter egg: only here once it has been found on Home's logo.
+        // One switch for both halves of it, the colours and the icon.
+        if (viceUnlocked) {
+            val context = LocalContext.current
+            val viceTitle = stringResource(R.string.app_icon_vice)
+            val setVice: (Boolean) -> Unit = { on ->
+                if (on) ViceEasterEgg.turnOn(context) else ViceEasterEgg.turnOff(context)
+            }
+            row(viceTitle, "vice", "neon", "theme", "colour", "color", "icon") {
+                SettingsRow(
+                    icon = SfIcons.AutoAwesome,
+                    title = viceTitle,
+                    subtitle = stringResource(R.string.vice_switch_subtitle),
+                    trailing = { IosSwitch(checked = viceTheme, onCheckedChange = setVice) },
+                    onClick = { setVice(!viceTheme) },
+                )
+            }
         }
         val tintWithPlayingTitle = stringResource(R.string.tint_with_now_playing)
         row(tintWithPlayingTitle, "colour", "color", "tint", "artwork", "background", "now playing") {

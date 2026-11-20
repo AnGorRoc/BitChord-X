@@ -1720,4 +1720,8 @@
     <string name="quick_settings_hold_hint">बदलने के लिए टैप करें। सेटिंग खोलने के लिए दबाकर रखें।</string>
     <string name="dolby_atmos_no_source">आपके किसी भी सोर्स में Dolby Atmos नहीं है। YouTube इसे नहीं देता; सोर्स में ऐसा ऐडऑन जोड़ें जिसमें यह हो।</string>
     <string name="dolby_atmos_needs_source">सोर्स चाहिए</string>
+    <string name="app_icon_vice">Vice</string>
+    <string name="vice_switch_subtitle">पूरी ऐप में नियॉन रंग और होम स्क्रीन पर सूर्यास्त वाला आइकन</string>
+    <string name="vice_welcome">Vice में स्वागत है। इसके रंग और आइकन चालू हैं; इन्हें दिखावट में बंद कर सकते हैं।</string>
+    <string name="vice_on_again">Vice चालू है। इसे दिखावट में बंद कर सकते हैं।</string>
 </resources>

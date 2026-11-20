@@ -1,5 +1,6 @@
 package com.music.bitchord.ui.screens
 
+import com.music.bitchord.ui.theme.pageBackdrop
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -886,12 +887,14 @@ fun ExploreScreen(
                                                 .fillMaxWidth()
                                                 .height(48.dp)
                                                 .align(Alignment.BottomCenter)
-                                                .background(
-                                                    Brush.verticalGradient(
+                                                // A fade into the page itself, so it also
+                                                // works on a gradient page (Vice).
+                                                .pageBackdrop(
+                                                    fade = Brush.verticalGradient(
                                                         0.0f to Color.Transparent,
                                                         0.32f to Color.Transparent,
-                                                        0.70f to com.music.bitchord.ui.theme.pageBackground().copy(alpha = 0.70f),
-                                                        1.0f to com.music.bitchord.ui.theme.pageBackground(),
+                                                        0.70f to Color.Black.copy(alpha = 0.70f),
+                                                        1.0f to Color.Black,
                                                     ),
                                                 ),
                                         )

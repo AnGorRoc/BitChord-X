@@ -35,6 +35,56 @@ private val DarkColors = darkColorScheme(
     outline = Color(0xFF2C2C2E),
 )
 
+/**
+ * The easter egg's palette: a neon night. Deep violet where the dark theme is
+ * black, the cards a step up into dusk, hot pink where the app would be white
+ * for emphasis, and cyan beside it — the colours of a sunset bay after dark.
+ * Always a dark scheme: the neon only glows against night.
+ */
+val ViceBackground = Color(0xFF241763)
+
+/**
+ * The easter egg's page, top to bottom, as Discord's own neon theme lays it:
+ * indigo night at the top, violet and magenta through the middle, and the
+ * warm rust of a sun gone down at the foot.
+ */
+val ViceGradient = listOf(
+    Color(0xFF241763),
+    Color(0xFF3E1A6E),
+    Color(0xFF5A1F66),
+    Color(0xFF6E2A4A),
+    Color(0xFF7A3A2C),
+)
+
+/** A card over [ViceGradient]: a frosted pane the neon shows through. */
+val ViceCard = Color.White.copy(alpha = 0.08f)
+
+/**
+ * The page's wash: the record's colour (or the theme's page) — or, under the
+ * easter egg, [ViceGradient] from the top of the area to its foot.
+ */
+fun androidx.compose.ui.graphics.drawscope.DrawScope.drawPageWash(color: Color, vice: Boolean) {
+    if (vice) {
+        drawRect(androidx.compose.ui.graphics.Brush.verticalGradient(ViceGradient))
+    } else {
+        drawRect(color)
+    }
+}
+private val ViceColors = darkColorScheme(
+    primary = Color(0xFFFF5DB8),
+    onPrimary = Color(0xFF14002A),
+    secondary = Color(0xFF35E0F0),
+    onSecondary = Color(0xFF00262B),
+    tertiary = Color(0xFFFF9A5A),
+    background = ViceBackground,
+    onBackground = Color.White,
+    surface = Color(0xFF1C0F3D),
+    onSurface = Color.White,
+    surfaceVariant = Color(0xFF2A1652),
+    onSurfaceVariant = Color(0xFFCDB8F0),
+    outline = Color(0xFF3D2470),
+)
+
 private val LightColors = lightColorScheme(
     primary = Color.Black,
     onPrimary = Color.White,
@@ -142,10 +192,16 @@ private fun Typography.withFamily(family: FontFamily) = Typography(
 fun BitChordTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     font: AppFont = AppFont.DEFAULT,
+    /** The easter egg's neon night in place of the plain dark scheme. */
+    vice: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     MaterialTheme(
-        colorScheme = if (darkTheme) DarkColors else LightColors,
+        colorScheme = when {
+            vice -> ViceColors
+            darkTheme -> DarkColors
+            else -> LightColors
+        },
         typography = when (font) {
             AppFont.DEFAULT -> BitChordTypography
             AppFont.LEGACY -> LegacyTypography

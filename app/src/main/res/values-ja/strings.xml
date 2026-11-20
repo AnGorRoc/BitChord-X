@@ -1700,4 +1700,8 @@
     <string name="quick_settings_hold_hint">タップで変更、長押しで設定を開きます。</string>
     <string name="dolby_atmos_no_source">Dolby Atmos を配信するソースがありません。YouTube は非対応です。ソースで対応アドオンを追加してください。</string>
     <string name="dolby_atmos_needs_source">ソースが必要</string>
+    <string name="app_icon_vice">Vice</string>
+    <string name="vice_switch_subtitle">アプリ全体にネオンカラー、ホーム画面に夕焼けのアイコン</string>
+    <string name="vice_welcome">Vice へようこそ。カラーとアイコンがオンになりました。外観でオフにできます。</string>
+    <string name="vice_on_again">Vice はオンです。外観でオフにできます。</string>
 </resources>

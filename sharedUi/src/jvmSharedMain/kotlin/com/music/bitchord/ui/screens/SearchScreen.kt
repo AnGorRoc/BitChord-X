@@ -1,5 +1,6 @@
 package com.music.bitchord.ui.screens
 
+import com.music.bitchord.ui.theme.pageBackdrop
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -948,7 +949,7 @@ private fun RecentSearchEntityRow(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(com.music.bitchord.ui.theme.pageBackground())
+                .pageBackdrop()
                 .then(
                     if (offlineBlocked) {
                         Modifier

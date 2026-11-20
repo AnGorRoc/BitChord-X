@@ -1760,4 +1760,8 @@
     <string name="quick_settings_hold_hint">Dotknij, aby zmienić. Przytrzymaj, aby otworzyć ustawienia.</string>
     <string name="dolby_atmos_no_source">Żadne z Twoich źródeł nie ma Dolby Atmos. YouTube go nie oferuje; dodaj w Źródłach dodatek, który go ma.</string>
     <string name="dolby_atmos_needs_source">Brak źródła</string>
+    <string name="app_icon_vice">Vice</string>
+    <string name="vice_switch_subtitle">Neonowe kolory w całej aplikacji i ikona zachodu słońca na ekranie głównym</string>
+    <string name="vice_welcome">Witaj w Vice. Kolory i ikona są włączone; wyłączysz je w Wyglądzie.</string>
+    <string name="vice_on_again">Vice jest włączone. Wyłączysz je w Wyglądzie.</string>
 </resources>

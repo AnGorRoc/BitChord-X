@@ -1269,6 +1269,8 @@ object AppSettings {
         glassPerformance.value = prefs.getBoolean(KEY_GLASS_PERFORMANCE, false)
         progressiveBlur.value = prefs.getBoolean(KEY_PROGRESSIVE_BLUR, false)
         tintWithNowPlaying.value = prefs.getBoolean(KEY_TINT_WITH_NOW_PLAYING, false)
+        viceUnlocked.value = prefs.getBoolean(KEY_VICE_UNLOCKED, false)
+        viceTheme.value = prefs.getBoolean(KEY_VICE_THEME, false)
         quickSettings.value = prefs.getString(KEY_QUICK_SETTINGS, null)
             ?.split(',')?.filter { it.isNotBlank() }?.take(MAX_QUICK_SETTINGS)
             ?: DEFAULT_QUICK_SETTINGS
@@ -1949,6 +1951,29 @@ object AppSettings {
     fun setTintWithNowPlaying(value: Boolean) {
         tintWithNowPlaying.value = value
         prefs.edit().putBoolean(KEY_TINT_WITH_NOW_PLAYING, value).apply()
+    }
+
+    /** The easter egg has been found: its icon is offered in Appearance. */
+    val viceUnlocked = MutableStateFlow(false)
+
+    /** The easter egg's colours: neon night over the whole app. Only honoured once [viceUnlocked]. */
+    val viceTheme = MutableStateFlow(false)
+
+    fun setViceTheme(value: Boolean) {
+        viceTheme.value = value
+        prefs.edit().putBoolean(KEY_VICE_THEME, value).apply()
+    }
+
+    fun unlockVice() {
+        viceUnlocked.value = true
+        prefs.edit().putBoolean(KEY_VICE_UNLOCKED, true).apply()
+    }
+
+    /** The launcher icon the Vice icon replaced, so turning Vice off can put it back. */
+    fun vicePreviousIcon(): String? = prefs.getString(KEY_VICE_PREVIOUS_ICON, null)
+
+    fun setVicePreviousIcon(name: String) {
+        prefs.edit().putString(KEY_VICE_PREVIOUS_ICON, name).apply()
     }
 
     fun setQuickSettings(value: List<String>) {
@@ -2821,6 +2846,9 @@ object AppSettings {
     private const val KEY_PROGRESSIVE_BLUR = "progressive_blur"
     private const val KEY_TINT_WITH_NOW_PLAYING = "tint_with_now_playing"
     private const val KEY_QUICK_SETTINGS = "quick_settings"
+    private const val KEY_VICE_UNLOCKED = "vice_unlocked"
+    private const val KEY_VICE_THEME = "vice_theme"
+    private const val KEY_VICE_PREVIOUS_ICON = "vice_previous_icon"
     private const val KEY_DATA_SAVER_PREVIOUS_QUALITY = "data_saver_previous_quality"
     private const val KEY_DATA_SAVER_PREVIOUS_CANVAS = "data_saver_previous_canvas"
     const val MAX_QUICK_SETTINGS = 6

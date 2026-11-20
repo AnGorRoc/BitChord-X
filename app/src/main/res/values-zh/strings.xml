@@ -1699,4 +1699,8 @@
     <string name="quick_settings_hold_hint">轻点即可更改，长按打开相应设置。</string>
     <string name="dolby_atmos_no_source">你的来源都没有杜比全景声。YouTube 不提供；请在“来源”中添加支持它的插件。</string>
     <string name="dolby_atmos_needs_source">需要来源</string>
+    <string name="app_icon_vice">Vice</string>
+    <string name="vice_switch_subtitle">整个应用换上霓虹配色，主屏幕换上日落图标</string>
+    <string name="vice_welcome">欢迎来到 Vice。配色和图标已开启，可在外观中关闭。</string>
+    <string name="vice_on_again">Vice 已开启，可在外观中关闭。</string>
 </resources>

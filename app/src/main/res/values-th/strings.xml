@@ -1705,4 +1705,8 @@
     <string name="quick_settings_hold_hint">แตะเพื่อเปลี่ยน กดค้างเพื่อเปิดการตั้งค่า</string>
     <string name="dolby_atmos_no_source">ไม่มีแหล่งไหนของคุณที่มี Dolby Atmos YouTube ไม่มีให้ เพิ่มแอดออนที่มีในหน้าแหล่งที่มา</string>
     <string name="dolby_atmos_needs_source">ต้องมีแหล่งที่มา</string>
+    <string name="app_icon_vice">Vice</string>
+    <string name="vice_switch_subtitle">สีนีออนทั้งแอปและไอคอนพระอาทิตย์ตกบนหน้าจอหลัก</string>
+    <string name="vice_welcome">ยินดีต้อนรับสู่ Vice สีและไอคอนเปิดอยู่แล้ว ปิดได้ในลักษณะที่ปรากฏ</string>
+    <string name="vice_on_again">Vice เปิดอยู่ ปิดได้ในลักษณะที่ปรากฏ</string>
 </resources>

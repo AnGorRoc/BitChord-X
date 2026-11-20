@@ -1693,4 +1693,8 @@
     <string name="quick_settings_hold_hint">Tocá para cambiar. Mantené apretado para abrir sus ajustes.</string>
     <string name="dolby_atmos_no_source">Ninguna de tus fuentes tiene Dolby Atmos. YouTube no lo ofrece; agregá un addon que lo tenga en Fuentes.</string>
     <string name="dolby_atmos_needs_source">Falta una fuente</string>
+    <string name="app_icon_vice">Vice</string>
+    <string name="vice_switch_subtitle">Colores neón en toda la app y el ícono del atardecer en tu pantalla de inicio</string>
+    <string name="vice_welcome">Bienvenido a Vice. Sus colores y su ícono ya están activos; puedes apagarlos en Apariencia.</string>
+    <string name="vice_on_again">Vice está activo. Puedes apagarlo en Apariencia.</string>
 </resources>

@@ -37,7 +37,13 @@ enum class AppIcon(val alias: String, val iconRes: Int, val labelRes: Int, val p
     SamsungNeonViolet("LauncherSamsungNeonViolet", R.mipmap.ic_samsung_neon_violet, R.string.app_icon_samsung_neon_violet, R.mipmap.ic_samsung_neon_violet_foreground),
     PixelNeonSilver("LauncherPixelNeonSilver", R.mipmap.ic_pixel_neon_silver, R.string.app_icon_pixel_neon_silver, R.mipmap.ic_pixel_neon_silver_foreground),
     PixelNeonCyan("LauncherPixelNeonCyan", R.mipmap.ic_pixel_neon_cyan, R.string.app_icon_pixel_neon_cyan, R.mipmap.ic_pixel_neon_cyan_foreground),
-    PixelNeonViolet("LauncherPixelNeonViolet", R.mipmap.ic_pixel_neon_violet, R.string.app_icon_pixel_neon_violet, R.mipmap.ic_pixel_neon_violet_foreground);
+    PixelNeonViolet("LauncherPixelNeonViolet", R.mipmap.ic_pixel_neon_violet, R.string.app_icon_pixel_neon_violet, R.mipmap.ic_pixel_neon_violet_foreground),
+
+    /** The easter egg: a neon sunset behind the waves. Listed only once found — see [AppSettings.viceUnlocked]. */
+    Vice("LauncherVice", R.mipmap.ic_vice, R.string.app_icon_vice);
+
+    /** Kept out of the picker until its easter egg is found. */
+    val hidden: Boolean get() = this == Vice
 
     private fun component(context: Context) =
         ComponentName(context.packageName, "com.music.bitchord.$alias")

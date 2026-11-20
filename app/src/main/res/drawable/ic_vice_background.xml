@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The easter-egg icon's ground: a neon sunset over the bay, top-left to
+  bottom-right. Cyan sky, violet dusk, hot pink, and the orange of a sun
+  just under the horizon; a soft glow low in the corner where the sun sits.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="1024"
+    android:viewportHeight="1024">
+    <path android:pathData="M0,0h1024v1024h-1024z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:startX="0"
+                android:startY="0"
+                android:endX="1024"
+                android:endY="1024"
+                android:type="linear">
+                <item android:color="#FF19C9F2" android:offset="0.0" />
+                <item android:color="#FF8E5BEA" android:offset="0.34" />
+                <item android:color="#FFE8459C" android:offset="0.64" />
+                <item android:color="#FFFF7A4D" android:offset="0.86" />
+                <item android:color="#FFFFB259" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+    <path android:pathData="M0,0h1024v1024h-1024z">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:centerX="860"
+                android:centerY="900"
+                android:gradientRadius="560"
+                android:type="radial">
+                <item android:color="#66FFD27A" android:offset="0.0" />
+                <item android:color="#00FFD27A" android:offset="1.0" />
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>
