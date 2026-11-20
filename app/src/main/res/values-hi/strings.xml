@@ -1724,4 +1724,5 @@
     <string name="vice_switch_subtitle">पूरी ऐप में नियॉन रंग और होम स्क्रीन पर सूर्यास्त वाला आइकन</string>
     <string name="vice_welcome">Vice में स्वागत है। इसके रंग और आइकन चालू हैं; इन्हें दिखावट में बंद कर सकते हैं।</string>
     <string name="vice_on_again">Vice चालू है। इसे दिखावट में बंद कर सकते हैं।</string>
+    <string name="liquid_glass_off_by_reduce_blur">डायनामिक ब्लर कम करें चालू रहने तक बंद</string>
 </resources>

@@ -1663,4 +1663,5 @@
     <string name="vice_switch_subtitle">Colori al neon in tutta l’app e l’icona del tramonto nella schermata Home</string>
     <string name="vice_welcome">Benvenuto in Vice. Colori e icona sono attivi; puoi disattivarli in Aspetto.</string>
     <string name="vice_on_again">Vice è attivo. Puoi disattivarlo in Aspetto.</string>
+    <string name="liquid_glass_off_by_reduce_blur">Disattivato finché Riduci sfocatura dinamica è attivo</string>
 </resources>

@@ -1697,4 +1697,5 @@
     <string name="vice_switch_subtitle">Colores neón en toda la app y el ícono del atardecer en tu pantalla de inicio</string>
     <string name="vice_welcome">Bienvenido a Vice. Sus colores y su ícono ya están activos; puedes apagarlos en Apariencia.</string>
     <string name="vice_on_again">Vice está activo. Puedes apagarlo en Apariencia.</string>
+    <string name="liquid_glass_off_by_reduce_blur">Desactivado mientras Reducir desenfoque dinámico esté activo</string>
 </resources>

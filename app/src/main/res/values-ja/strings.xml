@@ -1704,4 +1704,5 @@
     <string name="vice_switch_subtitle">アプリ全体にネオンカラー、ホーム画面に夕焼けのアイコン</string>
     <string name="vice_welcome">Vice へようこそ。カラーとアイコンがオンになりました。外観でオフにできます。</string>
     <string name="vice_on_again">Vice はオンです。外観でオフにできます。</string>
+    <string name="liquid_glass_off_by_reduce_blur">動的なぼかしを減らす がオンの間はオフ</string>
 </resources>

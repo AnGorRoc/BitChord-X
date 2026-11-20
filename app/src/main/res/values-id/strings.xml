@@ -1703,4 +1703,5 @@
     <string name="vice_switch_subtitle">Warna neon di seluruh aplikasi dan ikon matahari terbenam di layar utama</string>
     <string name="vice_welcome">Selamat datang di Vice. Warna dan ikonnya sudah aktif; matikan di Tampilan.</string>
     <string name="vice_on_again">Vice aktif. Matikan di Tampilan.</string>
+    <string name="liquid_glass_off_by_reduce_blur">Nonaktif selama Kurangi blur dinamis aktif</string>
 </resources>

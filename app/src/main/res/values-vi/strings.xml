@@ -1643,4 +1643,5 @@
     <string name="vice_switch_subtitle">Màu neon khắp ứng dụng và biểu tượng hoàng hôn trên màn hình chính</string>
     <string name="vice_welcome">Chào mừng đến Vice. Màu và biểu tượng đã bật; bạn có thể tắt trong Giao diện.</string>
     <string name="vice_on_again">Vice đang bật. Bạn có thể tắt trong Giao diện.</string>
+    <string name="liquid_glass_off_by_reduce_blur">Tắt khi Giảm độ mờ động đang bật</string>
 </resources>

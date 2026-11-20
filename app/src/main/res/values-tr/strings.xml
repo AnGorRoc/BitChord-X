@@ -1681,4 +1681,5 @@
     <string name="vice_switch_subtitle">Tüm uygulamada neon renkler ve ana ekranda gün batımı simgesi</string>
     <string name="vice_welcome">Vice’a hoş geldin. Renkleri ve simgesi açık; Görünüm’den kapatabilirsin.</string>
     <string name="vice_on_again">Vice açık. Görünüm’den kapatabilirsin.</string>
+    <string name="liquid_glass_off_by_reduce_blur">Dinamik bulanıklığı azalt açıkken kapalı</string>
 </resources>

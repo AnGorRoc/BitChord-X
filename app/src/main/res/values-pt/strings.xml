@@ -1729,4 +1729,5 @@
     <string name="vice_switch_subtitle">Cores neon no app inteiro e o ícone do pôr do sol na tela inicial</string>
     <string name="vice_welcome">Bem-vindo ao Vice. As cores e o ícone estão ativos; desative-os em Aparência.</string>
     <string name="vice_on_again">O Vice está ativo. Desative-o em Aparência.</string>
+    <string name="liquid_glass_off_by_reduce_blur">Desativado enquanto Reduzir desfoque dinâmico estiver ativo</string>
 </resources>

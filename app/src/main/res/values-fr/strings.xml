@@ -1725,4 +1725,5 @@
     <string name="vice_switch_subtitle">Des couleurs néon dans toute l’app et l’icône du coucher de soleil sur l’écran d’accueil</string>
     <string name="vice_welcome">Bienvenue dans Vice. Ses couleurs et son icône sont activées ; désactivez-les dans Apparence.</string>
     <string name="vice_on_again">Vice est activé. Désactivez-le dans Apparence.</string>
+    <string name="liquid_glass_off_by_reduce_blur">Désactivé tant que Réduire le flou dynamique est activé</string>
 </resources>

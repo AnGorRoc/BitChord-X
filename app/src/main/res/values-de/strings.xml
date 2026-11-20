@@ -1724,4 +1724,5 @@
     <string name="vice_switch_subtitle">Neonfarben in der ganzen App und das Sonnenuntergangs-Symbol auf dem Startbildschirm</string>
     <string name="vice_welcome">Willkommen bei Vice. Farben und Symbol sind an; in Erscheinungsbild kannst du sie ausschalten.</string>
     <string name="vice_on_again">Vice ist an. In Erscheinungsbild kannst du es ausschalten.</string>
+    <string name="liquid_glass_off_by_reduce_blur">Aus, solange Dynamische Unschärfe reduzieren an ist</string>
 </resources>

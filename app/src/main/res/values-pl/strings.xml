@@ -1764,4 +1764,5 @@
     <string name="vice_switch_subtitle">Neonowe kolory w całej aplikacji i ikona zachodu słońca na ekranie głównym</string>
     <string name="vice_welcome">Witaj w Vice. Kolory i ikona są włączone; wyłączysz je w Wyglądzie.</string>
     <string name="vice_on_again">Vice jest włączone. Wyłączysz je w Wyglądzie.</string>
+    <string name="liquid_glass_off_by_reduce_blur">Wyłączone, gdy Zmniejsz rozmycie dynamiczne jest włączone</string>
 </resources>

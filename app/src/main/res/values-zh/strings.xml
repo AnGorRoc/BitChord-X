@@ -1703,4 +1703,5 @@
     <string name="vice_switch_subtitle">整个应用换上霓虹配色，主屏幕换上日落图标</string>
     <string name="vice_welcome">欢迎来到 Vice。配色和图标已开启，可在外观中关闭。</string>
     <string name="vice_on_again">Vice 已开启，可在外观中关闭。</string>
+    <string name="liquid_glass_off_by_reduce_blur">开启“减少动态模糊”时关闭</string>
 </resources>

@@ -535,7 +535,13 @@ private fun QuickSettingTile(
     val toggle = setting.toggle
     val on = toggle?.first?.collectAsStateWithLifecycle()?.value
     val choice = if (toggle == null) setting.choice() else null
-    val active = on == true
+    // Reduce dynamic blur swaps all glass for solid fills, so the Liquid Glass
+    // tile can change nothing while it is on: shown off and faded, and a tap
+    // says why instead of flipping a switch that does nothing.
+    val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
+    val blocked = setting == QuickSetting.LIQUID_GLASS && reduceDynamicBlur
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val active = on == true && !blocked
     val scheme = MaterialTheme.colorScheme
     val dark = scheme.background.luminance() < 0.5f
     val glass = LocalLiquidGlassEnabled.current && isGlassSupported()
@@ -558,9 +564,17 @@ private fun QuickSettingTile(
                 drawRect(lerp(flat, tinted, activeness))
             }
             .then(if (active && glass) Modifier.liquidGlassRim(TileShape) else Modifier)
+            .alpha(if (blocked) 0.45f else 1f)
             .combinedClickable(
                 onClick = {
-                    if (toggle != null) {
+                    if (blocked) {
+                        haptics.play(Haptic.Tick)
+                        android.widget.Toast.makeText(
+                            context,
+                            context.getString(R.string.liquid_glass_off_by_reduce_blur),
+                            android.widget.Toast.LENGTH_SHORT,
+                        ).show()
+                    } else if (toggle != null) {
                         haptics.play(if (active) Haptic.ToggleOff else Haptic.ToggleOn)
                         toggle.second(!active)
                     } else {

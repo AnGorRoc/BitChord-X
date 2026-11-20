@@ -1709,4 +1709,5 @@
     <string name="vice_switch_subtitle">สีนีออนทั้งแอปและไอคอนพระอาทิตย์ตกบนหน้าจอหลัก</string>
     <string name="vice_welcome">ยินดีต้อนรับสู่ Vice สีและไอคอนเปิดอยู่แล้ว ปิดได้ในลักษณะที่ปรากฏ</string>
     <string name="vice_on_again">Vice เปิดอยู่ ปิดได้ในลักษณะที่ปรากฏ</string>
+    <string name="liquid_glass_off_by_reduce_blur">ปิดอยู่ขณะเปิดลดเบลอแบบไดนามิก</string>
 </resources>

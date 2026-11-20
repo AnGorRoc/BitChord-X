@@ -1730,4 +1730,5 @@
     <string name="vice_switch_subtitle">צבעי ניאון בכל האפליקציה וסמל השקיעה במסך הבית</string>
     <string name="vice_welcome">ברוכים הבאים ל־Vice. הצבעים והסמל פעילים; אפשר לכבות אותם במראה.</string>
     <string name="vice_on_again">Vice פעיל. אפשר לכבות אותו במראה.</string>
+    <string name="liquid_glass_off_by_reduce_blur">כבוי כל עוד הפחתת טשטוש דינמי פעילה</string>
 </resources>

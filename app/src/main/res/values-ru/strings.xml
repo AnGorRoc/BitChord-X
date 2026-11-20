@@ -1753,4 +1753,5 @@
     <string name="vice_switch_subtitle">Неоновые цвета во всём приложении и значок заката на главном экране</string>
     <string name="vice_welcome">Добро пожаловать в Vice. Цвета и значок включены; отключить их можно в разделе «Внешний вид».</string>
     <string name="vice_on_again">Vice включён. Отключить его можно в разделе «Внешний вид».</string>
+    <string name="liquid_glass_off_by_reduce_blur">Отключено, пока включено «Уменьшить динамическое размытие»</string>
 </resources>

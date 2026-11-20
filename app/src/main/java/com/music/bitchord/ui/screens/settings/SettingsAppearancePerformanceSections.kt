@@ -260,6 +260,10 @@ internal fun SettingsEffectsSection(search: SettingsSearch) {
     val glassPerformance by AppSettings.glassPerformance.collectAsStateWithLifecycle()
     val progressiveBlur by AppSettings.progressiveBlur.collectAsStateWithLifecycle()
     val liquidGlassSupported = isGlassSupported()
+    // Reduce dynamic blur swaps every glass surface for a solid fill, so while
+    // it is on Liquid Glass and its two options change nothing: say so, rather
+    // than leave three switches that look live and do nothing.
+    val glassAvailable = liquidGlassSupported && !reduceDynamicBlur
 
     SearchableSettingsGroup(search, header = stringResource(R.string.settings_effects_performance)) {
         val liquidGlassTitle = stringResource(R.string.liquid_glass)
@@ -268,24 +272,24 @@ internal fun SettingsEffectsSection(search: SettingsSearch) {
                 icon = SfIcons.AutoAwesome,
                 title = liquidGlassTitle,
                 subtitle = stringResource(
-                    if (liquidGlassSupported) {
-                        R.string.liquid_glass_subtitle
-                    } else {
-                        R.string.liquid_glass_unavailable
+                    when {
+                        !liquidGlassSupported -> R.string.liquid_glass_unavailable
+                        reduceDynamicBlur -> R.string.liquid_glass_off_by_reduce_blur
+                        else -> R.string.liquid_glass_subtitle
                     },
                 ),
-                enabled = liquidGlassSupported,
+                enabled = glassAvailable,
                 trailing = {
                     IosSwitch(
-                        checked = liquidGlass,
+                        checked = liquidGlass && glassAvailable,
                         onCheckedChange = AppSettings::setLiquidGlass,
-                        enabled = liquidGlassSupported,
+                        enabled = glassAvailable,
                     )
                 },
-                onClick = { AppSettings.setLiquidGlass(!liquidGlass) },
+                onClick = { if (glassAvailable) AppSettings.setLiquidGlass(!liquidGlass) },
             )
         }
-        if (liquidGlass && liquidGlassSupported) {
+        if (liquidGlass && glassAvailable) {
             val glassPerformanceTitle = stringResource(R.string.glass_performance)
             row(glassPerformanceTitle, "glass", "performance", "refraction", "frosted", "lag", divided = false) {
                 SettingsSubRow(
