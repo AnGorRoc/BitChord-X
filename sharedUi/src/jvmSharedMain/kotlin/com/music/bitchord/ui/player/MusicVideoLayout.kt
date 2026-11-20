@@ -6,6 +6,7 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -49,9 +50,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
+import androidx.compose.ui.input.pointer.PointerInputScope
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
@@ -65,7 +68,106 @@ import com.music.bitchord.ui.theme.HideSystemBars
 import kotlinx.coroutines.delay
 
 /** How long the controls stay over a playing video untouched. */
-private const val VIDEO_CONTROLS_IDLE_MS = 3_500L
+internal const val VIDEO_CONTROLS_IDLE_MS = 3_500L
+
+/**
+ * Multi-gesture detector for video surfaces:
+ * - Single tap: triggers [onTap]
+ * - Double tap: triggers [onDoubleTap]
+ * - Pinch outward (stretch): triggers [onStretch]
+ * - Pinch inward: triggers [onPinchIn]
+ * - Any touch interaction: reports [onInteraction] to reset inactivity timers
+ */
+internal suspend fun PointerInputScope.detectVideoGestures(
+    onTap: () -> Unit,
+    onDoubleTap: () -> Unit,
+    onStretch: () -> Unit,
+    onPinchIn: () -> Unit,
+    onInteraction: () -> Unit,
+) {
+    awaitPointerEventScope {
+        while (true) {
+            val down = awaitFirstDown(requireUnconsumed = false)
+            onInteraction()
+
+            var isMultiTouch = false
+            var pinchTriggered = false
+            var initialDistance = 0f
+            var touchMovedTooMuch = false
+            val startPos = down.position
+            val touchSlop = viewConfiguration.touchSlop
+
+            while (true) {
+                val event = awaitPointerEvent()
+                val activePointers = event.changes.filter { it.pressed }
+                if (activePointers.isEmpty()) break
+
+                onInteraction()
+
+                if (activePointers.size >= 2) {
+                    isMultiTouch = true
+                    val p0 = activePointers[0].position
+                    val p1 = activePointers[1].position
+                    val dist = (p0 - p1).getDistance()
+
+                    if (initialDistance <= 0f) {
+                        initialDistance = dist.coerceAtLeast(10f)
+                    } else if (!pinchTriggered) {
+                        val ratio = dist / initialDistance
+                        if (ratio >= 1.15f) {
+                            pinchTriggered = true
+                            onStretch()
+                            activePointers.forEach { it.consume() }
+                        } else if (ratio <= 0.85f) {
+                            pinchTriggered = true
+                            onPinchIn()
+                            activePointers.forEach { it.consume() }
+                        }
+                    } else {
+                        activePointers.forEach { it.consume() }
+                    }
+                } else if (!isMultiTouch) {
+                    val currentPos = activePointers[0].position
+                    if ((currentPos - startPos).getDistance() > touchSlop) {
+                        touchMovedTooMuch = true
+                    }
+                }
+            }
+
+            if (isMultiTouch || touchMovedTooMuch) continue
+
+            val doubleTapTimeout = viewConfiguration.doubleTapTimeoutMillis
+            val secondDown = withTimeoutOrNull(doubleTapTimeout) {
+                awaitFirstDown(requireUnconsumed = false)
+            }
+
+            if (secondDown == null) {
+                onTap()
+            } else {
+                onInteraction()
+                if ((secondDown.position - startPos).getDistance() > touchSlop * 2) {
+                    onTap()
+                } else {
+                    var secondMoved = false
+                    val secondStart = secondDown.position
+                    while (true) {
+                        val event = awaitPointerEvent()
+                        val active = event.changes.filter { it.pressed }
+                        if (active.isEmpty()) break
+                        if (active.size > 1 || (active[0].position - secondStart).getDistance() > touchSlop) {
+                            secondMoved = true
+                        }
+                    }
+                    if (!secondMoved) {
+                        onDoubleTap()
+                    } else {
+                        onTap()
+                    }
+                }
+            }
+        }
+    }
+}
 
 /**
  * A music video on a phone held sideways: the picture is the whole screen,
@@ -102,13 +204,18 @@ internal fun FullscreenVideoPlayer(
         modifier = modifier
             .fillMaxSize()
             .background(Color.Black)
-            .clickable(
-                interactionSource = remember { MutableInteractionSource() },
-                indication = null,
-            ) { controlsShown = !controlsShown },
+            .pointerInput(Unit) {
+                detectVideoGestures(
+                    onTap = { controlsShown = !controlsShown },
+                    onDoubleTap = onExitFullscreen,
+                    onStretch = {},
+                    onPinchIn = {},
+                    onInteraction = { touches++ },
+                )
+            },
     ) {
-        // Black with a spinner until the picture's first frame lands.
-        if (!rendered) VideoLoadingBackdrop(Modifier.fillMaxSize())
+        // Track artwork with spinner until the picture's first frame lands.
+        if (!rendered) VideoLoadingBackdrop(Modifier.fillMaxSize(), artRequest = artRequest)
         MusicVideoSurface(
             videoId = song.videoId,
             fit = true,
@@ -191,13 +298,28 @@ internal fun FullscreenVideoPlayer(
 }
 
 /**
- * What stands in for a music video until its first frame lands: black, with a
- * spinner, rather than the still artwork. Shared by the portrait card and the
- * fullscreen landscape player.
+ * What stands in for a music video until its first frame lands: the track's still
+ * cover artwork with a loading spinner, rather than just black, fading into the video.
  */
 @Composable
-internal fun VideoLoadingBackdrop(modifier: Modifier = Modifier) {
-    Box(modifier.background(Color.Black), contentAlignment = Alignment.Center) {
+internal fun VideoLoadingBackdrop(
+    modifier: Modifier = Modifier,
+    artRequest: ImageRequest? = null,
+) {
+    Box(modifier = modifier.background(Color.Black), contentAlignment = Alignment.Center) {
+        if (artRequest != null) {
+            AsyncImage(
+                model = artRequest,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(Color.Black.copy(alpha = 0.38f)),
+            )
+        }
         CircularProgressIndicator(
             color = Color.White,
             strokeWidth = 3.dp,

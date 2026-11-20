@@ -121,11 +121,13 @@ import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.AwaitPointerEventScope
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChange
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.input.pointer.util.addPointerInputChange
+import androidx.compose.ui.util.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.LayoutCoordinates
 import androidx.compose.ui.layout.boundsInRoot
@@ -404,9 +406,10 @@ fun NowPlayingScreen(
     // A music video plays its own picture where the sleeve is — see
     // [MusicVideoSurface] — and takes the place of any animated cover.
     val videoMode = showsMusicVideo(song)
+    var userCoverCrop by remember(song.videoId) { mutableStateOf<Boolean?>(null) }
     // Square video thumbnails: the picture takes the sleeve's own slot, cropped
     // to it, in place of the full-width box at the video's shape.
-    val squareVideo = videoMode && VideoThumbnails.square
+    val squareVideo = videoMode && (userCoverCrop ?: VideoThumbnails.square)
     val canvas = rememberCanvasArtwork(song)?.takeUnless { videoMode }?.let {
         // Apple's 3:4 rendition runs under the whole phone screen, the way its
         // own player shows it; the square one stays the fallback.
@@ -3028,59 +3031,117 @@ fun NowPlayingScreen(
                                 val videoAspect by PlayerPlatform.host.musicVideoAspect
                                     .collectAsStateWithLifecycle()
                                 val aspect = videoAspect.coerceIn(1f, 2.4f)
+                                val cropProgress by animateFloatAsState(
+                                    targetValue = if (squareVideo) 1f else 0f,
+                                    animationSpec = spring(
+                                        stiffness = Spring.StiffnessMediumLow,
+                                        dampingRatio = Spring.DampingRatioLowBouncy,
+                                    ),
+                                    label = "videoCropProgress",
+                                )
+                                var hudShown by remember(song.videoId) { mutableStateOf(true) }
+                                var hudTouches by remember { mutableIntStateOf(0) }
+                                LaunchedEffect(hudShown, isPlaying, hudTouches) {
+                                    if (hudShown && isPlaying) {
+                                        delay(VIDEO_CONTROLS_IDLE_MS)
+                                        hudShown = false
+                                    }
+                                }
                                 Box(
                                     modifier = Modifier
                                         .offset {
-                                            if (squareVideo) {
-                                                val side = artSize().roundToPx()
-                                                return@offset IntOffset(
-                                                    fromStart(artStart().roundToPx().toFloat(), side.toFloat()).roundToInt(),
-                                                    artTop().roundToPx(),
-                                                )
-                                            }
-                                            val height = (boxWidthPx / aspect).roundToInt()
-                                            val centre = (artTop() + artSize() / 2).roundToPx()
-                                            IntOffset(0, centre - height / 2)
+                                            val side = artSize().roundToPx()
+                                            val normalHeight = (boxWidthPx / aspect).roundToInt()
+                                            val normalCentre = (artTop() + artSize() / 2).roundToPx()
+                                            val normalY = normalCentre - normalHeight / 2
+                                            val normalX = 0
+
+                                            val coverX = fromStart(artStart().roundToPx().toFloat(), side.toFloat()).roundToInt()
+                                            val coverY = artTop().roundToPx()
+
+                                            val currentX = lerp(normalX.toFloat(), coverX.toFloat(), cropProgress).roundToInt()
+                                            val currentY = lerp(normalY.toFloat(), coverY.toFloat(), cropProgress).roundToInt()
+                                            IntOffset(currentX, currentY)
                                         }
                                         .layout { measurable, _ ->
-                                            val width = if (squareVideo) artSize().roundToPx() else boxWidthPx
-                                            val height = if (squareVideo) width else (boxWidthPx / aspect).roundToInt()
-                                            val placeable = measurable.measure(Constraints.fixed(width, height))
-                                            layout(width, height) { placeable.placeRelative(0, 0) }
+                                            val side = artSize().roundToPx()
+                                            val normalHeight = (boxWidthPx / aspect).roundToInt()
+                                            val currentWidth = lerp(boxWidthPx.toFloat(), side.toFloat(), cropProgress).roundToInt()
+                                            val currentHeight = lerp(normalHeight.toFloat(), side.toFloat(), cropProgress).roundToInt()
+                                            val placeable = measurable.measure(Constraints.fixed(currentWidth, currentHeight))
+                                            layout(currentWidth, currentHeight) { placeable.placeRelative(0, 0) }
                                         }
                                         .graphicsLayer {
                                             alpha = (1f - p() * 2f).coerceIn(0f, 1f)
                                             translationX = swipeSettle.value * (1f - p())
+                                        }
+                                        .pointerInput(song.videoId) {
+                                            detectVideoGestures(
+                                                onTap = {
+                                                    hudTouches++
+                                                    hudShown = !hudShown
+                                                },
+                                                onDoubleTap = {
+                                                    fullscreenRequested = true
+                                                    screenOrientation.landscape()
+                                                },
+                                                onStretch = {
+                                                    haptics.play(Haptic.Select)
+                                                    userCoverCrop = true
+                                                },
+                                                onPinchIn = {
+                                                    haptics.play(Haptic.Select)
+                                                    userCoverCrop = false
+                                                },
+                                                onInteraction = {
+                                                    hudTouches++
+                                                },
+                                            )
                                         },
                                 ) {
-                                    // Black with a spinner under the picture until
+                                    // Artwork with loading spinner under the picture until
                                     // its first frame lands.
                                     if (!videoRendered) {
                                         VideoLoadingBackdrop(
-                                            Modifier
+                                            modifier = Modifier
                                                 .fillMaxSize()
                                                 .clip(RoundedCornerShape(10.dp)),
+                                            artRequest = art.request,
                                         )
                                     }
                                     MusicVideoSurface(
                                         videoId = song.videoId,
-                                        fit = !squareVideo,
+                                        fit = cropProgress < 0.5f,
                                         onRenderedChanged = { videoRendered = it },
                                         modifier = Modifier
                                             .fillMaxSize()
                                             .clip(RoundedCornerShape(10.dp)),
                                     )
-                                    VideoCornerControls(
-                                        fullscreen = false,
-                                        onToggleFullscreen = {
-                                            fullscreenRequested = true
-                                            screenOrientation.landscape()
-                                        },
-                                        onOpenQuality = { showVideoQuality = true },
+                                    androidx.compose.animation.AnimatedVisibility(
+                                        visible = hudShown,
+                                        enter = fadeIn(tween(200)),
+                                        exit = fadeOut(tween(300)),
                                         modifier = Modifier
                                             .align(Alignment.TopEnd)
-                                            .padding(8.dp),
-                                    )
+                                            .padding(8.dp)
+                                            .pointerInput(Unit) {
+                                                awaitPointerEventScope {
+                                                    while (true) {
+                                                        awaitPointerEvent(PointerEventPass.Initial)
+                                                        hudTouches++
+                                                    }
+                                                }
+                                            },
+                                    ) {
+                                        VideoCornerControls(
+                                            fullscreen = false,
+                                            onToggleFullscreen = {
+                                                fullscreenRequested = true
+                                                screenOrientation.landscape()
+                                            },
+                                            onOpenQuality = { showVideoQuality = true },
+                                        )
+                                    }
                                 }
                             }
                         }
