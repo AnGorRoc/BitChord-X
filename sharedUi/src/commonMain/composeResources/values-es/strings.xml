@@ -319,6 +319,17 @@
     <string name="search_country_hint">Buscar país…</string>
     <string name="new_releases_title">Nuevos Lanzamientos</string>
     <string name="new_releases_subtitle">Álbumes y sencillos recién salidos</string>
+    <string name="live_title">En vivo</string>
+    <string name="live_subtitle">Emisoras 24/7 transmitiendo ahora mismo</string>
+    <string name="live_badge">EN VIVO</string>
+    <string name="live_station_mix">24/7</string>
+    <string name="live_station_lofi">Lo-fi</string>
+    <string name="live_station_jazz">Jazz</string>
+    <string name="live_station_chill">Chill y House</string>
+    <string name="live_station_phonk">Phonk</string>
+    <string name="live_on_air">Al aire</string>
+    <string name="live_broadcast">Transmisión en vivo</string>
+    <string name="live_tune_in">Sintonizar</string>
     <string name="badge_new">NUEVO</string>
     <string name="time_capsules_title">Cápsulas del Tiempo</string>
     <string name="time_capsules_subtitle">Viaja a través de los sonidos de cada época</string>

@@ -36,7 +36,8 @@ class ScrobbleManager(
         song: Song?,
         durationMs: Long? = null,
     ) {
-        if (song == null) return
+        // A broadcast is hours of many songs under one title; never a scrobble.
+        if (song == null || song.isLive) return
         songStartedAt = System.currentTimeMillis() / 1000
         songStarted = true
         startScrobbleTimer(song, durationMs)

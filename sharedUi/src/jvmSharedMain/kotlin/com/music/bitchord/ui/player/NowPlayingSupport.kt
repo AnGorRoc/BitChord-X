@@ -640,6 +640,11 @@ internal fun IsolatedPlayerScrubber(
     onScrub: (Float) -> Unit,
     onScrubFinished: () -> Unit,
 ) {
+    // A broadcast has no length to seek in and no position worth showing.
+    if (song.isLive) {
+        LiveScrubber()
+        return
+    }
     val versionAligning by PlayerSettings.versionAlignmentInProgress.collectAsStateWithLifecycle()
     val transitionWindow by PlayerSettings.smartTransitionWindow.collectAsStateWithLifecycle()
     PlayerScrubber(

@@ -159,6 +159,7 @@ internal fun ExploreTabHost(
     onPlayFrom: (List<Song>, Int, QueueSource) -> Unit,
     onAddToQueue: (Song) -> Unit,
     onShelfLongPress: (ShelfItem) -> Unit,
+    onPlayBroadcast: (Song) -> Unit,
 ) {
     if (selectedMoodGenre != null) {
         val moodGenreShelves by viewModel.moodGenreShelves.collectAsStateWithLifecycle()
@@ -195,6 +196,8 @@ internal fun ExploreTabHost(
         val chartsState by viewModel.charts.collectAsStateWithLifecycle()
         val chartsRegion by viewModel.chartsRegion.collectAsStateWithLifecycle()
         val newReleasesState by viewModel.newReleases.collectAsStateWithLifecycle()
+        val liveState by viewModel.live.collectAsStateWithLifecycle()
+        val liveStation by viewModel.liveStation.collectAsStateWithLifecycle()
 
         ExploreScreen(
             state = exploreState,
@@ -283,6 +286,11 @@ internal fun ExploreTabHost(
                 viewModel.openTrendingDetail(regionCode, regionName, allSongs, videoShelf, artistShelf)
             },
             onOpenTopicPlaylist = viewModel::openTopicPlaylist,
+            liveState = liveState,
+            liveStation = liveStation,
+            onLiveStationChange = viewModel::selectLiveStation,
+            onBroadcastClick = onPlayBroadcast,
+            onRetryLive = { viewModel.loadLive(force = true) },
         )
     }
 }

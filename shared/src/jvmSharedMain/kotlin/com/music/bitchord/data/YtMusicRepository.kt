@@ -15,6 +15,7 @@ import com.music.bitchord.data.model.HomeShelf
 import com.music.bitchord.data.model.LibraryPage
 import com.music.bitchord.data.model.LibraryState
 import com.music.bitchord.data.model.LikeStatus
+import com.music.bitchord.data.model.LiveStation
 import com.music.bitchord.data.model.MoodGenreSection
 import com.music.bitchord.data.model.playlistMoves
 import com.music.bitchord.data.model.PlaylistPrivacy
@@ -416,6 +417,25 @@ object YtMusicRepository {
             result.getOrNull()?.let { newReleasesCache[cacheKey] = it }
         }
     }
+
+    /**
+     * Broadcasts on the air for one of Explore's live stations — see
+     * [LiveStation]. YouTube Music has no browse page for live content, so this
+     * is a Videos-tab search kept to its live rows. Held for a few minutes: a
+     * station's line-up changes slowly, and Explore asks on every visit.
+     */
+    suspend fun liveBroadcasts(station: LiveStation, force: Boolean = false): Result<List<Song>> {
+        val now = System.currentTimeMillis()
+        if (!force) {
+            liveCache[station.id]?.takeIf { now - it.first < LIVE_CACHE_MS }?.let { return Result.success(it.second) }
+        }
+        return call("live:${station.id}") {
+            InnertubeParser.parseLiveBroadcasts(Innertube.search(station.query, SearchFilter.VIDEOS.params, true))
+        }.also { result -> result.getOrNull()?.let { liveCache[station.id] = now to it } }
+    }
+
+    private val liveCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Long, List<Song>>>()
+    private const val LIVE_CACHE_MS = 5 * 60_000L
 
     /** The server-defined mood and genre categories used by Explore. */
     suspend fun moodAndGenres(): Result<List<MoodGenreSection>> = call("moods-and-genres") {

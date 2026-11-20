@@ -99,6 +99,7 @@ internal fun LyricsLoaderEffect(
                 durationMs.takeIf { ms -> ms > 0L } ?: it.durationMillis(),
                 it.albumName,
                 it.localUri,
+                live = it.isLive,
             )
         }
     }

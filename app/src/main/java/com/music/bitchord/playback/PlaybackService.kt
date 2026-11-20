@@ -691,7 +691,7 @@ class PlaybackService : MediaLibraryService() {
     private val trackAnalyzer = com.music.bitchord.playback.smart.TrackAnalyzer(this, AudioCache)
 
     /** Shared with the crossfade's tail player, so both read the same disk cache. */
-    private var mediaSourceFactory: DefaultMediaSourceFactory? = null
+    private var mediaSourceFactory: androidx.media3.exoplayer.source.MediaSource.Factory? = null
 
     /** Last sampled position of the playing track, in seconds. */
     private var lastPositionSeconds = 0L
@@ -1877,9 +1877,12 @@ class PlaybackService : MediaLibraryService() {
         AudioCache.setUpstream(defaultDataSourceFactory)
         // DsdExtractorsFactory: the stock extractors plus DSF/DFF, which Media3
         // cannot open at all. A DSD file leaves the extractor as float PCM.
-        mediaSourceFactory = DefaultMediaSourceFactory(
-            MusicOnlyPlayback.holdingFactory(AudioCache.playbackFactory(defaultDataSourceFactory)),
-            DsdExtractorsFactory(),
+        // Broadcasts take their own route past all of this — see [LiveBroadcast].
+        mediaSourceFactory = LiveBroadcast.Factory(
+            DefaultMediaSourceFactory(
+                MusicOnlyPlayback.holdingFactory(AudioCache.playbackFactory(defaultDataSourceFactory)),
+                DsdExtractorsFactory(),
+            ),
         )
             .setLoadErrorHandlingPolicy(PermanentAwareLoadErrorPolicy())
         // The watch, when it is the speaker, reads tracks through this same chain.
@@ -3526,6 +3529,9 @@ class PlaybackService : MediaLibraryService() {
      */
     private fun loadAutoplayForCurrentTrack() {
         val exoPlayer = player ?: return
+        // A station never ends, so nothing is ever "next" after it — and a
+        // radio seeded from a broadcast is a list of other broadcasts.
+        if (exoPlayer.currentMediaItem?.isLiveBroadcast == true) return
         val party = ListenTogether.state.value
         if (!autoplayEnabled(party) ||
             exoPlayer.repeatMode == Player.REPEAT_MODE_ALL ||
@@ -3837,6 +3843,7 @@ class PlaybackService : MediaLibraryService() {
     /** Re-arms AutoPlay when an external queue edit empties or shrinks its tail. */
     private fun refreshAutoplayIfQueueEmpty() {
         val exoPlayer = player ?: return
+        if (exoPlayer.currentMediaItem?.isLiveBroadcast == true) return
         // A track queued by hand (or taken out) moves the end of what the listener chose, and
         // AutoPlay follows that end: rebuild the tail around the new one.
         if (autoplayEnabled(ListenTogether.state.value) &&
@@ -4538,11 +4545,46 @@ class PlaybackService : MediaLibraryService() {
      * The position is kept: this should look like a hiccup, not like the song
      * starting over.
      */
+    /**
+     * A broadcast that stalled, fell behind its window, or whose signed playlist
+     * expired. None of the track recoveries below apply — there are no cached
+     * bytes to discard, no other copy to fall back to, and skipping would end
+     * the station — so the answer is to sign a fresh playlist and rejoin the
+     * live edge. Budgeted, so a broadcast that has gone off the air stops
+     * instead of asking forever.
+     */
+    private fun rejoinBroadcast(error: PlaybackException, player: ExoPlayer, mediaId: String) {
+        val now = SystemClock.elapsedRealtime()
+        liveRejoins.removeAll { now - it > LIVE_REJOIN_WINDOW_MS }
+        liveRejoins += now
+        LiveBroadcast.forget(mediaId)
+        if (liveRejoins.size > LIVE_REJOIN_BUDGET) {
+            TrackLog.w("BitChord", "live: $mediaId keeps failing (${error.errorCodeName}); giving up", error, about = mediaId)
+            liveRejoins.clear()
+            player.stop()
+            return
+        }
+        TrackLog.w(
+            "BitChord",
+            "live: $mediaId failed (${error.errorCodeName}); rejoining the live edge, attempt ${liveRejoins.size}",
+            about = mediaId,
+        )
+        player.seekToDefaultPosition()
+        player.prepare()
+    }
+
+    /** When each recent [rejoinBroadcast] happened. */
+    private val liveRejoins = ArrayDeque<Long>()
+
     private fun recoverFrom(error: PlaybackException, player: ExoPlayer) {
         val item = player.currentMediaItem ?: return
         val mediaId = item.mediaId
         val uri = item.localConfiguration?.uri
         val position = player.currentPosition.coerceAtLeast(0L)
+        if (item.isLiveBroadcast) {
+            rejoinBroadcast(error, player, mediaId)
+            return
+        }
         val attempts = recoveries.getOrDefault(mediaId, 0) + 1
         recoveries[mediaId] = attempts
         TrackLog.w(
@@ -5140,6 +5182,8 @@ class PlaybackService : MediaLibraryService() {
     private fun lookForBetterCopy(player: ExoPlayer) {
         if (offlineBlocksUpgrades()) return
         val item = player.currentMediaItem ?: return
+        // There is no better copy of a broadcast; it exists once, on the air.
+        if (item.isLiveBroadcast) return
         val mediaId = item.mediaId
         val uri = item.localConfiguration?.uri
         val alreadyPending = QualityUpgrade.isPending(mediaId)
@@ -8546,7 +8590,9 @@ class PlaybackService : MediaLibraryService() {
                     // reading the position. This loop is the only place in the app
                     // that ticks exactly while audio is coming out, which is what
                     // makes it the right place to count from.
-                    player.currentMediaItem?.toSong()?.let {
+                    // Not a broadcast: hours of a 24/7 station are not listens
+                    // of one song, and they would top every chart in the Replay.
+                    player.currentMediaItem?.toSong()?.takeUnless { it.isLive }?.let {
                         ListeningRecorder.onSample(it, player.duration)
                     }
                     // Only two primitive preference values. Queue JSON is
@@ -9830,6 +9876,7 @@ class PlaybackService : MediaLibraryService() {
      * stays a no-op whenever ListenBrainz is switched off.
      */
     private fun submitListenBrainzFinished(song: Song, startMs: Long, durationMs: Long?) {
+        if (song.isLive) return
         val lbEnabled = AppSettings.scrobblingAvailable && AppSettings.listenBrainzEnabled.value
         val lbToken = AppSettings.listenBrainzToken.value
         if (!lbEnabled || lbToken.isBlank()) return
@@ -9841,6 +9888,7 @@ class PlaybackService : MediaLibraryService() {
 
     /** Sends a ListenBrainz "now playing" update for the current track. */
     private fun submitListenBrainzPlayingNow(song: Song, positionMs: Long, durationMs: Long?) {
+        if (song.isLive) return
         val lbEnabled = AppSettings.scrobblingAvailable && AppSettings.listenBrainzEnabled.value
         val lbToken = AppSettings.listenBrainzToken.value
         if (!lbEnabled || lbToken.isBlank()) return
@@ -9989,7 +10037,7 @@ class PlaybackService : MediaLibraryService() {
             return
         }
 
-        if (!AppSettings.syncedLyrics.value) {
+        if (!AppSettings.syncedLyrics.value || currentSong.isLive) {
             serviceLyrics = null
             stopLyricsTicker()
             return
@@ -11734,6 +11782,9 @@ class PlaybackService : MediaLibraryService() {
         const val ALIGN_SWAP_WAIT_MS = 1_500L
 
         /** How far either side of a measured file offset the audio is searched. */
+        /** How many [rejoinBroadcast]s within [LIVE_REJOIN_WINDOW_MS] before a station is given up on. */
+        private const val LIVE_REJOIN_BUDGET = 6
+        private const val LIVE_REJOIN_WINDOW_MS = 2 * 60_000L
         private const val LIVE_ALIGN_KNOWN_RADIUS_MS = 600L
 
         /**

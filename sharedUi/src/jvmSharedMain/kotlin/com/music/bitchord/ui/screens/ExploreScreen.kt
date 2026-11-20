@@ -84,6 +84,8 @@ import com.music.bitchord.data.model.HomeShelf
 import com.music.bitchord.data.model.MoodGenre
 import com.music.bitchord.data.model.MoodGenreSection
 import com.music.bitchord.data.model.ShelfItem
+import com.music.bitchord.data.model.LiveStation
+import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.model.UiState
 import com.music.bitchord.ui.components.MessageState
 import com.music.bitchord.ui.components.menuAnchor
@@ -546,6 +548,12 @@ fun ExploreScreen(
     onAddToQueue: ((List<ShelfItem>) -> Unit)? = null,
     onOpenTrendingPlaylist: ((regionCode: String?, regionName: String, allSongs: List<ShelfItem>, videoShelf: HomeShelf?, artistShelf: HomeShelf?) -> Unit)? = null,
     onOpenTopicPlaylist: ((topicTitle: String, searchQuery: String, coverUrl: String?) -> Unit)? = null,
+    /** Broadcasts for the live section; the section is left out when [onBroadcastClick] is null. */
+    liveState: UiState<List<Song>> = UiState.Loading,
+    liveStation: LiveStation = LiveStation.MIX,
+    onLiveStationChange: (LiveStation) -> Unit = {},
+    onBroadcastClick: ((Song) -> Unit)? = null,
+    onRetryLive: () -> Unit = {},
 ) {
     val isOffline = AppUi.host.isOffline()
     var showChartOptionsModal by remember { mutableStateOf(false) }
@@ -995,6 +1003,17 @@ fun ExploreScreen(
                             }
                         }
                     }
+                }
+
+                // ---- EN VIVO: emisoras 24/7, con su propio estilo de estudio ----
+                if (onBroadcastClick != null && !isOffline) {
+                    liveSection(
+                        state = liveState,
+                        station = liveStation,
+                        onStationChange = onLiveStationChange,
+                        onBroadcastClick = onBroadcastClick,
+                        onRetry = onRetryLive,
+                    )
                 }
 
                 // ---- SECCIÓN 3: SELECCIÓN DEL DÍA DINÁMICA (CARRUSEL HORIZONTAL GLASS) ----

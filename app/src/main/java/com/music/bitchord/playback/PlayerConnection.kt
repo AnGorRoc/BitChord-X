@@ -245,6 +245,7 @@ fun Song.toSongBundle(): Bundle = bundleOf(
     "albumName" to albumName,
     "isVideo" to isVideo,
     "isVideoOrigin" to isVideoOrigin,
+    "isLive" to isLive,
     "setVideoId" to setVideoId,
     "fromAutoplay" to fromAutoplay,
     "radioName" to radioName,
@@ -281,6 +282,7 @@ fun songFromBundle(b: Bundle): Song {
         albumName = b.getString("albumName"),
         isVideo = b.getBoolean("isVideo"),
         isVideoOrigin = b.getBoolean("isVideoOrigin"),
+        isLive = b.getBoolean("isLive"),
         setVideoId = b.getString("setVideoId"),
         radioName = b.getString("radioName"),
         localUri = b.getString("localUri"),
@@ -493,6 +495,7 @@ fun MediaItem.toSong() = Song(
     isVideo = mediaMetadata.extras?.getBoolean(EXTRA_IS_VIDEO) == true,
     isVideoOrigin = mediaMetadata.extras?.getBoolean(EXTRA_VIDEO_ORIGIN) == true ||
         mediaMetadata.extras?.getBoolean(EXTRA_IS_VIDEO) == true,
+    isLive = isLiveBroadcast,
     setVideoId = mediaMetadata.extras?.getString(EXTRA_SET_VIDEO_ID),
     sourceQuality = mediaMetadata.extras?.getString(EXTRA_SOURCE_QUALITY),
     sourceHiRes = mediaMetadata.extras?.getBoolean(EXTRA_SOURCE_HI_RES) == true,
@@ -728,6 +731,7 @@ internal fun shouldPlayLocalFile(hasLocalFile: Boolean): Boolean =
     )
 
 fun Song.toMediaItem(): MediaItem {
+    if (isLive) return toLiveMediaItem()
     val sourceTrack = SourceRegistry.parseTrackKey(videoId)
     // A row from search or a playlist carries no file of its own, but the track
     // may still be on disk from a download — see [Downloads.saved].
@@ -842,6 +846,45 @@ fun Song.toMediaItem(): MediaItem {
         mediaItemTiers[item] = queueTier
     }
 }
+
+/**
+ * A broadcast as a queue entry — see [LiveBroadcast]. Its own URI and a
+ * declared HLS type, so it is routed past the track pipeline before anything
+ * tries to read it as a file; a radio-station media type, so the lock screen
+ * and Android Auto draw it as one; and no runtime, because it has none.
+ */
+private fun Song.toLiveMediaItem(): MediaItem = MediaItem.Builder()
+    .setMediaId(videoId)
+    .setUri(LiveBroadcast.uriFor(videoId))
+    .setMimeType(LIVE_MIME)
+    .setLiveConfiguration(
+        // Close to the edge without living on it: three segments back is what
+        // YouTube's own player keeps, and what survives a slow playlist refresh.
+        MediaItem.LiveConfiguration.Builder().setTargetOffsetMs(LIVE_TARGET_OFFSET_MS).build(),
+    )
+    .setMediaMetadata(
+        MediaMetadata.Builder()
+            .setTitle(title)
+            .setArtist(artist)
+            .setArtworkUri(thumbnailUrl?.toUri())
+            .setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION)
+            .setIsPlayable(true)
+            .setIsBrowsable(false)
+            .setExtras(
+                bundleOf(
+                    LiveBroadcast.EXTRA_LIVE to true,
+                    EXTRA_QUEUE_TIER to QueueTier.USER_QUEUE.name,
+                    EXTRA_ARTIST_ID to artistId,
+                    EXTRA_PLAYBACK_SOURCE to playbackSource,
+                    EXTRA_PLAYBACK_SOURCE_TYPE to playbackSourceType?.name,
+                    EXTRA_PLAYBACK_SOURCE_ID to playbackSourceId,
+                ),
+            )
+            .build(),
+    )
+    .build()
+
+private const val LIVE_TARGET_OFFSET_MS = 15_000L
 
 /**
  * The current song reopened through YouTube alone, bypassing every substitute

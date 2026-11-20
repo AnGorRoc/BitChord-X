@@ -1621,6 +1621,23 @@ private fun BitChordApp(
         }
     }
 
+    /**
+     * Tunes in to a broadcast from Explore's live section. Not [playFrom]: a
+     * station is not a context to merge into the queue around it, it replaces
+     * the queue outright — nothing after it would ever be reached. Not offered
+     * in a party, whose members cannot share one moment of a live window.
+     */
+    fun playBroadcast(broadcast: Song) {
+        if (!broadcast.isLive || ListenTogether.state.value.inParty) return
+        playRequestGeneration++
+        activeRadioSeed = null
+        scope.launch {
+            if (refusedByHost()) return@launch
+            val c = controller ?: return@launch
+            c.playSongs(listOf(broadcast.copy(queueTier = QueueTier.USER_QUEUE)), 0)
+        }
+    }
+
     fun playFrom(
         allSongs: List<Song>,
         allIndex: Int,
@@ -3887,6 +3904,7 @@ private fun BitChordApp(
                                 onPlayFrom = ::playFrom,
                                 onAddToQueue = addToQueue,
                                 onShelfLongPress = onShelfLongPress,
+                                onPlayBroadcast = ::playBroadcast,
                             )
                             TAB_SEARCH -> SearchTabHost(
                                 viewModel = viewModel,

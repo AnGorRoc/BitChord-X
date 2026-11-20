@@ -82,6 +82,7 @@ import com.music.bitchord.data.model.ROW_ART_PX
 import com.music.bitchord.data.model.artworkAt
 import com.music.bitchord.ui.components.prefetchArtwork
 import com.music.bitchord.data.model.Song
+import com.music.bitchord.data.model.LiveStation
 import com.music.bitchord.data.model.SongMenu
 import com.music.bitchord.data.model.SubscriptionState
 import com.music.bitchord.data.model.UiState
@@ -459,8 +460,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         durationMs: Long,
         album: String? = null,
         localUri: String? = null,
+        /** A broadcast: hours of songs under one title, with no lyrics to match. */
+        live: Boolean = false,
     ) {
-        val sources = if (AppSettings.syncedLyrics.value) {
+        val sources = if (AppSettings.syncedLyrics.value && !live) {
             AppSettings.lyricsSources.value
         } else {
             emptySet()
@@ -1837,6 +1840,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                         launch { fetchExplore() }
                         launch { fetchCharts(force = true) }
                         launch { fetchNewReleases(force = true) }
+                        launch { fetchLive(force = true) }
                     }
                 }
                 Feed.LIBRARY -> fetchLibrary(identity)
@@ -1849,11 +1853,54 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private var exploreFetchJob: Job? = null
     private var chartsFetchJob: Job? = null
     private var newReleasesFetchJob: Job? = null
+    private var liveFetchJob: Job? = null
+
+    /** The station Explore's live section is tuned to — see [LiveStation]. */
+    private val _liveStation = MutableStateFlow(LiveStation.MIX)
+    val liveStation: StateFlow<LiveStation> = _liveStation.asStateFlow()
+
+    /** Broadcasts on the air for [liveStation]: the only live rows the app shows. */
+    private val _live = MutableStateFlow<UiState<List<Song>>>(UiState.Loading)
+    val live: StateFlow<UiState<List<Song>>> = _live.asStateFlow()
+
+    fun selectLiveStation(station: LiveStation) {
+        if (_liveStation.value == station) return
+        _liveStation.value = station
+        _live.value = UiState.Loading
+        liveFetchJob?.cancel()
+        loadLive()
+    }
+
+    fun loadLive(force: Boolean = false) {
+        if (AppSettings.effectiveOffline.value) return
+        if (liveFetchJob?.isActive == true && !force) return
+        liveFetchJob = viewModelScope.launch { fetchLive(force) }
+    }
+
+    private suspend fun fetchLive(force: Boolean = false) {
+        val station = _liveStation.value
+        YtMusicRepository.liveBroadcasts(station, force).fold(
+            onSuccess = { broadcasts ->
+                if (_liveStation.value != station) return@fold
+                _live.value = if (broadcasts.isNotEmpty()) {
+                    UiState.Success(broadcasts)
+                } else {
+                    UiState.Error(text(R.string.nothing_to_explore))
+                }
+            },
+            onFailure = { failure ->
+                if (_liveStation.value == station && _live.value !is UiState.Success) {
+                    _live.value = UiState.Error(failure.friendly())
+                }
+            },
+        )
+    }
 
     fun loadExplore() {
         exploreRequested = true
         loadCharts()
         loadNewReleases()
+        loadLive()
         val cached = FeedCache.getExplore()
         if (!cached.isNullOrEmpty()) {
             _explore.value = UiState.Success(cached)

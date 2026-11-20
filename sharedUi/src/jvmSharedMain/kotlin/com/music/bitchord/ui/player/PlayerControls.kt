@@ -307,6 +307,61 @@ internal fun PlayerScrubber(
 }
 
 /**
+ * The scrubber's place while a broadcast plays: a bar that is always full,
+ * with a highlight running along it, and the on-air plate under it where the
+ * times would be. Not draggable — there is nowhere in a live window to go.
+ */
+@Composable
+internal fun LiveScrubber() {
+    val reduceAnimation by PlayerSettings.reduceAnimation.collectAsStateWithLifecycle()
+    val sweep by rememberInfiniteTransition(label = "liveSweep").animateFloat(
+        initialValue = -0.3f,
+        targetValue = 1.3f,
+        animationSpec = infiniteRepeatable(tween(2400, easing = LinearEasing)),
+        label = "liveSweepAt",
+    )
+    Column(
+        modifier = Modifier.fillMaxWidth().padding(vertical = 10.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        androidx.compose.foundation.Canvas(
+            Modifier
+                .fillMaxWidth()
+                .height(4.dp),
+        ) {
+            val radius = androidx.compose.ui.geometry.CornerRadius(size.height / 2, size.height / 2)
+            drawRoundRect(color = com.music.bitchord.ui.screens.OnAirRed.copy(alpha = 0.85f), cornerRadius = radius)
+            if (!reduceAnimation) {
+                val center = size.width * sweep
+                drawRoundRect(
+                    brush = Brush.horizontalGradient(
+                        0f to Color.Transparent,
+                        0.5f to Color.White.copy(alpha = 0.7f),
+                        1f to Color.Transparent,
+                        startX = center - size.width * 0.15f,
+                        endX = center + size.width * 0.15f,
+                    ),
+                    cornerRadius = radius,
+                )
+            }
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.additiveChrome(LocalPlayerChrome.current),
+        ) {
+            com.music.bitchord.ui.screens.LiveBadge()
+            Text(
+                text = stringResource(Res.string.live_broadcast),
+                style = MaterialTheme.typography.labelMedium,
+                color = chromeWhite(0.7f),
+            )
+        }
+    }
+}
+
+/**
  * "Mixing", in the quality badge's place while an Automix blend runs, breathing on the same
  * beat as the bar above it. Its opacity is read in a graphics layer, so the pulse redraws the
  * label every frame without recomposing it. Plain text in the badge's own type, no icon and
