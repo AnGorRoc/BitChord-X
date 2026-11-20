@@ -201,34 +201,20 @@ private fun QuickSetting.choice(): QuickChoice? = when (this) {
             },
         )
     }
+    // Light or dark, nothing more: the easter egg's colours have a switch of
+    // their own in Appearance, and follow whichever this is.
     QuickSetting.THEME -> {
         val current by AppSettings.themeMode.collectAsStateWithLifecycle()
-        val viceUnlocked by AppSettings.viceUnlocked.collectAsStateWithLifecycle()
-        val viceTheme by AppSettings.viceTheme.collectAsStateWithLifecycle()
-        val context = androidx.compose.ui.platform.LocalContext.current
-        // Once found, the easter egg is a fourth theme here: the tile names it
-        // while it is on, and picking a plain theme takes it off again.
-        val vice = viceUnlocked && viceTheme
-        val viceLabel = stringResource(R.string.app_icon_vice)
         QuickChoice(
-            icon = when {
-                vice -> SfIcons.AutoAwesome
-                current == ThemeMode.LIGHT -> Icons.Rounded.LightMode
-                current == ThemeMode.DARK -> Icons.Rounded.DarkMode
+            icon = when (current) {
+                ThemeMode.LIGHT -> Icons.Rounded.LightMode
+                ThemeMode.DARK -> Icons.Rounded.DarkMode
                 else -> Icons.Rounded.BrightnessAuto
             },
-            value = if (vice) viceLabel else current.localizedLabel(),
-            options = ThemeMode.entries.map { QuickOption(it.localizedLabel(), null) } +
-                (if (viceUnlocked) listOf(QuickOption(viceLabel, null)) else emptyList()),
-            selected = if (vice) ThemeMode.entries.size else ThemeMode.entries.indexOf(current),
-            onPick = {
-                if (it == ThemeMode.entries.size) {
-                    com.music.bitchord.ui.easteregg.ViceEasterEgg.turnOn(context)
-                } else {
-                    if (vice) com.music.bitchord.ui.easteregg.ViceEasterEgg.turnOff(context)
-                    AppSettings.setThemeMode(ThemeMode.entries[it])
-                }
-            },
+            value = current.localizedLabel(),
+            options = ThemeMode.entries.map { QuickOption(it.localizedLabel(), null) },
+            selected = ThemeMode.entries.indexOf(current),
+            onPick = { AppSettings.setThemeMode(ThemeMode.entries[it]) },
         )
     }
     QuickSetting.PLAYER_THEME -> {

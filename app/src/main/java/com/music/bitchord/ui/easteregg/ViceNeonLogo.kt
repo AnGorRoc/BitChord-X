@@ -33,6 +33,7 @@ import kotlinx.coroutines.delay
 import kotlin.math.min
 import kotlin.random.Random
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
@@ -100,16 +101,22 @@ internal fun ViceNeonLogo(modifier: Modifier = Modifier) {
         )
     }
 
+    // By day a pale tube would vanish into the pastels: the tube itself goes
+    // hot pink, and the glow around it softer.
+    val day = androidx.compose.material3.MaterialTheme.colorScheme.background.luminance() >= 0.5f
+    val tubeLit = if (day) NEON_DAY_TUBE else NEON_TUBE
+    val tubeUnlit = if (day) NEON_DAY_TUBE_OFF else NEON_TUBE_OFF
+    val glowScale = if (day) NEON_DAY_GLOW_SCALE else 1f
     Box(modifier) {
         waves.forEachIndexed { index, wave ->
             val level = power[index]
             // The wide glow, spilling well past the tube.
-            NeonLayer(wave, NEON_GLOW, blur = 9.dp) { NEON_WIDE_GLOW_ALPHA * level.value * (hum?.value ?: 1f) }
+            NeonLayer(wave, NEON_GLOW, blur = 9.dp) { glowScale * NEON_WIDE_GLOW_ALPHA * level.value * (hum?.value ?: 1f) }
             // The tight glow hugging it.
-            NeonLayer(wave, NEON_GLOW, blur = 2.5.dp) { NEON_NEAR_GLOW_ALPHA * level.value * (hum?.value ?: 1f) }
-            // The tube itself: unlit, a dim pink glass; lit, nearly white.
-            NeonLayer(wave, NEON_TUBE_OFF, blur = null) { 1f }
-            NeonLayer(wave, NEON_TUBE, blur = null) { level.value }
+            NeonLayer(wave, NEON_GLOW, blur = 2.5.dp) { glowScale * NEON_NEAR_GLOW_ALPHA * level.value * (hum?.value ?: 1f) }
+            // The tube itself: unlit, a dim pink glass; lit, nearly white (hot pink by day).
+            NeonLayer(wave, tubeUnlit, blur = null) { 1f }
+            NeonLayer(wave, tubeLit, blur = null) { level.value }
         }
     }
 }
@@ -192,6 +199,15 @@ private val NEON_TUBE = Color(0xFFFFD6EE)
 
 /** The tube with no current in it: a dim pink glass, so the sign is there before it lights. */
 private val NEON_TUBE_OFF = Color(0xFF6E2A55)
+
+/** By day: the lit tube in hot pink, so it reads on the pastels. */
+private val NEON_DAY_TUBE = Color(0xFFE5268C)
+
+/** By day, unlit: a pale pink glass. */
+private val NEON_DAY_TUBE_OFF = Color(0xFFF0C6DD)
+
+/** By day the glow is softer: on a light page a full glow turns to a pink smudge. */
+private const val NEON_DAY_GLOW_SCALE = 0.6f
 
 private const val NEON_WIDE_GLOW_ALPHA = 0.85f
 private const val NEON_NEAR_GLOW_ALPHA = 1f

@@ -464,7 +464,7 @@ class MainActivity : AppCompatActivity() {
         window.setBackgroundDrawable(
             android.graphics.drawable.ColorDrawable(
                 when {
-                    vice -> com.music.bitchord.ui.theme.ViceBackground.value.shr(32).toInt()
+                    vice -> com.music.bitchord.ui.theme.viceBackground(dark).value.shr(32).toInt()
                     dark -> android.graphics.Color.BLACK
                     else -> android.graphics.Color.WHITE
                 },
@@ -531,9 +531,10 @@ class MainActivity : AppCompatActivity() {
             }
             val viceTheme by AppSettings.viceTheme.collectAsStateWithLifecycle()
             val viceUnlocked by AppSettings.viceUnlocked.collectAsStateWithLifecycle()
-            // The easter egg's neon night: always dark, whatever Theme says.
+            // The easter egg follows Theme: its neon night when dark, the same
+            // bay by day when light.
             val vice = viceTheme && viceUnlocked
-            val darkTheme = vice || when (theme) {
+            val darkTheme = when (theme) {
                 ThemeMode.SYSTEM -> isSystemInDarkTheme()
                 ThemeMode.LIGHT -> false
                 ThemeMode.DARK -> true
@@ -2720,17 +2721,18 @@ private fun BitChordApp(
         if (vice) {
             // Over the easter egg's gradient the cards are frosted panes the
             // neon shows through, as Discord's themed lists are, not slabs of violet.
-            { com.music.bitchord.ui.theme.ViceCard }
+            { com.music.bitchord.ui.theme.viceCard(darkTheme) }
         } else {
             { pageTint()?.let { com.music.bitchord.ui.theme.cardShadeOf(it, darkTheme) } }
         }
     }
+    // The easter egg's page wash, by night or by day; null on a plain page.
+    val viceGradient = if (vice) com.music.bitchord.ui.theme.viceGradient(darkTheme) else null
     val tintLocals = arrayOf(
         com.music.bitchord.ui.theme.LocalPageBackground provides pageTint,
         com.music.bitchord.ui.theme.LocalCardSurface provides cardTint,
         // Rows that paint "the page" paint their slice of the gradient under Vice.
-        com.music.bitchord.ui.theme.LocalPageGradient provides
-            (if (vice) com.music.bitchord.ui.theme.ViceGradient else null),
+        com.music.bitchord.ui.theme.LocalPageGradient provides viceGradient,
     )
 
     // One set of numbers for the cards, the page, the stories and the shared
@@ -3180,7 +3182,7 @@ private fun BitChordApp(
             // them. A release page paints its own artwork's colour over it.
             // Drawn, not composed: the colour is read in the draw phase, so its
             // fade redraws this layer and recomposes nothing.
-            Box(Modifier.weight(1f).fillMaxHeight().drawBehind { drawPageWash(playingPalette.background, vice) }) {
+            Box(Modifier.weight(1f).fillMaxHeight().drawBehind { drawPageWash(playingPalette.background, viceGradient) }) {
                 AnimatedContent(
                     // Whatever is on top of the back stack — see [AppNavigator].
                     targetState = when {
@@ -3292,7 +3294,7 @@ private fun BitChordApp(
                         // cover the wash painted under it and leave the pages
                         // black — and the glass refracting black — with Liquid
                         // Glass on. Off, this is the same colour drawn twice.
-                        .drawBehind { drawPageWash(playingPalette.background, vice) }
+                        .drawBehind { drawPageWash(playingPalette.background, viceGradient) }
                         // Every page's scroll passes through here, so
                         // the dock collapses on all of them
                         // without each one having to know about it.

@@ -163,7 +163,7 @@ fun UpdateAvailableDialog(
     BackHandler(enabled = true, onBack = handleDismiss)
 
     val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
-    val dialogFill = com.music.bitchord.ui.theme.cardSurfaceOrNull() ?: if (isDark) DIALOG_DARK_GREY else DIALOG_LIGHT_GREY
+    val dialogFill = com.music.bitchord.ui.components.dialogCardFill()
     val baseScrim = if (isDark) 0.55f else 0.28f
 
     val scrimAlpha = if (reduceMotion) baseScrim else (baseScrim * animProgress.value.coerceIn(0f, 1f))

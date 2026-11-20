@@ -127,6 +127,29 @@ internal fun dialogInk(): Color =
 internal fun dialogInkInverse(): Color =
     if (MaterialTheme.colorScheme.background.luminance() < 0.5f) Color.Black else Color.White
 
+/**
+ * The fill for a floating dialog's card: the page's card shade where a tint
+ * sets one, the dialog grey otherwise.
+ *
+ * A card shade that is itself see-through — the Vice theme's frosted panes —
+ * is too faint to hold a dialog's text over the page, so the dialog takes the
+ * theme's own surface instead, still translucent: the blur behind the window
+ * shows through it, as glass, rather than the card being a slab.
+ */
+@Composable
+internal fun dialogCardFill(): Color {
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val card = com.music.bitchord.ui.theme.cardSurfaceOrNull()
+    return when {
+        card == null -> if (isDark) DIALOG_DARK_GREY else DIALOG_LIGHT_GREY
+        card.alpha < 1f -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = DIALOG_GLASS_FILL_ALPHA)
+        else -> card
+    }
+}
+
+/** How much of the theme's surface a see-through dialog card keeps. */
+private const val DIALOG_GLASS_FILL_ALPHA = 0.72f
+
 fun dialogFrostStyle(fill: Color = DIALOG_DARK_GREY, alpha: Float = DIALOG_FROST_ALPHA): HazeStyle = HazeStyle(
     backgroundColor = fill,
     tints = listOf(HazeTint(fill.copy(alpha = alpha))),
@@ -142,7 +165,13 @@ fun Modifier.dialogFrostBackground(
     fill: Color = DIALOG_DARK_GREY,
     borderColor: Color = DIALOG_EDGE_COLOR,
     alpha: Float = DIALOG_FROST_ALPHA,
-): Modifier = shadow(elevation = 20.dp, shape = shape)
+): Modifier = shadow(
+    // No cast shadow under a see-through card: the platform draws the shadow
+    // beneath the whole outline, and through a translucent fill it shows as a
+    // square patch inside the card.
+    elevation = if (fill.alpha < 1f) 0.dp else 20.dp,
+    shape = shape,
+)
     .clip(shape)
     .then(
         if (reduceDynamicBlur || hazeState == null) {
@@ -299,7 +328,7 @@ fun SpotifyImportAlert(
 
     val dialogShape = RoundedCornerShape(26.dp)
     val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
-    val dialogFill = com.music.bitchord.ui.theme.cardSurfaceOrNull() ?: if (isDark) DIALOG_DARK_GREY else DIALOG_LIGHT_GREY
+    val dialogFill = com.music.bitchord.ui.components.dialogCardFill()
     val dialogBorder = if (isDark) DIALOG_EDGE_COLOR else DIALOG_LIGHT_EDGE_COLOR
     val dialogAlpha = if (isDark) DIALOG_FROST_ALPHA else DIALOG_LIGHT_FROST_ALPHA
     val scrimAlpha = if (isDark) 0.55f else 0.28f

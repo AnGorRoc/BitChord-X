@@ -926,7 +926,7 @@ internal fun AlertScaffold(
 ) {
     val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
     val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
-    val fill = com.music.bitchord.ui.theme.cardSurfaceOrNull() ?: if (isDark) DIALOG_DARK_GREY else DIALOG_LIGHT_GREY
+    val fill = com.music.bitchord.ui.components.dialogCardFill()
     // In a window of its own the system can blur what is behind it: the page
     // goes soft at its own brightness instead of being dimmed. Only where it
     // can — otherwise, and under Reduce dynamic blur, the flat scrim as before.

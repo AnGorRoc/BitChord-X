@@ -60,12 +60,39 @@ val ViceGradient = listOf(
 val ViceCard = Color.White.copy(alpha = 0.08f)
 
 /**
- * The page's wash: the record's colour (or the theme's page) — or, under the
- * easter egg, [ViceGradient] from the top of the area to its foot.
+ * The easter egg by day, for the Light theme: the same bay in the morning —
+ * a pale aqua sky at the top, through lavender and pink, to the warm peach of
+ * the sand at the foot.
  */
-fun androidx.compose.ui.graphics.drawscope.DrawScope.drawPageWash(color: Color, vice: Boolean) {
-    if (vice) {
-        drawRect(androidx.compose.ui.graphics.Brush.verticalGradient(ViceGradient))
+val ViceDayBackground = Color(0xFFD3F2FA)
+
+val ViceDayGradient = listOf(
+    Color(0xFFD3F2FA),
+    Color(0xFFE4DCFB),
+    Color(0xFFF6D9EE),
+    Color(0xFFFFE0D2),
+    Color(0xFFFFEBD6),
+)
+
+/** A card over [ViceDayGradient]: frosted white, the pastel showing through. */
+val ViceDayCard = Color.White.copy(alpha = 0.5f)
+
+/** The easter egg's page colour, by night ([dark]) or by day. */
+fun viceBackground(dark: Boolean): Color = if (dark) ViceBackground else ViceDayBackground
+
+/** The easter egg's page wash, by night ([dark]) or by day. */
+fun viceGradient(dark: Boolean): List<Color> = if (dark) ViceGradient else ViceDayGradient
+
+/** The easter egg's card, by night ([dark]) or by day. */
+fun viceCard(dark: Boolean): Color = if (dark) ViceCard else ViceDayCard
+
+/**
+ * The page's wash: the record's colour (or the theme's page) — or, under the
+ * easter egg, its [gradient] from the top of the area to its foot.
+ */
+fun androidx.compose.ui.graphics.drawscope.DrawScope.drawPageWash(color: Color, gradient: List<Color>?) {
+    if (gradient != null) {
+        drawRect(androidx.compose.ui.graphics.Brush.verticalGradient(gradient))
     } else {
         drawRect(color)
     }
@@ -83,6 +110,25 @@ private val ViceColors = darkColorScheme(
     surfaceVariant = Color(0xFF2A1652),
     onSurfaceVariant = Color(0xFFCDB8F0),
     outline = Color(0xFF3D2470),
+)
+
+/**
+ * The easter egg by day: deep violet ink on the morning pastels, a hot pink
+ * deep enough to read on them, and a sea teal beside it.
+ */
+private val ViceDayColors = lightColorScheme(
+    primary = Color(0xFFD6287F),
+    onPrimary = Color.White,
+    secondary = Color(0xFF0E8FA3),
+    onSecondary = Color.White,
+    tertiary = Color(0xFFE0703A),
+    background = ViceDayBackground,
+    onBackground = Color(0xFF2A1050),
+    surface = Color(0xFFF7F0FF),
+    onSurface = Color(0xFF2A1050),
+    surfaceVariant = Color(0xFFEBDDF7),
+    onSurfaceVariant = Color(0xFF6B4F8C),
+    outline = Color(0xFFD9C6EE),
 )
 
 private val LightColors = lightColorScheme(
@@ -192,13 +238,13 @@ private fun Typography.withFamily(family: FontFamily) = Typography(
 fun BitChordTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     font: AppFont = AppFont.DEFAULT,
-    /** The easter egg's neon night in place of the plain dark scheme. */
+    /** The easter egg's colours in place of the plain scheme: its night when dark, its day when light. */
     vice: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     MaterialTheme(
         colorScheme = when {
-            vice -> ViceColors
+            vice -> if (darkTheme) ViceColors else ViceDayColors
             darkTheme -> DarkColors
             else -> LightColors
         },
