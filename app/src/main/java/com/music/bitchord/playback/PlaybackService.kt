@@ -12,6 +12,7 @@ import android.media.audiofx.AudioEffect
 import android.net.Uri
 import android.widget.Toast
 import android.net.wifi.WifiManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.PowerManager
@@ -157,6 +158,7 @@ import com.music.bitchord.data.settings.EqualizerMode
 import com.music.bitchord.data.settings.OutputPcmMode
 import com.music.bitchord.data.sources.SourceKind
 import com.music.bitchord.data.sources.SourceResolver
+import com.music.bitchord.BuildConfig
 import com.music.bitchord.data.sources.SourceStream
 import com.music.bitchord.data.sources.StreamFormat
 import com.music.bitchord.data.sources.StreamRequest
@@ -289,6 +291,10 @@ internal class ManualUpgradeThrottle(private val cooldownMs: Long) {
  * hears about the reorder once, when the row is dropped, not mid-drag.
  */
 const val ACTION_QUEUE_DRAG = "com.music.bitchord.action.QUEUE_DRAG"
+
+/** Debug builds only — see [PlaybackService.registerRenditionSwapHarness]. */
+private const val ACTION_DEBUG_RENDITION_SWAP = "com.music.bitchord.debug.RENDITION_SWAP"
+private const val RENDITION_SWAP_TEST_ID = "rendition-swap-test"
 const val EXTRA_QUEUE_DRAG_ACTIVE = "bitchord.queueDrag.active"
 
 /** A full first page for an explicitly requested station. */
@@ -1374,6 +1380,7 @@ class PlaybackService : MediaLibraryService() {
     override fun onCreate() {
         super.onCreate()
         DeviceLink.setServiceRunning(true)
+        registerRenditionSwapHarness()
 
         if (com.music.bitchord.data.innertube.Innertube.cookie == null) {
             com.music.bitchord.data.innertube.Innertube.cookie = com.music.bitchord.auth.AuthStore(this).cookie
@@ -6145,6 +6152,70 @@ class PlaybackService : MediaLibraryService() {
         return true
     }
 
+    /**
+     * Debug builds only: drives a quality swap between two local copies of
+     * one recording through [swapToAlignedStream], the path a real upgrade
+     * takes, so the handover can be measured end to end on an emulator
+     * without a source that serves a better copy.
+     *
+     *     am broadcast -p <pkg> -a com.music.bitchord.debug.RENDITION_SWAP --es cmd play --es uri file:///… --el at 30000
+     *     am broadcast -p <pkg> -a com.music.bitchord.debug.RENDITION_SWAP --es cmd swap --es uri file:///… [--el guess 1234]
+     *
+     * Each swap's outcome is logged under `RenditionSwapTest`.
+     */
+    private var renditionSwapHarness: android.content.BroadcastReceiver? = null
+
+    private fun registerRenditionSwapHarness() {
+        if (!BuildConfig.DEBUG) return
+        val receiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                val uri = intent.getStringExtra("uri") ?: return
+                when (intent.getStringExtra("cmd")) {
+                    "play" -> {
+                        val active = player ?: return
+                        val item = MediaItem.Builder()
+                            .setMediaId(RENDITION_SWAP_TEST_ID)
+                            .setUri(uri)
+                            .setMediaMetadata(MediaMetadata.Builder().setTitle("Rendition swap test").build())
+                            .build()
+                        active.setMediaItem(item, intent.getLongExtra("at", 0L))
+                        active.prepare()
+                        active.play()
+                        Log.d("RenditionSwapTest", "playing $uri")
+                    }
+                    "swap" -> scope.launch(Dispatchers.Main) {
+                        val active = player ?: return@launch
+                        val item = active.currentMediaItem ?: return@launch
+                        val playingUri = item.localConfiguration?.uri?.toString() ?: return@launch
+                        val target = item.buildUpon().setUri(uri).build()
+                        val known = intent.hasExtra("guess")
+                        val began = SystemClock.elapsedRealtime()
+                        val swapped = swapToAlignedStream(
+                            SwapPoint(item, playingUri, active.currentPosition, active.duration),
+                            target,
+                            SourceStream(url = uri),
+                            offsetMs = intent.getLongExtra("guess", 0L),
+                            offsetKnown = known,
+                        )
+                        Log.d(
+                            "RenditionSwapTest",
+                            "swap to $uri ${if (swapped) "DONE" else "NOT DONE"} after " +
+                                "${SystemClock.elapsedRealtime() - began}ms; now at ${player?.currentPosition}ms",
+                        )
+                    }
+                }
+            }
+        }
+        val filter = android.content.IntentFilter(ACTION_DEBUG_RENDITION_SWAP)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED)
+        } else {
+            @Suppress("UnspecifiedRegisterReceiverFlag")
+            registerReceiver(receiver, filter)
+        }
+        renditionSwapHarness = receiver
+    }
+
     /** What became of a stream that was found, matched and then auditioned. */
     private enum class SwapResult {
         /** The audio was replaced. */
@@ -9646,6 +9717,8 @@ class PlaybackService : MediaLibraryService() {
 
 
     override fun onDestroy() {
+        renditionSwapHarness?.let { runCatching { unregisterReceiver(it) } }
+        renditionSwapHarness = null
         com.music.bitchord.data.presence.AndroidPresence.setPlaying(false)
         DeviceLink.setServiceRunning(false)
         WearBridge.attachStreams(null)
