@@ -14,6 +14,7 @@ import com.music.bitchord.data.settings.AppSettings
 import com.music.bitchord.data.settings.MixBlend
 import com.music.bitchord.data.settings.MixDeck
 import com.music.bitchord.data.settings.MixTransitionView
+import com.music.bitchord.playback.audio.PcmTap
 import com.music.bitchord.playback.audio.bitperfect.BitPerfectOutput
 import com.music.bitchord.data.settings.SmartAnalysis
 import com.music.bitchord.data.settings.TrackAnalysisState
@@ -230,6 +231,14 @@ class CrossfadeController(
     private val loudnessGain: (String) -> Float = { 1f },
     /** The session's playhead moved on purpose during a loop mix: a loop wrap (true) or a re-anchor (false). */
     private val onMixPositionJump: (wrapped: Boolean) -> Unit = {},
+    /**
+     * What [ExoPlayer]'s audio output has been fed and where its playhead is,
+     * as its sink reports it on the playback thread; null where there is
+     * none. With it the phase lock reads exact output positions rather than
+     * the player's coarse ones, and a blend's incoming track is put on its
+     * cue to the sample before it is heard — see [prerollLock].
+     */
+    private val tapOf: (ExoPlayer) -> PcmTap? = { null },
 ) {
 
     private enum class Phase {
@@ -555,6 +564,38 @@ class CrossfadeController(
     /** Dedupes the per-tick plan log down to one line per distinct verdict. */
     private var lastPlanVerdict = ""
 
+    // ---- Pre-roll lock (see [prerollLock]) -----------------------------------
+
+    /** Incoming media ms the standby was armed ahead of its cue; 0 when this blend has no pre-roll. */
+    private var prerollMs = 0L
+
+    /** When the incoming player started silently, from [System.nanoTime]; 0 before. */
+    private var prerollStartedAt = 0L
+
+    /** No measurement before this ([System.nanoTime]). */
+    private var prerollCheckAt = 0L
+
+    /** Output positions from before this ([System.nanoTime]) predate the last correction. */
+    private var prerollSince = 0L
+
+    /** A correction has been asked of the incoming output and is not carried out yet. */
+    private var prerollShifting = false
+
+    private var prerollRounds = 0
+    private var prerollDone = false
+    private var prerollLoggedAt = 0L
+    private var prerollInResynced = false
+
+    private fun resetPreroll() {
+        prerollMs = 0L
+        prerollStartedAt = 0L
+        prerollCheckAt = 0L
+        prerollSince = 0L
+        prerollShifting = false
+        prerollRounds = 0
+        prerollDone = false
+    }
+
     // ---- Phase lock (Advanced Automix) --------------------------------------
 
     /** When the speed nudge in flight ends, from [SystemClock.elapsedRealtime]; 0 when none is. */
@@ -615,9 +656,59 @@ class CrossfadeController(
         }
     }
 
-    /** [player]'s position through whichever clock follows its side of the blend. */
-    private fun positionMs(player: ExoPlayer): Double =
-        if (player === incoming) inClock.read(player) else outClock.read(player)
+    /**
+     * [player]'s position: where its audio output says it is when that can be
+     * read, otherwise through whichever [PositionClock] follows its side of
+     * the blend.
+     */
+    private fun positionMs(player: ExoPlayer): Double {
+        val clock = if (player === incoming) inClock.read(player) else outClock.read(player)
+        val sink = sinkPositionMs(player) ?: return clock
+        // A reading that strays far from the player's own is from a stream
+        // the sink has moved on from (a queue boundary, a flush in flight).
+        return if (abs(sink - clock) <= SINK_POSITION_SANITY_MS) sink else clock
+    }
+
+    /**
+     * Where [player]'s output playhead is now, from what its sink last
+     * reported, or null without a tap or a recent report.
+     *
+     * The sink computes its position on the playback thread against the
+     * output's own timestamps and each report is stamped where it was made,
+     * so carrying the newest one forward is exact to well under a
+     * millisecond — where `currentPosition` steps every ~280ms and has to be
+     * guessed between. Only the newest: an older one could predate a speed
+     * nudge and be carried forward at the wrong speed (and the phase lock
+     * measures only once a nudge is well over).
+     */
+    private fun sinkPositionMs(player: ExoPlayer): Double? {
+        if (!player.isPlaying) return null
+        val tap = tapOf(player) ?: return null
+        val now = System.nanoTime()
+        return tap.latestPlayheadAtMs(now, SINK_POSITION_WINDOW_NANOS, player.playbackParameters.speed)
+    }
+
+    /** Whether both sides of the blend read their positions from their outputs. */
+    private fun sinkPositioned(out: ExoPlayer, into: ExoPlayer): Boolean =
+        tapOf(out) != null && tapOf(into) != null
+
+    /**
+     * Media ms of the outgoing track's own wall clock from [fromMs] to the
+     * fade, through whatever is left of its tempo ramp. Negative past it.
+     */
+    private fun outgoingWallMsUntilFade(fromMs: Double): Double {
+        val base = AppSettings.playbackSpeed.value.toDouble()
+        return wallMsUntil(
+            fromMs = fromMs,
+            toMs = (fadeEndMs - fadeMs).toDouble(),
+            // Without a ramp the player's speed is whatever it already runs at.
+            baseSpeed = if (rampSteps > 0) base else outgoing?.playbackParameters?.speed?.toDouble() ?: base,
+            finalRate = if (rampSteps > 0) outgoingPlaybackRate else 1.0,
+            rampStartMs = rampStartMs.toDouble(),
+            rampStepMs = rampStepMs.toDouble(),
+            rampSteps = rampSteps,
+        )
+    }
 
     // ---- Tempo ease-back (Advanced Automix) --------------------------------
 
@@ -1240,7 +1331,10 @@ class CrossfadeController(
         // starts that much earlier, from arming.
         val beatMs = (plan.beatSeconds * 1000).roundToLong()
         val rampMs = if (beatMs > 0L) rampStepsFor(plan.outgoingPlaybackRate) * beatMs else 0L
-        if (remaining > ARM_LEAD_MS + rampMs) return
+        // Earlier still where the incoming track will be put on its cue
+        // before the fade: that takes [PREROLL_WALL_MS] of its own.
+        val armLead = if (tapOf(player) != null && tapOf(standby()) != null) SMART_ARM_LEAD_MS else ARM_LEAD_MS
+        if (remaining > armLead + rampMs) return
 
         begin(
             fade,
@@ -1474,8 +1568,10 @@ class CrossfadeController(
         // fight each other. Undone in [finish].
         into.setPlaybackSpeed((AppSettings.playbackSpeed.value * incomingPlaybackRate).toFloat())
         into.volume = 0f
+        resetPreroll()
+        prerollMs = prerollFor(out, into, smart)
         val setNanos0 = SystemClock.elapsedRealtimeNanos()
-        into.setMediaItems(items, nextIndex, incomingCueTimeMs)
+        into.setMediaItems(items, nextIndex, incomingCueTimeMs - prerollMs)
         val setDurationUs = (SystemClock.elapsedRealtimeNanos() - setNanos0) / 1000L
         Log.d(TAG, "standby setMediaItems: ${items.size} tracks in ${setDurationUs}µs")
         // Before `prepare`, so the standby's per-player audio state is right
@@ -1643,10 +1739,164 @@ class CrossfadeController(
         // Wait for the track to actually reach the fade point. [fadeEndMs] is
         // the track's own duration in standard mode, or a Automix plan's
         // analyzed mix-out anchor when it ends before the file does.
+        if (ready && prerollMs > 0L) prerollLock(out, into)
+
         val atFadePoint = fadeEndMs <= 0L || fadeEndMs - out.currentPosition <= fadeMs
         if (!atFadePoint) return
         if (ready) startFade()
     }
+
+    /**
+     * How far ahead of its cue, in incoming media ms, to arm the incoming
+     * track so [prerollLock] has [PREROLL_WALL_MS] to put it on the cue; 0
+     * where it can't — no taps, not a planned blend, a cue too near the
+     * track's start, or too little left before the fade.
+     */
+    private fun prerollFor(out: ExoPlayer, into: ExoPlayer, smart: Boolean): Long {
+        if (!smart || fadeEndMs <= 0L || !sinkPositioned(out, into) || debugNoPreroll) return 0L
+        val inSpeed = AppSettings.playbackSpeed.value * incomingPlaybackRate
+        val lead = (PREROLL_WALL_MS * inSpeed).roundToLong()
+        if (incomingCueTimeMs < lead) return 0L
+        if (outgoingWallMsUntilFade(out.currentPosition.toDouble()) < PREROLL_WALL_MS + PREROLL_ARM_MARGIN_MS) return 0L
+        return lead
+    }
+
+    /**
+     * Starts the incoming track silently a little before the fade and moves
+     * it, by exact sample counts, onto where its cue has to be when the fade
+     * begins.
+     *
+     * Started on the fade tick itself, the incoming track lands wherever an
+     * arming tick (up to 40ms late) and its player's start-up put it: tens of
+     * milliseconds off the outgoing beat, which the phase lock then spends
+     * the opening of the blend nudging away by speed — audibly, if the
+     * listener's ear catches the two kicks flamming first. Started early, at
+     * no volume, the error is measured off the two outputs' own clocks (see
+     * [PcmTap.playheadAtMs]) and taken out in the incoming output itself —
+     * frames dropped or silence written — the way a quality swap lines two
+     * renditions up. Nothing is sought, so nothing re-buffers. By the time
+     * the fade lifts it the incoming track is on its cue to a fraction of a
+     * millisecond, and the phase lock is left with drift alone.
+     *
+     * Anything unexpected — reports missing, an error too large to be a late
+     * start — just ends the pre-roll: the fade then starts the incoming track
+     * where it is, as it always did.
+     */
+    private fun prerollLock(out: ExoPlayer, into: ExoPlayer) {
+        if (prerollDone) return
+        val outTap = tapOf(out) ?: return endPreroll("no output on the outgoing side")
+        val inTap = tapOf(into) ?: return endPreroll("no output on the incoming side")
+        val now = System.nanoTime()
+        if (prerollStartedAt == 0L) {
+            if (outgoingWallMsUntilFade(out.currentPosition.toDouble()) > PREROLL_WALL_MS) return
+            // The outgoing sink's clock can sit off its audio by whatever its
+            // decoder trimmed since the last flush (an Opus pre-skip is
+            // 6.5ms); re-anchored here, both clocks are the audio's own.
+            // The incoming one is re-anchored once it is running: asked
+            // while its output is paused and full, the re-anchoring waits on
+            // a drain that only a running output makes, and its position
+            // reads as unknown meanwhile.
+            outTap.shiftLandsAtUs = C.TIME_UNSET
+            outTap.requestResync()
+            into.volume = 0f
+            into.playWhenReady = true
+            prerollStartedAt = now
+            prerollInResynced = false
+            prerollShifting = true
+            prerollCheckAt = now + PREROLL_SETTLE_NANOS
+            return
+        }
+        if (!prerollInResynced) {
+            if (now - prerollStartedAt < PREROLL_IN_RESYNC_NANOS || !into.isPlaying) return
+            inTap.shiftLandsAtUs = C.TIME_UNSET
+            inTap.requestResync()
+            prerollInResynced = true
+            return
+        }
+        if (prerollShifting) {
+            // A re-anchoring or a move is not in an output's clock until its
+            // playhead reaches where it was written, a whole buffer after it
+            // was carried out; measured before that, it reads as though it
+            // had not happened and is corrected twice.
+            if (!heard(outTap, out) || !heard(inTap, into)) {
+                if (now - prerollLoggedAt > PREROLL_LOG_EVERY_NANOS) {
+                    prerollLoggedAt = now
+                    Log.d(
+                        TAG,
+                        "preroll: waiting for the outputs to play up to the last re-anchoring or move " +
+                            "(outgoing at ${outTap.lastShiftLandsAtMs()}, incoming at ${inTap.lastShiftLandsAtMs()})",
+                    )
+                }
+                return
+            }
+            prerollShifting = false
+            prerollSince = now
+            prerollCheckAt = maxOf(prerollCheckAt, now + PREROLL_RECHECK_NANOS)
+            return
+        }
+        if (now < prerollCheckAt) return
+        val since = maxOf(prerollSince, now - PREROLL_WINDOW_NANOS)
+        val outAt = outTap.playheadAtMs(now, since, out.playbackParameters.speed, minSamples = 1)
+        val inAt = inTap.playheadAtMs(now, since, into.playbackParameters.speed, minSamples = 1)
+        if (outAt == null || inAt == null || !into.isPlaying || !out.isPlaying) {
+            if (now - prerollLoggedAt > PREROLL_LOG_EVERY_NANOS) {
+                prerollLoggedAt = now
+                Log.d(TAG, "preroll: waiting for positions (outgoing ${outAt != null}, incoming ${inAt != null})")
+            }
+            return
+        }
+        val untilFade = outgoingWallMsUntilFade(outAt)
+        val target = incomingCueTimeMs - untilFade * into.playbackParameters.speed
+        val error = inAt - target
+        when {
+            abs(error) <= PREROLL_TOLERANCE_MS ->
+                endPreroll("on cue: ${fmt(error)}ms after ${prerollRounds} correction(s), ${untilFade.roundToLong()}ms before the fade")
+            abs(error) > PREROLL_MAX_FIX_MS -> endPreroll("off by ${fmt(error)}ms, not a late start; left alone")
+            prerollRounds >= PREROLL_ROUNDS -> endPreroll("still ${fmt(error)}ms off after $prerollRounds corrections")
+            untilFade < PREROLL_LAST_FIX_MS -> endPreroll("${fmt(error)}ms off, too close to the fade to correct")
+            else -> {
+                // Ahead is held back with silence; behind skips forward.
+                inTap.shiftLandsAtUs = C.TIME_UNSET
+                inTap.requestShift(-(error * 1000.0).roundToLong())
+                prerollRounds++
+                prerollShifting = true
+                Log.d(TAG, "preroll: incoming ${fmt(error)}ms off its cue, correcting (${untilFade.roundToLong()}ms before the fade)")
+            }
+        }
+    }
+
+    /** Set by [debugArm] only, to hear a blend the way it started before the pre-roll. */
+    private var debugNoPreroll = false
+
+    /** The blend in flight was armed by [debugArm], whatever the settings say. */
+    private var debugArmed = false
+
+    /**
+     * Debug harness only: arms a planned blend by hand, from the playing
+     * track into the next one in its queue.
+     */
+    internal fun debugArm(fadeMs: Long, endMs: Long, cueMs: Long, preroll: Boolean): Boolean {
+        if (phase != Phase.IDLE) return false
+        debugNoPreroll = !preroll
+        debugArmed = true
+        return begin(fade = fadeMs, endMs = endMs, smart = true, cueTimeMs = cueMs)
+    }
+
+    /** Whether [tap]'s last move or re-anchoring has reached [player]'s output playhead. */
+    private fun heard(tap: PcmTap, player: ExoPlayer): Boolean {
+        if (tap.isMoving()) return false
+        val land = tap.lastShiftLandsAtMs() ?: return false
+        val at = tap.latestPlayheadAtMs(System.nanoTime(), PREROLL_WINDOW_NANOS, player.playbackParameters.speed)
+            ?: return false
+        return at >= land + PREROLL_LAND_MARGIN_MS
+    }
+
+    private fun endPreroll(why: String) {
+        prerollDone = true
+        Log.d(TAG, "preroll: $why")
+    }
+
+    private fun fmt(ms: Double): String = String.format(java.util.Locale.US, "%.2f", ms)
 
     /**
      * Starts the incoming track under the outgoing one.
@@ -1663,6 +1913,14 @@ class CrossfadeController(
         val into = incoming ?: return bail()
 
         into.volume = 0f
+        if (prerollStartedAt == 0L) {
+            // No pre-roll re-anchored the two output clocks; the phase lock
+            // reads them, so it is done here.
+            tapOf(out)?.requestResync()
+            tapOf(into)?.requestResync()
+        } else if (!prerollDone) {
+            endPreroll("unfinished at the fade (round $prerollRounds)")
+        }
         into.playWhenReady = true
         fadeStartedAt = SystemClock.elapsedRealtime()
         nudgeUntil = 0L
@@ -1852,7 +2110,7 @@ class CrossfadeController(
         // setting that actually started it — a Automix normally runs with
         // [configuredFadeMs] at zero, and reading that as "turned off" would
         // end every Automix on its first tick.
-        val settingSwitchedOff = if (smartFadeActive) {
+        val settingSwitchedOff = !debugArmed && if (smartFadeActive) {
             !AppSettings.smartFadeEnabled.value
         } else {
             configuredFadeMs() <= 0L
@@ -3025,6 +3283,8 @@ class CrossfadeController(
         handedOff = false
         outgoingItemIndex = C.INDEX_UNSET
         queuedItemCount = 0
+        resetPreroll()
+        debugArmed = false
         incomingCueTimeMs = 0L
         incomingPlaybackRate = 1.0
         outgoingPlaybackRate = 1.0
@@ -3037,7 +3297,8 @@ class CrossfadeController(
 
     /** Still a next track, still playing, still switched on — by whichever setting armed this one. */
     private fun stillWorthFading(): Boolean {
-        val stillOn = if (smartFadeActive) AppSettings.smartFadeEnabled.value else configuredFadeMs() > 0L
+        val stillOn = debugArmed ||
+            if (smartFadeActive) AppSettings.smartFadeEnabled.value else configuredFadeMs() > 0L
         return stillOn && (outgoing ?: active()).hasNextMediaItem()
     }
 
@@ -3595,7 +3856,10 @@ class CrossfadeController(
         lockCount = 0
         lockErrors.sort()
         val median = lockErrors[LOCK_SAMPLES / 2]
-        if (abs(median) < LOCK_DEADBAND_SECONDS) {
+        // Read off the outputs the error is real to a fraction of a
+        // millisecond, so the lock can afford to hold it tighter.
+        val deadband = if (sinkPositioned(out, into)) LOCK_DEADBAND_PRECISE_SECONDS else LOCK_DEADBAND_SECONDS
+        if (abs(median) < deadband) {
             lockQuietUntil = now + LOCK_IN_PHASE_MS
             return
         }
@@ -3881,6 +4145,9 @@ class CrossfadeController(
          */
         const val ARM_LEAD_MS = 4_000L
 
+        /** [ARM_LEAD_MS] for a planned blend with a pre-roll: the pre-roll, and the same head start before it. */
+        const val SMART_ARM_LEAD_MS = 6_500L
+
         /**
          * The earliest, in wall-clock ms before the next item starts, that
          * Media3 1.11 lets a player's renderers move on to reading it:
@@ -4022,6 +4289,55 @@ class CrossfadeController(
 
         /** Under this the two beats are together as far as anyone can hear. */
         const val LOCK_DEADBAND_SECONDS = 0.008
+
+        /** The same, with both positions read off the outputs rather than the players. */
+        const val LOCK_DEADBAND_PRECISE_SECONDS = 0.003
+
+        /** How far back an output's position reports are carried forward from. */
+        const val SINK_POSITION_WINDOW_NANOS = 1_000_000_000L
+
+        /** An output position this far from the player's own is not trusted. */
+        const val SINK_POSITION_SANITY_MS = 250.0
+
+        /**
+         * How long before the fade the incoming track starts playing silently
+         * for [prerollLock], in wall ms. Enough for its output's clock to
+         * settle, a measurement, a correction carried out, a second look, and
+         * the corrected audio to reach the speaker ahead of the fade.
+         */
+        const val PREROLL_WALL_MS = 5_000L
+
+        /** Arming with less than this left before the fade is too late for a pre-roll. */
+        const val PREROLL_ARM_MARGIN_MS = 400L
+
+        /** From the pre-roll's start to its first measurement: an output's timestamps settle first. */
+        const val PREROLL_SETTLE_NANOS = 1_000_000_000L
+
+        const val PREROLL_LOG_EVERY_NANOS = 500_000_000L
+
+        /** From the pre-roll's start to re-anchoring the incoming output's clock, once it runs. */
+        const val PREROLL_IN_RESYNC_NANOS = 250_000_000L
+
+        /** After a correction is carried out, before it is measured again. */
+        const val PREROLL_RECHECK_NANOS = 350_000_000L
+
+        /** How far past where a correction was written the playhead has to be before it is measured. */
+        const val PREROLL_LAND_MARGIN_MS = 30.0
+
+        /** Output position reports a pre-roll measurement is taken from. */
+        const val PREROLL_WINDOW_NANOS = 1_200_000_000L
+
+        /** Close enough: under this the incoming track is on its cue. */
+        const val PREROLL_TOLERANCE_MS = 1.0
+
+        /** An error beyond this is not a late start but something else; left alone. */
+        const val PREROLL_MAX_FIX_MS = 400.0
+
+        /** No correction is started with less than this before the fade: it would land audibly. */
+        const val PREROLL_LAST_FIX_MS = 1_000.0
+
+        /** Corrections a pre-roll may make. */
+        const val PREROLL_ROUNDS = 3
 
         /** After a nudge: long enough for the audio already buffered to play out at the new speed. */
         const val LOCK_SETTLE_MS = 400L
@@ -4302,4 +4618,41 @@ class CrossfadeController(
         /** A retired sink has long stopped rendering by then. */
         const val LOOP_RENDERER_CLOSE_DELAY_MS = 1_500L
     }
+}
+
+/**
+ * Wall ms a player takes to play from media [fromMs] to [toMs] while a tempo
+ * ramp runs: [baseSpeed] until [rampStartMs], then [rampSteps] steps of
+ * [rampStepMs] media each, step `k` at `baseSpeed * (1 + (finalRate - 1) * k / rampSteps)`,
+ * then the final speed. Without a ramp, just the distance at [baseSpeed].
+ * Negative when [fromMs] is already past [toMs].
+ */
+internal fun wallMsUntil(
+    fromMs: Double,
+    toMs: Double,
+    baseSpeed: Double,
+    finalRate: Double,
+    rampStartMs: Double,
+    rampStepMs: Double,
+    rampSteps: Int,
+): Double {
+    if (rampSteps <= 0 || rampStepMs <= 0.0) return (toMs - fromMs) / baseSpeed
+    val finalSpeed = baseSpeed * finalRate
+    if (fromMs >= toMs) return (toMs - fromMs) / finalSpeed
+    var wall = 0.0
+    var at = fromMs
+    if (at < rampStartMs) {
+        val end = minOf(rampStartMs, toMs)
+        wall += (end - at) / baseSpeed
+        at = end
+    }
+    for (k in 1..rampSteps) {
+        if (at >= toMs) break
+        val end = minOf(rampStartMs + k * rampStepMs, toMs)
+        if (end <= at) continue
+        wall += (end - at) / (baseSpeed * (1.0 + (finalRate - 1.0) * k / rampSteps))
+        at = end
+    }
+    if (at < toMs) wall += (toMs - at) / finalSpeed
+    return wall
 }

@@ -2198,6 +2198,13 @@ class PlaybackService : MediaLibraryService() {
             syncedLines = ::loopMixLyrics,
             loudnessGain = ::loudnessGainFor,
             onMixPositionJump = { wrapped -> (mediaSession?.player as? SessionPlayer)?.announceMixPosition(wrapped) },
+            tapOf = { target ->
+                when {
+                    target === player -> activeTap()
+                    target === spare -> spareTap()
+                    else -> null
+                }
+            },
         )
 
     /**
