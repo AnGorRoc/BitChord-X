@@ -132,6 +132,13 @@ object TrackLog {
      */
     fun about(id: String?): CoroutineContext = working.asContextElement(id)
 
+    /**
+     * The track the calling thread is working for — what [about] set — or null.
+     * Lets a report filed from deep inside a lookup land on the track that
+     * lookup is for, without the id being passed down to it.
+     */
+    fun workingOn(): String? = working.get()
+
     private class Line(val at: Long, val level: Char, val text: String, val track: String?)
 
     private val lines = ArrayDeque<Line>()

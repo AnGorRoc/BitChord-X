@@ -1481,6 +1481,12 @@
     <string name="pipeline_status_waiting">En espera</string>
     <string name="pipeline_status_not_asked">No consultado</string>
     <string name="pipeline_status_queued">En cola</string>
+    <string name="pipeline_status_not_needed_winner">No hizo falta (respondió antes %1$s)</string>
+    <string name="pipeline_status_not_needed_storage">No consultado (suena desde %1$s)</string>
+    <string name="pipeline_status_interrupted">Interrumpido</string>
+    <string name="pipeline_status_replaced_by">Reemplazado por %1$s</string>
+    <string name="pipeline_status_awaits_lossless_output">Espera una salida lossless</string>
+    <string name="pipeline_detail_below_youtube">Peor que la copia de YouTube</string>
     <string name="pipeline_storage_cache">Caché</string>
     <string name="pipeline_storage_local">Local</string>
     <string name="pipeline_status_skipped_data">Omitido por límite de datos (%1$s)</string>

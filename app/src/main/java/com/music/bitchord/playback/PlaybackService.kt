@@ -4296,22 +4296,9 @@ class PlaybackService : MediaLibraryService() {
                 mediaItem.localConfiguration?.uri?.let(QualityUpgrade::cacheTag),
             )
         }
-        // A track played from the disk cache or a local file is never resolved,
-        // so nothing else would say where its audio is coming from. Network
-        // tracks are left to the resolver, which resets the inspection itself
-        // when it looks them up.
-        mediaItem?.let { item ->
-            val storage = when {
-                item.mediaMetadata.extras?.getString(EXTRA_LOCAL_URI) != null ->
-                    SourceResolutionTracker.text(R.string.pipeline_storage_local)
-                item.localConfiguration?.uri?.let { AudioCache.isFullyCached(it) } == true ->
-                    SourceResolutionTracker.text(R.string.pipeline_storage_cache)
-                else -> null
-            }
-            if (storage != null) {
-                SourceResolutionTracker.resetForTrack(item.mediaId, item.mediaMetadata.title?.toString().orEmpty(), storage)
-            }
-        }
+        // The inspection follows the track that is now sounding, with the mark
+        // on whatever is serving it — see [syncPlayingSource].
+        syncPlayingSource()
         if (reason == Player.MEDIA_ITEM_TRANSITION_REASON_SEEK) SkipPace.shared.noteSkip()
         TrackLog.d(
             "BitChord",
@@ -5176,17 +5163,6 @@ class PlaybackService : MediaLibraryService() {
         if (alreadyPending) {
             TrackLog.d("BitChord", "looking again for a better copy of $mediaId", about = mediaId)
         }
-        // Queued before anything else, so the sources a second look is about to
-        // ask read as queued from now on — the store is playing, and this is the
-        // search for something better.
-        for (candidate in SourceResolver.upgradeCandidates()) {
-            SourceResolutionTracker.record(
-                candidate.configId,
-                candidate.displayName,
-                candidate.kind,
-                SourceResolutionTracker.text(R.string.pipeline_status_queued),
-            )
-        }
         upgradeJob = scope.launch(TrackLog.about(mediaId)) {
             // A previous visit to this track already did all the expensive
             // parts and lost the swap to a skip. Nothing about the answer has
@@ -5239,6 +5215,19 @@ class PlaybackService : MediaLibraryService() {
                 (uri == null || !adoptCachedTrack(mediaId, uri, playingSeconds))
             ) {
                 return@launch
+            }
+            // Queued only now that the walk is really going to run, and on this
+            // track's own state: queued earlier, a search that never started
+            // left every provider reading "not asked" — and on whichever track
+            // the inspection happened to be focused on.
+            for (candidate in SourceResolver.upgradeCandidates()) {
+                SourceResolutionTracker.record(
+                    candidate.configId,
+                    candidate.displayName,
+                    candidate.kind,
+                    SourceResolutionTracker.text(R.string.pipeline_status_queued),
+                    mediaId = mediaId,
+                )
             }
             when (val look = withContext(Dispatchers.IO) {
                 QualityUpgrade.lookAgain(mediaId, playingSeconds)
@@ -7655,7 +7644,77 @@ class PlaybackService : MediaLibraryService() {
         }
     }
 
+    /**
+     * Tells the source inspection what is sounding and who serves it, read off
+     * the item the player holds rather than taken from whichever path last
+     * reported — see [SourceResolutionTracker.markPlaying].
+     *
+     * Called on every track change and from [publishNerdStats], which runs on
+     * every new decoder format, every swap and every progress sample: a
+     * source change always brings a new format, so the mark moves with the
+     * audio whichever path moved it.
+     */
+    private fun syncPlayingSource() {
+        val item = player?.currentMediaItem ?: return
+        SourceResolutionTracker.markPlaying(
+            item.mediaId,
+            item.mediaMetadata.title?.toString().orEmpty(),
+            playingSourceOf(item),
+        )
+    }
+
+    /** The disk-cache verdict for the item last asked about, so a progress sample doesn't re-read the cache index. */
+    private var storageVerdict: Pair<String, Boolean>? = null
+
+    /**
+     * Who is serving [item]'s bytes, in the order the resolving data source
+     * decides it: an upgrade's forced stream, a reverted item's YouTube copy,
+     * a source-backed key, the stream chosen for the track, and only then the
+     * device. Null while that is not known yet (the track is still resolving).
+     */
+    private fun playingSourceOf(item: MediaItem): PlayingSource? {
+        val mediaId = item.mediaId
+        if (isLocalPlayback(mediaId, item)) {
+            return PlayingSource.Storage(SourceResolutionTracker.text(R.string.pipeline_storage_local))
+        }
+        fun provider(configId: String?, summary: String?): PlayingSource? {
+            val id = configId ?: return null
+            val config = SourceRegistry.config(id) ?: return null
+            return PlayingSource.Provider(id, config.displayName, config.kind, summary)
+        }
+        fun youtube(): PlayingSource {
+            val id = SourceRegistry.youtubeConfigId()
+            return PlayingSource.Provider(id, SourceRegistry.config(id)?.displayName ?: "YouTube Music", SourceKind.YOUTUBE)
+        }
+        val uri = item.localConfiguration?.uri
+        if (uri != null) {
+            QualityUpgrade.forcedStream(uri)?.let { stream ->
+                provider(stream.sourceConfigId, stream.format.summary)?.let { return it }
+            }
+            if (uri.getQueryParameter(DIRECT_YOUTUBE_PARAMETER) == "1") return youtube()
+        }
+        SourceRegistry.parseTrackKey(mediaId)?.let { (configId, _) ->
+            provider(configId, null)?.let { return it }
+        }
+        val videoId = uri?.getQueryParameter("v") ?: mediaId
+        StreamChoice.peek(videoId)?.let { serving ->
+            val summary = serving.format.takeIf { it != StreamFormat() }?.summary
+            provider(serving.sourceConfigId, summary)?.let { return it }
+            if (!StreamChoice.isSubstitute(videoId)) return youtube()
+        }
+        if (uri?.authority == "source") {
+            provider(uri.getQueryParameter("s"), null)?.let { return it }
+        }
+        if (uri != null) {
+            val cached = storageVerdict?.takeIf { it.first == mediaId }?.second
+                ?: AudioCache.isFullyCached(uri).also { storageVerdict = mediaId to it }
+            if (cached) return PlayingSource.Storage(SourceResolutionTracker.text(R.string.pipeline_storage_cache))
+        }
+        return null
+    }
+
     private fun publishNerdStats() {
+        syncPlayingSource()
         val player = player ?: return
         val format = player.audioFormat
         val mediaId = player.currentMediaItem?.mediaId

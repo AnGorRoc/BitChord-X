@@ -1431,6 +1431,12 @@
     <string name="pipeline_status_waiting" translatable="false">Waiting</string>
     <string name="pipeline_status_not_asked" translatable="false">Not asked</string>
     <string name="pipeline_status_queued" translatable="false">Queued</string>
+    <string name="pipeline_status_not_needed_winner" translatable="false">Not needed (%1$s answered first)</string>
+    <string name="pipeline_status_not_needed_storage" translatable="false">Not looked up (playing from %1$s)</string>
+    <string name="pipeline_status_interrupted" translatable="false">Interrupted</string>
+    <string name="pipeline_status_replaced_by" translatable="false">Replaced by %1$s</string>
+    <string name="pipeline_status_awaits_lossless_output" translatable="false">Waiting for a lossless output</string>
+    <string name="pipeline_detail_below_youtube" translatable="false">Worse than YouTube’s own copy</string>
     <string name="pipeline_storage_cache" translatable="false">Cache</string>
     <string name="pipeline_storage_local" translatable="false">Local</string>
     <string name="pipeline_status_skipped_data" translatable="false">Skipped by data limit (%1$s)</string>

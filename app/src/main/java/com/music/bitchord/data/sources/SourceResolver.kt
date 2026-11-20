@@ -1391,6 +1391,31 @@ object SourceResolver {
         driftSec: Int = UPGRADE_DRIFT_SEC,
         lengthLater: (suspend () -> Int?)? = null,
         checkFileLength: Boolean = false,
+    ): SourceStream? = try {
+        askSource(source, target, request, waitForAll, strictLength, requireSharedArtist, driftSec, lengthLater, checkFileLength)
+    } catch (e: CancellationException) {
+        // Cut off mid-question — a skip, or the lookup handed on and then
+        // dropped. Said so, rather than left reading "looking up…" forever.
+        SourceResolutionTracker.record(
+            sourceId = source.configId,
+            displayName = source.displayName,
+            kind = source.kind,
+            status = SourceResolutionTracker.text(R.string.pipeline_status_interrupted),
+        )
+        throw e
+    }
+
+    /** [matchAndStream]'s question, asked. */
+    private suspend fun askSource(
+        source: MusicSource,
+        target: TrackMatcher.Target,
+        request: StreamRequest,
+        waitForAll: Boolean,
+        strictLength: Boolean,
+        requireSharedArtist: Boolean,
+        driftSec: Int,
+        lengthLater: (suspend () -> Int?)?,
+        checkFileLength: Boolean,
     ): SourceStream? {
         // Asked from here on: until the answer comes back the row reads as
         // waiting on this source, not as queued behind the others.

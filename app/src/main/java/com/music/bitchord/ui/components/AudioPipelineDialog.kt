@@ -562,38 +562,24 @@ fun AudioPipelineDialog(
             }
 
             // 6. Source Inspection Stage
-            val resolutionState by SourceResolutionTracker.current.collectAsStateWithLifecycle()
-            // Reports for the previous track can still be on the tracker
-            // between a track change and the next resolve; they are not
-            // this track's sources, so they are not shown as such.
-            // The stats are empty from the track change until the decoder has
-            // spoken; the tracker is reset per resolved track, so with no stats
-            // to compare against its reports are the ones to show.
-            val statsMediaId = nerdStats?.mediaId
-            val resolutionReports = if (
-                statsMediaId == null || SourceResolutionTracker.sameTrack(resolutionState.mediaId, statsMediaId)
-            ) {
-                resolutionState.reports
-            } else {
-                emptyList()
-            }
+            // The state of the track that is sounding, kept per track by the
+            // tracker and pointed at by the service on every track change and
+            // decoder format — so a resolve of the *next* track, which starts
+            // while this one plays, no longer blanks this one's inspection.
+            val resolutionState by SourceResolutionTracker.playing.collectAsStateWithLifecycle()
+            val resolutionReports = resolutionState.reports
             // Every enabled provider is listed whether or not this track asked
             // it anything, so the reader can tell "answered" from "never asked".
-            val resolutionStorage = if (
-                statsMediaId == null || SourceResolutionTracker.sameTrack(resolutionState.mediaId, statsMediaId)
-            ) {
-                resolutionState.storage
-            } else {
-                null
-            }
+            val resolutionStorage = resolutionState.storage
             val providerConfigs by SourceRegistry.configs.collectAsStateWithLifecycle()
             val ceiling = AppSettings.effectiveAudioQuality
             val notAsked = SourceResolutionTracker.text(R.string.pipeline_status_not_asked)
-            val sourceRows = remember(providerConfigs, resolutionReports, ceiling) {
+            val sourceRows = remember(providerConfigs, resolutionReports, resolutionStorage, ceiling) {
                 sourceInspectionRows(
                     configs = providerConfigs,
                     reports = resolutionReports,
                     notAsked = notAsked,
+                    storage = resolutionStorage,
                     skippedFor = { kind ->
                         if (ceiling.permits(kind)) {
                             null
@@ -613,7 +599,15 @@ fun AudioPipelineDialog(
                 stageActivationProvider = stageActivation,
                 onStageIconPositioned = onStageIconPositioned,
             ) {
-                resolutionStorage?.let { PipelineRow("Reproduciendo desde", it) }
+                // The device as a source of its own: marked as what is sounding
+                // when no provider is known to be serving it.
+                resolutionStorage?.let { storage ->
+                    PipelineSourceStatusRow(
+                        name = storage,
+                        status = SourceResolutionTracker.text(R.string.pipeline_status_playing),
+                        isWinner = resolutionReports.none { it.isWinner },
+                    )
+                }
                 if (sourceRows.isEmpty()) {
                     PipelineRow("Estado", "Sin fuentes activas")
                 } else {
@@ -1074,16 +1068,23 @@ internal data class SourceInspectionRow(
 /**
  * Every enabled provider in the order the walk tries them, each with what it
  * answered for this track, then any source that answered without being in the
- * list. A provider the walk never reached reads [notAsked], or the data-ceiling
- * skip when the ceiling keeps it out of the walk altogether.
+ * list.
+ *
+ * A provider with no answer says why, most specific first: the data ceiling
+ * keeps it out, it waits for a lossless output and so is left out of every
+ * walk, another source was chosen before the walk reached it, or the track
+ * plays off the device and nothing was looked up. Only with none of those is
+ * it plainly [notAsked].
  */
 internal fun sourceInspectionRows(
     configs: List<SourceConfig>,
     reports: List<SourceAttemptReport>,
     notAsked: String,
     skippedFor: (SourceKind) -> String?,
+    storage: String? = null,
 ): List<SourceInspectionRow> {
     val unmatched = reports.toMutableList()
+    val winner = reports.firstOrNull { it.isWinner }
     val rows = SourceRegistry.enabledConfigs(configs)
         .sortedBy { it.kind.rank }
         .map { config ->
@@ -1092,7 +1093,17 @@ internal fun sourceInspectionRows(
                 unmatched.remove(report)
                 SourceInspectionRow(report.displayName, report.statusLine(), report.isWinner)
             } else {
-                SourceInspectionRow(config.displayName, skippedFor(config.kind) ?: notAsked, isWinner = false)
+                val why = skippedFor(config.kind)
+                    ?: SourceResolutionTracker.text(R.string.pipeline_status_awaits_lossless_output)
+                        .takeIf { config.awaitsLosslessOutput }
+                    // Only for a provider the walk reaches after the winner's
+                    // place; one ranked above it was passed over for some
+                    // other reason, and saying "not needed" would be a guess.
+                    ?: winner?.takeIf { config.kind.rank >= it.kind.rank }
+                        ?.let { SourceResolutionTracker.text(R.string.pipeline_status_not_needed_winner, it.displayName) }
+                    ?: storage?.let { SourceResolutionTracker.text(R.string.pipeline_status_not_needed_storage, it) }
+                    ?: notAsked
+                SourceInspectionRow(config.displayName, why, isWinner = false)
             }
         }
     return rows + unmatched.map { SourceInspectionRow(it.displayName, it.statusLine(), it.isWinner) }

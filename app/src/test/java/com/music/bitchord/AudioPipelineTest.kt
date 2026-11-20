@@ -26,6 +26,7 @@ class AudioPipelineTest {
     fun setUp() {
         NerdStats.forgetLastSession()
         AudioOutputStatus.reset()
+        SourceResolutionTracker.clearForTest()
         SourceResolutionTracker.resetForTrack("test-track", "Test Song")
     }
 
@@ -439,14 +440,28 @@ class AudioPipelineTest {
     }
 
     @Test
-    fun `a queued source that the winner never reached reads as not asked`() {
+    fun `a queued source behind the winner reads as not needed`() {
         SourceResolutionTracker.resetForTrack("vidWalk", "Walk")
         SourceResolutionTracker.record("jio", "JioSaavn", SourceKind.JIOSAAVN, SourceResolutionTracker.text(R.string.pipeline_status_queued))
         SourceResolutionTracker.record("youtube", "YouTube Music", SourceKind.YOUTUBE, SourceResolutionTracker.text(R.string.pipeline_status_querying))
         SourceResolutionTracker.setWinner("addon1", "En reproducción (FLAC Lossless)", mediaId = "vidWalk")
 
         val reports = SourceResolutionTracker.current.value.reports
-        assertEquals(SourceResolutionTracker.text(R.string.pipeline_status_not_asked), reports.first { it.sourceId == "jio" }.status)
+        assertEquals(
+            SourceResolutionTracker.text(R.string.pipeline_status_not_needed_winner, "addon1"),
+            reports.first { it.sourceId == "jio" }.status,
+        )
+    }
+
+    @Test
+    fun `a queued source ahead of a YouTube winner stays queued for the walk still going`() {
+        SourceResolutionTracker.resetForTrack("vidAhead", "Ahead")
+        SourceResolutionTracker.record("jio", "JioSaavn", SourceKind.JIOSAAVN, SourceResolutionTracker.text(R.string.pipeline_status_queued))
+        SourceResolutionTracker.record("youtube", "YouTube Music", SourceKind.YOUTUBE, "Consultando...")
+        SourceResolutionTracker.setWinner("youtube", "En reproducción (Opus)", mediaId = "vidAhead")
+
+        val jio = SourceResolutionTracker.current.value.reports.first { it.sourceId == "jio" }
+        assertEquals(SourceResolutionTracker.text(R.string.pipeline_status_queued), jio.status)
     }
 
     @Test
@@ -471,7 +486,60 @@ class AudioPipelineTest {
         SourceResolutionTracker.finishSearch("vidSearch")
         val reports = SourceResolutionTracker.current.value.reports
         assertEquals(SourceResolutionTracker.text(R.string.pipeline_status_not_asked), reports.first { it.sourceId == "jio" }.status)
-        assertEquals(SourceResolutionTracker.text(R.string.pipeline_status_querying), reports.first { it.sourceId == "addon1" }.status)
+        // Cut off mid-question rather than left looking up forever.
+        assertEquals(SourceResolutionTracker.text(R.string.pipeline_status_interrupted), reports.first { it.sourceId == "addon1" }.status)
+    }
+
+    @Test
+    fun `resolving the next track does not blank the one that is playing`() {
+        SourceResolutionTracker.resetForTrack("vidNow", "Now")
+        SourceResolutionTracker.setWinner("youtube", "En reproducción (Opus)", mediaId = "vidNow")
+        SourceResolutionTracker.markPlaying("vidNow", "Now", null)
+
+        // The player opens the next track while this one plays.
+        SourceResolutionTracker.resetForTrack("vidNext", "Next")
+        SourceResolutionTracker.record("jio", "JioSaavn", SourceKind.JIOSAAVN, "Consultando...", mediaId = "vidNext")
+
+        val playing = SourceResolutionTracker.playing.value
+        assertEquals("vidNow", playing.mediaId)
+        assertTrue(playing.reports.single { it.sourceId == "youtube" }.isWinner)
+        assertEquals("vidNext", SourceResolutionTracker.current.value.mediaId)
+    }
+
+    @Test
+    fun `the mark follows what the service says is sounding`() {
+        SourceResolutionTracker.resetForTrack("vidSwap", "Swap")
+        SourceResolutionTracker.setWinner("tidal", "En reproducción (FLAC)", mediaId = "vidSwap")
+        // A lower rendition taken to keep up, on a path that reported nothing.
+        SourceResolutionTracker.markPlaying(
+            "vidSwap",
+            "Swap",
+            com.music.bitchord.playback.PlayingSource.Provider("youtube", "YouTube Music", SourceKind.YOUTUBE, "opus 160 kbps"),
+        )
+
+        val reports = SourceResolutionTracker.playing.value.reports
+        assertEquals(listOf("youtube"), reports.filter { it.isWinner }.map { it.sourceId })
+        assertEquals(
+            SourceResolutionTracker.text(R.string.pipeline_status_replaced_by, "YouTube Music"),
+            reports.first { it.sourceId == "tidal" }.status,
+        )
+    }
+
+    @Test
+    fun `a track off the device with no known provider shows its storage`() {
+        SourceResolutionTracker.markPlaying("vidDisk", "Disk", com.music.bitchord.playback.PlayingSource.Storage("Caché"))
+        val state = SourceResolutionTracker.playing.value
+        assertEquals("Caché", state.storage)
+        assertTrue(state.reports.none { it.isWinner })
+    }
+
+    @Test
+    fun `a lookup's report lands on its own track`() {
+        SourceResolutionTracker.resetForTrack("vidA", "A")
+        SourceResolutionTracker.resetForTrack("vidB", "B")
+        SourceResolutionTracker.record("jio", "JioSaavn", SourceKind.JIOSAAVN, "Disponible", mediaId = "vidA")
+        assertEquals(1, SourceResolutionTracker.stateFor("vidA")!!.reports.size)
+        assertEquals(0, SourceResolutionTracker.stateFor("vidB")!!.reports.size)
     }
 
     @Test
@@ -508,6 +576,20 @@ class AudioPipelineTest {
         assertEquals("No consultado", rows[1].status)
         assertEquals("En reproducción (Opus)", rows[2].status)
         assertTrue(rows[2].isWinner)
+    }
+
+    @Test
+    fun `inspection says why a provider behind the winner or off the device was not asked`() {
+        val tidal = SourceConfig(kind = SourceKind.TIDAL, enabled = true)
+        val jio = SourceConfig(kind = SourceKind.JIOSAAVN, enabled = true)
+        val reports = listOf(
+            SourceAttemptReport(tidal.id, "Tidal", SourceKind.TIDAL, "En reproducción (FLAC)", isWinner = true),
+        )
+        val rows = sourceInspectionRows(listOf(tidal, jio), reports, notAsked = "No consultado", skippedFor = { null })
+        assertEquals(SourceResolutionTracker.text(R.string.pipeline_status_not_needed_winner, "Tidal"), rows[1].status)
+
+        val offDevice = sourceInspectionRows(listOf(jio), emptyList(), "No consultado", { null }, storage = "Caché")
+        assertEquals(SourceResolutionTracker.text(R.string.pipeline_status_not_needed_storage, "Caché"), offDevice[0].status)
     }
 
     @Test
