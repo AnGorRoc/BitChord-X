@@ -6193,6 +6193,48 @@ class PlaybackService : MediaLibraryService() {
             override fun onReceive(context: Context, intent: Intent) {
                 val uri = intent.getStringExtra("uri") ?: return
                 when (intent.getStringExtra("cmd")) {
+                    // Real catalogue tracks queued as search would queue them —
+                    // `ids`, `titles`, `artists`, `durs` (m:ss), `|`-separated —
+                    // so the resolver, the read-ahead and the inspection run
+                    // exactly as they do for a listener.
+                    "queue" -> scope.launch(Dispatchers.Main) {
+                        val active = player ?: return@launch
+                        fun list(key: String) = intent.getStringExtra(key)?.split('|').orEmpty()
+                        val ids = list("ids")
+                        val titles = list("titles")
+                        val artists = list("artists")
+                        val durs = list("durs")
+                        val items = ids.indices.map { i ->
+                            Song(
+                                videoId = ids[i],
+                                title = titles.getOrElse(i) { ids[i] },
+                                artist = artists.getOrElse(i) { "" },
+                                thumbnailUrl = null,
+                                durationText = durs.getOrNull(i),
+                            ).toMediaItem()
+                        }
+                        active.setMediaItems(items, 0, intent.getLongExtra("at", 0L))
+                        active.prepare()
+                        active.play()
+                        Log.d("RenditionSwapTest", "queued ${ids.size} tracks")
+                    }
+                    "seek" -> scope.launch(Dispatchers.Main) {
+                        val active = player ?: return@launch
+                        val at = intent.getLongExtra("at", 0L)
+                        active.seekTo(if (at < 0) active.duration + at else at)
+                    }
+                    // What the source inspection shows right now, against what
+                    // the player is actually on.
+                    "inspect" -> scope.launch(Dispatchers.Main) {
+                        val active = player ?: return@launch
+                        val state = SourceResolutionTracker.playing.value
+                        Log.d(
+                            "RenditionSwapTest",
+                            "inspect: player on ${active.currentMediaItem?.mediaId} at ${active.currentPosition}ms; " +
+                                "inspection on ${state.mediaId} storage=${state.storage}; " +
+                                state.reports.joinToString(" | ") { "${if (it.isWinner) "[*] " else ""}${it.displayName}: ${it.status}" },
+                        )
+                    }
                     // Two tracks queued and a blend between them armed by hand,
                     // as a plan would: outgoing from `at`, fading over `fade`
                     // ms ending at `end`, the incoming track cued at `cue`.
