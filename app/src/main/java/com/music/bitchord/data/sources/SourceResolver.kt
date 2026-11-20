@@ -306,8 +306,36 @@ object SourceResolver {
         val request = requestForNow()
         // One at a time: see [bestInOrder]. Racing here made both addons run
         // their own `/stream` for a track only one of them would ever serve.
-        val (source, stream) = bestInOrder(rankedAbove(youtube.configId, active), target, request)
-            ?: return null
+        //
+        // Not the first copy of any quality, though. A source ahead of YouTube
+        // in the order can still hold a worse copy than YouTube's own — an
+        // addon's 128kbps MP3 against its ~160kbps Opus — and taking it both
+        // started the track worse than not substituting at all and stopped
+        // the walk before a source further down, holding the FLAC, was asked.
+        // See [beatsYouTubeAtStart].
+        val (source, stream) = bestInOrder(
+            rankedAbove(youtube.configId, active),
+            target,
+            request,
+            accept = { candidate, offered ->
+                beatsYouTubeAtStart(offered).also { beats ->
+                    if (!beats) {
+                        TrackLog.d(
+                            TAG,
+                            "${candidate.displayName}'s ${offered.format.summary} is worse than YouTube's own; " +
+                                "asking the next source for '${target.title}'",
+                        )
+                        SourceResolutionTracker.record(
+                            sourceId = candidate.configId,
+                            displayName = candidate.displayName,
+                            kind = candidate.kind,
+                            status = SourceResolutionTracker.text(R.string.pipeline_status_lower_quality, offered.format.summary),
+                            detail = SourceResolutionTracker.text(R.string.pipeline_detail_below_youtube),
+                        )
+                    }
+                }
+            },
+        ) ?: return null
         // Says what was found, not what the caller will do with it. This
         // line used to read "substituted" unconditionally, including for
         // streams the caller went on to refuse — which made a log of a
@@ -531,7 +559,9 @@ object SourceResolver {
         val (source, stream) = if (losslessFromStart(request)) {
             bestAcross(quick, target, request) { _, stream -> stream.format.isLossless == true }
         } else {
-            bestAcross(quick, target, request)
+            // The same bar as the live path: a pinned copy worse than YouTube's
+            // own would start the track worse than not pinning at all.
+            bestAcross(quick, target, request) { _, stream -> beatsYouTubeAtStart(stream) }
         } ?: return null
         TrackLog.d(
             TAG,
@@ -600,7 +630,12 @@ object SourceResolver {
      * settled miss: the track was written off for the rest of the playback.
      */
     sealed interface Upgrade {
-        data class Found(val stream: SourceStream) : Upgrade
+        /**
+         * @param losslessExhausted the stream is lossy and every source that
+         *   could have had a lossless copy was asked and answered without one,
+         *   so a second pass for lossless would only ask them all again.
+         */
+        data class Found(val stream: SourceStream, val losslessExhausted: Boolean = false) : Upgrade
 
         /** Every source answered, and none of them held this recording. */
         data object NoMatch : Upgrade
@@ -685,8 +720,10 @@ object SourceResolver {
         // because each `/stream` is a debrid download and cancelling the loser
         // does not cancel the torrent it already started.
         var failedSources = 0
+        var skippedLossless = false
         val asked = rankedAbove(youtube.configId, active).filterNot { candidate ->
             val skip = candidate.configId == servedBy || candidate.configId in avoid || resting(candidate)
+            if (skip && candidate.kind.canServeLossless && candidate.configId != servedBy) skippedLossless = true
             if (skip) {
                 if (candidate.configId != servedBy) {
                     SourceResolutionTracker.record(
@@ -747,6 +784,11 @@ object SourceResolver {
                 }
             },
             onFailure = { failedSources++ },
+            // A lossy improvement found first is kept, but not taken while a
+            // source further down may still hold the lossless copy: taking it
+            // meant a second search and a second swap after it, and that
+            // search asked the lossy source the same question over again.
+            holdLossyForLossless = request == StreamRequest.Lossless,
         )
         if (found == null) {
             TrackLog.d(
@@ -758,7 +800,11 @@ object SourceResolver {
         }
         val (source, chosen) = found
         TrackLog.d(TAG, "upgrade found: '${target.title}' at ${chosen.format.summary} from ${source.displayName}")
-        return Upgrade.Found(chosen)
+        val lossy = chosen.format.isLossless != true && !chosen.format.isDolbyAtmos
+        return Upgrade.Found(
+            chosen,
+            losslessExhausted = lossy && request == StreamRequest.Lossless && failedSources == 0 && !skippedLossless,
+        )
     }
 
     /**
@@ -1054,6 +1100,23 @@ object SourceResolver {
      * narrow enough to be codec-sensitive would be a margin that buys a seam
      * in the audio for nothing. 160 to 320 clears it; 128 to 192 does not.
      */
+    /**
+     * Whether [stream] is worth starting a track on instead of YouTube's own
+     * copy — the live path's bar, where [worthSwapping] is the mid-song one.
+     *
+     * Anything that is what was asked for passes, and so does anything
+     * lossless or Atmos. A lossy settle-for has to beat YouTube's usual Opus
+     * ([YOUTUBE_OPUS_KBPS]); one that states no bitrate passes as it always
+     * did, since the decoder works its codec out and nothing here can judge it.
+     */
+    internal fun beatsYouTubeAtStart(stream: SourceStream): Boolean {
+        if (!stream.belowRequest) return true
+        val format = stream.format
+        if (format.isLossless == true || format.isDolbyAtmos) return true
+        val kbps = format.kbps ?: return true
+        return kbps > YOUTUBE_OPUS_KBPS
+    }
+
     internal fun worthSwapping(candidate: StreamFormat, playing: StreamFormat?): Boolean {
         // Never away from an immersive mix. A FLAC is a better *copy* and a
         // worse *mix* once Atmos is what the listener chose, and cutting one in
@@ -1316,7 +1379,7 @@ object SourceResolver {
      * This is affordable only because nobody waits on the answer: the audio is
      * already playing from YouTube by the time either caller runs.
      */
-    private suspend fun bestInOrder(
+    internal suspend fun bestInOrder(
         sources: List<MusicSource>,
         target: TrackMatcher.Target,
         request: StreamRequest,
@@ -1327,8 +1390,17 @@ object SourceResolver {
         checkFileLength: Boolean = false,
         accept: (MusicSource, SourceStream) -> Boolean = { _, _ -> true },
         onFailure: (MusicSource) -> Unit = {},
+        /**
+         * Lossless is what was asked for: an accepted lossy answer is held as
+         * the fallback while the sources that can serve lossless and come
+         * after it are still asked, and the first lossless one wins instead.
+         * The rest — which could only offer lossy — are not asked.
+         */
+        holdLossyForLossless: Boolean = false,
     ): Pair<MusicSource, SourceStream>? {
+        var provisional: Pair<MusicSource, SourceStream>? = null
         for (source in sources) {
+            if (provisional != null && !source.kind.canServeLossless) continue
             val failures = LookupFailures()
             val stream = withContext(failures) {
                 matchAndStream(
@@ -1344,9 +1416,20 @@ object SourceResolver {
                 )
             }
             if (failures.any) onFailure(source)
-            if (stream != null && accept(source, stream)) return source to stream
+            if (stream != null && accept(source, stream)) {
+                val final = stream.format.isLossless == true || stream.format.isDolbyAtmos
+                if (!holdLossyForLossless || final) return source to stream
+                if (provisional == null) {
+                    TrackLog.d(
+                        TAG,
+                        "${source.displayName}'s ${stream.format.summary} held while the lossless sources " +
+                            "after it are asked for '${target.title}'",
+                    )
+                    provisional = source to stream
+                }
+            }
         }
-        return null
+        return provisional
     }
 
     /**
@@ -1946,6 +2029,9 @@ object SourceResolver {
      * module's 128kbps MP3 settle-for.
      */
     private const val YOUTUBE_BEST_AAC_KBPS = 256
+
+    /** The Opus YouTube usually serves; a lossy copy has to beat it to start a track instead. */
+    private const val YOUTUBE_OPUS_KBPS = 160
 
     /**
      * How many kbps a lossy stream has to gain before it earns a seam in the

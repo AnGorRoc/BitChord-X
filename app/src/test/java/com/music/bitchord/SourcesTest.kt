@@ -2163,4 +2163,61 @@ class SourcesTest {
         assertNull(TrackMatcher.secondsOf("live"))
         assertNull(TrackMatcher.secondsOf("0:00"))
     }
+
+    /**
+     * Lossless asked for, an addon's 320 found first: held, not taken, while
+     * the lossless-capable source after it is asked — and the lossy-only one
+     * after that is not asked at all.
+     */
+    @Test
+    fun `a lossy answer is held while a later lossless source is asked`() = runBlocking {
+        val addon = FakeSource("Addon", answerAfterMs = 1, format = StreamFormat("mp4", kbps = 320), kind = SourceKind.ADDON)
+        val tidal = FakeSource("Tidal", answerAfterMs = 1, format = StreamFormat("flac"), kind = SourceKind.TIDAL)
+        val jio = FakeSource("JioSaavn", answerAfterMs = 1, format = StreamFormat("mp4", kbps = 320))
+        val (source, stream) = SourceResolver.bestInOrder(
+            listOf(addon, jio, tidal),
+            raceTarget(),
+            StreamRequest.Lossless,
+            holdLossyForLossless = true,
+        )!!
+        assertEquals("Tidal", source.displayName)
+        assertEquals("flac", stream.format.codec)
+        assertFalse("a lossy-only source was asked after the held answer", jio.asked)
+    }
+
+    @Test
+    fun `the held lossy answer is taken when no lossless copy turns up`() = runBlocking {
+        val addon = FakeSource("Addon", answerAfterMs = 1, format = StreamFormat("mp4", kbps = 320), kind = SourceKind.ADDON)
+        val tidal = FakeSource("Tidal", answerAfterMs = 1, format = null, kind = SourceKind.TIDAL)
+        val (source, _) = SourceResolver.bestInOrder(
+            listOf(addon, tidal),
+            raceTarget(),
+            StreamRequest.Lossless,
+            holdLossyForLossless = true,
+        )!!
+        assertEquals("Addon", source.displayName)
+        assertTrue(tidal.asked)
+    }
+
+    @Test
+    fun `without the hold the first acceptable answer still wins`() = runBlocking {
+        val addon = FakeSource("Addon", answerAfterMs = 1, format = StreamFormat("mp4", kbps = 320), kind = SourceKind.ADDON)
+        val tidal = FakeSource("Tidal", answerAfterMs = 1, format = StreamFormat("flac"), kind = SourceKind.TIDAL)
+        val (source, _) = SourceResolver.bestInOrder(listOf(addon, tidal), raceTarget(), StreamRequest.Best)!!
+        assertEquals("Addon", source.displayName)
+        assertFalse(tidal.asked)
+    }
+
+    @Test
+    fun `a track starts on a settle-for only when it beats YouTube's own copy`() {
+        fun below(format: StreamFormat) = SourceStream("https://x", format = format, belowRequest = true)
+        assertFalse(SourceResolver.beatsYouTubeAtStart(below(StreamFormat("mp3", kbps = 128))))
+        assertFalse(SourceResolver.beatsYouTubeAtStart(below(StreamFormat("mp4", kbps = 160))))
+        assertTrue(SourceResolver.beatsYouTubeAtStart(below(StreamFormat("mp4", kbps = 320))))
+        assertTrue(SourceResolver.beatsYouTubeAtStart(below(StreamFormat("flac"))))
+        // Undescribed: the decoder works it out, as before.
+        assertTrue(SourceResolver.beatsYouTubeAtStart(below(StreamFormat())))
+        // What was asked for, whatever its bitrate (a data-saving request).
+        assertTrue(SourceResolver.beatsYouTubeAtStart(SourceStream("https://x", format = StreamFormat("mp3", kbps = 128))))
+    }
 }

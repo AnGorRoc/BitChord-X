@@ -111,6 +111,13 @@ object QualityUpgrade {
          * twice for a rejection it already gave the first time.
          */
         val servedBy: String? = null,
+        /**
+         * [servedBy] answered this very search moments ago — a follow-up pass
+         * after a lossy upgrade — so it is left out whatever it serves: asked
+         * again it can only hand back the stream already playing (and for a
+         * debrid addon, download it again to do so).
+         */
+        val skipServer: Boolean = false,
     )
 
     private val pending = ConcurrentHashMap<String, Pending>()
@@ -637,6 +644,7 @@ object QualityUpgrade {
                             inFlight = null,
                             playing = late.format,
                             servedBy = late.sourceConfigId,
+                            skipServer = true,
                         )
                     }
                     answered = true
@@ -651,18 +659,21 @@ object QualityUpgrade {
             when (val outcome = SourceResolver.upgradeFor(
                 waiting.target.copy(durationSec = effectiveDurationSec),
                 playing = waiting.playing,
-                servedBy = waiting.servedBy?.takeIf { waiting.playing?.isLossless == true },
+                servedBy = waiting.servedBy?.takeIf { waiting.playing?.isLossless == true || waiting.skipServer },
                 avoid = avoid,
             )) {
                 is SourceResolver.Upgrade.Found -> {
                     val stream = outcome.stream
                     found = stream
-                    if (needsLosslessFollowUp(stream.format)) {
+                    // Every source that could have had the lossless copy was
+                    // just asked; a follow-up pass would ask them all again.
+                    if (needsLosslessFollowUp(stream.format) && !outcome.losslessExhausted) {
                         followUps[mediaId] = waiting.copy(
                             target = waiting.target.copy(durationSec = effectiveDurationSec),
                             inFlight = null,
                             playing = stream.format,
                             servedBy = stream.sourceConfigId,
+                            skipServer = true,
                         )
                     }
                     answered = true
