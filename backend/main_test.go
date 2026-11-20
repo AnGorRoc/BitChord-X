@@ -420,6 +420,9 @@ func TestLiveBadge(t *testing.T) {
 func TestRequestOrigin(t *testing.T) {
 	r := httptest.NewRequest("GET", "http://example.com/invite/ABC123", nil)
 	r.Header.Set("X-Forwarded-Proto", "https")
+	// As cloudflared or Caddy on the same machine would reach it: loopback is
+	// one of the default trusted proxy ranges.
+	r.RemoteAddr = "127.0.0.1:41234"
 
 	// Without JAM_TRUST_PROXY the forwarded proto is ignored.
 	if got := requestOrigin(r); got != "http://example.com" {
@@ -430,6 +433,15 @@ func TestRequestOrigin(t *testing.T) {
 	t.Cleanup(func() { config.TrustProxy = false })
 	if got := requestOrigin(r); got != "https://example.com" {
 		t.Errorf("Expected https://example.com, got %s", got)
+	}
+
+	// Even with JAM_TRUST_PROXY, a peer outside the trusted proxy ranges
+	// can't claim https for itself.
+	untrusted := httptest.NewRequest("GET", "http://example.com/invite/ABC123", nil)
+	untrusted.Header.Set("X-Forwarded-Proto", "https")
+	untrusted.RemoteAddr = "203.0.113.7:41234"
+	if got := requestOrigin(untrusted); got != "http://example.com" {
+		t.Errorf("Expected an untrusted peer's forwarded proto to be ignored, got %s", got)
 	}
 
 	// An explicit public origin wins over request headers.
