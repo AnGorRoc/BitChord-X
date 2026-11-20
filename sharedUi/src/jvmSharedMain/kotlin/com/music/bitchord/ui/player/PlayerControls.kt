@@ -20,6 +20,9 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import kotlinx.coroutines.launch
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.scaleIn
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
@@ -532,30 +535,23 @@ internal fun TransportRow(
                 enabled = previousEnabled,
                 haptic = Haptic.SkipPrevious,
                 touchReach = touchReach,
+                nudge = -1,
                 modifier = skipCell,
             )
             val playCell = Modifier.width(playTouch + gap).fillMaxHeight()
-            if (isLoading) {
-                // Same footprint as the play/pause target — a smaller box here
-                // would shunt everything below it on every load.
-                Box(playCell, contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator(
-                        color = Color.White,
-                        strokeWidth = 3.dp,
-                        modifier = Modifier.size(if (compact) 30.dp else 38.dp),
-                    )
-                }
-            } else {
-                TransportGlyph(
-                    icon = if (isPlaying) Res.drawable.ic_player_pause else Res.drawable.ic_player_play,
-                    contentDescription = stringResource(if (isPlaying) Res.string.pause else Res.string.play),
-                    size = playSize,
-                    onClick = onPlayPause,
-                    haptic = if (isPlaying) Haptic.Pause else Haptic.Resume,
-                    touchReach = touchReach,
-                    modifier = playCell,
-                )
-            }
+            // While the stream resolves and buffers, the button stays where it
+            // is and breathes rather than giving way to a spinner: the control
+            // doesn't vanish from under the thumb, and nothing around it shifts.
+            TransportGlyph(
+                icon = if (isPlaying) Res.drawable.ic_player_pause else Res.drawable.ic_player_play,
+                contentDescription = stringResource(if (isPlaying) Res.string.pause else Res.string.play),
+                size = playSize,
+                onClick = onPlayPause,
+                haptic = if (isPlaying) Haptic.Pause else Haptic.Resume,
+                touchReach = touchReach,
+                breathing = isLoading,
+                modifier = playCell,
+            )
             TransportGlyph(
                 icon = Res.drawable.ic_player_next,
                 contentDescription = stringResource(Res.string.widget_next),
@@ -565,6 +561,7 @@ internal fun TransportRow(
                 enabled = nextEnabled,
                 haptic = Haptic.SkipNext,
                 touchReach = touchReach,
+                nudge = 1,
                 modifier = skipCell,
             )
         }
@@ -852,13 +849,53 @@ private fun TransportGlyph(
     heightScale: Float = 1f,
     /** See [TransportRow]'s touchReach. */
     touchReach: () -> Dp = { 0.dp },
+    /**
+     * Loading: the glyph stays and breathes — easing a little smaller and
+     * dimmer and back — and takes no tap until the music is ready.
+     */
+    breathing: Boolean = false,
+    /**
+     * Which way a tap sends the glyph: -1 for back, 1 for forward, 0 for the
+     * play button, which only gives under the finger.
+     */
+    nudge: Int = 0,
 ) {
     val haptics = rememberHaptics()
+    // A tap presses the glyph in and lets it spring back — and a skip pushes it
+    // a little the way it is sending the music — so the tap is felt on screen.
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
+    val press = remember { Animatable(1f) }
+    val push = remember { Animatable(0f) }
+    val pushPx = with(LocalDensity.current) { TRANSPORT_PUSH.toPx() }
+    val reduceAnimation by PlayerSettings.reduceAnimation.collectAsStateWithLifecycle()
     // Faded rather than hidden: the row keeps its shape at the ends of a queue.
     val alpha by animateFloatAsState(
         targetValue = if (enabled) 1f else 0.3f,
         label = "transportAlpha",
     )
+    // 0 at rest, 1 at the bottom of a breath. Eased in and out of rather than
+    // snapped, so the button settles back as the music starts. Under Reduce
+    // animation it holds still, just dimmed, while it loads.
+    val breathDepth by animateFloatAsState(
+        targetValue = if (breathing) 1f else 0f,
+        animationSpec = tween(durationMillis = 250),
+        label = "transportBreathDepth",
+    )
+    // Kept running while the depth eases back out, so the last breath settles
+    // to rest instead of jumping there.
+    val breath = if ((breathing || breathDepth > 0f) && !reduceAnimation) {
+        rememberInfiniteTransition(label = "transportBreath").animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = BREATH_HALF_MS, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse,
+            ),
+            label = "transportBreathCycle",
+        )
+    } else {
+        null
+    }
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         Box(
             Modifier
@@ -868,23 +905,78 @@ private fun TransportGlyph(
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
-                    enabled = enabled,
+                    enabled = enabled && !breathing,
                     role = Role.Button,
                 ) {
                     haptics.play(haptic)
                     onClick()
+                    if (!reduceAnimation) {
+                        scope.launch {
+                            press.snapTo(TRANSPORT_PRESS_SCALE)
+                            press.animateTo(1f, spring(dampingRatio = 0.45f, stiffness = 500f))
+                        }
+                        if (nudge != 0) {
+                            scope.launch {
+                                push.animateTo(nudge * pushPx, tween(durationMillis = 90))
+                                push.animateTo(0f, spring(dampingRatio = 0.5f, stiffness = 400f))
+                            }
+                        }
+                    }
                 },
         )
-        Icon(
-            painter = painterResource(icon),
-            contentDescription = null,
-            tint = Color.White.copy(alpha = alpha),
-            modifier = Modifier
-                .size(size)
-                .then(if (heightScale != 1f) Modifier.graphicsLayer { scaleY = heightScale } else Modifier),
-        )
+        // Play and pause hand over rather than swap: the one going shrinks and
+        // fades as the next grows in with a little overshoot.
+        AnimatedContent(
+            targetState = icon,
+            transitionSpec = {
+                if (reduceAnimation) {
+                    fadeIn(tween(0)) togetherWith fadeOut(tween(0))
+                } else {
+                    (scaleIn(initialScale = 0.4f, animationSpec = spring(dampingRatio = 0.55f, stiffness = 450f)) +
+                        fadeIn(tween(140))) togetherWith
+                        (scaleOut(targetScale = 0.4f, animationSpec = tween(140)) + fadeOut(tween(110)))
+                }.using(SizeTransform(clip = false))
+            },
+            contentAlignment = Alignment.Center,
+            label = "transportGlyph",
+            modifier = Modifier.graphicsLayer {
+                // Read here, in the draw phase, so each frame of the breath and
+                // the press redraws the glyph without recomposing the row.
+                val cycle = breath?.value
+                // Still under Reduce animation: only dimmed, never resized.
+                val breathScale = if (cycle == null) 1f else 1f - BREATH_SCALE_DROP * breathDepth * cycle
+                scaleX = breathScale * press.value
+                scaleY = breathScale * press.value
+                translationX = push.value
+                this.alpha = 1f - BREATH_ALPHA_DROP * breathDepth * (cycle ?: 1f)
+            },
+        ) { glyph ->
+            Icon(
+                painter = painterResource(glyph),
+                contentDescription = null,
+                tint = Color.White.copy(alpha = alpha),
+                modifier = Modifier
+                    .size(size)
+                    .then(if (heightScale != 1f) Modifier.graphicsLayer { scaleY = heightScale } else Modifier),
+            )
+        }
     }
 }
+
+/** How far a tap presses a transport glyph in. */
+private const val TRANSPORT_PRESS_SCALE = 0.84f
+
+/** How far a skip's tap pushes its glyph the way it is going. */
+private val TRANSPORT_PUSH = 7.dp
+
+/** Half a breath of the loading play button: in, then out over the same again. */
+private const val BREATH_HALF_MS = 650
+
+/** How much smaller the play button is at the bottom of a breath. */
+private const val BREATH_SCALE_DROP = 0.1f
+
+/** How much dimmer it is there. */
+private const val BREATH_ALPHA_DROP = 0.5f
 
 /** The skip glyphs' width, and their touch box, beside the larger play button. */
 private val PLAYER_SKIP_ICON_SIZE = 53.dp
