@@ -48,6 +48,19 @@ object InnertubeParser {
     fun parseSearchSongs(response: JsonObject): List<Song> =
         parseSearch(response).filterIsInstance<SearchResult.Track>().map { it.song }
 
+    /**
+     * The broadcasts on the air in a search response, and nothing else.
+     *
+     * The one door through which a live row gets into the app: every other
+     * reader in this file drops them (see [isLiveBroadcast]). Read off the
+     * Videos tab, where YouTube Music lists streams as ordinary rows with a
+     * "LIVE" badge; recordings in the same response are left out.
+     */
+    fun parseLiveBroadcasts(response: JsonObject): List<Song> =
+        collectRenderers(response, "musicResponsiveListItemRenderer")
+            .mapNotNull { parseResponsiveListItem(it, allowLive = true)?.takeIf(Song::isLive) }
+            .distinctBy { it.videoId }
+
     /** One page of search rows, plus the token for the next page if YouTube offers one. */
     data class SearchPage(val rows: List<SearchResult>, val continuation: String?)
 
@@ -701,8 +714,13 @@ object InnertubeParser {
     private fun parseResponsiveListItem(
         renderer: JsonObject?,
         fallback: Credits = Credits(),
+        allowLive: Boolean = false,
     ): Song? {
         if (renderer == null) return null
+        // A broadcast is not a track: dropped here so it reaches no search,
+        // playlist, artist page or shelf. Only [parseLiveBroadcasts] asks for it.
+        val live = renderer.isLiveBroadcast()
+        if (live && !allowLive) return null
         val videoId = renderer.o("playlistItemData").s("videoId")
             ?: renderer.o("overlay")
                 .o("musicItemThumbnailOverlayRenderer").o("content")
@@ -798,6 +816,7 @@ object InnertubeParser {
             // episode, whose art is a widescreen still too: it is listened to,
             // and a "video" is dropped from the All tab's results.
             isVideo = !episode && (rowType == "video" || thumbnails.isNotSquare()),
+            isLive = live,
             isExplicit = renderer.hasExplicitBadge(),
             // Extract the "Remove from history" feedback token from the row's menu, if present.
             feedbackToken = extractFeedbackToken(renderer),
@@ -886,6 +905,9 @@ object InnertubeParser {
      * from the All tab while remaining first in the Songs tab.
      */
     private fun parseCardShelfSong(renderer: JsonObject): Song? {
+        // Searching a station's name promotes it to the top card; same rule as
+        // [parseResponsiveListItem].
+        if (renderer.isLiveBroadcast()) return null
         val videoId = renderer.o("onTap").o("watchEndpoint").s("videoId") ?: return null
         val title = renderer.o("title").runs()
         if (title.isBlank()) return null
@@ -1368,6 +1390,10 @@ object InnertubeParser {
 
     /** One row of a watch queue as a [Song], or null for a row with no id or title. */
     private fun panelSong(renderer: JsonObject): Song? {
+        // A radio seeded from a song happily lists a 24/7 stream among its
+        // tracks — that is how one reached AutoPlay and played its thirty-second
+        // window as if it were the next song.
+        if (renderer.isLiveBroadcast()) return null
         val videoId = renderer.s("videoId") ?: return null
         val title = renderer.o("title").runs()
         if (title.isBlank()) return null
@@ -1698,6 +1724,9 @@ object InnertubeParser {
         val videoId = endpoint.o("watchEndpoint").s("videoId")
             ?: browseId?.takeIf { it.startsWith("MPED") }?.removePrefix("MPED")
         val resolvedBrowseId = browseId?.takeUnless { it.startsWith("MPED") }
+        // A playable card for a broadcast — shelves of "live" videos turn up
+        // on Home and on artist pages.
+        if (resolvedBrowseId == null && videoId != null && renderer.isLiveBroadcast()) return null
         val thumbnails = renderer.o("thumbnailRenderer").o("musicThumbnailRenderer")
             .o("thumbnail").a("thumbnails")
         val subtitle = renderer.o("subtitle").runs()
@@ -1766,6 +1795,30 @@ object InnertubeParser {
                 null -> false
             }
         }
+
+    /**
+     * Whether a row is a broadcast on the air right now.
+     *
+     * YouTube Music marks one with a "LIVE" badge and with nothing else that
+     * is stable: no runtime, but plenty of recordings omit theirs too, and the
+     * subtitle counts viewers in whatever language the session speaks. The
+     * badge is a renderer of its own — `liveBadgeRenderer` on search rows and
+     * cards, `liveBadge` on watch-queue rows — and sits in the row's own
+     * `badges` or `subtitleBadges`, never deep in a menu, so only those two
+     * lists are read. The thumbnail overlay is the older web shape of the same
+     * mark and is honoured for the same reason.
+     */
+    private fun JsonObject.isLiveBroadcast(): Boolean {
+        fun JsonElement?.carriesLiveBadge(): Boolean = this?.let { list ->
+            (list as? JsonArray)?.any { badge ->
+                badge is JsonObject && ("liveBadgeRenderer" in badge || "liveBadge" in badge)
+            }
+        } == true
+        if (this["badges"].carriesLiveBadge() || this["subtitleBadges"].carriesLiveBadge()) return true
+        return a("thumbnailOverlays").orEmpty().any { overlay ->
+            overlay.o("thumbnailOverlayTimeStatusRenderer").s("style") == "LIVE"
+        }
+    }
 
     private val DURATION = Regex("""\d+:\d{2}""")
     /** One unit of an episode's runtime — "2 hr", "43 min", "10 sec". */

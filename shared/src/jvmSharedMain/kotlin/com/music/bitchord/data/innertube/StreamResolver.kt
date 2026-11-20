@@ -428,12 +428,18 @@ object StreamResolver {
         val resolveStart = MonotonicClock.nowMs()
         val stream = try {
             timed("$videoId InnerTubeX") { innerTubeXStreamAllowingUploads(videoId) }
-                ?.let { found ->
-                    // A live broadcast's adaptive URL is one window of a stream
-                    // that keeps growing: it plays the few seconds that exist
-                    // and then ends. Live is played from its HLS playlist.
-                    if (!isLiveUrl(found.url)) found
-                    else timed("$videoId live HLS") { liveHlsStream(videoId) } ?: found
+                ?.also { found ->
+                    // Everything that reaches this function was queued as a
+                    // track. A broadcast in that seat plays its live window as
+                    // a thirty-second "song" that starts fifteen seconds in, so
+                    // it is refused outright and the queue moves past it. The
+                    // parser keeps live rows out of every list; this catches
+                    // the ones that got in some other way (an old queue, a
+                    // history row, a song that went live after it was saved).
+                    // Broadcasts chosen as such play through [liveManifestUrl].
+                    if (isLiveUrl(found.url)) {
+                        throw PermanentlyUnplayableException("This is a live broadcast, not a track")
+                    }
                 }
                 ?: run {
                     TrackLog.w(TAG, "InnerTubeX found no usable stream for $videoId; falling back to extraction")
@@ -1034,6 +1040,19 @@ object StreamResolver {
         val parsed = url.toHttpUrlOrNull() ?: return false
         return parsed.queryParameter("live") == "1" ||
             parsed.queryParameter("source") == "yt_live_broadcast"
+    }
+
+    /**
+     * The HLS master playlist of the broadcast [videoId], for the one path that
+     * plays broadcasts on purpose. Null when it is not live (any more) or has
+     * no playlist. Not cached here: the URL is signed and expires, and the
+     * caller holds it for exactly as long as it needs it.
+     */
+    suspend fun liveManifestUrl(videoId: String): String? {
+        // NewPipe reads the watch page; it is set up lazily by [resolve], which
+        // a broadcast never passes through.
+        init
+        return liveHlsStream(videoId)?.url
     }
 
     /**

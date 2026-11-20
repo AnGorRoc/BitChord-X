@@ -55,6 +55,17 @@ data class Song(
      */
     val isVideoOrigin: Boolean = isVideo,
     /**
+     * A broadcast that is on the air right now (a 24/7 radio, a live set)
+     * rather than a recording. YouTube serves one as a sliding window of a few
+     * seconds, never as a file, so it has no start, no end and no length.
+     *
+     * Only Explore's live section ever produces one: everywhere else the parser
+     * drops live rows on sight, because a broadcast dropped into a queue of
+     * songs joins mid-air and plays its window as a thirty-second "track".
+     * See [com.music.bitchord.data.innertube.InnertubeParser.parseLiveBroadcasts].
+     */
+    val isLive: Boolean = false,
+    /**
      * This track's identity *within one playlist*, which is not its [videoId]:
      * the same song added twice is two entries with two set-video-ids, and
      * removing one of them is only expressible in those terms. Present only on
@@ -400,6 +411,20 @@ enum class SearchFilter(val label: String, val params: String?) {
     ALBUMS("Albums", "EgWKAQIYAWoKEAkQChAFEAMQBA=="),
     ARTISTS("Artists", "EgWKAQIgAWoKEAkQChAFEAMQBA=="),
     PLAYLISTS("Playlists", "EgWKAQIoAWoKEAkQChAFEAMQBA=="),
+}
+
+/**
+ * One of Explore's live stations: a style of round-the-clock broadcast and the
+ * Videos-tab search that turns up streams of it. The queries are the ones that
+ * measured as mostly-live result pages; a broad "live music" query mostly
+ * returns recordings of concerts, which the parser then drops.
+ */
+enum class LiveStation(val id: String, val query: String) {
+    MIX("mix", "radio 24/7"),
+    LOFI("lofi", "lofi radio"),
+    JAZZ("jazz", "jazz radio live"),
+    CHILL("chill", "live radio music"),
+    PHONK("phonk", "phonk radio 24/7"),
 }
 
 /** A card in a home-feed carousel: either a track (videoId) or an album/playlist (browseId). */
