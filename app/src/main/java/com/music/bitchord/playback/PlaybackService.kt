@@ -6045,9 +6045,19 @@ class PlaybackService : MediaLibraryService() {
         for (round in 0 until LOCK_ROUNDS) {
             // Both clocks onto their own timestamps before every reading — see
             // [PcmTap.requestResync]. Bookkeeping only: nothing is heard.
+            // Lands like a move does, where it was written: waited out.
+            playingTap.shiftLandsAtUs = C.TIME_UNSET
+            incomingTap.shiftLandsAtUs = C.TIME_UNSET
             playingTap.requestResync()
             incomingTap.requestResync()
             delay(LOCK_RESYNC_MS)
+            val resyncDeadline = SystemClock.elapsedRealtime() + LOCK_MOVE_TIMEOUT_MS
+            while (!(moveHeard(playingTap, speed) && moveHeard(incomingTap, speed)) &&
+                SystemClock.elapsedRealtime() < resyncDeadline
+            ) {
+                if (moved() || stopped() || yieldNow()) return null
+                delay(20)
+            }
             val sinceStart = SystemClock.elapsedRealtime() - runningSince
             val sinceMove = SystemClock.elapsedRealtime() - lastMoveAt
             val wait = maxOf(LOCK_FIRST_READ_MS - sinceStart, LOCK_MOVE_SETTLE_MS - sinceMove)
@@ -6067,13 +6077,17 @@ class PlaybackService : MediaLibraryService() {
             if (abs(error) <= LOCK_TOLERANCE_MS) break
             if (round == LOCK_ROUNDS - 1) break
             // Ahead (positive) is held back, behind is skipped forward.
+            incomingTap.shiftLandsAtUs = C.TIME_UNSET
             incomingTap.requestShift((-error * 1000.0 / speed).roundToLong())
             val moveDeadline = SystemClock.elapsedRealtime() + LOCK_MOVE_TIMEOUT_MS
-            while (incomingTap.isMoving() && SystemClock.elapsedRealtime() < moveDeadline) {
+            // Carried out, then heard: the output's clock only takes the move
+            // in once its playhead reaches where the move was written, a whole
+            // output buffer later — on a deep one, past any fixed settle.
+            while (!moveHeard(incomingTap, speed) && SystemClock.elapsedRealtime() < moveDeadline) {
                 if (moved() || stopped() || yieldNow()) return null
                 delay(20)
             }
-            if (incomingTap.isMoving()) {
+            if (!moveHeard(incomingTap, speed)) {
                 TrackLog.w("BitChord", "upgrade not swapped: the standby never finished moving ${"%.0f".format(-error)}ms", about = mediaId)
                 return null
             }
@@ -6102,6 +6116,18 @@ class PlaybackService : MediaLibraryService() {
      * the positions both sinks reported over the next
      * [LOCK_READ_WINDOW_MS] — see [PcmTap.playheadAtMs].
      */
+    /**
+     * Whether the move last asked of [tap] has been carried out and its
+     * output's playhead has reached the audio after it — see
+     * [PcmTap.shiftLandsAtUs].
+     */
+    private fun moveHeard(tap: PcmTap, speed: Float): Boolean {
+        if (tap.isMoving()) return false
+        val land = tap.lastShiftLandsAtMs() ?: return false
+        val at = tap.latestPlayheadAtMs(System.nanoTime(), 1_200_000_000L, speed) ?: return false
+        return at >= land + MOVE_LAND_MARGIN_MS
+    }
+
     private suspend fun sinkErrorMs(playing: PcmTap, incoming: PcmTap, offsetMs: Double, speed: Float): Double? {
         val since = System.nanoTime()
         delay(LOCK_READ_WINDOW_MS)
@@ -11618,11 +11644,13 @@ class PlaybackService : MediaLibraryService() {
         private const val LOCK_READ_WINDOW_MS = 700L
 
         /**
-         * After a move, how long until the standby's output is all post-move
-         * audio — what it had queued has played out — and its playhead reads
-         * true again.
+         * After a move is heard (see [moveHeard]), a moment for the positions
+         * read across it to age out.
          */
-        private const val LOCK_MOVE_SETTLE_MS = 800L
+        private const val LOCK_MOVE_SETTLE_MS = 200L
+
+        /** How far past where a move was written the playhead has to be for it to count as heard. */
+        private const val MOVE_LAND_MARGIN_MS = 30.0
 
         /** Length of the linear blend once the two players are on the same moment. */
         private const val SOURCE_SWAP_CROSSFADE_MS = 250L

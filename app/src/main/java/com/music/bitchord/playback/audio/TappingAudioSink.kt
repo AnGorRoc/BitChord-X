@@ -47,6 +47,9 @@ internal class TappingAudioSink(
     private var sliceLeft = 0L
     private var passLeft = 0L
     private var resyncPending = false
+
+    /** A move has been carried out and the audio after it not yet passed on. */
+    private var landPending = false
     private var silence: ByteBuffer? = null
     private var silenceTimeUs = C.TIME_UNSET
 
@@ -81,6 +84,11 @@ internal class TappingAudioSink(
                 tap.moving = true
                 return true
             }
+            // The first audio to follow a finished move.
+            if (landPending && dropFrames == 0L) {
+                landPending = false
+                tap.shiftLandsAtUs = passTimeUs - tap.offsetUs
+            }
             tap.write(buffer, passTimeUs)
         }
         silence?.let { pending ->
@@ -107,12 +115,14 @@ internal class TappingAudioSink(
         }
         if (requested > 0) {
             dropFrames += requested * rate / 1_000_000L
+            landPending = true
         } else if (requested < 0 && tap.encoding != C.ENCODING_PCM_8BIT) {
             val frames = (-requested * rate / 1_000_000L).toInt()
             if (frames > 0) {
                 val bytes = ByteBuffer.allocateDirect(frames * frameBytes).order(ByteOrder.nativeOrder())
                 silence = bytes // zeroed: silence for every signed encoding
                 silenceTimeUs = timeUs - frames * 1_000_000L / rate
+                landPending = true
                 super.handleDiscontinuity()
                 tap.moving = true
             }
@@ -144,7 +154,11 @@ internal class TappingAudioSink(
             passLeft = if (dropFrames > 0L) rate * PASS_BETWEEN_SLICES_MS / 1000L else 0L
         }
         if (passLeft > 0L) passLeft -= buffer.remaining() / frameBytes
-        if (tap.takeResync()) resyncPending = true
+        if (tap.takeResync()) {
+            resyncPending = true
+            // Re-anchoring lands where it is written, like a move.
+            landPending = true
+        }
         if (resyncPending) {
             resyncPending = false
             super.handleDiscontinuity()
@@ -189,6 +203,7 @@ internal class TappingAudioSink(
         sliceLeft = 0L
         passLeft = 0L
         resyncPending = false
+        landPending = false
         silence = null
         tap.takeShift()
         tap.moving = false

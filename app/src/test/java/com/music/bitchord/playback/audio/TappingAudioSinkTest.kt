@@ -128,6 +128,8 @@ class TappingAudioSinkTest {
         assertEquals(960 - 480, first.frames)
         assertEquals(1, delegate.discontinuities)
         assertFalse(tap.isMoving())
+        // Heard once the playhead reaches the first frame kept.
+        assertEquals((4_800 + 480) * 1_000_000L / rate, tap.shiftLandsAtUs)
     }
 
     @Test
@@ -149,6 +151,9 @@ class TappingAudioSinkTest {
         assertEquals(1_000_000.0, dropped.toDouble(), 5.0)
         assertTrue("expected several slices, got ${delegate.discontinuities}", delegate.discontinuities >= 3)
         assertFalse(tap.isMoving())
+        // Lands after the last slice, not the first.
+        val lastJump = passed.zipWithNext().last { (a, b) -> b.timeUs != a.timeUs + a.frames * 1_000_000L / rate }.second
+        assertEquals(lastJump.timeUs - offsetUs, tap.shiftLandsAtUs)
     }
 
     @Test
@@ -165,6 +170,7 @@ class TappingAudioSinkTest {
         assertEquals(timeOf(2_880), next.timeUs)
         assertEquals(2_880.toShort(), next.firstSample)
         assertEquals(1, delegate.discontinuities)
+        assertEquals(timeOf(2_880) - offsetUs, tap.shiftLandsAtUs)
     }
 
     @Test
@@ -176,6 +182,21 @@ class TappingAudioSinkTest {
         assertEquals(1, delegate.discontinuities)
         assertEquals(4, delegate.received.size)
         assertEquals(timeOf(1_920), delegate.received[2].timeUs)
+    }
+
+    @Test
+    fun `positions after a flush are the ones read`() {
+        val (sink, delegate, tap) = setUp()
+        feed(sink, startFrame = 0, count = 1)
+        delegate.position = offsetUs + 1_000_000L
+        repeat(5) { sink.getCurrentPositionUs(false) }
+        sink.flush()
+        val since = System.nanoTime()
+        delegate.position = offsetUs + 7_000_000L
+        repeat(3) { sink.getCurrentPositionUs(false) }
+        assertEquals(3, tap.positionsSince(since))
+        assertEquals(7_000.0, tap.playheadAtMs(System.nanoTime(), since, 1f)!!, 5.0)
+        assertEquals(7_000.0, tap.latestPlayheadAtMs(System.nanoTime(), 1_000_000_000L, 1f)!!, 5.0)
     }
 
     @Test

@@ -70,6 +70,22 @@ class PcmTap(private val capacityUs: Long = DEFAULT_CAPACITY_US) {
     /** Whether a move asked for with [requestShift] has yet to finish. */
     fun isMoving(): Boolean = moving || pendingShiftUs.get() != 0L
 
+    /**
+     * Track time of the first audio after the last move or re-anchoring
+     * ([requestResync]), in µs; unset before any. Set by the sink.
+     *
+     * The output re-anchors its clock where the move was written, which is
+     * its whole buffer ahead of the speaker: until the playhead gets there,
+     * positions still count the audio queued before the move, and read as
+     * though nothing had moved. A move has been heard — and is in what
+     * [playheadAtMs] reports — once the playhead is past this.
+     */
+    @Volatile
+    internal var shiftLandsAtUs = C.TIME_UNSET
+
+    /** [shiftLandsAtUs] in ms, or null before any move. */
+    fun lastShiftLandsAtMs(): Double? = shiftLandsAtUs.takeIf { it != C.TIME_UNSET }?.let { it / 1000.0 }
+
     /** How many positions the sink has reported since [sinceNanos]. */
     fun positionsSince(sinceNanos: Long): Int = synchronized(positionLock) {
         var n = 0
@@ -121,7 +137,12 @@ class PcmTap(private val capacityUs: Long = DEFAULT_CAPACITY_US) {
 
     /** Forgets the positions: after a flush they describe audio that will not play. */
     internal fun clearPositions() {
-        synchronized(positionLock) { positionCount = 0 }
+        // The write index goes back with the count: readers walk slots
+        // 0 until count, which are the newest only from a fresh start.
+        synchronized(positionLock) {
+            positionCount = 0
+            positionNext = 0
+        }
     }
 
     internal fun positionSamples(): Int = synchronized(positionLock) { positionCount }
@@ -146,6 +167,24 @@ class PcmTap(private val capacityUs: Long = DEFAULT_CAPACITY_US) {
         if (values.size < minSamples) return null
         values.sort()
         return values[values.size / 2]
+    }
+
+    /**
+     * Where the output's playhead is at [t0Nanos], in ms of track time, from
+     * the newest position the sink reported, carried forward at [speed] — or
+     * null if that report is older than [maxAgeNanos]. A player whose output
+     * is full sleeps between buffers and reports a few times a second at
+     * best; each report is exact for its own moment, so carrying it forward
+     * at a known speed loses nothing, where waiting for several would.
+     */
+    fun latestPlayheadAtMs(t0Nanos: Long, maxAgeNanos: Long, speed: Float): Double? {
+        synchronized(positionLock) {
+            if (positionCount == 0) return null
+            val i = (positionNext - 1 + POSITION_SAMPLES) % POSITION_SAMPLES
+            val n = positionNanos[i]
+            if (t0Nanos - n > maxAgeNanos) return null
+            return positionTrackUs[i] / 1000.0 - (n - t0Nanos) / 1_000_000.0 * speed
+        }
     }
 
     /** Takes the decoded format; anything that is not linear PCM is not recorded. */
