@@ -95,8 +95,8 @@ object AudioCache {
         get() = AppSettings.audioCacheLimitBytes.value == AppSettings.DISABLED_CACHE_LIMIT_BYTES
 
     /**
-     * The disk budget, straight from [AppSettings] — 512MB by default, roughly
-     * 150 tracks at the highest bitrate offered, adjustable up to 10GB — or
+     * The disk budget, straight from [AppSettings] — 3GB by default, roughly
+     * 900 tracks at the highest bitrate offered, adjustable up to 10GB — or
      * unlimited — from Settings. Least-recently-used entries are dropped past it, so it's a
      * ceiling rather than something the listener has to manage day to day.
      */

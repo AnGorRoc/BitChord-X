@@ -1,5 +1,7 @@
 package com.music.bitchord.ui.screens
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -204,6 +206,11 @@ internal fun <T> ChoiceGroup(
                 )
             }
             val available = enabled(option)
+            val animatedAlpha by animateFloatAsState(
+                targetValue = if (available) 1f else 0.45f,
+                animationSpec = tween(240),
+                label = "choiceOptionAlpha",
+            )
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -211,7 +218,7 @@ internal fun <T> ChoiceGroup(
                         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                         onSelect(option)
                     }
-                    .alpha(if (available) 1f else 0.45f)
+                    .alpha(animatedAlpha)
                     .heightIn(min = 52.dp)
                     .padding(horizontal = ROW_INSET, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,

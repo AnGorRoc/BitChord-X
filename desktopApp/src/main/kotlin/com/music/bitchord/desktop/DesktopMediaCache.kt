@@ -95,7 +95,7 @@ internal object DesktopMediaCache {
     internal const val KEY_CACHE_LIMIT_MB = "media_cache_limit_mb"
 
     /** Small on purpose: a clip is a few seconds of video, not a library. */
-    internal const val DEFAULT_LIMIT_MB = 512
+    internal const val DEFAULT_LIMIT_MB = 3072
     internal const val MIN_LIMIT_MB = 128
     internal const val MAX_LIMIT_MB = 10 * 1024
 
@@ -106,7 +106,7 @@ internal object DesktopMediaCache {
     }
 
     /** Past this the Storage row warns, because it is a noticeable share of a disk. */
-    internal const val WARNING_MB = 2048
+    internal const val WARNING_MB = 3072
 }
 
 /** Formats a cache size the way the Storage row shows it. */

@@ -3,6 +3,7 @@ package com.music.bitchord.ui.components
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
@@ -88,6 +89,11 @@ fun IosSwitch(
         },
         label = "iosSwitchTrack",
     )
+    val animatedAlpha by animateFloatAsState(
+        targetValue = if (enabled) 1f else 0.45f,
+        animationSpec = tween(240),
+        label = "iosSwitchAlpha",
+    )
     val ltr = LocalLayoutDirection.current == LayoutDirection.Ltr
 
     val haptics = rememberHaptics()
@@ -100,7 +106,7 @@ fun IosSwitch(
 
     Box(
         modifier = modifier
-            .graphicsLayer { alpha = if (enabled) 1f else 0.45f }
+            .graphicsLayer { alpha = animatedAlpha }
             .then(
                 if (onCheckedChange != null) {
                     Modifier.minimumInteractiveComponentSize().toggleable(

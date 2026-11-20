@@ -6,7 +6,16 @@ import android.media.audiofx.AudioEffect
 import android.os.Build
 import android.widget.Toast
 import androidx.annotation.StringRes
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -101,7 +110,7 @@ internal fun Context.countOfMonths(months: Int): String = if (months == 0) {
 }
 
 /** Above this, the cache limit slider's subtitle warns rather than reassures. */
-internal const val CACHE_WARNING_MB = 2048
+internal const val CACHE_WARNING_MB = 3072
 
 /** Each discrete step on the cache-limit slider: exactly 512 MB. */
 internal const val CACHE_STEP_MB = 512
@@ -367,7 +376,11 @@ internal fun AccountCard(
  */
 @Composable
 internal fun BypassedByBitPerfect(bypassed: Boolean, content: @Composable () -> Unit) {
-    val alpha by animateFloatAsState(if (bypassed) 0.38f else 1f, label = "bypassed")
+    val alpha by animateFloatAsState(
+        targetValue = if (bypassed) 0.38f else 1f,
+        animationSpec = tween(240),
+        label = "bypassed",
+    )
     Column(
         Modifier
             .alpha(alpha)
@@ -442,16 +455,21 @@ internal class SettingsGroupScope(
     private val search: SettingsSearch,
     private val header: String?,
 ) {
-    class Entry(val divided: Boolean, val content: @Composable () -> Unit)
+    class Entry(
+        val divided: Boolean,
+        val visible: Boolean,
+        val content: @Composable () -> Unit,
+    )
 
     val entries = mutableListOf<Entry>()
 
     fun row(
         vararg keywords: String?,
         divided: Boolean = true,
+        visible: Boolean = true,
         content: @Composable () -> Unit,
     ) {
-        if (search.matches(header, *keywords)) entries += Entry(divided, content)
+        if (search.matches(header, *keywords)) entries += Entry(divided, visible, content)
     }
 }
 
@@ -460,24 +478,44 @@ internal inline fun SearchableSettingsGroup(
     search: SettingsSearch,
     header: String? = null,
     footer: String? = null,
-    topSpacing: Dp = 26.dp,
+    topSpacing: Dp? = null,
     content: @Composable SettingsGroupScope.() -> Unit,
 ) {
     val scope = SettingsGroupScope(search, header)
     scope.content()
     if (scope.entries.isEmpty()) return
     val inPageHeader = header != null && search.inPage
+    val resolvedTopSpacing = topSpacing ?: if (inPageHeader) 0.dp else 26.dp
     SettingsGroup(
         header = header.takeUnless { inPageHeader },
         footer = footer,
-        topSpacing = if (inPageHeader) 0.dp else topSpacing,
+        topSpacing = resolvedTopSpacing,
     ) {
         scope.entries.forEachIndexed { index, entry ->
-            when {
-                index > 0 && entry.divided -> RowDivider()
-                index == 0 && !entry.divided -> Spacer(Modifier.height(10.dp))
+            val hasVisibleBefore = scope.entries.take(index).any { it.visible }
+            AnimatedVisibility(
+                visible = entry.visible,
+                enter = fadeIn(tween(220)) + expandVertically(
+                    spring(
+                        dampingRatio = 0.82f,
+                        stiffness = Spring.StiffnessMediumLow,
+                    ),
+                ),
+                exit = fadeOut(tween(180)) + shrinkVertically(
+                    spring(
+                        dampingRatio = 0.82f,
+                        stiffness = Spring.StiffnessMediumLow,
+                    ),
+                ),
+            ) {
+                Column {
+                    when {
+                        hasVisibleBefore && entry.divided -> RowDivider()
+                        !hasVisibleBefore && !entry.divided -> Spacer(Modifier.height(10.dp))
+                    }
+                    entry.content()
+                }
             }
-            entry.content()
         }
     }
 }
@@ -524,7 +562,13 @@ internal fun SettingsGroup(
             .fillMaxWidth()
             .padding(horizontal = GROUP_INSET)
             .clip(GroupShape)
-            .background(com.music.bitchord.ui.theme.cardSurface()),
+            .background(com.music.bitchord.ui.theme.cardSurface())
+            .animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = 0.82f,
+                    stiffness = Spring.StiffnessMediumLow,
+                ),
+            ),
     ) {
         content()
     }
@@ -565,11 +609,16 @@ internal fun SettingsRow(
     onClick: (() -> Unit)? = null,
     trailing: (@Composable () -> Unit)? = null,
 ) {
+    val animatedAlpha by animateFloatAsState(
+        targetValue = if (enabled) 1f else 0.45f,
+        animationSpec = tween(240),
+        label = "settingsRowAlpha",
+    )
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .then(if (onClick != null && enabled) Modifier.clickable(onClick = onClick) else Modifier)
-            .alpha(if (enabled) 1f else 0.45f)
+            .alpha(animatedAlpha)
             .heightIn(min = 52.dp)
             .padding(horizontal = ROW_INSET, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -644,11 +693,16 @@ internal fun SettingsSubRow(
     subtitle: String? = null,
     enabled: Boolean = true,
 ) {
+    val animatedAlpha by animateFloatAsState(
+        targetValue = if (enabled) 1f else 0.45f,
+        animationSpec = tween(240),
+        label = "settingsSubRowAlpha",
+    )
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(enabled = enabled) { onCheckedChange(!checked) }
-            .alpha(if (enabled) 1f else 0.45f)
+            .alpha(animatedAlpha)
             .padding(start = ROW_INSET, end = ROW_INSET, top = 0.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -751,13 +805,23 @@ internal fun SliderRow(
     valueRange: ClosedFloatingPointRange<Float>,
     steps: Int,
     subtitle: String? = null,
+    enabled: Boolean = true,
 ) {
+    val animatedAlpha by animateFloatAsState(
+        targetValue = if (enabled) 1f else 0.38f,
+        animationSpec = tween(240),
+        label = "sliderRowAlpha",
+    )
     val colors = SliderDefaults.colors(
         thumbColor = MaterialTheme.colorScheme.primary,
         activeTrackColor = MaterialTheme.colorScheme.primary,
         inactiveTrackColor = MaterialTheme.colorScheme.outline,
     )
-    Column(Modifier.padding(start = ROW_INSET, end = ROW_INSET, top = 12.dp, bottom = 4.dp)) {
+    Column(
+        Modifier
+            .alpha(animatedAlpha)
+            .padding(start = ROW_INSET, end = ROW_INSET, top = 12.dp, bottom = 4.dp),
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(
                 imageVector = icon,
@@ -793,10 +857,12 @@ internal fun SliderRow(
             valueRange = valueRange,
             steps = steps,
             colors = colors,
+            enabled = enabled,
             track = { state ->
                 SliderDefaults.Track(
                     sliderState = state,
                     colors = colors,
+                    enabled = enabled,
                     drawStopIndicator = null,
                     drawTick = { _, _ -> },
                 )
@@ -840,7 +906,12 @@ internal fun SegmentedControl(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
-    PillSegmentedControl(options, selectedIndex, onSelect, modifier, enabled)
+    val animatedAlpha by animateFloatAsState(
+        targetValue = if (enabled) 1f else 0.45f,
+        animationSpec = tween(240),
+        label = "segmentedControlAlpha",
+    )
+    PillSegmentedControl(options, selectedIndex, onSelect, modifier.alpha(animatedAlpha), enabled)
 }
 
 /**

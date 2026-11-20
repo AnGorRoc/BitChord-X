@@ -1,18 +1,35 @@
 package com.music.bitchord.ui.screens
 
 import android.media.AudioFormat
+import android.widget.Toast
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowForward
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -25,11 +42,13 @@ import com.music.bitchord.data.listentogether.ListenTogether
 import com.music.bitchord.data.model.Account
 import com.music.bitchord.data.settings.AppSettings
 import com.music.bitchord.data.settings.OutputPcmMode
+import com.music.bitchord.data.settings.SongSwipeAction
 import com.music.bitchord.data.sources.DeviceCodecs
 import com.music.bitchord.playback.AudioOutputStatus
 import com.music.bitchord.playback.audio.bitperfect.BitPerfectOutput
 import com.music.bitchord.data.settings.BitPerfectMode
 import com.music.bitchord.ui.components.IosSwitch
+import com.music.bitchord.ui.components.SwipeToQueueBox
 import com.music.bitchord.ui.icons.SfIcons
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
@@ -297,6 +316,7 @@ internal fun SettingsPlaybackSection(
     search: SettingsSearch,
     onOpenChoice: (SettingsChoiceKind) -> Unit,
 ) {
+    val context = LocalContext.current
     val outputStatus by AudioOutputStatus.current.collectAsStateWithLifecycle()
     val bitPerfectReady by BitPerfectOutput.ready.collectAsStateWithLifecycle()
     val smartFade by AppSettings.smartFadeEnabled.collectAsStateWithLifecycle()
@@ -343,21 +363,21 @@ internal fun SettingsPlaybackSection(
                 onClick = { AppSettings.setStopOnTaskRemoved(!stopOnTaskRemoved) },
             )
         }
-        if (!smartFade) {
-            val crossfadeTitle = stringResource(R.string.crossfade)
-            row(crossfadeTitle, "fade", "gapless") {
-                BypassedByBitPerfect(bitPerfectReady) {
-                    SliderRow(
-                        icon = SfIcons.Waves,
-                        title = crossfadeTitle,
-                        subtitle = stringResource(R.string.crossfade_subtitle),
-                        value = if (crossfade == 0) stringResource(R.string.off) else "${crossfade}s",
-                        sliderValue = crossfade.toFloat(),
-                        onSliderValue = { AppSettings.setCrossfadeSeconds(it.roundToInt()) },
-                        valueRange = 0f..12f,
-                        steps = 11,
-                    )
-                }
+        val crossfadeTitle = stringResource(R.string.crossfade)
+        val crossfadeDisabled = bitPerfectReady || smartFade
+        row(crossfadeTitle, "fade", "gapless") {
+            BypassedByBitPerfect(crossfadeDisabled) {
+                SliderRow(
+                    icon = SfIcons.Waves,
+                    title = crossfadeTitle,
+                    subtitle = stringResource(R.string.crossfade_subtitle),
+                    value = if (crossfade == 0) stringResource(R.string.off) else "${crossfade}s",
+                    sliderValue = crossfade.toFloat(),
+                    onSliderValue = { AppSettings.setCrossfadeSeconds(it.roundToInt()) },
+                    valueRange = 0f..12f,
+                    steps = 11,
+                    enabled = !crossfadeDisabled,
+                )
             }
         }
         val automixTitle = stringResource(R.string.automix)
@@ -382,18 +402,20 @@ internal fun SettingsPlaybackSection(
             }
         }
         // Only means anything with Automix on — see [SettingsChoiceKind.AUTOMIX_PERFORMANCE].
-        if (smartFade) {
-            val automixPerformanceTitle = stringResource(R.string.automix_performance)
-            row(automixPerformanceTitle, "cpu", "battery", divided = false) {
-                BypassedByBitPerfect(bitPerfectReady) {
-                    SettingsRow(
-                        icon = SfIcons.Tune,
-                        title = automixPerformanceTitle,
-                        subtitle = stringResource(R.string.automix_performance_subtitle),
-                        value = automixPerformance.localizedLabel(),
-                        onClick = { onOpenChoice(SettingsChoiceKind.AUTOMIX_PERFORMANCE) },
-                    )
-                }
+        val automixPerformanceTitle = stringResource(R.string.automix_performance)
+        row(
+            automixPerformanceTitle, "cpu", "battery",
+            divided = false,
+            visible = smartFade,
+        ) {
+            BypassedByBitPerfect(bitPerfectReady) {
+                SettingsRow(
+                    icon = SfIcons.Tune,
+                    title = automixPerformanceTitle,
+                    subtitle = stringResource(R.string.automix_performance_subtitle),
+                    value = automixPerformance.localizedLabel(),
+                    onClick = { onOpenChoice(SettingsChoiceKind.AUTOMIX_PERFORMANCE) },
+                )
             }
         }
         val skipSilenceTitle = stringResource(R.string.skip_silence)
@@ -418,30 +440,143 @@ internal fun SettingsPlaybackSection(
             }
         }
         val swipeRightTitle = stringResource(R.string.swipe_right_action)
+        val swipeLeftTitle = stringResource(R.string.swipe_left_action)
         val swipeHoldHint = stringResource(R.string.swipe_hold_playlist_hint)
+        val swipeOptions = remember {
+            listOf(SongSwipeAction.PLAY_NEXT, SongSwipeAction.ADD_TO_QUEUE, SongSwipeAction.DISABLED)
+        }
+        row(stringResource(R.string.preview), "swipe", "preview", "test", "queue", "gesture") {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = ROW_INSET, vertical = 6.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)),
+                ) {
+                    SwipeToQueueBox(
+                        onSwipeAction = { action ->
+                            val msg = when (action) {
+                                SongSwipeAction.PLAY_NEXT -> context.getString(R.string.play_next)
+                                SongSwipeAction.ADD_TO_QUEUE -> context.getString(R.string.add_to_queue)
+                                SongSwipeAction.DISABLED -> context.getString(R.string.swipe_action_disabled)
+                            }
+                            Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                        },
+                        onSwipeHoldPlaylist = {
+                            Toast.makeText(context, swipeHoldHint, Toast.LENGTH_SHORT).show()
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(com.music.bitchord.ui.theme.cardSurface())
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(42.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(
+                                        Brush.linearGradient(
+                                            listOf(
+                                                Color(0xFF5856D6).copy(alpha = 0.8f),
+                                                Color(0xFFFF9500).copy(alpha = 0.8f),
+                                            ),
+                                        ),
+                                    ),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Icon(
+                                    imageVector = SfIcons.MusicNote,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(22.dp),
+                                )
+                            }
+                            Spacer(Modifier.width(12.dp))
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = stringResource(R.string.preview),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onBackground,
+                                )
+                                Spacer(Modifier.height(2.dp))
+                                Text(
+                                    text = stringResource(R.string.swipe_plays_next),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                )
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(2.dp),
+                            ) {
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Rounded.ArrowBack,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                    modifier = Modifier.size(16.dp),
+                                )
+                                Icon(
+                                    imageVector = Icons.AutoMirrored.Rounded.ArrowForward,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                                    modifier = Modifier.size(16.dp),
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
         row(swipeRightTitle, "swipe", "queue", "playlist", "right", stringResource(R.string.play_next_on_swipe)) {
             val rightLabel = swipeRightAction.label()
             SettingsRow(
-                icon = SfIcons.PlaylistPlay,
+                icon = Icons.AutoMirrored.Rounded.ArrowForward,
                 title = swipeRightTitle,
-                subtitle = "$rightLabel · $swipeHoldHint",
+                subtitle = rightLabel,
                 trailing = {
                     SwipeActionPill(action = swipeRightAction, label = rightLabel)
                 },
                 onClick = { AppSettings.setSwipeRightAction(swipeRightAction.next()) },
             )
+            SegmentedControl(
+                options = swipeOptions.map { it.label() },
+                selectedIndex = swipeOptions.indexOf(swipeRightAction),
+                onSelect = { AppSettings.setSwipeRightAction(swipeOptions[it]) },
+                modifier = Modifier.padding(start = TEXT_INSET, end = ROW_INSET, bottom = 12.dp),
+            )
         }
-        val swipeLeftTitle = stringResource(R.string.swipe_left_action)
         row(swipeLeftTitle, "swipe", "queue", "playlist", "left", stringResource(R.string.play_next_on_swipe)) {
             val leftLabel = swipeLeftAction.label()
             SettingsRow(
-                icon = SfIcons.PlaylistAdd,
+                icon = Icons.AutoMirrored.Rounded.ArrowBack,
                 title = swipeLeftTitle,
-                subtitle = "$leftLabel · $swipeHoldHint",
+                subtitle = leftLabel,
                 trailing = {
                     SwipeActionPill(action = swipeLeftAction, label = leftLabel)
                 },
                 onClick = { AppSettings.setSwipeLeftAction(swipeLeftAction.next()) },
+            )
+            SegmentedControl(
+                options = swipeOptions.map { it.label() },
+                selectedIndex = swipeOptions.indexOf(swipeLeftAction),
+                onSelect = { AppSettings.setSwipeLeftAction(swipeOptions[it]) },
+                modifier = Modifier.padding(start = TEXT_INSET, end = ROW_INSET, bottom = 12.dp),
+            )
+        }
+        row(swipeHoldHint, "swipe", "playlist", "hold") {
+            SettingsRow(
+                icon = SfIcons.AddToPlaylist,
+                title = swipeHoldHint,
             )
         }
     }
@@ -495,16 +630,18 @@ internal fun SettingsSoundSection(
             }
         }
         // Only means anything with normalization on.
-        if (loudnessNormalization) {
-            val loudnessSpeakerTitle = stringResource(R.string.loudness_off_on_speaker)
-            row(loudnessSpeakerTitle, "loudness", "speaker", "normalize", divided = false) {
-                BypassedByBitPerfect(bitPerfectReady) {
-                    SettingsSubRow(
-                        title = loudnessSpeakerTitle,
-                        checked = loudnessOffOnSpeaker,
-                        onCheckedChange = AppSettings::setLoudnessOffOnSpeaker,
-                    )
-                }
+        val loudnessSpeakerTitle = stringResource(R.string.loudness_off_on_speaker)
+        row(
+            loudnessSpeakerTitle, "loudness", "speaker", "normalize",
+            divided = false,
+            visible = loudnessNormalization,
+        ) {
+            BypassedByBitPerfect(bitPerfectReady) {
+                SettingsSubRow(
+                    title = loudnessSpeakerTitle,
+                    checked = loudnessOffOnSpeaker,
+                    onCheckedChange = AppSettings::setLoudnessOffOnSpeaker,
+                )
             }
         }
         val spatialAudioTitle = stringResource(R.string.spatial_audio)
@@ -618,29 +755,33 @@ internal fun SettingsOutputSection(
                 )
             }
         }
-        if (bitPerfectMode == BitPerfectMode.USB_DIRECT) {
-            val fixedVolumeTitle = stringResource(R.string.usb_allow_fixed_volume)
-            row(fixedVolumeTitle, "volume", "usb", "dac", divided = false) {
-                SettingsSubRow(
-                    title = fixedVolumeTitle,
-                    subtitle = stringResource(R.string.usb_allow_fixed_volume_subtitle),
-                    checked = usbAllowFixedVolume,
-                    onCheckedChange = { on ->
-                        if (on) onConfirmFixedVolume() else AppSettings.setUsbAllowFixedVolume(false)
-                    },
-                )
-            }
+        val fixedVolumeTitle = stringResource(R.string.usb_allow_fixed_volume)
+        row(
+            fixedVolumeTitle, "volume", "usb", "dac",
+            divided = false,
+            visible = bitPerfectMode == BitPerfectMode.USB_DIRECT,
+        ) {
+            SettingsSubRow(
+                title = fixedVolumeTitle,
+                subtitle = stringResource(R.string.usb_allow_fixed_volume_subtitle),
+                checked = usbAllowFixedVolume,
+                onCheckedChange = { on ->
+                    if (on) onConfirmFixedVolume() else AppSettings.setUsbAllowFixedVolume(false)
+                },
+            )
         }
-        if (bitPerfectMode != BitPerfectMode.OFF && bitPerfectMode.isSupported) {
-            val convertTitle = stringResource(R.string.convert_for_limited_dac)
-            row(convertTitle, "convert", "resample", "usb", "dac", "bitperfect", divided = false) {
-                SettingsSubRow(
-                    title = convertTitle,
-                    subtitle = stringResource(R.string.convert_for_limited_dac_subtitle),
-                    checked = convertForLimitedDac,
-                    onCheckedChange = AppSettings::setConvertForLimitedDac,
-                )
-            }
+        val convertTitle = stringResource(R.string.convert_for_limited_dac)
+        row(
+            convertTitle, "convert", "resample", "usb", "dac", "bitperfect",
+            divided = false,
+            visible = bitPerfectMode != BitPerfectMode.OFF && bitPerfectMode.isSupported,
+        ) {
+            SettingsSubRow(
+                title = convertTitle,
+                subtitle = stringResource(R.string.convert_for_limited_dac_subtitle),
+                checked = convertForLimitedDac,
+                onCheckedChange = AppSettings::setConvertForLimitedDac,
+            )
         }
     }
 }

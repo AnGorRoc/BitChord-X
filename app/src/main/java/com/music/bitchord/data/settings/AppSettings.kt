@@ -488,7 +488,7 @@ object AppSettings {
     val equalizerPreset = MutableStateFlow(EqualizerPreset.FLAT)
 
     val playbackSpeed = MutableStateFlow(1.0f)
-    val themeMode = MutableStateFlow(ThemeMode.DARK)
+    val themeMode = MutableStateFlow(ThemeMode.SYSTEM)
     val appFont = MutableStateFlow(AppFont.DEFAULT)
 
     /** Keep playing similar music once the queue runs out. */
@@ -1217,8 +1217,8 @@ object AppSettings {
         equalizerPreset.value = EqualizerPreset.matching(equalizerBands.value)
         playbackSpeed.value = prefs.getFloat(KEY_SPEED, 1.0f)
         themeMode.value = runCatching {
-            ThemeMode.valueOf(prefs.getString(KEY_THEME, null) ?: "DARK")
-        }.getOrDefault(ThemeMode.DARK)
+            ThemeMode.valueOf(prefs.getString(KEY_THEME, null) ?: ThemeMode.SYSTEM.name)
+        }.getOrDefault(ThemeMode.SYSTEM)
         appFont.value = runCatching {
             AppFont.valueOf(prefs.getString(KEY_APP_FONT, null) ?: AppFont.DEFAULT.name)
         }.getOrDefault(AppFont.DEFAULT)
@@ -2187,7 +2187,7 @@ object AppSettings {
     }
 
     /**
-     * Clamped to [DEFAULT_CACHE_LIMIT_BYTES]..[MAX_CACHE_LIMIT_BYTES] â€” the floor is the default, not zero.
+     * Clamped to [MIN_CACHE_LIMIT_BYTES]..[MAX_CACHE_LIMIT_BYTES] — the floor is the minimum, not zero.
      * Anything past [MAX_CACHE_LIMIT_BYTES] is [UNLIMITED_CACHE_LIMIT_BYTES].
      */
     fun setAudioCacheLimitBytes(value: Long) {
@@ -2199,7 +2199,7 @@ object AppSettings {
     private fun clampCacheLimit(value: Long): Long =
         if (value == 0L) DISABLED_CACHE_LIMIT_BYTES
         else if (value > MAX_CACHE_LIMIT_BYTES) UNLIMITED_CACHE_LIMIT_BYTES
-        else value.coerceAtLeast(DEFAULT_CACHE_LIMIT_BYTES)
+        else value.coerceAtLeast(MIN_CACHE_LIMIT_BYTES)
 
     fun setLosslessCacheLevel(value: LosslessCacheLevel) {
         losslessCacheLevel.value = value
@@ -2731,7 +2731,8 @@ object AppSettings {
         KEY_ONBOARDING_COMPLETE,
     )
 
-    const val DEFAULT_CACHE_LIMIT_BYTES = 512L * 1024 * 1024
+    const val MIN_CACHE_LIMIT_BYTES = 512L * 1024 * 1024
+    const val DEFAULT_CACHE_LIMIT_BYTES = 3L * 1024 * 1024 * 1024
     const val MAX_CACHE_LIMIT_BYTES = 10L * 1024 * 1024 * 1024
 
     /** Cache limit set to zero means caching is fully disabled. */

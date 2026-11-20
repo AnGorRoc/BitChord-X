@@ -62,16 +62,17 @@ internal fun SettingsLocalMusicSection(search: SettingsSearch) {
                 onClick = { localMusicFolderPicker.launch(null) },
             )
         }
-        if (localMusicFolderUri.isNotBlank()) {
-            val useAllAudioFoldersTitle = stringResource(R.string.use_all_audio_folders)
-            row(useAllAudioFoldersTitle, "folder") {
-                SettingsRow(
-                    icon = SfIcons.LibraryMusic,
-                    title = useAllAudioFoldersTitle,
-                    subtitle = stringResource(R.string.use_all_audio_folders_subtitle),
-                    onClick = { AppSettings.setLocalMusicFolderUri("") },
-                )
-            }
+        val useAllAudioFoldersTitle = stringResource(R.string.use_all_audio_folders)
+        row(
+            useAllAudioFoldersTitle, "folder",
+            visible = localMusicFolderUri.isNotBlank(),
+        ) {
+            SettingsRow(
+                icon = SfIcons.LibraryMusic,
+                title = useAllAudioFoldersTitle,
+                subtitle = stringResource(R.string.use_all_audio_folders_subtitle),
+                onClick = { AppSettings.setLocalMusicFolderUri("") },
+            )
         }
         val filterNonMusicAudioTitle = stringResource(R.string.filter_non_music_audio)
         row(filterNonMusicAudioTitle, "podcast", "recording") {
@@ -169,24 +170,25 @@ internal fun SettingsStorageSection(
                 onClick = { onOpenChoice(SettingsChoiceKind.LOSSLESS_CACHE) },
             )
         }
-        if (losslessCacheLevel != LosslessCacheLevel.OFF) {
-            val losslessLimitMb = (losslessCacheLimitBytes / (1024 * 1024)).toInt()
-            val losslessLimitTitle = stringResource(R.string.lossless_cache_limit)
-            row(losslessLimitTitle, "cache", "space", "lossless") {
-                SliderRow(
-                    icon = SfIcons.Storage,
-                    title = losslessLimitTitle,
-                    subtitle = stringResource(R.string.lossless_cache_limit_subtitle),
-                    value = formatCacheSize(losslessLimitMb),
-                    sliderValue = losslessLimitMb.toFloat(),
-                    onSliderValue = {
-                        AppSettings.setLosslessCacheLimitBytes(it.roundToInt().toLong() * 1024 * 1024)
-                    },
-                    valueRange = (AppSettings.MIN_LOSSLESS_CACHE_LIMIT_BYTES / (1024 * 1024)).toFloat()..
-                        (AppSettings.MAX_CACHE_LIMIT_BYTES / (1024 * 1024)).toFloat(),
-                    steps = 38,
-                )
-            }
+        val losslessLimitMb = (losslessCacheLimitBytes / (1024 * 1024)).toInt()
+        val losslessLimitTitle = stringResource(R.string.lossless_cache_limit)
+        row(
+            losslessLimitTitle, "cache", "space", "lossless",
+            visible = losslessCacheLevel != LosslessCacheLevel.OFF,
+        ) {
+            SliderRow(
+                icon = SfIcons.Storage,
+                title = losslessLimitTitle,
+                subtitle = stringResource(R.string.lossless_cache_limit_subtitle),
+                value = formatCacheSize(losslessLimitMb),
+                sliderValue = losslessLimitMb.toFloat(),
+                onSliderValue = {
+                    AppSettings.setLosslessCacheLimitBytes(it.roundToInt().toLong() * 1024 * 1024)
+                },
+                valueRange = (AppSettings.MIN_LOSSLESS_CACHE_LIMIT_BYTES / (1024 * 1024)).toFloat()..
+                    (AppSettings.MAX_CACHE_LIMIT_BYTES / (1024 * 1024)).toFloat(),
+                steps = 38,
+            )
         }
         val improveCachedSongsTitle = stringResource(R.string.improve_cached_songs)
         row(improveCachedSongsTitle, "cache", "quality", "upgrade", "wi-fi") {
