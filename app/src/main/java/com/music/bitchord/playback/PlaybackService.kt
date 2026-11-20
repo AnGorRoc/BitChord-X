@@ -6218,6 +6218,23 @@ class PlaybackService : MediaLibraryService() {
                         active.play()
                         Log.d("RenditionSwapTest", "queued ${ids.size} tracks")
                     }
+                    // The video/audio switch onto another local file, as the
+                    // player menu sends it: a different item, not a rendition.
+                    "version" -> scope.launch(Dispatchers.Main) {
+                        val target = MediaItem.Builder()
+                            .setMediaId("$RENDITION_SWAP_TEST_ID-v${SystemClock.elapsedRealtime() % 100_000}")
+                            .setUri(uri)
+                            .setMediaMetadata(MediaMetadata.Builder().setTitle("Version switch test").build())
+                            .build()
+                        val began = SystemClock.elapsedRealtime()
+                        val job = smoothSwapCurrentTrackVersion(target)
+                        job?.join()
+                        Log.d(
+                            "RenditionSwapTest",
+                            "version switch to $uri ${if (player?.currentMediaItem?.mediaId == target.mediaId) "DONE" else "NOT DONE"} " +
+                                "after ${SystemClock.elapsedRealtime() - began}ms",
+                        )
+                    }
                     "seek" -> scope.launch(Dispatchers.Main) {
                         val active = player ?: return@launch
                         val at = intent.getLongExtra("at", 0L)
