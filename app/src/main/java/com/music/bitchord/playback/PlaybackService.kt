@@ -5375,39 +5375,62 @@ class PlaybackService : MediaLibraryService() {
         if (upgradeFor == mediaId) upgradeJob?.cancel()
         QualityUpgrade.forget(mediaId)
         downgradeJob = scope.launch {
-            // Unlike an upgrade, a downgrade goes ahead unaligned: the stream is
-            // already starving, and a small shift is a lesser fault than the
-            // stall that is the reason for swapping.
-            val offsetMs = if (stalled) {
-                0L
+            // Unlike an upgrade, a downgrade goes ahead unaligned when it must:
+            // the stream is already starving, and a small shift is a lesser
+            // fault than the stall that is the reason for swapping.
+            val measured = if (stalled) {
+                null
             } else {
-                measureUpgradeOffset(mediaId, playingUri, targetUri, YOUTUBE_KBPS, song.title) ?: 0L
+                measureUpgradeOffset(mediaId, playingUri, targetUri, YOUTUBE_KBPS, song.title)
+            }
+            val offsetMs = measured ?: 0L
+            val committed = {
+                // Lossless is tried again after a wait that grows with
+                // each downgrade that really happened - see
+                // [LosslessRetryPlan]. The same wait holds lossless
+                // back for the next track, so both start from the same
+                // moment. Taken here, once the quality is lowered, and
+                // not before: a swap that never started has used up
+                // none of the waits.
+                val retryIn = losslessRetry.nextDelayMs()
+                AppSettings.holdLossless(retryIn)
+                losslessRetryJob?.cancel()
+                losslessRetryJob = scope.launch {
+                    delay(retryIn)
+                    retryLosslessFor(mediaId)
+                }
+                NerdStats.clearDeclared(mediaId)
+                NerdStats.recordSource(mediaId, "YouTube")
+                publishNerdStats()
+                TrackLog.d("BitChord", "lowered $mediaId to YouTube with a ${offsetMs}ms shift", about = mediaId)
+            }
+            // Still playing: the same handover an upgrade gets, lined up on the
+            // two players' audio. If the lossless stream gives out while that
+            // runs, the lock gives up and the quick swap below takes over.
+            if (!stalled && AppSettings.sourceAlignmentEnabled) {
+                val aligned = withContext(Dispatchers.Main) {
+                    val active = player ?: return@withContext false
+                    val item = active.currentMediaItem?.takeIf { it.mediaId == mediaId } ?: return@withContext false
+                    val uri = item.localConfiguration?.uri?.toString() ?: return@withContext false
+                    swapToAlignedStream(
+                        SwapPoint(item, uri, active.currentPosition, active.duration),
+                        target,
+                        stream = null,
+                        offsetMs = offsetMs,
+                        offsetKnown = measured != null,
+                    )
+                }
+                if (aligned) {
+                    withContext(Dispatchers.Main) { committed() }
+                    return@launch
+                }
             }
             val swap = withContext(Dispatchers.Main) {
                 if (player?.currentMediaItem?.mediaId != mediaId) return@withContext null
                 smoothSwapCurrentTrackVersion(
                     targetMediaItem = target,
                     presetOffsetMs = offsetMs,
-                    onSwapCommitted = {
-                        // Lossless is tried again after a wait that grows with
-                        // each downgrade that really happened - see
-                        // [LosslessRetryPlan]. The same wait holds lossless
-                        // back for the next track, so both start from the same
-                        // moment. Taken here, once the quality is lowered, and
-                        // not before: a swap that never started has used up
-                        // none of the waits.
-                        val retryIn = losslessRetry.nextDelayMs()
-                        AppSettings.holdLossless(retryIn)
-                        losslessRetryJob?.cancel()
-                        losslessRetryJob = scope.launch {
-                            delay(retryIn)
-                            retryLosslessFor(mediaId)
-                        }
-                        NerdStats.clearDeclared(mediaId)
-                        NerdStats.recordSource(mediaId, "YouTube")
-                        publishNerdStats()
-                        TrackLog.d("BitChord", "lowered $mediaId to YouTube with a ${offsetMs}ms shift", about = mediaId)
-                    },
+                    onSwapCommitted = committed,
                 )
             }
             swap?.join()
