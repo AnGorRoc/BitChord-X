@@ -2465,8 +2465,20 @@ class PlaybackService : MediaLibraryService() {
             }
             try {
                 val startPosition = activePlayer.currentPosition
-                val alignmentOffsetMs = presetOffsetMs ?: if (measureAlignment) {
-                    prepareVersionAlignment(sourceSong, targetSong, startPosition)
+                // Lined up on the audio once both play (see below), the offset
+                // measured on the files is only where that search starts — not
+                // worth holding the switch for while both heads download. It
+                // gets a short budget and keeps running behind it, landing in
+                // [VersionAudioAligner]'s cache for the fallback and next time.
+                val willLockOnAudio = !quiet && activePlayer.playWhenReady && AppSettings.smartVersionAlignment.value
+                var alignmentOffsetMs = presetOffsetMs ?: if (measureAlignment) {
+                    if (willLockOnAudio) {
+                        withTimeoutOrNull(VERSION_GUESS_BUDGET_MS) {
+                            prepareVersionAlignment(sourceSong, targetSong, startPosition)
+                        } ?: 0L
+                    } else {
+                        prepareVersionAlignment(sourceSong, targetSong, startPosition)
+                    }
                 } else {
                     0L
                 }
@@ -2526,6 +2538,24 @@ class PlaybackService : MediaLibraryService() {
                 val wasPlaying = activePlayer.playWhenReady
                 val alignedStartPos = alignedPosition(activePlayer.currentPosition)
 
+            // A switch the listener asked for, while playing, is lined up the
+            // way a quality swap is: on the two players' own audio, with the
+            // standby moved onto the playing copy by exact sample counts and
+            // no seek — see [lockStandbyOnAudio]. The offset measured on the
+            // files, or YouTube's map, only narrows that search. With neither,
+            // the standby starts far enough behind for the open search.
+            val liveLock = !quiet && wasPlaying && AppSettings.smartVersionAlignment.value
+            val guessKnown = officialMap != null ||
+                (measureAlignment && VersionAudioAligner.getCachedOffsetMs(sourceSong.videoId, targetSong.videoId) != null)
+            val standbyStartPos = if (liveLock && !guessKnown) {
+                (alignedStartPos - LIVE_ALIGN_OPEN_RADIUS_MS - LIVE_ALIGN_BEHIND_MARGIN_MS).coerceAtLeast(0L)
+            } else {
+                alignedStartPos
+            }
+            // Taken now, by role: the handover swaps the roles.
+            val playingTap = activeTap()
+            val incomingTap = spareTap()
+
             // Reset and configure standby player
             standbyPlayer.stop()
             standbyPlayer.clearMediaItems()
@@ -2537,7 +2567,7 @@ class PlaybackService : MediaLibraryService() {
             // beatmatch stretch, and copying that would keep it for good.
             standbyPlayer.setPlaybackSpeed(AppSettings.playbackSpeed.value)
             standbyPlayer.volume = 0f
-            standbyPlayer.setMediaItems(newItems, currentIndex, alignedStartPos)
+            standbyPlayer.setMediaItems(newItems, currentIndex, standbyStartPos)
             spareLoudness().track(mediaId, nextMediaIdOf(standbyPlayer))
             standbyPlayer.playWhenReady = false
             standbyPlayer.prepare()
@@ -2595,6 +2625,55 @@ class PlaybackService : MediaLibraryService() {
             // it and entered the fade a beat behind — a doubled phrase.
             val willPlay = activePlayer.playWhenReady
 
+            var lockedOnAudio = false
+            if (willPlay && liveLock) {
+                val at = activePlayer.currentPosition
+                val lock = lockStandbyOnAudio(
+                    active = activePlayer,
+                    standby = standbyPlayer,
+                    index = currentIndex,
+                    mediaId = currentItem.mediaId,
+                    playingTap = playingTap,
+                    incomingTap = incomingTap,
+                    guessMs = alignedPosition(at) - at,
+                    guessKnown = guessKnown,
+                    yieldNow = { crossfade?.isTransitioning() == true },
+                    onUnalignable = {},
+                )
+                if (lock != null) {
+                    lockedOnAudio = true
+                    TrackLog.d(
+                        "BitChord",
+                        "version swap locked on audio: shift ${lock.offsetMs}ms, ${lock.residualMs}ms left",
+                        about = sourceSong.videoId,
+                    )
+                } else if (player !== activePlayer ||
+                    activePlayer.currentMediaItemIndex != currentIndex ||
+                    activePlayer.currentMediaItem?.mediaId != currentItem.mediaId
+                ) {
+                    standbyPlayer.stop()
+                    standbyPlayer.clearMediaItems()
+                    standbyPlayer.volume = 1f
+                    swappingMediaId = null
+                    return@launch
+                } else {
+                    // The listener asked for this switch, so it happens either
+                    // way: a cut whose stretch here has no match in the other
+                    // (a skit only the video has, an intro longer than the open
+                    // search) goes over the old way, on the offset measured on
+                    // the files — waited for now if it was cut short above.
+                    if (measureAlignment && !guessKnown) {
+                        alignmentOffsetMs = prepareVersionAlignment(sourceSong, targetSong, activePlayer.currentPosition)
+                    }
+                    TrackLog.d(
+                        "BitChord",
+                        "version swap: no match on the audio here; switching on the measured offset (${alignmentOffsetMs}ms)",
+                        about = sourceSong.videoId,
+                    )
+                }
+            }
+
+            if (!lockedOnAudio) {
             // Sync playback position with exact live position right before starting playback on standby.
             // This is the only seek the standby gets while the outgoing track
             // plays (see [lockStandbyToActive]), so it aims as far ahead as the
@@ -2633,6 +2712,23 @@ class PlaybackService : MediaLibraryService() {
                 while (isActive && standbyPlayer.playbackState != Player.STATE_READY && SystemClock.elapsedRealtime() < seekTimeout) {
                     delay(10)
                 }
+            }
+            }
+
+            if (lockedOnAudio) {
+                // On the same moment to the sample: the short linear blend a
+                // quality swap uses, since the two copies now add in phase.
+                if (!crossfadeRenditions(activePlayer, standbyPlayer, currentIndex, currentItem.mediaId)) {
+                    standbyPlayer.stop()
+                    standbyPlayer.clearMediaItems()
+                    standbyPlayer.volume = 1f
+                    activePlayer.volume = 1f
+                    swappingMediaId = null
+                    return@launch
+                }
+                adoptPlayerForVersionSwap(outgoing = activePlayer, incoming = standbyPlayer)
+                commit()
+                return@launch
             }
 
             // Quality upgrades use a fast micro-dip (120ms) where active dips to 0 before standby rises,
@@ -11769,6 +11865,14 @@ class PlaybackService : MediaLibraryService() {
 
         /** How much further back than the search the standby starts without a guess. */
         private const val LIVE_ALIGN_BEHIND_MARGIN_MS = 400L
+
+        /**
+         * How long a version switch that will line up on the audio waits for
+         * the offset measured on the files, which is only where its search
+         * starts. Past it the open search runs and the measurement carries on
+         * behind it.
+         */
+        private const val VERSION_GUESS_BUDGET_MS = 4_000L
 
         /** Settle, read, move: at most this many times per quality swap. */
         private const val LOCK_ROUNDS = 4
