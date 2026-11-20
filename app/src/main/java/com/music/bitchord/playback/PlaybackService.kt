@@ -6204,6 +6204,33 @@ class PlaybackService : MediaLibraryService() {
             override fun onReceive(context: Context, intent: Intent) {
                 val uri = intent.getStringExtra("uri") ?: return
                 when (intent.getStringExtra("cmd")) {
+                    // Two tracks queued and a blend between them armed by hand,
+                    // as a plan would: outgoing from `at`, fading over `fade`
+                    // ms ending at `end`, the incoming track cued at `cue`.
+                    "mix" -> scope.launch(Dispatchers.Main) {
+                        val active = player ?: return@launch
+                        val second = intent.getStringExtra("uri2") ?: return@launch
+                        fun item(id: String, u: String) = MediaItem.Builder()
+                            .setMediaId(id)
+                            .setUri(u)
+                            .setMediaMetadata(MediaMetadata.Builder().setTitle(id).build())
+                            .build()
+                        active.setMediaItems(
+                            listOf(item("$RENDITION_SWAP_TEST_ID-out", uri), item("$RENDITION_SWAP_TEST_ID-in", second)),
+                            0,
+                            intent.getLongExtra("at", 0L),
+                        )
+                        active.prepare()
+                        active.play()
+                        delay(1_500L)
+                        val armed = crossfade?.debugArm(
+                            fadeMs = intent.getLongExtra("fade", 8_000L),
+                            endMs = intent.getLongExtra("end", 0L),
+                            cueMs = intent.getLongExtra("cue", 0L),
+                            preroll = intent.getBooleanExtra("preroll", true),
+                        )
+                        Log.d("RenditionSwapTest", "mix armed=$armed at ${active.currentPosition}ms")
+                    }
                     "play" -> {
                         val active = player ?: return
                         val item = MediaItem.Builder()
