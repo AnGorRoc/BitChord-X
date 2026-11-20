@@ -58,6 +58,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.music.bitchord.data.settings.AppSettings
 import kotlinx.coroutines.launch
 import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeStyle
+import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import dev.chrisbanes.haze.materials.HazeMaterials
 
@@ -929,13 +931,31 @@ internal fun AlertScaffold(
     // goes soft at its own brightness instead of being dimmed. Only where it
     // can — otherwise, and under Reduce dynamic blur, the flat scrim as before.
     val blurredBehind = !frosted && blurBehindDialogWindow(enabled = !reduceDynamicBlur)
+    val dim = Color.Black.copy(alpha = if (isDark) 0.55f else 0.28f)
+    // Drawn in the app's own window, the page is blurred the way the card is,
+    // through Haze — softened at its own brightness rather than dimmed, to
+    // match the alerts that open in a window of their own.
+    val pageBlur = frosted && !reduceDynamicBlur
+    val pageColour = MaterialTheme.colorScheme.background
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                if (blurredBehind) Color.Transparent
-                else Color.Black.copy(alpha = if (isDark) 0.55f else 0.28f),
+            .then(
+                when {
+                    blurredBehind -> Modifier
+                    pageBlur -> Modifier.optimizedHazeEffect(
+                        state = hazeState,
+                        style = HazeStyle(
+                            backgroundColor = pageColour,
+                            tints = emptyList(),
+                            blurRadius = DIALOG_BLUR_BEHIND,
+                            noiseFactor = 0f,
+                            fallbackTint = HazeTint(dim),
+                        ),
+                    )
+                    else -> Modifier.background(dim)
+                },
             )
             .clickable(
                 indication = null,
