@@ -40,6 +40,7 @@ import io.ktor.websocket.Frame
 import io.ktor.websocket.readText
 import kotlin.random.Random
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -148,7 +149,12 @@ internal object DesktopListenTogether {
         }
     }
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        if (throwable !is CancellationException) {
+            DesktopTrackLog.log("desktop party scope uncaught error: ${redact(throwable.message)}")
+        }
+    }
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + exceptionHandler)
     private val clock = ServerClock()
     private val persistence by lazy { DesktopPersistence() }
 
@@ -703,10 +709,15 @@ internal object DesktopListenTogether {
                     session = this
                     backoffMs = 1_000L
                     _state.update { it.copy(connection = Connection.LIVE, error = null) }
-                    launch { pingLoop() }
-                    launch { reportLoop() }
-                    for (frame in incoming) {
-                        if (frame is Frame.Text) onFrame(frame.readText())
+                    val pingJob = launch { pingLoop() }
+                    val reportJob = launch { reportLoop() }
+                    try {
+                        for (frame in incoming) {
+                            if (frame is Frame.Text) onFrame(frame.readText())
+                        }
+                    } finally {
+                        pingJob.cancel()
+                        reportJob.cancel()
                     }
                 }
             } catch (cancelled: CancellationException) {
@@ -730,13 +741,19 @@ internal object DesktopListenTogether {
 
     /** A burst on connect converges the offset faster than a long series would. */
     private suspend fun DefaultClientWebSocketSession.pingLoop() {
-        repeat(4) {
-            ping()
-            delay(300)
-        }
-        while (true) {
-            delay(PING_INTERVAL_MS)
-            ping()
+        try {
+            repeat(4) {
+                ping()
+                delay(300)
+            }
+            while (isActive) {
+                delay(PING_INTERVAL_MS)
+                ping()
+            }
+        } catch (c: CancellationException) {
+            throw c
+        } catch (e: Exception) {
+            DesktopTrackLog.log("listen together: pingLoop ended: ${redact(e.message)}")
         }
     }
 
@@ -750,15 +767,21 @@ internal object DesktopListenTogether {
     }
 
     private suspend fun DefaultClientWebSocketSession.reportLoop() {
-        while (true) {
-            delay(REPORT_INTERVAL_MS)
-            val position = partyPositionMs() ?: continue
-            val frame = buildJsonObject {
-                put("type", "report")
-                put("positionMs", position)
-                put("isPlaying", _state.value.playback.isPlaying)
+        try {
+            while (isActive) {
+                delay(REPORT_INTERVAL_MS)
+                val position = partyPositionMs() ?: continue
+                val frame = buildJsonObject {
+                    put("type", "report")
+                    put("positionMs", position)
+                    put("isPlaying", _state.value.playback.isPlaying)
+                }
+                runCatching { send(Frame.Text(frame.toString())) }
             }
-            runCatching { send(Frame.Text(frame.toString())) }
+        } catch (c: CancellationException) {
+            throw c
+        } catch (e: Exception) {
+            DesktopTrackLog.log("listen together: reportLoop ended: ${redact(e.message)}")
         }
     }
 

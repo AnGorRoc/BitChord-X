@@ -5,6 +5,7 @@ import com.music.bitchord.data.Http
 import com.music.bitchord.data.telemetry.TelemetryLevel
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -56,7 +57,12 @@ class Presence(
     @Volatile private var activeSocket: WebSocket? = null
 
     init {
-        CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
+        val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
+            if (throwable !is CancellationException) {
+                DebugLog.d(TAG, "presence scope uncaught error: ${throwable.message}")
+            }
+        }
+        CoroutineScope(SupervisorJob() + Dispatchers.IO + exceptionHandler).launch {
             // collectLatest: a change of state cancels whatever the last one was
             // still doing, so a close cancels the socket/ping loop and a quick
             // reopen cancels a pending close.

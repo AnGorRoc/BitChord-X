@@ -35,6 +35,7 @@ import io.ktor.websocket.Frame
 import io.ktor.websocket.readText
 import kotlin.random.Random
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -249,7 +250,12 @@ object ListenTogether {
         expectSuccess = false
     }
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        if (throwable !is CancellationException) {
+            Log.w(TAG, "party scope uncaught error: ${redact(throwable.message)}")
+        }
+    }
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + exceptionHandler)
     private val clock = ServerClock(SystemClock::elapsedRealtime)
     private val switchMutex = Mutex()
 
@@ -1372,10 +1378,15 @@ object ListenTogether {
                     session = this
                     backoffMs = 1_000L
                     _state.update { it.copy(connection = Connection.LIVE, error = null) }
-                    launch { pingLoop() }
-                    launch { reportLoop() }
-                    for (frame in incoming) {
-                        if (frame is Frame.Text) onFrame(frame.readText())
+                    val pingJob = launch { pingLoop() }
+                    val reportJob = launch { reportLoop() }
+                    try {
+                        for (frame in incoming) {
+                            if (frame is Frame.Text) onFrame(frame.readText())
+                        }
+                    } finally {
+                        pingJob.cancel()
+                        reportJob.cancel()
                     }
                 }
             } catch (cancelled: CancellationException) {
@@ -1413,13 +1424,19 @@ object ListenTogether {
      * milliseconds per minute.
      */
     private suspend fun DefaultClientWebSocketSession.pingLoop() {
-        repeat(4) {
-            ping()
-            delay(300)
-        }
-        while (true) {
-            delay(PING_INTERVAL_MS)
-            ping()
+        try {
+            repeat(4) {
+                ping()
+                delay(300)
+            }
+            while (isActive) {
+                delay(PING_INTERVAL_MS)
+                ping()
+            }
+        } catch (c: CancellationException) {
+            throw c
+        } catch (e: Exception) {
+            Log.d(TAG, "party pingLoop terminated: ${redact(e.message)}")
         }
     }
 
@@ -1441,15 +1458,21 @@ object ListenTogether {
      * which is the only place the two halves of this feature can be compared.
      */
     private suspend fun DefaultClientWebSocketSession.reportLoop() {
-        while (true) {
-            delay(REPORT_INTERVAL_MS)
-            val position = partyPositionMs() ?: continue
-            val frame = buildJsonObject {
-                put("type", "report")
-                put("positionMs", position)
-                put("isPlaying", _state.value.playback.isPlaying)
+        try {
+            while (isActive) {
+                delay(REPORT_INTERVAL_MS)
+                val position = partyPositionMs() ?: continue
+                val frame = buildJsonObject {
+                    put("type", "report")
+                    put("positionMs", position)
+                    put("isPlaying", _state.value.playback.isPlaying)
+                }
+                runCatching { send(Frame.Text(frame.toString())) }
             }
-            runCatching { send(Frame.Text(frame.toString())) }
+        } catch (c: CancellationException) {
+            throw c
+        } catch (e: Exception) {
+            Log.d(TAG, "party reportLoop terminated: ${redact(e.message)}")
         }
     }
 

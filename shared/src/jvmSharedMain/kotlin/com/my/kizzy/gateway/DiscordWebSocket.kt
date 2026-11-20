@@ -26,6 +26,7 @@ import io.ktor.websocket.Frame
 import io.ktor.websocket.close
 import io.ktor.websocket.readText
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -108,7 +109,13 @@ open class DiscordWebSocket(
      */
     private val supervisor = SupervisorJob()
 
-    override val coroutineContext: CoroutineContext = supervisor + Dispatchers.Default
+    private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        if (throwable !is CancellationException) {
+            logger.warning("Gateway coroutine error caught: ${throwable.message}")
+        }
+    }
+
+    override val coroutineContext: CoroutineContext = supervisor + Dispatchers.Default + exceptionHandler
 
     /**
      * The connect/pump/backoff loop. Reconnection is this coroutine going round
@@ -232,7 +239,7 @@ open class DiscordWebSocket(
                             .onFailure { logger.warning("Gateway: bad payload: ${it.message}") }
                     }
                 }
-                val reason = session.closeReason.await()
+                val reason = runCatching { session.closeReason.await() }.getOrNull()
                 logger.warning(
                     "Gateway closed with code: ${reason?.code}, reason: ${reason?.message}",
                 )
@@ -355,6 +362,7 @@ open class DiscordWebSocket(
         launch {
             logger.info("Gateway: replaying presence onto the new session")
             runCatching { sendPresence(presence) }
+                .onFailure { logger.warning("Gateway: presence replay failed: ${it.message}") }
         }
     }
 
@@ -439,7 +447,14 @@ open class DiscordWebSocket(
                     return@launch
                 }
                 awaitingAck = true
-                sendHeartBeat()
+                try {
+                    sendHeartBeat()
+                } catch (c: CancellationException) {
+                    throw c
+                } catch (e: Exception) {
+                    dropSocket("heartbeat send failed: ${e.message}")
+                    return@launch
+                }
                 delay(interval)
             }
         }
@@ -479,8 +494,14 @@ open class DiscordWebSocket(
         } else {
             logger.info("Gateway sending payload: $payload")
         }
-        socket.send(Frame.Text(payload))
-        return true
+        return try {
+            socket.send(Frame.Text(payload))
+            true
+        } catch (e: Exception) {
+            if (e is CancellationException) throw e
+            logger.warning("Gateway send frame failed: ${e.message}")
+            false
+        }
     }
 
     fun close() {
