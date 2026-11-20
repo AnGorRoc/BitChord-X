@@ -12,6 +12,7 @@ import android.media.audiofx.AudioEffect
 import android.net.Uri
 import android.widget.Toast
 import android.net.wifi.WifiManager
+import android.os.Build
 import android.os.Bundle
 import android.os.Handler
 import android.os.PowerManager
@@ -157,12 +158,16 @@ import com.music.bitchord.data.settings.EqualizerMode
 import com.music.bitchord.data.settings.OutputPcmMode
 import com.music.bitchord.data.sources.SourceKind
 import com.music.bitchord.data.sources.SourceResolver
+import com.music.bitchord.BuildConfig
 import com.music.bitchord.data.sources.SourceStream
 import com.music.bitchord.data.sources.StreamFormat
 import com.music.bitchord.data.sources.StreamRequest
 import com.music.bitchord.data.sources.TrackMatcher
 import com.music.bitchord.playback.smart.AutomixAnalysisSource
 import com.music.bitchord.playback.smart.StreamAudioAligner
+import com.music.bitchord.playback.smart.LiveAlignment
+import com.music.bitchord.playback.audio.PcmTap
+import com.music.bitchord.playback.audio.TappingAudioSink
 import com.music.bitchord.playback.smart.VersionAudioAligner
 import com.music.bitchord.playback.smart.awaitAlignmentOrZero
 import kotlin.coroutines.coroutineContext
@@ -197,6 +202,7 @@ import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlin.math.PI
 import kotlin.math.abs
+import kotlin.math.roundToLong
 import kotlin.math.cos
 import kotlin.math.pow
 import kotlin.math.sin
@@ -278,30 +284,6 @@ internal class ManualUpgradeThrottle(private val cooldownMs: Long) {
 
 
 /**
- * The per-swap estimate of what a near-seek costs the standby deck.
- *
- * One sample is noisy, so the lead is the mean of every correction seen so far.
- * The first drift measurement only establishes the baseline.
- */
-internal class StandbySyncLead {
-    private val latencies = ArrayList<Long>()
-    private var seen = 0
-
-    var leadMs = 0L
-        private set
-
-    fun observe(driftMs: Long): Long {
-        seen++
-        if (seen > 1) {
-            latencies += leadMs + driftMs
-            leadMs = latencies.average().toLong()
-        }
-        return leadMs
-    }
-}
-
-
-/**
  * Session command marking the span of a queue drag in the UI — see
  * [PartySync.beginQueueDrag]. Dragging a queue row sends a [Player.moveMediaItem]
  * per neighbour it crosses, same as before; what this brackets is only the
@@ -309,6 +291,10 @@ internal class StandbySyncLead {
  * hears about the reorder once, when the row is dropped, not mid-drag.
  */
 const val ACTION_QUEUE_DRAG = "com.music.bitchord.action.QUEUE_DRAG"
+
+/** Debug builds only — see [PlaybackService.registerRenditionSwapHarness]. */
+private const val ACTION_DEBUG_RENDITION_SWAP = "com.music.bitchord.debug.RENDITION_SWAP"
+private const val RENDITION_SWAP_TEST_ID = "rendition-swap-test"
 const val EXTRA_QUEUE_DRAG_ACTIVE = "bitchord.queueDrag.active"
 
 /** A full first page for an explicitly requested station. */
@@ -688,6 +674,18 @@ class PlaybackService : MediaLibraryService() {
 
     private fun spareLoudness(): LoudnessProcessor =
         if (activeFilter === transitionFilterA) loudnessB else loudnessA
+
+    /**
+     * What each player has just rendered, for lining a quality swap up on
+     * the audio itself — see [PcmTap] and [handOverToRendition]. Paired to
+     * the players the same way the loudness stages are.
+     */
+    private val tapA = PcmTap()
+    private val tapB = PcmTap()
+
+    private fun activeTap(): PcmTap = if (activeFilter === transitionFilterA) tapA else tapB
+
+    private fun spareTap(): PcmTap = if (activeFilter === transitionFilterA) tapB else tapA
 
     /** Automix's DSP analyzer — see [com.music.bitchord.playback.smart.TrackAnalyzer]. */
     private val trackAnalyzer = com.music.bitchord.playback.smart.TrackAnalyzer(this, AudioCache)
@@ -1382,6 +1380,7 @@ class PlaybackService : MediaLibraryService() {
     override fun onCreate() {
         super.onCreate()
         DeviceLink.setServiceRunning(true)
+        registerRenditionSwapHarness()
 
         if (com.music.bitchord.data.innertube.Innertube.cookie == null) {
             com.music.bitchord.data.innertube.Innertube.cookie = com.music.bitchord.auth.AuthStore(this).cookie
@@ -1894,6 +1893,7 @@ class PlaybackService : MediaLibraryService() {
             transitionFilterA,
             replayGainA,
             loudnessA,
+            tapA,
             ownsSession = true,
         )
         val sparePlayer = buildPlayer(
@@ -1903,6 +1903,7 @@ class PlaybackService : MediaLibraryService() {
             transitionFilterB,
             replayGainB,
             loudnessB,
+            tapB,
             ownsSession = false,
         )
         player = exoPlayer
@@ -3982,9 +3983,10 @@ class PlaybackService : MediaLibraryService() {
         filter: TransitionFilterProcessor,
         replayGain: ReplayGainAudioProcessor,
         loudness: LoudnessProcessor,
+        tap: PcmTap,
         ownsSession: Boolean,
     ): ExoPlayer = ExoPlayer.Builder(this)
-        .setRenderersFactory(silenceSkippingRenderers(sing, spatial, equalizer, filter, replayGain, loudness))
+        .setRenderersFactory(silenceSkippingRenderers(sing, spatial, equalizer, filter, replayGain, loudness, tap))
         .setMediaSourceFactory(requireNotNull(mediaSourceFactory))
         .setLoadControl(farBufferingLoadControl())
         .setAudioAttributes(AUDIO_ATTRIBUTES, /* handleAudioFocus = */ ownsSession)
@@ -5380,39 +5382,62 @@ class PlaybackService : MediaLibraryService() {
         if (upgradeFor == mediaId) upgradeJob?.cancel()
         QualityUpgrade.forget(mediaId)
         downgradeJob = scope.launch {
-            // Unlike an upgrade, a downgrade goes ahead unaligned: the stream is
-            // already starving, and a small shift is a lesser fault than the
-            // stall that is the reason for swapping.
-            val offsetMs = if (stalled) {
-                0L
+            // Unlike an upgrade, a downgrade goes ahead unaligned when it must:
+            // the stream is already starving, and a small shift is a lesser
+            // fault than the stall that is the reason for swapping.
+            val measured = if (stalled) {
+                null
             } else {
-                measureUpgradeOffset(mediaId, playingUri, targetUri, YOUTUBE_KBPS, song.title) ?: 0L
+                measureUpgradeOffset(mediaId, playingUri, targetUri, YOUTUBE_KBPS, song.title)
+            }
+            val offsetMs = measured ?: 0L
+            val committed = {
+                // Lossless is tried again after a wait that grows with
+                // each downgrade that really happened - see
+                // [LosslessRetryPlan]. The same wait holds lossless
+                // back for the next track, so both start from the same
+                // moment. Taken here, once the quality is lowered, and
+                // not before: a swap that never started has used up
+                // none of the waits.
+                val retryIn = losslessRetry.nextDelayMs()
+                AppSettings.holdLossless(retryIn)
+                losslessRetryJob?.cancel()
+                losslessRetryJob = scope.launch {
+                    delay(retryIn)
+                    retryLosslessFor(mediaId)
+                }
+                NerdStats.clearDeclared(mediaId)
+                NerdStats.recordSource(mediaId, "YouTube")
+                publishNerdStats()
+                TrackLog.d("BitChord", "lowered $mediaId to YouTube with a ${offsetMs}ms shift", about = mediaId)
+            }
+            // Still playing: the same handover an upgrade gets, lined up on the
+            // two players' audio. If the lossless stream gives out while that
+            // runs, the lock gives up and the quick swap below takes over.
+            if (!stalled && AppSettings.sourceAlignmentEnabled) {
+                val aligned = withContext(Dispatchers.Main) {
+                    val active = player ?: return@withContext false
+                    val item = active.currentMediaItem?.takeIf { it.mediaId == mediaId } ?: return@withContext false
+                    val uri = item.localConfiguration?.uri?.toString() ?: return@withContext false
+                    swapToAlignedStream(
+                        SwapPoint(item, uri, active.currentPosition, active.duration),
+                        target,
+                        stream = null,
+                        offsetMs = offsetMs,
+                        offsetKnown = measured != null,
+                    )
+                }
+                if (aligned) {
+                    withContext(Dispatchers.Main) { committed() }
+                    return@launch
+                }
             }
             val swap = withContext(Dispatchers.Main) {
                 if (player?.currentMediaItem?.mediaId != mediaId) return@withContext null
                 smoothSwapCurrentTrackVersion(
                     targetMediaItem = target,
                     presetOffsetMs = offsetMs,
-                    onSwapCommitted = {
-                        // Lossless is tried again after a wait that grows with
-                        // each downgrade that really happened - see
-                        // [LosslessRetryPlan]. The same wait holds lossless
-                        // back for the next track, so both start from the same
-                        // moment. Taken here, once the quality is lowered, and
-                        // not before: a swap that never started has used up
-                        // none of the waits.
-                        val retryIn = losslessRetry.nextDelayMs()
-                        AppSettings.holdLossless(retryIn)
-                        losslessRetryJob?.cancel()
-                        losslessRetryJob = scope.launch {
-                            delay(retryIn)
-                            retryLosslessFor(mediaId)
-                        }
-                        NerdStats.clearDeclared(mediaId)
-                        NerdStats.recordSource(mediaId, "YouTube")
-                        publishNerdStats()
-                        TrackLog.d("BitChord", "lowered $mediaId to YouTube with a ${offsetMs}ms shift", about = mediaId)
-                    },
+                    onSwapCommitted = committed,
                 )
             }
             swap?.join()
@@ -5674,8 +5699,11 @@ class PlaybackService : MediaLibraryService() {
     private suspend fun swapToAlignedStream(
         now: SwapPoint,
         upgradedItem: MediaItem,
-        stream: SourceStream,
+        stream: SourceStream?,
         offsetMs: Long = 0L,
+        offsetKnown: Boolean = false,
+        giveUp: () -> Unit = {},
+        onUnalignable: () -> Unit = giveUp,
     ): Boolean {
         val mediaId = now.item.mediaId
         val activePlayer = player ?: return false
@@ -5707,17 +5735,29 @@ class PlaybackService : MediaLibraryService() {
 
         sourceSwapActive = true
         var adopted = false
+        // Taken now, by role: the handover swaps the roles, and it is these
+        // two players' audio that is compared.
+        val playingTap = activeTap()
+        val incomingTap = spareTap()
         try {
             val newItems = (0 until activePlayer.mediaItemCount).map { i ->
                 if (i == currentIndex) upgradedItem else activePlayer.getMediaItemAt(i)
             }
             val wasPlaying = activePlayer.playWhenReady
-            val livePos = StreamAudioAligner.seekPositionMs(activePlayer.currentPosition, offsetMs)
-            if (offsetMs != 0L) {
-                TrackLog.d("BitChord", "waveform alignment applied on standby deck: offset=${offsetMs}ms, starting standby at ${livePos}ms (raw=${activePlayer.currentPosition}ms)", about = mediaId)
+            // Where the standby is prepared is where it starts playing: a seek
+            // once it is up would flush its output and make a new one, and on
+            // some routes that new output stutters the track that is playing.
+            // See [lockStandbyOnAudio] for why it starts behind with no guess.
+            fun standbyStart(): Long {
+                val at = activePlayer.currentPosition + offsetMs
+                return if (alignmentEnabled && !offsetKnown) {
+                    (at - LIVE_ALIGN_OPEN_RADIUS_MS - LIVE_ALIGN_BEHIND_MARGIN_MS).coerceAtLeast(0L)
+                } else {
+                    at.coerceAtLeast(0L)
+                }
             }
 
-            configureStandby(standbyPlayer, activePlayer, newItems, currentIndex, livePos, mediaId)
+            configureStandby(standbyPlayer, activePlayer, newItems, currentIndex, standbyStart(), mediaId)
 
             val timeoutAt = SystemClock.elapsedRealtime() + 5_000L
             var isReady = false
@@ -5729,7 +5769,7 @@ class PlaybackService : MediaLibraryService() {
                     return false
                 }
                 if (crossfade?.isTransitioning() == true) {
-                    QualityUpgrade.shelve(mediaId, stream)
+                    giveUp()
                     TrackLog.d("BitChord", "upgrade for $mediaId shelved: a crossfade started")
                     return false
                 }
@@ -5745,7 +5785,7 @@ class PlaybackService : MediaLibraryService() {
 
             if (!isReady) {
                 TrackLog.w("BitChord", "upgrade standby player failed to prepare; aborting swap to preserve current audio", about = mediaId)
-                QualityUpgrade.shelve(mediaId, stream)
+                giveUp()
                 return false
             }
 
@@ -5753,20 +5793,13 @@ class PlaybackService : MediaLibraryService() {
                 TrackLog.w("BitChord", "standby deck came up unseekable; preparing it once more", about = mediaId)
                 val marked = standbyPlayer.currentMediaItem?.localConfiguration?.uri
                 val learned = marked?.let { uri ->
-                    learnStreamLength(stream)?.also { total ->
+                    stream?.let { learnStreamLength(it) }?.also { total ->
                         AudioCache.rememberStreamTotal(uri, total)
                         TrackLog.d("BitChord", "learned $total bytes for $mediaId from the server", about = mediaId)
                     }
                 }
                 if (learned == null) delay(400)
-                configureStandby(
-                    standbyPlayer,
-                    activePlayer,
-                    newItems,
-                    currentIndex,
-                    StreamAudioAligner.seekPositionMs(activePlayer.currentPosition, offsetMs),
-                    mediaId,
-                )
+                configureStandby(standbyPlayer, activePlayer, newItems, currentIndex, standbyStart(), mediaId)
                 val repreparedAt = SystemClock.elapsedRealtime() + 5_000L
                 while (coroutineContext.isActive &&
                     standbyPlayer.playbackState != Player.STATE_READY &&
@@ -5786,131 +5819,81 @@ class PlaybackService : MediaLibraryService() {
                             " url=${marked2?.let { QualityUpgrade.forcedStream(it)?.url }})",
                         about = mediaId,
                     )
-                    QualityUpgrade.shelve(mediaId, stream)
+                    giveUp()
                     return false
                 }
             }
 
             val willPlay = wasPlaying && activePlayer.playWhenReady
-            val targetPos = StreamAudioAligner.seekPositionMs(activePlayer.currentPosition, offsetMs)
-            standbyPlayer.seekTo(currentIndex, targetPos)
+            if (!willPlay && alignmentEnabled && !offsetKnown) {
+                // Paused, nothing is rendering to line the copies up on, and
+                // there is no measured shift to go by: resuming on a guess is
+                // a resume a phrase away. Left for when it plays again — a
+                // shelved upgrade is offered again as playback resumes.
+                TrackLog.d("BitChord", "upgrade for $mediaId waits for playback: paused with no measured shift", about = mediaId)
+                giveUp()
+                return false
+            }
+            var unalignable = false
+            var appliedOffsetMs = offsetMs
+            var residualMs: Long? = null
 
-            if (willPlay) {
+            if (willPlay && alignmentEnabled) {
+                val locked = lockStandbyOnAudio(
+                    active = activePlayer,
+                    standby = standbyPlayer,
+                    index = currentIndex,
+                    mediaId = mediaId,
+                    playingTap = playingTap,
+                    incomingTap = incomingTap,
+                    guessMs = offsetMs,
+                    guessKnown = offsetKnown,
+                    yieldNow = { crossfade?.isTransitioning() == true },
+                    onUnalignable = { unalignable = true },
+                )
+                if (locked == null) {
+                    if (unalignable) onUnalignable() else giveUp()
+                    return false
+                }
+                appliedOffsetMs = locked.offsetMs
+                residualMs = locked.residualMs
+            } else if (willPlay) {
+                // Alignment off: the old single seek, no measurement.
+                standbyPlayer.seekTo(currentIndex, StreamAudioAligner.seekPositionMs(activePlayer.currentPosition, offsetMs))
                 standbyPlayer.play()
-                val runningTimeout = SystemClock.elapsedRealtime() + 600L
+                val runningTimeout = SystemClock.elapsedRealtime() + 1_000L
                 while (coroutineContext.isActive && !standbyPlayer.isPlaying && SystemClock.elapsedRealtime() < runningTimeout) {
                     delay(10)
                 }
-                if (standbyPlayer.isPlaying) {
-                    standbyPlayer.seekTo(currentIndex, StreamAudioAligner.seekPositionMs(activePlayer.currentPosition, offsetMs))
-                    val resyncTimeout = SystemClock.elapsedRealtime() + 300L
-                    while (coroutineContext.isActive && standbyPlayer.playbackState != Player.STATE_READY && SystemClock.elapsedRealtime() < resyncTimeout) {
-                        delay(10)
-                    }
-                }
-                if (!standbyPlayer.isPlaying || standbyPlayer.playbackState != Player.STATE_READY) {
+                if (!standbyPlayer.isPlaying) {
                     TrackLog.w("BitChord", "standby player not producing audio before swap; aborting", about = mediaId)
-                    QualityUpgrade.shelve(mediaId, stream)
+                    giveUp()
                     return false
                 }
             } else {
+                standbyPlayer.seekTo(currentIndex, StreamAudioAligner.seekPositionMs(activePlayer.currentPosition, offsetMs))
                 val seekTimeout = SystemClock.elapsedRealtime() + 400L
                 while (coroutineContext.isActive && standbyPlayer.playbackState != Player.STATE_READY && SystemClock.elapsedRealtime() < seekTimeout) {
                     delay(10)
                 }
                 if (standbyPlayer.playbackState != Player.STATE_READY) {
                     TrackLog.w("BitChord", "standby player not ready for paused swap; aborting", about = mediaId)
-                    QualityUpgrade.shelve(mediaId, stream)
+                    giveUp()
                     return false
                 }
             }
 
-            val lead = StandbySyncLead()
-            var syncResidual: Long? = null
-            var lastSeekTarget: Long? = null
-            if (willPlay && alignmentEnabled) {
-                val syncDeadline = SystemClock.elapsedRealtime() + 8_000L
-                for (attempt in 0..SYNC_MAX_SEEKS) {
-                    if (player !== activePlayer ||
-                        activePlayer.currentMediaItemIndex != currentIndex ||
-                        activePlayer.currentMediaItem?.mediaId != mediaId
-                    ) {
-                        return false
-                    }
-                    if (crossfade?.isTransitioning() == true) {
-                        QualityUpgrade.shelve(mediaId, stream)
-                        TrackLog.d("BitChord", "upgrade for $mediaId shelved: a crossfade started")
-                        return false
-                    }
-                    val drift = measureStandbyDriftMs(activePlayer, standbyPlayer, offsetMs) ?: break
-                    syncResidual = drift
-                    if (abs(drift) > MAX_SYNC_DRIFT_MS) {
-                        TrackLog.w(
-                            "BitChord",
-                            "upgrade abandoned: standby deck is ${drift}ms behind and not seeking" +
-                                " (active=${activePlayer.currentPosition} standby=${standbyPlayer.currentPosition}" +
-                                " dur=${standbyPlayer.duration} seekable=${standbyPlayer.isCurrentMediaItemSeekable}" +
-                                " buffered=${standbyPlayer.bufferedPosition} uri=${standbyPlayer.currentMediaItem?.localConfiguration?.uri})",
-                            about = mediaId,
-                        )
-                        QualityUpgrade.shelve(mediaId, stream)
-                        return false
-                    }
-                    TrackLog.d("BitChord", "upgrade standby sync #$attempt: standby behind by ${drift}ms (lead=${lead.leadMs}ms asked=${lastSeekTarget}ms reported=${standbyPlayer.currentPosition}ms)", about = mediaId)
-                    if (abs(drift) <= SYNC_TOLERANCE_MS || attempt == SYNC_MAX_SEEKS ||
-                        SystemClock.elapsedRealtime() > syncDeadline
-                    ) {
-                        break
-                    }
-                    val currentLead = lead.observe(drift)
-                    val target = (standbyPlayer.currentPosition + drift + currentLead).coerceAtLeast(0L)
-                    standbyPlayer.seekTo(currentIndex, target)
-                    lastSeekTarget = target
-                }
-            }
-
-            val handoverDrift = syncResidual
-            if (willPlay && handoverDrift != null && abs(handoverDrift) > MAX_HANDOVER_DRIFT_MS) {
-                TrackLog.w("BitChord", "upgrade abandoned: decks are ${handoverDrift}ms apart at handover", about = mediaId)
-                QualityUpgrade.shelve(mediaId, stream)
+            if (player !== activePlayer ||
+                activePlayer.currentMediaItemIndex != currentIndex ||
+                activePlayer.currentMediaItem?.mediaId != mediaId
+            ) {
                 return false
             }
 
             swappingMediaId = mediaId
 
             if (willPlay) {
-                val fadeStart = SystemClock.elapsedRealtime()
-                try {
-                    while (coroutineContext.isActive) {
-                        val elapsed = SystemClock.elapsedRealtime() - fadeStart
-                        val progress = (elapsed.toFloat() / SOURCE_SWAP_CROSSFADE_MS).coerceIn(0f, 1f)
-
-                        if (player !== activePlayer ||
-                            activePlayer.currentMediaItemIndex != currentIndex ||
-                            activePlayer.currentMediaItem?.mediaId != mediaId
-                        ) {
-                            return false
-                        }
-
-                        if (standbyPlayer.playWhenReady != activePlayer.playWhenReady) {
-                            standbyPlayer.playWhenReady = activePlayer.playWhenReady
-                        }
-
-                        val inGain = sin(progress * (PI / 2.0)).toFloat()
-                        val outGain = cos(progress * (PI / 2.0)).toFloat()
-                        standbyPlayer.volume = inGain
-                        activePlayer.volume = outGain
-                        val swapTrim = 1f / sqrt((inGain + outGain).coerceAtLeast(1f))
-                        loudnessA.setBlendTrim(swapTrim)
-                        loudnessB.setBlendTrim(swapTrim)
-
-                        if (progress >= 1f) break
-                        delay(16)
-                    }
-                } finally {
-                    loudnessA.setBlendTrim(1f)
-                    loudnessB.setBlendTrim(1f)
-                }
+                if (!crossfadeRenditions(activePlayer, standbyPlayer, currentIndex, mediaId)) return false
             } else {
                 standbyPlayer.volume = 1f
             }
@@ -5920,7 +5903,7 @@ class PlaybackService : MediaLibraryService() {
                 incoming = standbyPlayer,
             )
             adopted = true
-            recordAlignment(alignmentEnabled, mediaId, offsetMs + lead.leadMs, syncResidual)
+            recordAlignment(alignmentEnabled, mediaId, appliedOffsetMs, residualMs)
             return true
         } finally {
             if (!adopted) {
@@ -5934,42 +5917,303 @@ class PlaybackService : MediaLibraryService() {
         }
     }
 
+    /** Where a quality swap's incoming player ended up: the shift applied and what was left of it. */
+    private class AudioLock(val offsetMs: Long, val residualMs: Long)
+
     /**
-     * How far [standby] trails [active] (positive = behind), in ms, or null if it
-     * could not be measured.
+     * Brings [standby], already prepared on the better copy, to the moment
+     * [active] is playing — judged by the audio both of them produce.
      *
-     * The active deck reports its position in coarse steps (~275ms here, the
-     * sink's playhead granularity) while the standby's runs smoothly, so a single
-     * read of the pair is off by up to a whole step. The active reading is exact
-     * only at the instant it changes, so the gap is taken there, and two such
-     * instants are averaged.
+     * 1. **No seek.** The caller prepared the standby where it starts (at the
+     *    guessed spot, or with no guess far enough *behind* that everything it
+     *    plays is already in the playing player's tap), and it only plays,
+     *    silently. A seek once it is up would flush its output and open a new
+     *    one, which on some routes stutters the track that is playing.
+     * 2. **The shift between the two copies is measured on their output**:
+     *    [LiveAlignment] slides what the standby has rendered along what the
+     *    active player rendered over the last seconds ([PcmTap]). Unlike a
+     *    measurement on the files, this sees every priming trim and frame
+     *    boundary the two decoders apply (Opus's 6.5 ms pre-skip, AAC's
+     *    priming), so it is the shift between the two players' clocks and
+     *    nothing else. [guessMs] (from the files, when there is one) only
+     *    narrows the search.
+     * 3. **The standby is moved onto it by exact sample counts**: both sinks
+     *    re-anchor their clocks on their own timestamps, both playheads are
+     *    read from the positions the sinks report ([PcmTap.playheadAtMs]),
+     *    and the standby's content is skipped or held back by the difference
+     *    inside its sink ([TappingAudioSink]). Read, move, read again, until
+     *    it is within [LOCK_TOLERANCE_MS].
+     *
+     * Measured on an emulator against a recording of its output, the handover
+     * lands within a millisecond for Opus, AAC and FLAC at 44.1 and 48 kHz in
+     * every direction.
+     *
+     * Null when the swap should not happen: no convincing match, a standby
+     * that will not settle, or the queue moving on. Landing a swap off by a
+     * phrase is exactly the doubled audio this exists to prevent, so nothing
+     * here falls back to an unmeasured shift. [onUnalignable] is told when the
+     * reason is that the copies do not match.
      */
-    private suspend fun measureStandbyDriftMs(active: Player, standby: Player, offsetMs: Long): Long? {
-        val readyBy = SystemClock.elapsedRealtime() + 1_500L
-        while (coroutineContext.isActive && SystemClock.elapsedRealtime() < readyBy &&
-            !(standby.playbackState == Player.STATE_READY && standby.isPlaying)
+    private suspend fun lockStandbyOnAudio(
+        active: ExoPlayer,
+        standby: ExoPlayer,
+        index: Int,
+        mediaId: String,
+        playingTap: PcmTap,
+        incomingTap: PcmTap,
+        guessMs: Long,
+        guessKnown: Boolean,
+        yieldNow: () -> Boolean,
+        onUnalignable: () -> Unit,
+    ): AudioLock? {
+        val speed = AppSettings.playbackSpeed.value.coerceAtLeast(0.1f)
+        val began = SystemClock.elapsedRealtime()
+        fun moved() = player !== active ||
+            active.currentMediaItemIndex != index ||
+            active.currentMediaItem?.mediaId != mediaId
+        fun stopped() = !active.isPlaying || !active.playWhenReady
+
+        // Prepared by the caller where it should start — see [swapToAlignedStream].
+        standby.play()
+        val startBy = SystemClock.elapsedRealtime() + 2_000L
+        while (coroutineContext.isActive &&
+            !(standby.isPlaying && standby.playbackState == Player.STATE_READY) &&
+            SystemClock.elapsedRealtime() < startBy
         ) {
             delay(10)
         }
-        if (!(standby.playbackState == Player.STATE_READY && standby.isPlaying)) return null
-        delay(60)
+        if (!(standby.isPlaying && standby.playbackState == Player.STATE_READY)) {
+            TrackLog.w("BitChord", "upgrade: standby never started playing; not swapping", about = mediaId)
+            return null
+        }
+        val radius = if (guessKnown) LIVE_ALIGN_KNOWN_RADIUS_MS else LIVE_ALIGN_OPEN_RADIUS_MS
+        val runningSince = SystemClock.elapsedRealtime()
 
-        val samples = ArrayList<Long>(2)
-        var last = active.currentPosition
-        val until = SystemClock.elapsedRealtime() + 1_000L
-        while (coroutineContext.isActive && samples.size < 2 && SystemClock.elapsedRealtime() < until) {
-            delay(4)
-            val now = active.currentPosition
-            if (now != last) {
-                last = now
-                samples += (now + offsetMs) - standby.currentPosition
+        // ── the shift, from the audio ─────────────────────────────────────
+        val alignDeadline = runningSince + LIVE_ALIGN_TIMEOUT_MS
+        var offset: Double
+        while (true) {
+            if (moved() || stopped()) return null
+            if (yieldNow()) {
+                TrackLog.d("BitChord", "upgrade for $mediaId yielding to a crossfade", about = mediaId)
+                return null
+            }
+            val playingAudio = playingTap.snapshot()
+            val incomingAudio = incomingTap.snapshot()
+            val result = withContext(Dispatchers.Default) {
+                LiveAlignment.measure(playingAudio, incomingAudio, guessMs.toDouble(), radius.toDouble())
+            }
+            if (result is LiveAlignment.Result.Aligned) {
+                offset = result.offsetMs
+                TrackLog.d(
+                    "BitChord",
+                    "upgrade aligned on the players' audio: ${"%.2f".format(offset)}ms " +
+                        "(files said ${guessMs}ms${if (guessKnown) "" else ", unmeasured"}; " +
+                        "r=${"%.3f".format(result.confidence)} margin=${"%.3f".format(result.margin)} " +
+                        "${if (result.fine) "waveform" else "envelope"}) after ${SystemClock.elapsedRealtime() - began}ms",
+                    about = mediaId,
+                )
+                break
+            }
+            val heardMs = incomingAudio.let { if (it.isEmpty()) 0L else (it.last().endUs - it.first().startUs) / 1000 }
+            if (result is LiveAlignment.Result.Unsure && heardMs >= LIVE_ALIGN_GIVE_UP_HEARD_MS) {
+                TrackLog.w(
+                    "BitChord",
+                    "upgrade not swapped: no convincing match between the copies " +
+                        "(r=${"%.3f".format(result.confidence)} margin=${"%.3f".format(result.margin)} over ${heardMs}ms)",
+                    about = mediaId,
+                )
+                onUnalignable()
+                return null
+            }
+            if (SystemClock.elapsedRealtime() > alignDeadline) {
+                TrackLog.w("BitChord", "upgrade not swapped: alignment never had enough audio ($result, ${heardMs}ms heard)", about = mediaId)
+                if (result is LiveAlignment.Result.Unsure) onUnalignable()
+                return null
+            }
+            delay(LIVE_ALIGN_POLL_MS)
+        }
+
+        // ── the standby onto it ───────────────────────────────────────────
+        // Read where each output's playhead is from the positions its own sink
+        // reports, and move the standby's content by exactly the difference
+        // (see [TappingAudioSink]). A move is exact in samples; what limits the
+        // lock is only how well the playheads are read, so it is read again
+        // after each move, once the audio queued before it has played out.
+        var residual = Double.MAX_VALUE
+        var lastMoveAt = 0L
+        for (round in 0 until LOCK_ROUNDS) {
+            // Both clocks onto their own timestamps before every reading — see
+            // [PcmTap.requestResync]. Bookkeeping only: nothing is heard.
+            playingTap.requestResync()
+            incomingTap.requestResync()
+            delay(LOCK_RESYNC_MS)
+            val sinceStart = SystemClock.elapsedRealtime() - runningSince
+            val sinceMove = SystemClock.elapsedRealtime() - lastMoveAt
+            val wait = maxOf(LOCK_FIRST_READ_MS - sinceStart, LOCK_MOVE_SETTLE_MS - sinceMove)
+            if (wait > 0) delay(wait)
+            if (moved() || stopped() || yieldNow()) return null
+            val error = sinkErrorMs(playingTap, incomingTap, offset, speed) ?: run {
+                TrackLog.w(
+                    "BitChord",
+                    "upgrade not swapped: an output reported no position " +
+                        "(playing ${playingTap.positionSamples()}, incoming ${incomingTap.positionSamples()} held)",
+                    about = mediaId,
+                )
+                return null
+            }
+            residual = error
+            TrackLog.d("BitChord", "upgrade lock round $round: standby ${"%.2f".format(error)}ms off", about = mediaId)
+            if (abs(error) <= LOCK_TOLERANCE_MS) break
+            if (round == LOCK_ROUNDS - 1) break
+            // Ahead (positive) is held back, behind is skipped forward.
+            incomingTap.requestShift((-error * 1000.0 / speed).roundToLong())
+            val moveDeadline = SystemClock.elapsedRealtime() + LOCK_MOVE_TIMEOUT_MS
+            while (incomingTap.isMoving() && SystemClock.elapsedRealtime() < moveDeadline) {
+                if (moved() || stopped() || yieldNow()) return null
+                delay(20)
+            }
+            if (incomingTap.isMoving()) {
+                TrackLog.w("BitChord", "upgrade not swapped: the standby never finished moving ${"%.0f".format(-error)}ms", about = mediaId)
+                return null
+            }
+            lastMoveAt = SystemClock.elapsedRealtime()
+        }
+        if (abs(residual) > LOCK_ACCEPT_MS) {
+            TrackLog.w(
+                "BitChord",
+                "upgrade not swapped: standby still ${"%.2f".format(residual)}ms off after $LOCK_ROUNDS rounds",
+                about = mediaId,
+            )
+            return null
+        }
+        TrackLog.d(
+            "BitChord",
+            "upgrade locked: shift ${"%.2f".format(offset)}ms, ${"%.2f".format(residual)}ms left, " +
+                "${SystemClock.elapsedRealtime() - began}ms from standby start",
+            about = mediaId,
+        )
+        return AudioLock(offset.roundToLong(), residual.roundToLong())
+    }
+
+    /**
+     * How far the standby's output playhead sits from where [offsetMs] puts
+     * it relative to the playing one (positive = ahead), in milliseconds, from
+     * the positions both sinks reported over the next
+     * [LOCK_READ_WINDOW_MS] — see [PcmTap.playheadAtMs].
+     */
+    private suspend fun sinkErrorMs(playing: PcmTap, incoming: PcmTap, offsetMs: Double, speed: Float): Double? {
+        val since = System.nanoTime()
+        delay(LOCK_READ_WINDOW_MS)
+        // A sink is asked for its position only when its renderer does some
+        // work, which for a silent standby with a full buffer can be a few
+        // times a second; the window stretches until both have said enough.
+        val stretchUntil = SystemClock.elapsedRealtime() + LOCK_READ_MAX_STRETCH_MS
+        while ((playing.positionsSince(since) < LOCK_READ_MIN_SAMPLES || incoming.positionsSince(since) < LOCK_READ_MIN_SAMPLES) &&
+            SystemClock.elapsedRealtime() < stretchUntil
+        ) {
+            delay(100)
+        }
+        val t0 = System.nanoTime()
+        val a = playing.playheadAtMs(t0, since, speed, LOCK_READ_MIN_SAMPLES) ?: return null
+        val b = incoming.playheadAtMs(t0, since, speed, LOCK_READ_MIN_SAMPLES) ?: return null
+        return b - a - offsetMs
+    }
+
+    /**
+     * The handover itself, once the two players are on the same moment: a
+     * short linear crossfade. Linear, not equal-power — the two copies are
+     * the same recording in phase, so their amplitudes add, and gains that sum
+     * to one keep the level flat where equal-power would bulge in the middle.
+     * False when the track moved under it.
+     */
+    private suspend fun crossfadeRenditions(
+        active: ExoPlayer,
+        standby: ExoPlayer,
+        index: Int,
+        mediaId: String,
+    ): Boolean {
+        val fadeStart = SystemClock.elapsedRealtime()
+        while (coroutineContext.isActive) {
+            val progress = ((SystemClock.elapsedRealtime() - fadeStart).toFloat() / SOURCE_SWAP_CROSSFADE_MS)
+                .coerceIn(0f, 1f)
+            if (player !== active ||
+                active.currentMediaItemIndex != index ||
+                active.currentMediaItem?.mediaId != mediaId
+            ) {
+                return false
+            }
+            if (standby.playWhenReady != active.playWhenReady) standby.playWhenReady = active.playWhenReady
+            standby.volume = progress
+            active.volume = 1f - progress
+            if (progress >= 1f) break
+            delay(8)
+        }
+        return true
+    }
+
+    /**
+     * Debug builds only: drives a quality swap between two local copies of
+     * one recording through [swapToAlignedStream], the path a real upgrade
+     * takes, so the handover can be measured end to end on an emulator
+     * without a source that serves a better copy.
+     *
+     *     am broadcast -p <pkg> -a com.music.bitchord.debug.RENDITION_SWAP --es cmd play --es uri file:///… --el at 30000
+     *     am broadcast -p <pkg> -a com.music.bitchord.debug.RENDITION_SWAP --es cmd swap --es uri file:///… [--el guess 1234]
+     *
+     * Each swap's outcome is logged under `RenditionSwapTest`.
+     */
+    private var renditionSwapHarness: android.content.BroadcastReceiver? = null
+
+    private fun registerRenditionSwapHarness() {
+        if (!BuildConfig.DEBUG) return
+        val receiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(context: Context, intent: Intent) {
+                val uri = intent.getStringExtra("uri") ?: return
+                when (intent.getStringExtra("cmd")) {
+                    "play" -> {
+                        val active = player ?: return
+                        val item = MediaItem.Builder()
+                            .setMediaId(RENDITION_SWAP_TEST_ID)
+                            .setUri(uri)
+                            .setMediaMetadata(MediaMetadata.Builder().setTitle("Rendition swap test").build())
+                            .build()
+                        active.setMediaItem(item, intent.getLongExtra("at", 0L))
+                        active.prepare()
+                        active.play()
+                        Log.d("RenditionSwapTest", "playing $uri")
+                    }
+                    "swap" -> scope.launch(Dispatchers.Main) {
+                        val active = player ?: return@launch
+                        val item = active.currentMediaItem ?: return@launch
+                        val playingUri = item.localConfiguration?.uri?.toString() ?: return@launch
+                        val target = item.buildUpon().setUri(uri).build()
+                        val known = intent.hasExtra("guess")
+                        val began = SystemClock.elapsedRealtime()
+                        val swapped = swapToAlignedStream(
+                            SwapPoint(item, playingUri, active.currentPosition, active.duration),
+                            target,
+                            SourceStream(url = uri),
+                            offsetMs = intent.getLongExtra("guess", 0L),
+                            offsetKnown = known,
+                        )
+                        Log.d(
+                            "RenditionSwapTest",
+                            "swap to $uri ${if (swapped) "DONE" else "NOT DONE"} after " +
+                                "${SystemClock.elapsedRealtime() - began}ms; now at ${player?.currentPosition}ms",
+                        )
+                    }
+                }
             }
         }
-        return when (samples.size) {
-            0 -> null
-            1 -> samples[0]
-            else -> (samples[0] + samples[1]) / 2
+        val filter = android.content.IntentFilter(ACTION_DEBUG_RENDITION_SWAP)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            registerReceiver(receiver, filter, Context.RECEIVER_EXPORTED)
+        } else {
+            @Suppress("UnspecifiedRegisterReceiverFlag")
+            registerReceiver(receiver, filter)
         }
+        renditionSwapHarness = receiver
     }
 
     /** What became of a stream that was found, matched and then auditioned. */
@@ -6114,7 +6358,24 @@ class PlaybackService : MediaLibraryService() {
                 .build()
 
             val targetSeekPos = StreamAudioAligner.seekPositionMs(now.position, offsetMs)
-            val swapped = swapToAlignedStream(now, upgradedItem, stream, offsetMs)
+            // The file measurement only caches a confident answer; anything
+            // else came back as 0 and is no guess at all.
+            val offsetKnown = StreamAudioAligner.getCachedOffsetMs(mediaId, stream.url) != null
+            val swapped = swapToAlignedStream(
+                now,
+                upgradedItem,
+                stream,
+                offsetMs,
+                offsetKnown,
+                giveUp = { QualityUpgrade.shelve(mediaId, stream) },
+                onUnalignable = {
+                    // Heard as a skip or an echo if it went ahead; the track
+                    // stays on what it has, and is not offered this copy again
+                    // for a while — see [QualityUpgrade.holdUnaligned].
+                    QualityUpgrade.forget(mediaId)
+                    QualityUpgrade.holdUnaligned(mediaId)
+                },
+            )
             if (!swapped) return@withContext
 
             val upgradedSourceName = stream.sourceConfigId?.let { SourceRegistry.config(it)?.displayName }
@@ -8359,6 +8620,7 @@ class PlaybackService : MediaLibraryService() {
         transition: TransitionFilterProcessor,
         replayGain: ReplayGainAudioProcessor,
         loudness: LoudnessProcessor,
+        tap: PcmTap,
     ) = object : FfmpegFallbackRenderersFactory(this) {
         init {
             // Do not force PCM_FLOAT onto an OEM speaker mixer merely because
@@ -8454,7 +8716,10 @@ class PlaybackService : MediaLibraryService() {
             )
             // In front of everything above: a track the bit-perfect output can
             // carry skips the DSP chain and Media3's sink altogether.
-            return BitPerfectRoutingSink(precision, BitPerfectAudioSink(BitPerfectOutput.forContext(context)))
+            return TappingAudioSink(
+                BitPerfectRoutingSink(precision, BitPerfectAudioSink(BitPerfectOutput.forContext(context))),
+                tap,
+            )
         }
     }
 
@@ -8690,6 +8955,7 @@ class PlaybackService : MediaLibraryService() {
             transitionFilterA,
             replayGainA,
             loudnessA,
+            tapA,
             ownsSession = true,
         )
         val newSpare = buildPlayer(
@@ -8699,6 +8965,7 @@ class PlaybackService : MediaLibraryService() {
             transitionFilterB,
             replayGainB,
             loudnessB,
+            tapB,
             ownsSession = false,
         )
         player = newActive
@@ -9450,6 +9717,8 @@ class PlaybackService : MediaLibraryService() {
 
 
     override fun onDestroy() {
+        renditionSwapHarness?.let { runCatching { unregisterReceiver(it) } }
+        renditionSwapHarness = null
         com.music.bitchord.data.presence.AndroidPresence.setPlaying(false)
         DeviceLink.setServiceRunning(false)
         WearBridge.attachStreams(null)
@@ -11295,33 +11564,68 @@ class PlaybackService : MediaLibraryService() {
          */
         const val UPGRADE_AFTER_CROSSFADE_MS = 5_000L
 
-        /** Longest the swap waits on a pre-computed alignment before landing unaligned. */
-        const val ALIGN_SWAP_WAIT_MS = 500L
+        /**
+         * Longest the swap waits on the file-based measurement before going
+         * ahead without it. It is only a starting guess now — the shift that is
+         * applied is measured on the players' audio (see [lockStandbyOnAudio]) —
+         * so missing it costs a wider search, not a misaligned swap.
+         */
+        const val ALIGN_SWAP_WAIT_MS = 1_500L
 
-        private const val SYNC_MAX_SEEKS = 8
+        /** How far either side of a measured file offset the audio is searched. */
+        private const val LIVE_ALIGN_KNOWN_RADIUS_MS = 600L
 
         /**
-         * Close enough to hand over. A residual this size is inaudible under
-         * the blend; 20 ms and up reads as a small skip on transients, which
-         * is what the extra seeks above are spent to avoid.
+         * ...and either side of zero without one. Two masters of one song can
+         * sit seconds apart; the playing player's tap holds twelve.
          */
-        private const val SYNC_TOLERANCE_MS = 10L
+        private const val LIVE_ALIGN_OPEN_RADIUS_MS = 3_000L
+
+        private const val LIVE_ALIGN_POLL_MS = 200L
+
+        /** The longest the standby plays silently waiting for a match. */
+        private const val LIVE_ALIGN_TIMEOUT_MS = 10_000L
+
+        /** Heard this much of the standby without a convincing match: there is none. */
+        private const val LIVE_ALIGN_GIVE_UP_HEARD_MS = 6_000L
+
+        /** How much further back than the search the standby starts without a guess. */
+        private const val LIVE_ALIGN_BEHIND_MARGIN_MS = 400L
+
+        /** Settle, read, move: at most this many times per quality swap. */
+        private const val LOCK_ROUNDS = 4
+
+        /** A standby this close is handed over as it is... */
+        private const val LOCK_TOLERANCE_MS = 1.5
+
+        /** ...and one further off than this after every round is not handed over at all. */
+        private const val LOCK_ACCEPT_MS = 5.0
+
+        /** How long the standby plays before its playhead is first read: its output starting up. */
+        private const val LOCK_FIRST_READ_MS = 1_200L
+
+        /** Positions each sink must report for one reading, and how long the window may stretch for them. */
+        private const val LOCK_READ_MIN_SAMPLES = 2
+        private const val LOCK_READ_MAX_STRETCH_MS = 4_000L
+
+        /** The longest a move of the standby's content may take (a skip of seconds goes in slices). */
+        private const val LOCK_MOVE_TIMEOUT_MS = 6_000L
+
+        /** Long enough for both sinks to have taken a buffer after a resync request. */
+        private const val LOCK_RESYNC_MS = 150L
+
+        /** How long both outputs' positions are gathered for one reading. */
+        private const val LOCK_READ_WINDOW_MS = 700L
 
         /**
-         * Anything wider than this at the moment of handover is audible as a
-         * skip, so the swap is abandoned instead of blending across it.
+         * After a move, how long until the standby's output is all post-move
+         * audio — what it had queued has played out — and its playhead reads
+         * true again.
          */
-        private const val MAX_HANDOVER_DRIFT_MS = 60L
+        private const val LOCK_MOVE_SETTLE_MS = 800L
 
-        /** Length of the equal-power blend when the aligned deck takes over. */
-        private const val SOURCE_SWAP_CROSSFADE_MS = 300L
-
-        /**
-         * A gap this wide is not a seek the lead can pay back: the standby deck
-         * is not following its seeks at all, and the swap is abandoned rather
-         * than left chasing it.
-         */
-        private const val MAX_SYNC_DRIFT_MS = 2_000L
+        /** Length of the linear blend once the two players are on the same moment. */
+        private const val SOURCE_SWAP_CROSSFADE_MS = 250L
 
         /**
          * How long a replacement gets to report a length before it is
