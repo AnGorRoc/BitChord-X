@@ -4,6 +4,9 @@ import com.music.bitchord.data.model.Song
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -121,6 +124,7 @@ object ListeningStats {
         } else {
             val getFilesDir = context.javaClass.getMethod("getFilesDir")
             val filesDir = getFilesDir.invoke(context) as File
+            PeerListening.init(context)
             init(File(filesDir, DIRECTORY))
         }
     }
@@ -343,19 +347,26 @@ object ListeningStats {
         }?.let { return@withContext it.summary }
 
         val merged = MergedBucket()
+        // This device's month first, then every other device's copy of it —
+        // see [PeerListening]. Each is a separate sum of separate plays, so
+        // adding them is the whole of the merge. Own first so that where two
+        // entries fold into one row (a local file, say), the id that survives
+        // is one this phone can open.
+        fun monthBuckets(month: YearMonth): List<StoredBucket> =
+            listOfNotNull(read(month.toString())) + PeerListening.buckets(month.toString())
         when {
             period.needsDayFilter() -> {
                 // Week may span two months: read both, filter by day.
                 val range = period.range(today)!!
-                months().filter { month ->
+                allMonths().filter { month ->
                     val start = month.atDay(1)
                     val end = month.atEndOfMonth()
                     !(end < range.first || start > range.second)
-                }.forEach { month -> read(month.toString())?.let { bucket -> merged.add(bucket, range) } }
+                }.forEach { month -> monthBuckets(month).forEach { bucket -> merged.add(bucket, range) } }
             }
             else -> {
-                months().filter { period.covers(it, today) }
-                    .forEach { month -> read(month.toString())?.let(merged::add) }
+                allMonths().filter { period.covers(it, today) }
+                    .forEach { month -> monthBuckets(month).forEach(merged::add) }
             }
         }
         merged.toSummary(period, today).also {
@@ -372,6 +383,28 @@ object ListeningStats {
                 ?.let { runCatching { YearMonth.parse(it) }.getOrNull() }
         }.sorted()
     }
+
+    /**
+     * Every month with listening on this device or any other synced to it,
+     * oldest first: what the Replay reads, where [months] is what this device
+     * owns and uploads.
+     */
+    fun allMonths(): List<YearMonth> = (months() + PeerListening.months()).distinct().sorted()
+
+    /**
+     * Another device's months have been downloaded or dropped: the summary
+     * held is no longer the answer. See [PeerListening].
+     */
+    fun peersChanged() {
+        version++
+        cached = null
+        _peerRevision.value++
+    }
+
+    private val _peerRevision = MutableStateFlow(0)
+
+    /** Bumped by [peersChanged], for a page that should redraw when it does. */
+    val peerRevision: StateFlow<Int> = _peerRevision.asStateFlow()
 
     private fun read(key: String): StoredBucket? {
         val file = File(directory, "$key.json")
@@ -544,7 +577,7 @@ object ListeningStats {
 
         fun add(bucket: StoredBucket) {
             bucket.tracks.forEach { entry ->
-                tracks.merge(entry.id, entry.copy()) { a, b -> a.also { it.absorb(b) } }
+                tracks.merge(mergeKey(entry), entry.copy()) { a, b -> a.also { it.absorb(b) } }
             }
             bucket.artists.forEach { entry ->
                 val lead = entry.copy(name = primaryArtist(entry.name) ?: entry.name)
@@ -579,7 +612,7 @@ object ListeningStats {
         fun add(bucket: StoredBucket, range: Pair<LocalDate, LocalDate>) {
             // Merge entity-level data (tracks/artists/albums) so weekRange() can read them.
             bucket.tracks.forEach { entry ->
-                tracks.merge(entry.id, entry.copy()) { a, b -> a.also { it.absorb(b) } }
+                tracks.merge(mergeKey(entry), entry.copy()) { a, b -> a.also { it.absorb(b) } }
             }
             bucket.artists.forEach { entry ->
                 val lead = entry.copy(name = primaryArtist(entry.name) ?: entry.name)
@@ -593,7 +626,7 @@ object ListeningStats {
             addDaySubs(bucket)
             bucket.days.forEach { (day, ms) ->
                 val candidate = "${bucket.month}-%02d".format(day)
-                val date = runCatching { LocalDate.parse(candidate.replace("-", "/")) }.getOrNull()
+                val date = runCatching { LocalDate.parse(candidate) }.getOrNull()
                     ?: return@forEach
                 if (date >= range.first && date <= range.second) {
                     days[candidate] = (days[candidate] ?: 0L) + ms
@@ -722,9 +755,10 @@ object ListeningStats {
                     }
             }
 
-        private fun rankAlbums(weekRange: Pair<LocalDate, LocalDate>?): List<RankedEntry> =
-            if (weekRange != null) {
-                albums.values
+        private fun rankAlbums(weekRange: Pair<LocalDate, LocalDate>?): List<RankedEntry> {
+            val releases = foldAlbumsByTitle(albums.values)
+            return if (weekRange != null) {
+                releases
                     .mapNotNull { entry ->
                         val (ms, plays) = entry.weekRange(weekRange)
                         if (ms > 0) entry to (ms to plays) else null
@@ -736,10 +770,11 @@ object ListeningStats {
                         RankedEntry(entry.name, entry.sub, entry.art, entry.id, ms, plays)
                     }
             } else {
-                albums.values
+                releases
                     .sortedWith(compareByDescending<NameEntry> { it.ms }.thenByDescending { it.plays })
                     .map { RankedEntry(it.name, it.sub, it.art, it.id, it.ms, it.plays) }
             }
+        }
 
         private fun rankGenres(rankedArtists: List<RankedEntry>): List<RankedEntry> {
             // Genres are derived rather than stored — see [ArtistFacts]. An
@@ -799,6 +834,52 @@ object ListeningStats {
     /** @see albumKey(albumId, name, artist) — overload for keyed lookups. */
     private fun albumKey(albumId: String?, name: String, artist: String): String =
         albumId?.let { it } ?: albumKey(name, artist)
+
+    /**
+     * Which row of the song chart [entry] is added into.
+     *
+     * A track's id, except for a file on the device: its id is a `content://`
+     * or `file://` address that only means something on the phone that played
+     * it, so the same song played from two phones' storage would otherwise be
+     * two rows. Those fold by title and artist instead.
+     */
+    fun mergeKey(entry: TrackEntry): String =
+        if (entry.id.startsWith("content://") || entry.id.startsWith("file://")) {
+            "local" + ALBUM_KEY_SEPARATOR + albumKey(entry.title, entry.artist)
+        } else {
+            entry.id
+        }
+
+    /**
+     * [albums] with every entry that would be drawn as the same row folded into one.
+     *
+     * Filing by [albumKey] (id first) keeps one release apart from another, but
+     * it also keeps one album apart from *itself*: a month written before the
+     * track carried an album id files it by name, a later month files it by id,
+     * and YouTube hands out more than one id for the same record. Over a year
+     * those land as two entries with the same title and artist, which splits the
+     * album's minutes across two rows and gives the Replay list two items with
+     * the same key, which Compose answers by crashing.
+     *
+     * Entries with an id go first so the one that survives can still open the
+     * album page; among those, the most played one's picture and id win.
+     * Copies are folded, never the entries passed in.
+     */
+    fun foldAlbumsByTitle(albums: Collection<NameEntry>): List<NameEntry> {
+        val folded = LinkedHashMap<String, NameEntry>()
+        albums
+            .sortedWith(compareByDescending<NameEntry> { it.id != null }.thenByDescending { it.ms })
+            .forEach { entry ->
+                val key = albumKey(entry.name, entry.sub.orEmpty())
+                val existing = folded[key]
+                if (existing == null) {
+                    folded[key] = entry.copy(days = entry.days.mapValuesTo(mutableMapOf()) { it.value.copy() })
+                } else {
+                    existing.absorb(entry)
+                }
+            }
+        return folded.values.toList()
+    }
 
     /** @see albumKey */
     private val ALBUM_KEY_SEPARATOR = Char(UNIT_SEPARATOR).toString()

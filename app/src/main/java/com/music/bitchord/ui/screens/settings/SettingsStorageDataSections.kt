@@ -273,6 +273,7 @@ internal fun SettingsStorageSection(
 internal fun SettingsYourDataSection(
     search: SettingsSearch,
     onOpenReplay: () -> Unit,
+    onDriveBackup: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val replayGenres by AppSettings.replayGenres.collectAsStateWithLifecycle()
@@ -362,6 +363,10 @@ internal fun SettingsYourDataSection(
                 subtitle = importStatus ?: stringResource(R.string.import_data_subtitle),
                 onClick = { confirmImport = true },
             )
+        }
+        val driveBackupTitle = stringResource(R.string.drive_backup_title)
+        row(driveBackupTitle, "backup", "restore", "google", "drive", "cloud") {
+            DriveBackupSettingsRow(title = driveBackupTitle, onClick = onDriveBackup)
         }
     }
 

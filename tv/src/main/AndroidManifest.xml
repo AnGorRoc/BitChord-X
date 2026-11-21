@@ -105,6 +105,10 @@
             <meta-data
                 android:name="com.music.bitchord.data.TvStartup"
                 android:value="androidx.startup" />
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
         </provider>
         <service
             android:name="androidx.appcompat.app.AppLocalesMetadataHolderService"

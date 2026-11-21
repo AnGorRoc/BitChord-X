@@ -40,8 +40,10 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
@@ -513,7 +515,9 @@ internal inline fun SearchableSettingsGroup(
                         hasVisibleBefore && entry.divided -> RowDivider()
                         !hasVisibleBefore && !entry.divided -> Spacer(Modifier.height(10.dp))
                     }
-                    entry.content()
+                    CompositionLocalProvider(LocalSubRowStandalone provides entry.divided) {
+                        entry.content()
+                    }
                 }
             }
         }
@@ -684,6 +688,13 @@ internal fun SettingsRow(
     }
 }
 
+/**
+ * Whether the [SettingsSubRow] being drawn is a row of its own, under a
+ * divider or at the top of its card, rather than hanging off the row above.
+ * Set per row by [SearchableSettingsGroup], which knows which rows are divided.
+ */
+private val LocalSubRowStandalone = staticCompositionLocalOf { false }
+
 @Composable
 internal fun SettingsSubRow(
     title: String,
@@ -703,7 +714,12 @@ internal fun SettingsSubRow(
             .fillMaxWidth()
             .clickable(enabled = enabled) { onCheckedChange(!checked) }
             .alpha(animatedAlpha)
-            .padding(start = ROW_INSET, end = ROW_INSET, top = 0.dp, bottom = 10.dp),
+            .padding(
+                start = ROW_INSET,
+                end = ROW_INSET,
+                top = if (LocalSubRowStandalone.current) 10.dp else 0.dp,
+                bottom = 10.dp,
+            ),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(modifier = Modifier.weight(1f)) {

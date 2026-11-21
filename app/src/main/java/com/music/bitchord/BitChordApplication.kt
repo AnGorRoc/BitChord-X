@@ -43,12 +43,17 @@ import com.music.bitchord.data.tidal.TidalInstances
 import com.music.bitchord.data.stats.ArtistFacts
 import com.music.bitchord.data.stats.ListeningStats
 import com.music.bitchord.download.Downloads
+import androidx.work.Configuration
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlin.concurrent.thread
 
-class BitChordApplication : Application(), SingletonImageLoader.Factory {
+class BitChordApplication : Application(), SingletonImageLoader.Factory, Configuration.Provider {
+
+    /** Asked for on first use rather than at launch; see [com.music.bitchord.data.backup.DriveBackup.init]. */
+    override val workManagerConfiguration: Configuration
+        get() = Configuration.Builder().build()
 
     @OptIn(UnstableApi::class)
     @kotlin.OptIn(ExperimentalComposeUiApi::class)
@@ -177,6 +182,9 @@ class BitChordApplication : Application(), SingletonImageLoader.Factory {
         // What's already saved to Downloads, so the song menu can say so
         // without a media-store query per row.
         Downloads.init(this)
+        // Before anything could run a scheduled backup: its worker reads the
+        // account and the schedule this loads.
+        com.music.bitchord.data.backup.DriveBackup.init(this)
         // The device's own listening record. Opened here rather than in
         // PlaybackService because the Replay page reads it from the UI side and
         // both live in this process — one owner, one directory.

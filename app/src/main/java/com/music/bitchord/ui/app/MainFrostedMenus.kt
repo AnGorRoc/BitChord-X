@@ -66,6 +66,7 @@ internal fun LibrarySort.localizedLabel(): String = when (this) {
 internal fun FrostedSortMenu(
     hazeState: HazeState,
     selected: SongSort,
+    offerTrackNumber: Boolean,
     onSelect: (SongSort) -> Unit,
     onFlipDateDirection: () -> Unit,
     onDismiss: () -> Unit,
@@ -107,6 +108,7 @@ internal fun FrostedSortMenu(
         }
         SongSort.entries
             .filter { it != SongSort.DATE_ADDED_ASC && it != SongSort.DATE_ADDED_DESC }
+            .filter { offerTrackNumber || it != SongSort.TRACK_NUMBER }
             .forEach { option ->
                 FrostedMenuRow(
                     label = option.localizedLabel(),
@@ -237,6 +239,7 @@ internal fun FrostedMenuRow(
 @Composable
 internal fun SongSort.localizedLabel(): String = when (this) {
     SongSort.DEFAULT -> stringResource(R.string.sort_default)
+    SongSort.TRACK_NUMBER -> stringResource(R.string.sort_track_number)
     SongSort.TITLE_ASC -> stringResource(R.string.sort_title_ascending)
     SongSort.TITLE_DESC -> stringResource(R.string.sort_title_descending)
     SongSort.DATE_ADDED_ASC -> stringResource(R.string.sort_date_added_oldest)

@@ -196,6 +196,23 @@ class AuthStore(context: Context) {
         BrowserSession.clearGoogleCookies()
     }
 
+    /**
+     * A credential owned by [com.music.bitchord.data.settings.AppSettings] —
+     * scrobbler keys, the Spotify cookie — stored here with the other encrypted
+     * credentials, rather than in the settings file — that file goes into
+     * Android's Auto Backup, and this one never does. Prefixed so a settings
+     * key can never collide with one of this store's own.
+     */
+    fun settingSecret(key: String): String? = prefs.getString(SETTING_PREFIX + key, null)
+
+    fun setSettingSecret(key: String, value: String?) {
+        prefs.edit().apply {
+            if (value.isNullOrEmpty()) remove(SETTING_PREFIX + key) else putString(SETTING_PREFIX + key, value)
+        }.apply()
+    }
+
+    fun hasSettingSecret(key: String): Boolean = prefs.contains(SETTING_PREFIX + key)
+
     companion object {
         /**
          * Whether a cookie header carries a secret Innertube requests can be
@@ -230,5 +247,6 @@ class AuthStore(context: Context) {
         private const val KEY_DISCORD_TOKEN = "discord_token"
         private const val KEY_WEBDAV_PASSWORD = "webdav_password"
         private const val KEY_SMB_PASSWORD = "smb_password"
+        private const val SETTING_PREFIX = "setting."
     }
 }

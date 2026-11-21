@@ -59,6 +59,14 @@
     <uses-permission
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="28" />
+    <!--
+      Never requested: the manifest merger adds it on behalf of any library whose
+      manifest declares no minSdk (it reads that as targetSdk < 4). The watch
+      installer's ADB library is one; nothing in the app reads phone state.
+    -->
+    <uses-permission
+        android:name="android.permission.READ_PHONE_STATE"
+        tools:node="remove" />
 
     <!-- Camera permission for in-app QR code scanning (e.g. Listen Together & Spotify Jam). -->
     <uses-permission android:name="android.permission.CAMERA" />
@@ -808,6 +816,21 @@
         <receiver
             android:name=".widget.MediaWidgetActions"
             android:exported="false" />
+
+        <!--
+          WorkManager comes up on first use instead of at every launch, since the
+          one thing using it is a setting that is off by default.
+        -->
+        <provider
+            android:name="androidx.startup.InitializationProvider"
+            android:authorities="${applicationId}.androidx-startup"
+            android:exported="false"
+            tools:node="merge">
+            <meta-data
+                android:name="androidx.work.WorkManagerInitializer"
+                android:value="androidx.startup"
+                tools:node="remove" />
+        </provider>
 
         <!--
           Hands the Replay poster to whichever app the user picks to send it

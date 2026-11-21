@@ -56,6 +56,8 @@ fun SettingsScreen(
     onAccountScrobbling: () -> Unit,
     onEqualizer: () -> Unit,
     onOpenReplay: () -> Unit,
+    /** Opens [DriveBackupScreen], under Backup and Restore. */
+    onDriveBackup: () -> Unit = {},
     onLyricsSources: () -> Unit,
     onTranslationLanguage: () -> Unit,
     onSources: () -> Unit,
@@ -224,7 +226,11 @@ fun SettingsScreen(
         }
 
         if (shows(SettingsCategory.PRIVACY_DATA)) {
-            SettingsYourDataSection(search = search, onOpenReplay = onOpenReplay)
+            SettingsYourDataSection(
+                search = search,
+                onOpenReplay = onOpenReplay,
+                onDriveBackup = onDriveBackup,
+            )
         }
         if (shows(SettingsCategory.LANGUAGE)) {
             SettingsLanguageSection(search = search, onAppLanguage = onAppLanguage)

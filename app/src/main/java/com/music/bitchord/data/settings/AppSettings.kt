@@ -245,6 +245,13 @@ object AppSettings {
      */
     val autoDownloadPlaylists = MutableStateFlow(false)
 
+    /**
+     * Keep every liked song downloaded: the account's Liked Music is fetched
+     * whole once, then each new like follows it. Off by default for the same
+     * reason as [autoDownloadPlaylists].
+     */
+    val downloadLikedSongs = MutableStateFlow(false)
+
     /** Whether the active network charges for data. `null` while offline. */
     val meteredConnection = MutableStateFlow<Boolean?>(null)
 
@@ -1134,6 +1141,7 @@ object AppSettings {
     fun init(context: Context, authStore: AuthStore) {
         prefs = context.getSharedPreferences("bitchord_settings", Context.MODE_PRIVATE)
         this.authStore = authStore
+        moveSecretsOutOfSettings()
         com.music.bitchord.data.spotify.LocalPlaylistStore.init(context)
         com.music.bitchord.data.spotify.SpotifyCache.init(context)
         com.music.bitchord.data.FeedCache.init(context)
@@ -1161,8 +1169,35 @@ object AppSettings {
      */
     fun reload() {
         if (!this::prefs.isInitialized) return
+        moveSecretsOutOfSettings()
         readAll()
     }
+
+    /**
+     * Credentials ([SECRETS]) live in [authStore]'s encrypted file, not this
+     * one: this file is in Android's Auto Backup, so a scrobbler session key or
+     * the Spotify cookie kept here was copied to the cloud in plain text and
+     * came back on any phone restored from it.
+     *
+     * Older versions kept them here, so they are moved once — and also after an
+     * Auto Backup restore from such a version, which writes them back. A value
+     * already in the encrypted store wins: it is the one written since.
+     */
+    private fun moveSecretsOutOfSettings() {
+        val stale = SECRETS.filter { prefs.contains(it) }
+        if (stale.isEmpty()) return
+        stale.forEach { key ->
+            val value = prefs.getString(key, null)
+            if (!value.isNullOrEmpty() && !authStore.hasSettingSecret(key)) {
+                authStore.setSettingSecret(key, value)
+            }
+        }
+        prefs.edit().apply { stale.forEach { remove(it) } }.apply()
+    }
+
+    private fun secret(key: String): String = authStore.settingSecret(key).orEmpty()
+
+    private fun putSecret(key: String, value: String) = authStore.setSettingSecret(key, value)
 
     private fun readAll() {
         migrateSingleQuality()
@@ -1178,6 +1213,7 @@ object AppSettings {
         wifiOnlyDownloads.value = prefs.getBoolean(KEY_WIFI_ONLY_DOWNLOADS, true)
         exportDownloads.value = prefs.getBoolean(KEY_EXPORT_DOWNLOADS, false)
         autoDownloadPlaylists.value = prefs.getBoolean(KEY_AUTO_DOWNLOAD_PLAYLISTS, false)
+        downloadLikedSongs.value = prefs.getBoolean(KEY_DOWNLOAD_LIKED_SONGS, false)
         crossfadeSeconds.value = prefs.getInt(KEY_CROSSFADE, 0)
         smartFadeEnabled.value = prefs.getBoolean(KEY_SMART_FADE, false)
         automixPerformanceMode.value = runCatching {
@@ -1306,7 +1342,7 @@ object AppSettings {
         lyricsSources.value = readLyricsSources()
         lyricsSourceOrder.value = readLyricsSourceOrder()
         prioritizeSyllableSync.value = prefs.getBoolean(KEY_PRIORITIZE_SYLLABLE_SYNC, false)
-        paxSenixApiKey.value = prefs.getString(KEY_PAXSENIX_API_KEY, "").orEmpty()
+        paxSenixApiKey.value = secret(KEY_PAXSENIX_API_KEY)
         com.music.bitchord.data.lyrics.PaxSenix.setApiKey(paxSenixApiKey.value)
         audioCacheLimitBytes.value = clampCacheLimit(prefs.getLong(KEY_CACHE_LIMIT, DEFAULT_CACHE_LIMIT_BYTES))
         losslessCacheLevel.value = runCatching {
@@ -1321,9 +1357,9 @@ object AppSettings {
         showCacheFolder.value = prefs.getBoolean(KEY_SHOW_CACHE_FOLDER, false)
         lastfmEnabled.value = prefs.getBoolean(KEY_LASTFM_ENABLED, false)
         lastfmUsername.value = prefs.getString(KEY_LASTFM_USERNAME, "").orEmpty()
-        lastfmSessionKey.value = prefs.getString(KEY_LASTFM_SESSION_KEY, "").orEmpty()
-        lastfmApiKey.value = prefs.getString(KEY_LASTFM_API_KEY, "").orEmpty().ifBlank { BuildConfig.LASTFM_API_KEY }
-        lastfmSecret.value = prefs.getString(KEY_LASTFM_SECRET, "").orEmpty().ifBlank { BuildConfig.LASTFM_SECRET }
+        lastfmSessionKey.value = secret(KEY_LASTFM_SESSION_KEY)
+        lastfmApiKey.value = secret(KEY_LASTFM_API_KEY).ifBlank { BuildConfig.LASTFM_API_KEY }
+        lastfmSecret.value = secret(KEY_LASTFM_SECRET).ifBlank { BuildConfig.LASTFM_SECRET }
         lastfmEndpoint.value = prefs.getString(KEY_LASTFM_ENDPOINT, "").orEmpty()
         lastfmScrobbleEnabled.value = prefs.getBoolean(KEY_LASTFM_SCROBBLE_ENABLED, false)
         lastfmNowPlaying.value = prefs.getBoolean(KEY_LASTFM_NOW_PLAYING, false) && lastfmScrobbleEnabled.value
@@ -1332,9 +1368,9 @@ object AppSettings {
         scrobbleDelayPercent.value = prefs.getFloat(KEY_SCROBBLE_DELAY_PERCENT, 0.5f)
         scrobbleDelaySeconds.value = prefs.getInt(KEY_SCROBBLE_DELAY_SECONDS, 180)
         listenBrainzEnabled.value = prefs.getBoolean(KEY_LISTENBRAINZ_ENABLED, false)
-        listenBrainzToken.value = prefs.getString(KEY_LISTENBRAINZ_TOKEN, "").orEmpty()
+        listenBrainzToken.value = secret(KEY_LISTENBRAINZ_TOKEN)
         listenBrainzPrimaryArtistOnly.value = prefs.getBoolean(KEY_LISTENBRAINZ_PRIMARY_ARTIST_ONLY, false)
-        spotifySpdcToken.value = prefs.getString(KEY_SPOTIFY_SPDC_TOKEN, "").orEmpty()
+        spotifySpdcToken.value = secret(KEY_SPOTIFY_SPDC_TOKEN)
         spotifyAutoSync.value = prefs.getBoolean(KEY_SPOTIFY_AUTO_SYNC, false)
         replayGenres.value = prefs.getBoolean(KEY_REPLAY_GENRES, true)
         filterNonMusicAudio.value = prefs.getBoolean(KEY_FILTER_NON_MUSIC_AUDIO, true)
@@ -2113,7 +2149,7 @@ object AppSettings {
     fun setPaxSenixApiKey(value: String) {
         val normalized = com.music.bitchord.data.lyrics.normalizePaxSenixApiKey(value)
         paxSenixApiKey.value = normalized
-        prefs.edit().putString(KEY_PAXSENIX_API_KEY, normalized).apply()
+        putSecret(KEY_PAXSENIX_API_KEY, normalized)
         com.music.bitchord.data.lyrics.PaxSenix.setApiKey(normalized)
     }
 
@@ -2253,12 +2289,12 @@ object AppSettings {
 
     fun setLastfmSessionKey(value: String) {
         lastfmSessionKey.value = value
-        prefs.edit().putString(KEY_LASTFM_SESSION_KEY, value).apply()
+        putSecret(KEY_LASTFM_SESSION_KEY, value)
     }
 
     fun setSpotifySpdcToken(value: String) {
         spotifySpdcToken.value = value
-        prefs.edit().putString(KEY_SPOTIFY_SPDC_TOKEN, value).apply()
+        putSecret(KEY_SPOTIFY_SPDC_TOKEN, value)
         SpotifyToken.invalidate()
     }
 
@@ -2322,6 +2358,11 @@ object AppSettings {
         prefs.edit().putBoolean(KEY_AUTO_DOWNLOAD_PLAYLISTS, value).apply()
     }
 
+    fun setDownloadLikedSongs(value: Boolean) {
+        downloadLikedSongs.value = value
+        prefs.edit().putBoolean(KEY_DOWNLOAD_LIKED_SONGS, value).apply()
+    }
+
     fun setExportDownloads(value: Boolean) {
         exportDownloads.value = value
         prefs.edit().putBoolean(KEY_EXPORT_DOWNLOADS, value).apply()
@@ -2354,7 +2395,7 @@ object AppSettings {
 
     fun setListenBrainzToken(value: String) {
         listenBrainzToken.value = value
-        prefs.edit().putString(KEY_LISTENBRAINZ_TOKEN, value).apply()
+        putSecret(KEY_LISTENBRAINZ_TOKEN, value)
     }
 
     fun setListenBrainzPrimaryArtistOnly(value: Boolean) {
@@ -2768,6 +2809,7 @@ object AppSettings {
     private const val KEY_WIFI_ONLY_DOWNLOADS = "wifi_only_downloads"
     private const val KEY_EXPORT_DOWNLOADS = "export_downloads"
     private const val KEY_AUTO_DOWNLOAD_PLAYLISTS = "auto_download_playlists"
+    private const val KEY_DOWNLOAD_LIKED_SONGS = "download_liked_songs"
     private const val KEY_CROSSFADE = "crossfade_seconds"
     private const val KEY_SMART_FADE = "smart_fade_enabled"
     private const val KEY_AUTOMIX_PERFORMANCE_MODE = "automix_performance_mode"

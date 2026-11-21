@@ -316,6 +316,8 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.8.7")
     // ProcessLifecycleOwner: whether the app is on screen, for the open-app count.
     implementation("androidx.lifecycle:lifecycle-process:2.8.7")
+    // Scheduled background sync for Google Drive backup; see DriveBackup.
+    implementation("androidx.work:work-runtime-ktx:2.10.1")
     implementation("androidx.core:core-ktx:1.15.0")
     implementation("androidx.appcompat:appcompat:1.7.0")
     debugImplementation("androidx.compose.ui:ui-tooling")
@@ -443,6 +445,11 @@ dependencies {
     // turn into a real stream — see [com.music.bitchord.playback.cast.CastPlayback].
     implementation("com.google.android.gms:play-services-cast-framework:22.2.0")
     implementation("androidx.mediarouter:mediarouter:1.8.1")
+
+    // ---- Google Drive backup ----
+    // The TV compiles the phone's sources, which include
+    // com.music.bitchord.data.backup.DriveAuth; same dependency as the phone.
+    implementation("com.google.android.gms:play-services-auth:21.3.0")
 
     testImplementation("junit:junit:4.13.2")
     // A real HTTP server for the addon tests. The addon protocol is entirely

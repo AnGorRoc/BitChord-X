@@ -268,6 +268,7 @@ internal fun SettingsDownloadsSection(
     val wifiOnlyDownloads by AppSettings.wifiOnlyDownloads.collectAsStateWithLifecycle()
     val metered by AppSettings.meteredConnection.collectAsStateWithLifecycle()
     val autoDownloadPlaylists by AppSettings.autoDownloadPlaylists.collectAsStateWithLifecycle()
+    val downloadLikedSongs by AppSettings.downloadLikedSongs.collectAsStateWithLifecycle()
     val exportDownloads by AppSettings.exportDownloads.collectAsStateWithLifecycle()
 
     SearchableSettingsGroup(search, header = stringResource(R.string.downloads)) {
@@ -296,6 +297,15 @@ internal fun SettingsDownloadsSection(
                 title = autoDownloadTitle,
                 checked = autoDownloadPlaylists,
                 onCheckedChange = AppSettings::setAutoDownloadPlaylists,
+            )
+        }
+        val downloadLikedTitle = stringResource(R.string.download_liked_songs)
+        row(downloadLikedTitle, "liked", "favorites", "offline", "automatic") {
+            SettingsSubRow(
+                title = downloadLikedTitle,
+                checked = downloadLikedSongs,
+                onCheckedChange = AppSettings::setDownloadLikedSongs,
+                subtitle = stringResource(R.string.download_liked_songs_subtitle),
             )
         }
         val exportDownloadsTitle = stringResource(R.string.export_compatible_downloads)

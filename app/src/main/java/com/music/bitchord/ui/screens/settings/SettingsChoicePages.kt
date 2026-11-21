@@ -193,10 +193,12 @@ internal fun <T> ChoiceGroup(
     footer: String?,
     detail: (@Composable (T) -> String)? = null,
     enabled: (T) -> Boolean = { true },
+    /** Set where the card is one of several on its page rather than the whole of it. */
+    header: String? = null,
     onSelect: (T) -> Unit,
 ) {
     val haptics = LocalHapticFeedback.current
-    SettingsGroup(footer = footer, topSpacing = 0.dp) {
+    SettingsGroup(header = header, footer = footer, topSpacing = 0.dp) {
         options.forEachIndexed { index, option ->
             if (index > 0) {
                 HorizontalDivider(

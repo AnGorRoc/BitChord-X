@@ -199,6 +199,10 @@ import com.music.bitchord.ui.screens.EqualizerPresetPage
 import com.music.bitchord.ui.screens.SettingsChoicePage
 import com.music.bitchord.ui.components.SpotifyImportAlert
 import com.music.bitchord.ui.screens.WearOsScreen
+import com.music.bitchord.ui.screens.DriveBackupScreen
+import com.music.bitchord.ui.screens.DriveDevicesScreen
+import com.music.bitchord.ui.screens.DriveBackupAlerts
+import com.music.bitchord.ui.screens.DriveBackupAlertsHost
 import com.music.bitchord.ui.screens.AccountAndScrobblingScreen
 import com.music.bitchord.ui.screens.DiscordDialog
 import com.music.bitchord.ui.screens.DiscordDialogHost
@@ -788,6 +792,8 @@ private fun BitChordApp(
     var confirmOptIn by remember { mutableStateOf<SourceKind?>(null) }
     var confirmBitPerfect by remember { mutableStateOf<BitPerfectMode?>(null) }
     var confirmFixedVolume by remember { mutableStateOf(false) }
+    // Google Drive backup's questions, asked in the frosted alert like the rest.
+    val driveAlerts = remember { DriveBackupAlerts() }
     /** An addon search row tapped while the quality setting skips its addon; see [AddonBlockedAlert]. */
     var blockedAddonSong by remember { mutableStateOf<com.music.bitchord.data.model.Song?>(null) }
     /** An addon a download just went ahead without, and why; see [SourceRegistry.addonsLeftOutOfDownloads]. */
@@ -994,6 +1000,7 @@ private fun BitChordApp(
     var updateDialogShown by rememberSaveable { mutableStateOf(false) }
     var showUpdateDialog by remember { mutableStateOf(false) }
     val updateAvailable by viewModel.updateAvailable.collectAsStateWithLifecycle()
+    val updateDownloadState by AppUpdateChecker.download.collectAsStateWithLifecycle()
 
     /**
      * The single gate both surfaces read, so the icon can't announce the update
@@ -1002,8 +1009,24 @@ private fun BitChordApp(
      */
     val updateNotice = updateAvailable
 
-    LaunchedEffect(updateNotice) {
-        if (updateNotice != null && !updateDialogShown) {
+    LaunchedEffect(updateNotice, updateDownloadState, onboardingComplete) {
+        val notice = updateNotice ?: return@LaunchedEffect
+        if (!onboardingComplete || updateDialogShown) return@LaunchedEffect
+
+        // When the APK has finished downloading in background, directly show the dialog
+        // so the user can immediately tap "Install Now".
+        if (updateDownloadState is AppUpdateChecker.DownloadState.Ready) {
+            updateDialogShown = true
+            showUpdateDialog = true
+            return@LaunchedEffect
+        }
+
+        val hasDecentWifi = AppUpdateChecker.isDecentWifi(context)
+        val canAutoDownload = hasDecentWifi && notice.apkUrl != null
+
+        // If not on decent Wi-Fi, present the normal prompt right away so the user can
+        // decide whether to download over their current connection.
+        if (!canAutoDownload) {
             updateDialogShown = true
             showUpdateDialog = true
         }
@@ -2778,7 +2801,8 @@ private fun BitChordApp(
     // See [rememberReplayState].
     val replayOpen = route == AppRoute.Replay || replayStory != null || showReplayShare ||
         (selectedTab == TAB_LIBRARY && detail == null && route == null)
-    val (replay, setReplayPeriod) = rememberReplayState(replayOpen)
+    val replayPageOpen = replayEntryId != null || replayStory != null || showReplayShare
+    val (replay, setReplayPeriod) = rememberReplayState(replayOpen, replayPageOpen)
     val replayCards = remember(replay.summary) {
         replay.summary?.takeUnless { it.isEmpty }?.cards(context).orEmpty()
     }
@@ -3550,6 +3574,20 @@ private fun BitChordApp(
                             )
                         } else if (pageRoute == AppRoute.WearOs) {
                             WearOsScreen(contentPadding = listPadding)
+                        } else if (pageRoute == AppRoute.DriveBackup) {
+                            DriveBackupScreen(
+                                contentPadding = listPadding,
+                                onOpenDevices = { navigator.push(AppRoute.DriveDevices) },
+                                onConfirmDisconnect = { driveAlerts.disconnect = true },
+                                onConfirmRemove = { driveAlerts.remove = it },
+                                onRename = { driveAlerts.renaming = it },
+                            )
+                        } else if (pageRoute == AppRoute.DriveDevices) {
+                            DriveDevicesScreen(
+                                contentPadding = listPadding,
+                                onConfirmRestore = { driveAlerts.restore = it },
+                                onDone = { navigator.pop() },
+                            )
                         } else if (pageRoute == AppRoute.ListenTogether) {
                             ListenTogetherScreen(
                                 signedIn = signedIn,
@@ -3617,6 +3655,7 @@ private fun BitChordApp(
                                     replayLandingPage = ReplayStoryPage.INTRO
                                     navigator.push(AppRoute.Replay)
                                 },
+                                onDriveBackup = { navigator.push(AppRoute.DriveBackup) },
                                 onLyricsSources = { showLyricsSources = true },
                                 onTranslationLanguage = { showTranslationLanguage = true },
                                 onSources = { navigator.push(AppRoute.Sources) },
@@ -4675,6 +4714,8 @@ private fun BitChordApp(
                             AppRoute.Sources -> stringResource(R.string.sources)
                             AppRoute.ListenTogether -> stringResource(R.string.listen_together)
                             AppRoute.WearOs -> stringResource(R.string.wear_os_page_title)
+                            AppRoute.DriveBackup -> stringResource(R.string.drive_backup_title)
+                            AppRoute.DriveDevices -> stringResource(R.string.drive_devices_title)
                             AppRoute.Equalizer -> stringResource(R.string.equalizer)
                             AppRoute.Settings -> stringResource(R.string.settings)
                             is AppRoute.SettingsSection -> stringResource(route.category.title)
@@ -6137,6 +6178,11 @@ private fun BitChordApp(
             FrostedSortMenu(
                 hazeState = hazeState,
                 selected = songSort,
+                // Only a page whose files carry track tags — a local album —
+                // has anything to sort by track number.
+                offerTrackNumber = (detail?.songs as? UiState.Success)?.data
+                    .orEmpty()
+                    .any { it.trackNumber != null },
                 onSelect = { option ->
                     detail?.browseId?.let { AppSettings.setDetailSongSort(it, option) }
                     songSortMenuOpen = false
@@ -6543,6 +6589,14 @@ private fun BitChordApp(
                 onDismiss = { confirmFixedVolume = false },
             )
         }
+
+        // Google Drive backup's questions; see DriveBackupAlertsHost.
+        DriveBackupAlertsHost(
+            alerts = driveAlerts,
+            hazeState = hazeState,
+            // Back to the backup page, where the bar shows the restore running.
+            onRestoreStarted = { if (navigator.visibleRoute() == AppRoute.DriveDevices) navigator.pop() },
+        )
 
         // Over the page and its frosted bars, under nothing but the alerts.
         DacVolumeHud(hazeState)

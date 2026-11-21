@@ -156,6 +156,66 @@ object Downloads {
         _collections.value = runCatching {
             json.decodeFromString(collectionSerializer, prefs.getString(KEY_SAVED_COLLECTIONS, null) ?: "{}")
         }.getOrDefault(emptyMap())
+        observeLikedDownloads(context.applicationContext)
+    }
+
+    private fun observeLikedDownloads(app: Context) {
+        val scope = kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.SupervisorJob() + Dispatchers.IO)
+        scope.launch {
+            var was: Boolean? = null
+            AppSettings.downloadLikedSongs.collect { enabled ->
+                val turnedOn = was == false && enabled
+                val missingRecord = was == null && enabled &&
+                    com.music.bitchord.data.YtMusicRepository.LIKED_MUSIC !in _collections.value
+                was = enabled
+                if (turnedOn || missingRecord) {
+                    syncLikedSongs(app, newestOnly = false)
+                }
+            }
+        }
+        scope.launch {
+            var before = com.music.bitchord.data.LikeState.overrides.value
+            com.music.bitchord.data.LikeState.overrides.collect { now ->
+                val newlyLiked = now.any { (id, status) ->
+                    status == com.music.bitchord.data.model.LikeStatus.LIKE &&
+                        before[id] != com.music.bitchord.data.model.LikeStatus.LIKE
+                }
+                before = now
+                if (newlyLiked && AppSettings.downloadLikedSongs.value) {
+                    kotlinx.coroutines.delay(5_000L)
+                    if (AppSettings.downloadLikedSongs.value) {
+                        syncLikedSongs(app, newestOnly = true)
+                    }
+                }
+            }
+        }
+    }
+
+    private suspend fun syncLikedSongs(context: Context, newestOnly: Boolean) {
+        if (!AppSettings.downloadsAllowedNow) return
+        val id = com.music.bitchord.data.YtMusicRepository.LIKED_MUSIC
+        val existing = _collections.value[id]
+        val page = com.music.bitchord.data.YtMusicRepository.browseSongs(id).getOrNull() ?: return
+        val songs = if (newestOnly && existing != null) {
+            page.songs.distinctBy { it.videoId }
+        } else {
+            com.music.bitchord.data.YtMusicRepository.allSongs(id).getOrNull()?.distinctBy { it.videoId }
+                ?: page.songs.distinctBy { it.videoId }
+        }
+        if (songs.isEmpty()) return
+        val title = existing?.title ?: context.getString(com.music.bitchord.R.string.auto_liked)
+        rememberCollection(
+            DownloadTarget(
+                id = id,
+                title = title,
+                thumbnailUrl = existing?.thumbnailUrl ?: page.header?.thumbnailUrl,
+                playlist = true,
+            ),
+            songs,
+        )
+        songs.filter { it.videoId !in _saved.value }.forEach { song ->
+            enqueue(context, song, title)
+        }
     }
 
     // ---- Asking -------------------------------------------------------------
@@ -461,6 +521,10 @@ object Downloads {
      * would take it out of that release as well.
      */
     suspend fun deleteCollection(context: Context, id: String): Boolean {
+        // Deleting the liked songs while they are kept downloaded would have
+        // the next check fetch every one of them again. Taking them off the
+        // device says the listener no longer wants that, so it ends here.
+        if (id == com.music.bitchord.data.YtMusicRepository.LIKED_MUSIC) AppSettings.setDownloadLikedSongs(false)
         var any = false
         tracksOnlyIn(id, _collections.value, _saved.value)
             .forEach { videoId -> if (delete(context, videoId)) any = true }
