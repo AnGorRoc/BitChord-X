@@ -77,11 +77,13 @@ class AndroidPlayerHost(context: Context) : PlayerHost {
         override val meteredConnection get() = AppSettings.meteredConnection
         override val streamCeilingOverride get() = AppSettings.streamCeilingOverride
         override val preferUsbDac get() = AppSettings.preferUsbDac
-        override val prioritizeSpotifyCanvas get() = AppSettings.prioritizeSpotifyCanvas
+        override val disableSpotifyCanvas get() = AppSettings.disableSpotifyCanvas
+        override val prioritizeSpotifyCanvas get() = AppSettings.effectivePrioritizeSpotifyCanvas
         override val reduceAnimation get() = AppSettings.reduceAnimation
         override val reduceDynamicBlur get() = AppSettings.reduceDynamicBlur
         override val disableBlendEffects get() = AppSettings.disableBlendEffects
         override val showNerdStats get() = AppSettings.showNerdStats
+        override val showBestPart get() = AppSettings.showBestPart
         override val showListenTogetherButton get() = AppSettings.showListenTogetherButton
         override val smartAnalysis get() = AppSettings.smartAnalysis
         override val automixDetail get() = AppSettings.automixDetail
@@ -92,7 +94,7 @@ class AndroidPlayerHost(context: Context) : PlayerHost {
         override val smartMixProgress get() = AppSettings.smartMixProgress
         override val smartMixPreview get() = AppSettings.smartMixPreview
         override val smartTransitionWindow get() = AppSettings.smartTransitionWindow
-        override val spotifyCanvasAutoHide get() = AppSettings.spotifyCanvasAutoHide
+        override val spotifyCanvasAutoHide get() = AppSettings.effectiveSpotifyCanvasAutoHide
         override val syncedLyrics get() = AppSettings.syncedLyrics
         override val lyricAboveScrubber get() = AppSettings.lyricAboveScrubber
         override val translationLanguage get() = AppSettings.translationLanguage
@@ -108,6 +110,11 @@ class AndroidPlayerHost(context: Context) : PlayerHost {
     override fun cachedCanvas(song: Song): CanvasArtwork? = CanvasRepository.cached(song)
 
     override suspend fun canvasFor(song: Song): CanvasArtwork? = CanvasRepository.canvasFor(song)
+
+    override suspend fun bestPartMs(song: Song): Long? =
+        com.music.bitchord.ui.replay.year.BestParts.startFor(app, song)
+            .takeIf { it.source != com.music.bitchord.ui.replay.year.BestPartStart.Source.FALLBACK }
+            ?.startMs
 
     @Composable
     override fun CanvasVideo(spec: CanvasVideoSpec, modifier: Modifier) = AndroidCanvasVideo(spec, modifier)

@@ -121,6 +121,7 @@ internal fun SettingsLanguageSection(
 internal fun SettingsAdvancedSection(search: SettingsSearch) {
     val smartVersionAlignment by AppSettings.smartVersionAlignment.collectAsStateWithLifecycle()
     val smartSourceAlignment by AppSettings.smartSourceAlignment.collectAsStateWithLifecycle()
+    val bestPart by AppSettings.showBestPart.collectAsStateWithLifecycle()
     val nerdStats by AppSettings.showNerdStats.collectAsStateWithLifecycle()
 
     SearchableSettingsGroup(search, header = stringResource(R.string.advanced_options)) {
@@ -147,6 +148,21 @@ internal fun SettingsAdvancedSection(search: SettingsSearch) {
                 checked = smartVersionAlignment && smartSourceAlignment,
                 onCheckedChange = AppSettings::setSmartSourceAlignment,
                 enabled = smartVersionAlignment,
+            )
+        }
+        val bestPartTitle = stringResource(R.string.show_best_part)
+        row(bestPartTitle, "best part", "chorus", "skip", "replayed", "highlight") {
+            SettingsRow(
+                icon = SfIcons.MusicNote,
+                title = bestPartTitle,
+                subtitle = stringResource(R.string.show_best_part_subtitle),
+                trailing = {
+                    IosSwitch(
+                        checked = bestPart,
+                        onCheckedChange = AppSettings::setShowBestPart,
+                    )
+                },
+                onClick = { AppSettings.setShowBestPart(!bestPart) },
             )
         }
         val showNerdStatsTitle = stringResource(R.string.show_nerd_stats)

@@ -204,6 +204,8 @@ fun HomeScreen(
     /** Whether the Top Picks and mood artwork may animate — see [LocalArtworkMotion]. */
     artworkMotion: Boolean = true,
     onOpenDownloads: (() -> Unit)? = null,
+    /** The Replay year story's button beside the wordmark, or null for none. See [ReplayYearButton]. */
+    replayYear: ReplayYearBadge? = null,
 ) {
     val isOffline = AppUi.host.isOffline()
     // The billboard keeps the card it opened with while the feed still holds
@@ -269,7 +271,7 @@ fun HomeScreen(
             },
         ) {
             if (title != null) {
-                item { HomeTitle(title) }
+                item { HomeTitle(title, replayYear) }
             }
             if (!signedIn && onSignIn != null) {
                 item {
@@ -657,7 +659,11 @@ fun CompactTrackRow(
             )
         }
         if (onLongPress != null) {
-            RowMoreButton(onClick = onLongPress)
+            RowMoreButton(
+                onClick = onLongPress,
+                hangOutset = 0.dp,
+                modifier = Modifier.padding(end = 5.dp),
+            )
         }
     }
 }
@@ -671,19 +677,34 @@ fun CompactTrackRow(
  * system font scale.
  */
 @Composable
-private fun HomeTitle(title: String, modifier: Modifier = Modifier) {
+private fun HomeTitle(
+    title: String,
+    replayYear: ReplayYearBadge? = null,
+    modifier: Modifier = Modifier,
+) {
     val style = MaterialTheme.typography.displayLarge
     val logoHeight = with(LocalDensity.current) { (style.fontSize * LOGO_TO_FONT).toDp() }
     Column(modifier = modifier.padding(horizontal = PAGE_GUTTER, vertical = 8.dp)) {
-        Icon(
-            painter = painterResource(Res.drawable.ic_logo),
-            contentDescription = null,
-            tint = MaterialTheme.colorScheme.onBackground,
-            modifier = Modifier
-                .padding(bottom = 14.dp)
-                .height(logoHeight)
-                .aspectRatio(LOGO_ASPECT),
-        )
+        // The wordmark, and the year story's button right after it when there
+        // is a year to tell. Sized off the wordmark so the two keep their
+        // proportion under the system font scale.
+        Row(
+            modifier = Modifier.padding(bottom = 14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                painter = painterResource(Res.drawable.ic_logo),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onBackground,
+                modifier = Modifier
+                    .height(logoHeight)
+                    .aspectRatio(LOGO_ASPECT),
+            )
+            if (replayYear != null) {
+                Spacer(Modifier.width(14.dp))
+                ReplayYearButton(replayYear, height = logoHeight * 0.68f)
+            }
+        }
         // "Listen now" is hidden for now; the wordmark above stays.
         // Text(
         //     text = title,

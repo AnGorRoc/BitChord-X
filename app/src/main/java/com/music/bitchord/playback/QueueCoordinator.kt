@@ -102,9 +102,15 @@ object QueueCoordinator {
      *
      * Invariant: Once an item leaves the USER_QUEUE block and enters CONTEXT, all preceding
      * consumed USER_QUEUE entries are safely removed so that Media3's native REPEAT_MODE_ALL
-     * will only cycle through CONTEXT items.
+     * will only cycle through CONTEXT items. When [preserveHistory] is true (e.g. when queue history
+     * is enabled), played items are kept in the timeline for history display and backward navigation.
      */
-    fun consumePlayedUserQueue(player: Player, tierAt: (Int) -> QueueTier = player::queueTierAt) {
+    fun consumePlayedUserQueue(
+        player: Player,
+        tierAt: (Int) -> QueueTier = player::queueTierAt,
+        preserveHistory: Boolean = false,
+    ) {
+        if (preserveHistory) return
         val currentIndex = player.currentMediaItemIndex
         if (currentIndex <= 0) return
 
@@ -127,6 +133,26 @@ object QueueCoordinator {
         currentIndex: Int,
         targetIndex: Int,
     ): List<Song>? = QueueTimeline.buildJumpQueue(currentTimeline, currentIndex, targetIndex)
+
+    /**
+     * Plays the history row at [targetIndex] again as a fresh play: it moves up
+     * to the playhead and the playing track drops into history behind it, so
+     * everything played after it stays history and the upcoming queue is
+     * untouched. A plain backward seek would instead turn that later history
+     * back into upcoming: the queue screen files it under its old sections
+     * (Next from Search, AutoPlay) and the player plays all of it again.
+     *
+     * @return false, changing nothing, when [targetIndex] is not history.
+     */
+    fun replayFromHistory(player: Player, targetIndex: Int, positionMs: Long = 0L): Boolean {
+        val current = player.currentMediaItemIndex
+        if (targetIndex !in 0 until current || current >= player.mediaItemCount) return false
+        // Moving an earlier row past the playhead shifts the playing track to
+        // current - 1 without a transition; the seek then starts the moved row.
+        player.moveMediaItem(targetIndex, current)
+        player.seekTo(current, positionMs)
+        return true
+    }
 
     /**
      * Executes a semantic queue jump on [player], preserving history up to [Player.getCurrentMediaItemIndex]

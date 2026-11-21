@@ -27,6 +27,7 @@ import coil3.compose.AsyncImagePainter
 import coil3.memory.MemoryCache
 import coil3.request.ImageRequest
 import com.music.bitchord.data.canvas.CanvasArtwork
+import com.music.bitchord.data.canvas.CanvasSource
 import com.music.bitchord.data.model.CARD_ART_PX
 import com.music.bitchord.data.model.PLAYER_ART_MEMORY_CACHE_KEY_EXTRA
 import com.music.bitchord.data.model.Song
@@ -45,6 +46,7 @@ import kotlinx.coroutines.launch
 internal fun rememberCanvasArtwork(song: Song): CanvasArtwork? {
     val canvasEnabled by PlayerSettings.animatedCanvas.collectAsStateWithLifecycle()
     val canvasOverCellular by PlayerSettings.canvasOverCellular.collectAsStateWithLifecycle()
+    val disableSpotifyCanvas by PlayerSettings.disableSpotifyCanvas.collectAsStateWithLifecycle()
     val prioritizeSpotifyCanvas by PlayerSettings.prioritizeSpotifyCanvas.collectAsStateWithLifecycle()
     val meteredConnection by PlayerSettings.meteredConnection.collectAsStateWithLifecycle()
     // The switch turns the feature off outright; this is the narrower "not
@@ -62,7 +64,7 @@ internal fun rememberCanvasArtwork(song: Song): CanvasArtwork? {
         mutableStateOf(if (canvasAllowedNow) PlayerPlatform.host.cachedCanvas(song) else null)
     }
     var lastPrioritizeSpotify by remember { mutableStateOf(prioritizeSpotifyCanvas) }
-    LaunchedEffect(song.videoId, song.albumName, canvasAllowedNow, prioritizeSpotifyCanvas) {
+    LaunchedEffect(song.videoId, song.albumName, canvasAllowedNow, prioritizeSpotifyCanvas, disableSpotifyCanvas) {
         if (!canvasAllowedNow) {
             canvas = null
             return@LaunchedEffect
@@ -78,7 +80,8 @@ internal fun rememberCanvasArtwork(song: Song): CanvasArtwork? {
         // what is playing: [CanvasArtwork.matches] is what stops a preserved
         // clip from being a different song's that happens to share a title.
         val preserved = if (priorityChanged) null else canvas?.takeIf {
-            it.matches(song.title, song.artist, song.albumName)
+            (!disableSpotifyCanvas || it.source != CanvasSource.SPOTIFY) &&
+                it.matches(song.title, song.artist, song.albumName)
         }
         canvas = PlayerPlatform.host.cachedCanvas(song) ?: preserved
         if (canvas != null && !priorityChanged) return@LaunchedEffect
@@ -95,7 +98,7 @@ internal fun rememberCanvasArtwork(song: Song): CanvasArtwork? {
         canvas = PlayerPlatform.host.canvasFor(song) ?: canvas
     }
 
-    return canvas
+    return canvas?.takeIf { !disableSpotifyCanvas || it.source != CanvasSource.SPOTIFY }
 }
 
 /**

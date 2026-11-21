@@ -118,6 +118,28 @@ internal object DesktopTrackMatcher {
         var words = text.split(WORD_SEPARATOR)
             .map { it.replace(NON_ALNUM, "") }
             .filter { it.isNotEmpty() && it !in JOINING_WORDS }
+
+        if (words.isEmpty()) {
+            val bracketMatches = BRACKETED.findAll(raw.lowercase(Locale.ROOT)).map { it.groupValues[1].trim() }.toList()
+            val candidate = bracketMatches.firstOrNull { segment ->
+                val segWords = segment.split(WORD_SEPARATOR)
+                    .map { it.replace(NON_ALNUM, "") }
+                    .filter { it.isNotEmpty() }
+                segWords.isNotEmpty() &&
+                    segWords.joinToString("") !in NEUTRAL_SEGMENTS &&
+                    segWords.none { it in VERSION_WORDS } &&
+                    !segWords.all { it in NOISE_WORDS }
+            }
+            if (candidate != null) {
+                val recoveredWords = candidate.split(WORD_SEPARATOR)
+                    .map { it.replace(NON_ALNUM, "") }
+                    .filter { it.isNotEmpty() && it !in JOINING_WORDS }
+                if (recoveredWords.isNotEmpty()) {
+                    words = recoveredWords
+                }
+            }
+        }
+
         // An upload's trailing label, printed without brackets to hang it on.
         while (words.size > 1 && words.last() in TRAILING_NOISE) {
             words = words.dropLast(1)
@@ -206,6 +228,14 @@ internal object DesktopTrackMatcher {
     private val TRAILING_NOISE = setOf(
         "song", "songs", "video", "audio", "lyrics", "lyric", "lyrical",
         "official", "full", "hd", "hq", "4k", "mp3", "ost", "soundtrack",
+    )
+
+    private val NOISE_WORDS = setOf(
+        "official", "video", "audio", "lyrics", "lyric", "lyrical", "visualizer",
+        "song", "songs", "full", "music", "the", "and", "from", "feat", "ft",
+        "featuring", "with", "new", "latest", "free", "download", "remaster",
+        "remastered", "explicit", "clean", "bonus", "track", "deluxe", "original",
+        "album", "single", "hd", "hq", "4k", "mp3",
     )
 
     private val JOINING_WORDS = setOf("and")

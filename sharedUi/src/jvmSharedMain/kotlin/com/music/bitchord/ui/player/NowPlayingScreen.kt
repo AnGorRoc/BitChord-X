@@ -102,7 +102,9 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.graphics.layer.drawLayer
+import androidx.compose.ui.graphics.layer.GraphicsLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
 import androidx.compose.ui.layout.positionOnScreen
 import androidx.compose.ui.draw.drawBehind
@@ -210,6 +212,12 @@ private var lastControlSpread: Dp = 0.dp
  * start on the card and then grow it out into the banner it was a moment ago.
  */
 private var lastHeroSettled = false
+
+/** Draws as usual, and keeps what it drew in [layer] for a still taken later. */
+private fun Modifier.recordBackdrop(layer: GraphicsLayer): Modifier = drawWithContent {
+    layer.record { this@drawWithContent.drawContent() }
+    drawLayer(layer)
+}
 
 /**
  * Apple Music's Now Playing, closely: artwork that shrinks when paused, a
@@ -602,6 +610,8 @@ fun NowPlayingScreen(
                 showLyricsProviders || showListenTogetherMembers || lyricsShare != null || currentLyricsOffsetOpen
         }
     }
+    val backdropLayer = rememberGraphicsLayer()
+    val shareScope = rememberCoroutineScope()
     val lyricsShareEnabled = lyricsShareAvailable
     val lyricPicker = rememberLyricsPicker(
         song = song,
@@ -609,8 +619,16 @@ fun NowPlayingScreen(
         subLines = lyricsTranslation.subLines,
         artworkUrl = remoteArt,
         haptics = haptics,
-        onCard = { lyricsShare = it },
+        onCard = { request ->
+            shareScope.launch {
+                val backdrop = runCatching { backdropLayer.toImageBitmap() }.getOrNull()
+                lyricsShare = request.copy(backdrop = backdrop)
+            }
+        },
     )
+    LaunchedEffect(lyricsOpen) {
+        if (!lyricsOpen) lyricPicker.cancel()
+    }
     // Nothing here resets [lyricsOpen] on a track change, deliberately. The
     // panel is a place, not a property of the track: someone reading along who
     // skips — or who simply lets the queue run on — means to carry on reading,
@@ -1646,6 +1664,15 @@ fun NowPlayingScreen(
                             // they leave it along with the rest of the player.
                             SleeveNerdStats(
                                 song = song,
+                                bestPart = {
+                                    BestPartPill(
+                                        song = song,
+                                        position = position,
+                                        hazeState = playerHaze,
+                                        onSeek = onSeek,
+                                        overlayOpen = { overlayOpen.value },
+                                    )
+                                },
                                 modifier = Modifier
                                     .align(Alignment.BottomCenter)
                                     .padding(horizontal = 10.dp, vertical = 8.dp)
@@ -1745,6 +1772,7 @@ fun NowPlayingScreen(
                                         !lyricPicker.overBudget,
                                     onCancel = lyricPicker.cancel,
                                     onShare = lyricPicker.share,
+                                    hazeState = playerHaze,
                                 )
                             },
                             romanizationToggle = {
@@ -1892,52 +1920,54 @@ fun NowPlayingScreen(
                     label = "fullArtworkBackdropCrossfade",
                 )
 
-                if (legacyMeshAlpha > 0.001f) {
-                    // v1.5's backdrop, restored verbatim: no seam, because the blobs
-                    // are not anchored to anything on screen — they fill the player and
-                    // the artwork simply sits on top of them. Keyed on the track, so
-                    // they drift when the player opens and on every skip, then rest.
-                    LegacyMeshBackdrop(
-                        imageUrl = remoteArt,
-                        canvasFrame = { canvasFrame },
-                        trackKey = song.videoId,
-                        modifier = Modifier
-                            .graphicsLayer { alpha = legacyMeshAlpha }
-                            .then(
-                                if (canBlur && animatedBlurRadius > 0.dp) {
-                                    Modifier.blur(animatedBlurRadius)
-                                } else Modifier,
-                            ),
-                    )
-                }
-                if (defaultMeshAlpha > 0.001f) {
-                    // Hung from where the picture stops, so the screen carries on in
-                    // the colours the artwork ended in: the banner's bottom edge, or
-                    // a portrait clip's or its still's. Left there as the player
-                    // collapses rather than following the sleeve down, since above
-                    // the seam the mesh holds one colour, so a seam left behind a
-                    // collapsed sleeve shows nothing at all.
-                    //
-                    // Stays mounted under a full-screen Spotify Canvas, undrawn once
-                    // the video is fully opaque, for a panel opening over it to find ready.
-                    PlayerMeshBackdrop(
-                        trackKey = song.videoId,
-                        imageUrl = remoteArt,
-                        canvasFrame = { canvasFrame },
-                        seamTarget = {
-                            if (staticHeroMode) heroHeight else 0.dp
-                        },
-                        alpha = { defaultMeshAlpha },
-                        sharedProgress = { swap.alpha },
-                        modifier = if (canBlur && animatedBlurRadius > 0.dp) {
-                            Modifier.blur(animatedBlurRadius)
-                        } else Modifier,
-                    )
-                }
-                if (fullArtworkBackdropAlpha > 0.001f) {
-                    fullArtworkBlurContent(
-                        Modifier.graphicsLayer { alpha = fullArtworkBackdropAlpha },
-                    )
+                Box(Modifier.fillMaxSize().recordBackdrop(backdropLayer)) {
+                    if (legacyMeshAlpha > 0.001f) {
+                        // v1.5's backdrop, restored verbatim: no seam, because the blobs
+                        // are not anchored to anything on screen — they fill the player and
+                        // the artwork simply sits on top of them. Keyed on the track, so
+                        // they drift when the player opens and on every skip, then rest.
+                        LegacyMeshBackdrop(
+                            imageUrl = remoteArt,
+                            canvasFrame = { canvasFrame },
+                            trackKey = song.videoId,
+                            modifier = Modifier
+                                .graphicsLayer { alpha = legacyMeshAlpha }
+                                .then(
+                                    if (canBlur && animatedBlurRadius > 0.dp) {
+                                        Modifier.blur(animatedBlurRadius)
+                                    } else Modifier,
+                                ),
+                        )
+                    }
+                    if (defaultMeshAlpha > 0.001f) {
+                        // Hung from where the picture stops, so the screen carries on in
+                        // the colours the artwork ended in: the banner's bottom edge, or
+                        // a portrait clip's or its still's. Left there as the player
+                        // collapses rather than following the sleeve down, since above
+                        // the seam the mesh holds one colour, so a seam left behind a
+                        // collapsed sleeve shows nothing at all.
+                        //
+                        // Stays mounted under a full-screen Spotify Canvas, undrawn once
+                        // the video is fully opaque, for a panel opening over it to find ready.
+                        PlayerMeshBackdrop(
+                            trackKey = song.videoId,
+                            imageUrl = remoteArt,
+                            canvasFrame = { canvasFrame },
+                            seamTarget = {
+                                if (staticHeroMode) heroHeight else 0.dp
+                            },
+                            alpha = { defaultMeshAlpha },
+                            sharedProgress = { swap.alpha },
+                            modifier = if (canBlur && animatedBlurRadius > 0.dp) {
+                                Modifier.blur(animatedBlurRadius)
+                            } else Modifier,
+                        )
+                    }
+                    if (fullArtworkBackdropAlpha > 0.001f) {
+                        fullArtworkBlurContent(
+                            Modifier.graphicsLayer { alpha = fullArtworkBackdropAlpha },
+                        )
+                    }
                 }
 
                 // Mount once, behind the controls. A known portrait aspect changes the
@@ -3041,6 +3071,15 @@ fun NowPlayingScreen(
                             WhileShown({ !collapsePastHalf }) {
                                 SleeveNerdStats(
                                     song = song,
+                                    bestPart = {
+                                        BestPartPill(
+                                            song = song,
+                                            position = position,
+                                            hazeState = playerHaze,
+                                            onSeek = onSeek,
+                                            overlayOpen = { overlayOpen.value },
+                                        )
+                                    },
                                     modifier = Modifier
                                         .align(Alignment.BottomCenter)
                                         .padding(horizontal = 10.dp, vertical = 8.dp)
@@ -3507,6 +3546,7 @@ fun NowPlayingScreen(
                                         !lyricPicker.overBudget,
                                     onCancel = lyricPicker.cancel,
                                     onShare = lyricPicker.share,
+                                    hazeState = playerHaze,
                                     modifier = Modifier.align(Alignment.BottomCenter),
                                 )
                             }

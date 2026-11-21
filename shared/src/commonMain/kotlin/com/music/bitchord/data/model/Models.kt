@@ -314,10 +314,10 @@ fun String?.durationMillis(): Long {
 fun String?.artworkAt(px: Int): String? {
     if (this == null) return null
     val sized = this.replace(SIZE_HINT, "w$px-h$px")
-    return if (isGoogleImageHost(this)) {
-        sized.replace(PARAM_SIZE_HINT, "=s$px")
-    } else {
-        sized
+    return when {
+        isGoogleImageHost(this) -> sized.replace(PARAM_SIZE_HINT, "=s$px")
+        isYouTubeThumbnailHost(this) -> upgradeYouTubeThumbnail(sized, px)
+        else -> sized
     }
 }
 
@@ -330,6 +330,28 @@ private fun isGoogleImageHost(url: String): Boolean {
         .lowercase()
     return host == "ggpht.com" || host.endsWith(".ggpht.com") ||
         host == "googleusercontent.com" || host.endsWith(".googleusercontent.com")
+}
+
+internal fun isYouTubeThumbnailHost(url: String): Boolean {
+    val host = url.substringAfter("://", "")
+        .ifEmpty { url.substringAfter("//", "") }
+        .substringBefore('/')
+        .substringBefore(':')
+        .substringBefore('?')
+        .lowercase()
+    return host == "i.ytimg.com" || host.endsWith(".ytimg.com") ||
+        host == "img.youtube.com" || host.endsWith(".youtube.com")
+}
+
+private val YT_THUMB_NAME_REGEX = Regex("/(default|mqdefault|hqdefault|sddefault)\\.([a-zA-Z0-9]+)")
+
+internal fun upgradeYouTubeThumbnail(url: String, px: Int): String {
+    val targetRendition = when {
+        px >= 480 -> "maxresdefault"
+        px >= 240 -> "sddefault"
+        else -> null
+    } ?: return url
+    return url.replace(YT_THUMB_NAME_REGEX, "/$targetRendition.$2")
 }
 
 private val SIZE_HINT = Regex("""w\d+-h\d+""")
@@ -406,7 +428,11 @@ sealed interface SearchResult {
     data class Browse(val item: BrowseItem) : SearchResult
 }
 
-enum class SearchFilter(val label: String, val params: String?) {
+enum class SearchFilter(
+    val label: String,
+    val params: String?,
+    val requiresAuth: Boolean = false,
+) {
     /** YouTube Music's mixed search page: songs, artists, albums and playlists. */
     ALL("All", null),
     SONGS("Songs", "EgWKAQIIAWoKEAkQChAFEAMQBA=="),
@@ -414,6 +440,7 @@ enum class SearchFilter(val label: String, val params: String?) {
     ALBUMS("Albums", "EgWKAQIYAWoKEAkQChAFEAMQBA=="),
     ARTISTS("Artists", "EgWKAQIgAWoKEAkQChAFEAMQBA=="),
     PLAYLISTS("Playlists", "EgWKAQIoAWoKEAkQChAFEAMQBA=="),
+    LIBRARY("Library", "agIYBA==", requiresAuth = true);
 }
 
 /**

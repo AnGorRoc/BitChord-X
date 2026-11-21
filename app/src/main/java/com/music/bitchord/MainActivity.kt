@@ -250,6 +250,7 @@ import com.music.bitchord.playback.autoplayEnabledFor
 import com.music.bitchord.playback.autoplaySectionStart
 import com.music.bitchord.playback.beginRadioQueue
 import com.music.bitchord.playback.commitRadioQueue
+import com.music.bitchord.playback.replayFromHistory
 import com.music.bitchord.playback.fromAutoplay
 import com.music.bitchord.playback.hasYouTubeOriginal
 import com.music.bitchord.playback.playedHistory
@@ -432,6 +433,22 @@ import java.util.Locale
 /** A full first screen of a native YouTube Music radio before AutoPlay tops it up. */
 /** How much of an artist page's header scrolls away before the top fade begins. */
 private const val TOP_FADE_START = 0.55f
+
+/**
+ * True when [shownKeys] is a contiguous slice of [pageKeys] in the same order
+ * — what bounded context playback assumes when it builds a window from the
+ * page's songs. A sorted or filtered detail list fails this and plays the
+ * list it is showing directly.
+ */
+/**
+ * [shown] keeps [page]'s own order: every entry is the page's, in the page's
+ * sequence, though a search may have left some out. A sort breaks that, and
+ * then the page snapshot can't stand in for the list on screen (#1141).
+ */
+internal fun inPageOrder(shown: List<String>, page: List<String>): Boolean {
+    val rest = page.iterator()
+    return shown.all { key -> rest.asSequence().any { it == key } }
+}
 
 /** How much of the header's height the fade takes to reach full strength. */
 private const val TOP_FADE_RAMP = 0.3f
@@ -780,6 +797,10 @@ private fun BitChordApp(
     var showReplayShare by rememberSaveable { mutableStateOf(false) }
     /** Which story card the share sheet is for, or null for the whole Replay. */
     var replaySharePage by rememberSaveable { mutableStateOf<ReplayStoryPage?>(null) }
+    // The Replay year story, opened from its button on Home, and the card of it
+    // the share sheet is up for. Apart from the ordinary Replay's, because the
+    // year story is drawn from a calendar year rather than the page's period.
+    var yearStoryOpen by rememberSaveable { mutableStateOf(false) }
     var showSpotifyCanvasAuth by remember { mutableStateOf(false) }
 
     // Hosted here rather than inside SourcesScreen so its frosted card has
@@ -2803,6 +2824,26 @@ private fun BitChordApp(
         (selectedTab == TAB_LIBRARY && detail == null && route == null)
     val replayPageOpen = replayEntryId != null || replayStory != null || showReplayShare
     val (replay, setReplayPeriod) = rememberReplayState(replayOpen, replayPageOpen)
+    // The year the Home button offers. Read only while Home or the story is up.
+    val replayYear = com.music.bitchord.ui.replay.year.rememberReplayYear(
+        active = selectedTab == TAB_HOME || yearStoryOpen,
+    )
+    val replayYearDescription = replayYear?.let {
+        stringResource(R.string.replay_year_open, it.year.toString())
+    }
+    val replayYearBadge = remember(replayYear, replayYearDescription) {
+        replayYear?.let { year ->
+            com.music.bitchord.ui.screens.ReplayYearBadge(
+                year = year.year,
+                artworkUrl = year.data.summary.songs.firstOrNull()?.song?.thumbnailUrl,
+                contentDescription = replayYearDescription.orEmpty(),
+                onOpen = { yearStoryOpen = true },
+            )
+        }
+    }
+    // The story has its own soundtrack: whatever was playing stops for it, and
+    // stays stopped after, rather than coming back in under the last card.
+    LaunchedEffect(yearStoryOpen) { if (yearStoryOpen) controller?.pause() }
     val replayCards = remember(replay.summary) {
         replay.summary?.takeUnless { it.isEmpty }?.cards(context).orEmpty()
     }
@@ -2991,8 +3032,20 @@ private fun BitChordApp(
                     // its seekTo override); editing the queue from here would
                     // round-trip every item through the controller and lose
                     // their bounded-window metadata.
-                    c.seekTo(index, 0L)
-                    c.play()
+                    val historySong = player.queue.getOrNull(index)
+                        ?.takeIf { index < c.currentMediaItemIndex }
+                    if (historySong == null) {
+                        c.seekTo(index, 0L)
+                        c.play()
+                    } else {
+                        // A history row plays again at the playhead, so what was
+                        // played after it stays history rather than coming back
+                        // as upcoming. The seek is the service's fallback.
+                        scope.launch {
+                            if (!c.replayFromHistory(index, historySong)) c.seekTo(index, 0L)
+                            c.play()
+                        }
+                    }
                 }
             },
             onRemoveFromQueue = { controller?.removeMediaItem(it) },
@@ -3196,6 +3249,7 @@ private fun BitChordApp(
         val replayDrawable = replay.summary?.isEmpty == false
         BackHandler(enabled = replayDrawable && replayStory != null && !showReplayShare) { replayStory = null }
         BackHandler(enabled = replayDrawable && showReplayShare) { showReplayShare = false }
+        BackHandler(enabled = yearStoryOpen) { yearStoryOpen = false }
         BackHandler(enabled = showUpdateDialog) { showUpdateDialog = false }
         BackHandler(enabled = showListenBrainzLogin) { showListenBrainzLogin = false }
         BackHandler(enabled = showLastfmLogin) { showLastfmLogin = false }
@@ -3769,7 +3823,8 @@ private fun BitChordApp(
                                 )
                                 val selected = songs.getOrNull(index)
                                 val rawPageSongs = (page.songs as? UiState.Success)?.data.orEmpty()
-                                val pageSongKeys = rawPageSongs.mapTo(HashSet()) { it.contextEntryKey() }
+                                val pageKeys = rawPageSongs.map { it.contextEntryKey() }
+                                val pageSongKeys = pageKeys.toHashSet()
                                 val pageSongSort = detailSongSorts[page.browseId] ?: SongSort.DEFAULT
                                 val isCustomOrder = pageSongSort != SongSort.DEFAULT || songs.size != rawPageSongs.size
                                 val useBounded =
@@ -3777,6 +3832,7 @@ private fun BitChordApp(
                                     !isCustomOrder &&
                                     (page.type == BrowseType.ALBUM || page.type == BrowseType.PLAYLIST) &&
                                         selected?.contextEntryKey()?.let(pageSongKeys::contains) == true &&
+                                        inPageOrder(songs.map { it.contextEntryKey() }, pageKeys) &&
                                         !CastController.state.value.casting
                                 val latestPage = if (useBounded) {
                                     viewModel.takePlaybackContext(page.browseId)
@@ -3968,6 +4024,7 @@ private fun BitChordApp(
                                 onPlayMood = playMood,
                                 onMoodsShowAll = { navigator.push(AppRoute.Moods) },
                                 onOpenDownloads = { selectedTab = TAB_LIBRARY },
+                                replayYear = replayYearBadge,
                             )
                             TAB_EXPLORE -> ExploreTabHost(
                                 viewModel = viewModel,
@@ -5547,6 +5604,14 @@ private fun BitChordApp(
             }
         }
 
+        // ---- Replay year story ----
+        // Mounted over the window like the Replay story, for the same reason.
+        com.music.bitchord.ui.replay.year.ReplayYearHost(
+            year = replayYear,
+            open = yearStoryOpen,
+            onClose = { yearStoryOpen = false },
+        )
+
         // Everything drawn over the pages — sheets, alerts, menus — sits outside
         // the pages' provider, so takes the same wash and card shade here.
         CompositionLocalProvider(*tintLocals) {
@@ -5879,6 +5944,15 @@ private fun BitChordApp(
                 startRenaming = browseRenameInSheet,
                 onPlayNext = act(playSongsNext),
                 onAddToQueue = act(addSongsToQueue),
+                // Only on an album: a playlist already is one, and an artist
+                // card's tracks are only its top shelf. Uses the same picker a
+                // song does, which creates a playlist or adds to any number of
+                // existing ones in one go.
+                onAddToPlaylists = act { songs ->
+                    playlistTarget = null
+                    playlistTargetSongs = songs
+                    playlistTargetDefaultTitle = target.title
+                }.takeIf { target.type == BrowseType.ALBUM && target.browseId != null && signedIn },
                 onPlay = act { songs ->
                     QueueShuffle.disableForNextQueue()
                     play(songs, 0)

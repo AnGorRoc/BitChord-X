@@ -921,13 +921,14 @@ internal fun SegmentedControl(
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    disabled: Set<Int> = emptySet(),
 ) {
     val animatedAlpha by animateFloatAsState(
         targetValue = if (enabled) 1f else 0.45f,
         animationSpec = tween(240),
         label = "segmentedControlAlpha",
     )
-    PillSegmentedControl(options, selectedIndex, onSelect, modifier.alpha(animatedAlpha), enabled)
+    PillSegmentedControl(options, selectedIndex, onSelect, modifier.alpha(animatedAlpha), enabled, disabled)
 }
 
 /**

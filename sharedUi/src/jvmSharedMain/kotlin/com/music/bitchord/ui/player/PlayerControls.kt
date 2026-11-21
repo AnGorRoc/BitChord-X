@@ -12,6 +12,17 @@ import com.music.bitchord.data.model.ArtistCredit
 import com.music.bitchord.data.model.CreditSegment
 import com.music.bitchord.data.model.creditSegments
 import com.music.bitchord.sharedui.resources.*
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
+import androidx.compose.ui.graphics.Shape
+import com.music.bitchord.playback.PlaybackPosition
+import com.music.bitchord.ui.components.MenuFrostDark
+import com.music.bitchord.ui.components.liveMenuFrost
+import dev.chrisbanes.haze.HazeState
 
 import org.jetbrains.compose.resources.DrawableResource
 import androidx.compose.animation.animateContentSize
@@ -447,92 +458,249 @@ internal fun PlaybackQualityLabel(
 }
 
 /**
- * Stats for nerds, on the foot of the sleeve: the measured stream, and under
- * it what Automix's analysis is doing. Nothing at all while the setting is off.
+ * The foot of the sleeve: stats for nerds while that setting is on, and under
+ * them the Best Part button while there is one to offer. Either can be there
+ * without the other; with neither, nothing is drawn.
  */
 @Composable
-internal fun SleeveNerdStats(song: Song, modifier: Modifier = Modifier) {
+internal fun SleeveNerdStats(
+    song: Song,
+    modifier: Modifier = Modifier,
+    /** The button under the stats; nothing where the player offers none. */
+    bestPart: @Composable () -> Unit = {},
+) {
     val showNerdStats by PlayerSettings.showNerdStats.collectAsStateWithLifecycle()
-    if (!showNerdStats) return
-    val nerdStats by NerdStats.current.collectAsStateWithLifecycle()
-    val smartFadeOn by PlayerSettings.smartFadeEnabled.collectAsStateWithLifecycle()
-    val smartAnalysis by PlayerSettings.smartAnalysis.collectAsStateWithLifecycle()
-    val automixDetail by PlayerSettings.automixDetail.collectAsStateWithLifecycle()
-    // A party doesn't mix, and doesn't analyse for one either — see
-    // [com.music.bitchord.playback.CrossfadeController]. So the two flows above
-    // simply stop moving there, and the stats line has to say why rather than
-    // leave their last values on screen as if they still described something.
-    //
-    // Read off the party rather than published as a third flow: it is the same
-    // fact the controller and the analyzer each read for themselves, and a
-    // mirror of it could only ever disagree.
-    val inParty by remember {
-        PlayerPlatform.host.party.map { it.inParty }.distinctUntilChanged()
-    }.collectAsStateWithLifecycle(initialValue = PlayerPlatform.host.party.value.inParty)
-    // A plain white line reads fine over the usual dark tile, but a light
-    // stretch of an animated cover — sky, snow, a pale sleeve — washes it out
-    // entirely. The shadow costs nothing on a dark background and is what
-    // keeps it legible on a bright one.
-    val nerdStyle = MaterialTheme.typography.labelSmall.copy(
-        shadow = Shadow(
-            color = Color.Black.copy(alpha = 0.55f),
-            offset = Offset(0f, 1f),
-            blurRadius = 4f,
-        ),
-    )
     Column(
         horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(10.dp),
         modifier = modifier,
     ) {
-        nerdStats?.describe()?.let { stats ->
-            Text(
-                text = stats,
-                style = nerdStyle,
-                color = Color.White.copy(alpha = 0.65f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
+        if (showNerdStats) {
+            val nerdStats by NerdStats.current.collectAsStateWithLifecycle()
+            val smartFadeOn by PlayerSettings.smartFadeEnabled.collectAsStateWithLifecycle()
+            val smartAnalysis by PlayerSettings.smartAnalysis.collectAsStateWithLifecycle()
+            val automixDetail by PlayerSettings.automixDetail.collectAsStateWithLifecycle()
+            // A party doesn't mix, and doesn't analyse for one either — see
+            // [com.music.bitchord.playback.CrossfadeController]. So the two flows above
+            // simply stop moving there, and the stats line has to say why rather than
+            // leave their last values on screen as if they still described something.
+            //
+            // Read off the party rather than published as a third flow: it is the same
+            // fact the controller and the analyzer each read for themselves, and a
+            // mirror of it could only ever disagree.
+            val inParty by remember {
+                PlayerPlatform.host.party.map { it.inParty }.distinctUntilChanged()
+            }.collectAsStateWithLifecycle(initialValue = PlayerPlatform.host.party.value.inParty)
+            // A plain white line reads fine over the usual dark tile, but a light
+            // stretch of an animated cover — sky, snow, a pale sleeve — washes it out
+            // entirely. The shadow costs nothing on a dark background and is what
+            // keeps it legible on a bright one.
+            val nerdStyle = MaterialTheme.typography.labelSmall.copy(
+                shadow = Shadow(
+                    color = Color.Black.copy(alpha = 0.55f),
+                    offset = Offset(0f, 1f),
+                    blurRadius = 4f,
+                ),
             )
+            nerdStats?.describe()?.let { stats ->
+                Text(
+                    text = stats,
+                    style = nerdStyle,
+                    color = Color.White.copy(alpha = 0.65f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center,
+                )
+            }
+            // Only when Automix is actually switched on: otherwise this would
+            // report on analysis nothing is going to use, which is noise rather
+            // than a stat.
+            if (smartFadeOn) {
+                Text(
+                    // Both sides always named, even when they agree, so the line
+                    // reads the same way every time and the eye can find the half
+                    // it wants without re-parsing the sentence.
+                    text = when {
+                        // Ahead of the video case because it is the broader one:
+                        // in a party nothing is analysed for any song, video or
+                        // not, so naming the video limitation there would describe
+                        // a rule that is not the one in force.
+                        inParty -> stringResource(Res.string.automix_stopped_in_party)
+                        song.isVideoOrigin ->
+                            stringResource(Res.string.automix_not_supported_video)
+                        // The detailed line once the controller has one: each song's
+                        // grid, then the planned mix — the loops and what cleared them.
+                        automixDetail != null -> automixDetail!!
+                        else -> stringResource(
+                            Res.string.automix_analysis_status,
+                            smartAnalysis.current.localizedLabel(),
+                            smartAnalysis.next.localizedLabel(),
+                        )
+                    },
+                    style = nerdStyle,
+                    // Dimmer than the measured line above it: that one describes
+                    // the audio, this one describes the app, and the ranking
+                    // should show.
+                    color = Color.White.copy(alpha = 0.5f),
+                    // The detailed line runs long on a phone: a second line rather
+                    // than an ellipsis through the part that says what the mix is.
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                    textAlign = TextAlign.Center,
+                )
+            }
         }
-        // Only when Automix is actually switched on: otherwise this would
-        // report on analysis nothing is going to use, which is noise rather
-        // than a stat.
-        if (smartFadeOn) {
-            Text(
-                // Both sides always named, even when they agree, so the line
-                // reads the same way every time and the eye can find the half
-                // it wants without re-parsing the sentence.
-                text = when {
-                    // Ahead of the video case because it is the broader one:
-                    // in a party nothing is analysed for any song, video or
-                    // not, so naming the video limitation there would describe
-                    // a rule that is not the one in force.
-                    inParty -> stringResource(Res.string.automix_stopped_in_party)
-                    song.isVideoOrigin ->
-                        stringResource(Res.string.automix_not_supported_video)
-                    // The detailed line once the controller has one: each song's
-                    // grid, then the planned mix — the loops and what cleared them.
-                    automixDetail != null -> automixDetail!!
-                    else -> stringResource(
-                        Res.string.automix_analysis_status,
-                        smartAnalysis.current.localizedLabel(),
-                        smartAnalysis.next.localizedLabel(),
-                    )
-                },
-                style = nerdStyle,
-                // Dimmer than the measured line above it: that one describes
-                // the audio, this one describes the app, and the ranking
-                // should show.
-                color = Color.White.copy(alpha = 0.5f),
-                // The detailed line runs long on a phone: a second line rather
-                // than an ellipsis through the part that says what the mix is.
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-                textAlign = TextAlign.Center,
+        bestPart()
+    }
+}
+
+/**
+ * Jump to the song's "Best Part": its most replayed stretch, or its chorus.
+ *
+ * The same material as the ⋯ menu: its frost, blurring the player under it,
+ * with a light rim to read as glass over the artwork.
+ */
+@Composable
+internal fun BestPartPill(
+    song: Song,
+    position: PlaybackPosition,
+    /** Blurred under the pill: the player's own haze. Null draws it flat. */
+    hazeState: HazeState?,
+    onSeek: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+    /**
+     * Whether a drawer or the ⋯ menu is up over the player. Those blur the
+     * player live themselves, so the pill goes flat under them rather than
+     * paying for a second live blur nobody can see.
+     */
+    overlayOpen: () -> Boolean = { false },
+) {
+    val enabled by PlayerSettings.showBestPart.collectAsStateWithLifecycle()
+    if (!enabled) return
+    val start by produceState<Long?>(null, song.videoId) {
+        value = runCatching { PlayerPlatform.host.bestPartMs(song) }.getOrNull()
+    }
+    // Remembered per track: having been heard is what puts the button away.
+    var heard by remember(song.videoId) { mutableStateOf(false) }
+    val at = start
+    // Read through derivedStateOf, so the pill recomposes as the playhead
+    // crosses the best part, not on every tick of it.
+    val ahead by remember(at, position) {
+        derivedStateOf { at != null && position.positionMs < at - AHEAD_SLACK_MS }
+    }
+    val reaching by remember(at, position) {
+        // Only a playhead inside the best part counts as hearing it. Further on
+        // is a reading left over from the last track, or a skip past it, and
+        // the button should come back for a seek to before it.
+        derivedStateOf { at != null && position.positionMs in (at - AHEAD_SLACK_MS)..(at + HEARD_WINDOW_MS) }
+    }
+    LaunchedEffect(reaching) { if (reaching) heard = true }
+
+    // Not while Automix is mixing into the next track: what is ahead then is
+    // the next song, not this one's best part.
+    val mixing by PlayerSettings.smartMixInProgress.collectAsStateWithLifecycle()
+
+    val haptics = rememberHaptics()
+    val reduceDynamicBlur by PlayerSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
+    AnimatedVisibility(
+        visible = at != null && ahead && !heard && !mixing,
+        // A fade either way. The room it takes opens and closes around the
+        // fade, so the stats over it glide instead of jumping.
+        enter = expandVertically(tween(BEST_PART_FADE_MS)) +
+            fadeIn(tween(BEST_PART_FADE_MS, delayMillis = BEST_PART_FADE_MS / 2)),
+        exit = fadeOut(tween(BEST_PART_FADE_MS)) +
+            shrinkVertically(tween(BEST_PART_FADE_MS, delayMillis = BEST_PART_FADE_MS / 2)),
+        modifier = modifier,
+    ) {
+        val shape = CircleShape
+        val label = stringResource(Res.string.best_part)
+        val description = stringResource(Res.string.best_part_description)
+        val chrome = LocalPlayerChrome.current
+        Box(
+            modifier = Modifier
+                .padding(top = 8.dp)
+                .clip(shape)
+                .glassFrost(hazeState, flat = reduceDynamicBlur || overlayOpen())
+                .clickable(role = Role.Button) {
+                    val target = at ?: return@clickable
+                    haptics.play(Haptic.Tap)
+                    heard = true
+                    onSeek(target)
+                }
+                .semantics { contentDescription = description },
+        ) {
+            // The star and ⋯ discs' own fill over the frost, so the three
+            // read as one material, then the rim over both.
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .vibrantChrome(chrome)
+                    .background(discFill(chrome)),
             )
+            Box(Modifier.matchParentSize().glassRim(shape))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(start = 12.dp, end = 15.dp, top = 7.dp, bottom = 7.dp),
+            ) {
+                Icon(
+                    imageVector = BitChordIcons.MusicNote,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(15.dp),
+                )
+                Spacer(Modifier.width(6.dp))
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.W700,
+                    color = Color.White,
+                    maxLines = 1,
+                )
+            }
         }
     }
 }
+
+/** Just short of the best part already counts as there, so the pill doesn't flash back on a late reading. */
+private const val AHEAD_SLACK_MS = 400L
+
+/** How far into the best part a playhead still counts as having heard it. */
+private const val HEARD_WINDOW_MS = 20_000L
+
+private const val BEST_PART_FADE_MS = 280
+
+/** Thinner than the menu's slab, so the glass reads as glass over the artwork. */
+private const val GLASS_SLAB_ALPHA = 0.38f
+
+/** The slab alone, with no blur under it, thick enough to hold the glyph on any cover. */
+private const val GLASS_FLAT_ALPHA = 0.72f
+
+
+/** The star and ⋯ discs' fill at rest. */
+private const val CIRCLE_DISC_ALPHA = 0.18f
+
+private fun discFill(chrome: Boolean, alpha: Float = CIRCLE_DISC_ALPHA): Color =
+    if (chrome) {
+        VibrantChromeInk.copy(alpha = (alpha * CIRCLE_DISC_DODGE_GAIN).coerceAtMost(1f))
+    } else {
+        Color.White.copy(alpha = alpha)
+    }
+
+internal fun Modifier.glassFrost(hazeState: HazeState?, flat: Boolean): Modifier =
+    if (flat || hazeState == null) {
+        background(MenuFrostDark.copy(alpha = GLASS_FLAT_ALPHA))
+    } else {
+        liveMenuFrost(hazeState, MenuFrostDark, alpha = GLASS_SLAB_ALPHA)
+    }
+
+internal fun Modifier.glassRim(shape: Shape): Modifier = border(
+    width = 1.dp,
+    brush = Brush.verticalGradient(
+        0f to Color.White.copy(alpha = 0.42f),
+        1f to Color.White.copy(alpha = 0.14f),
+    ),
+    shape = shape,
+)
 
 /**
  * Previous, play/pause, next.
@@ -815,6 +983,7 @@ internal fun PlayerActionRow(
         }
     }
 }
+
 
 /** How much more of the ink [CircleGlyph]'s disc takes than its plain white — 0.45 at rest, 0.85 lit. */
 private const val CIRCLE_DISC_DODGE_GAIN = 2.5f

@@ -1,5 +1,7 @@
 package com.music.bitchord.ui.player
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -11,8 +13,15 @@ import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.music.bitchord.ui.components.MENU_FROST_ALPHA
+import com.music.bitchord.ui.components.MenuFrostDark
+import com.music.bitchord.ui.components.liveMenuFrost
+import dev.chrisbanes.haze.HazeState
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.collectLatest
 
@@ -105,3 +114,47 @@ internal fun FrostedPlayerFrame(
 
 /** Longer than any panel's exit, so none loses its frost on the way out. */
 private const val FROST_RELEASE_DELAY_MS = 400L
+
+/**
+ * The ⋯ menu's and the drawers' panel, in [shape], for anything that should read
+ * as the same material: flat with reduced blur on; over [LocalPlayerFrost]'s
+ * still where this is one of the player's overlays; otherwise the same frost
+ * blurred live off [hazeState] — which is what a bar inside the player gets,
+ * since a still would freeze the list scrolling under it.
+ *
+ * [everySource] for a surface nested in the player's own sources (the queue's
+ * bars); see [liveMenuFrost].
+ */
+@Composable
+fun Modifier.playerMenuSurface(
+    shape: Shape,
+    hazeState: HazeState?,
+    everySource: Boolean = false,
+    /** How much of the charcoal slab covers the frost. */
+    slabAlpha: Float = MENU_FROST_ALPHA,
+): Modifier {
+    val reduceDynamicBlur by PlayerSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
+    val frost = LocalPlayerFrost.current
+    return clip(shape).then(
+        when {
+            reduceDynamicBlur || (frost == null && hazeState == null) -> Modifier.background(MenuFrostDark)
+            frost != null -> with(frost) { Modifier.frostPanel(shape, MenuFrostDark.copy(alpha = slabAlpha)) }
+            else -> Modifier.liveMenuFrost(hazeState!!, MenuFrostDark, everySource, slabAlpha)
+        },
+    )
+}
+
+/**
+ * The ⋯ menu's own panel — its thinner slab and hairline rim — for the bars laid
+ * over the player's lists: the queue's selection bar and Undo notice, and the
+ * share-lyrics bar. Blurs every source under it, since each sits inside the
+ * player's own (see [liveMenuFrost]); without that it drew nothing at all.
+ */
+@Composable
+fun Modifier.playerBarSurface(shape: Shape, hazeState: HazeState?): Modifier {
+    val plain by PlayerSettings.disableBlendEffects.collectAsStateWithLifecycle()
+    // Thinner than the menu's 60%: the menu's frost also draws the colour up 1.8×,
+    // which haze can't, so the same slab here reads as near-solid charcoal.
+    return playerMenuSurface(shape, hazeState, everySource = true, slabAlpha = if (plain) 0.70f else 0.45f)
+        .border(0.5.dp, Color.White.copy(alpha = 0.10f), shape)
+}

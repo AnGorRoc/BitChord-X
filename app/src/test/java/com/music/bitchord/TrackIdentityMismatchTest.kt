@@ -205,4 +205,20 @@ class TrackIdentityMismatchTest {
             TrackMatcher.withinSeconds(jioSaavnSong, effectiveTarget, 2),
         )
     }
+
+    @Test
+    fun `TrackMatcher resolves fully bracketed titles like (Nice Dream) and (sic)`() {
+        val radiohead = TrackMatcher.Target(title = "(Nice Dream)", artist = "Radiohead")
+        val slipknot = TrackMatcher.Target(title = "(sic)", artist = "Slipknot")
+
+        val radioheadQueries = TrackMatcher.queries(radiohead)
+        assertEquals(listOf("nice dream radiohead", "nice dream"), radioheadQueries)
+
+        val slipknotQueries = TrackMatcher.queries(slipknot)
+        assertEquals(listOf("sic slipknot", "sic"), slipknotQueries)
+
+        val candidate = song(title = "Nice Dream", artist = "Radiohead")
+        val scored = TrackMatcher.best(listOf(candidate), radiohead)
+        assertEquals(candidate, scored)
+    }
 }

@@ -599,7 +599,11 @@ fun CompactTrackRow(
             )
         }
         if (onLongPress != null) {
-            RowMoreButton(onClick = onLongPress)
+            RowMoreButton(
+                onClick = onLongPress,
+                hangOutset = 0.dp,
+                modifier = Modifier.padding(end = 5.dp),
+            )
         }
     }
 }

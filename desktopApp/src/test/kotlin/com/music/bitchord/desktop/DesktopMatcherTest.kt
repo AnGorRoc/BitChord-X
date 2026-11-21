@@ -92,4 +92,17 @@ class DesktopMatcherTest {
         assertEquals("mithoon", DesktopTrackMatcher.primaryArtist("Mithoon, Saaj Bhatt & Sayeed Quadri"))
         assertEquals("arijit singh", DesktopTrackMatcher.primaryArtist("Arijit Singh feat. Someone"))
     }
+
+    @Test
+    fun fullyBracketedTitleIsRecoveredAndQueried() {
+        val radiohead = Song("v1", "(Nice Dream)", "Radiohead", null)
+        val slipknot = Song("v2", "(sic)", "Slipknot", null)
+        val plainRadiohead = Song("a1", "Nice Dream", "Radiohead", null)
+
+        assertEquals("nice dream", DesktopTrackMatcher.searchableTitle(radiohead.title, radiohead.artist))
+        assertEquals("sic", DesktopTrackMatcher.searchableTitle(slipknot.title, slipknot.artist))
+        assertEquals(listOf("nice dream radiohead", "nice dream"), DesktopTrackMatcher.queries(radiohead))
+        assertEquals(listOf("sic slipknot", "sic"), DesktopTrackMatcher.queries(slipknot))
+        assertNotNull(DesktopTrackMatcher.best(listOf(plainRadiohead), radiohead))
+    }
 }

@@ -281,10 +281,12 @@ internal object DesktopPlayerSettings : PlayerSettingsSource {
     override val meteredConnection = MutableStateFlow<Boolean?>(false)
     override val streamCeilingOverride = MutableStateFlow<AudioQuality?>(null)
     override val preferUsbDac = MutableStateFlow(false)
+    override val disableSpotifyCanvas = MutableStateFlow(false)
     override val prioritizeSpotifyCanvas = MutableStateFlow(false)
     override val reduceAnimation: StateFlow<Boolean> get() = DesktopAppearanceSettings.reduceAnimation
     override val reduceDynamicBlur: StateFlow<Boolean> get() = DesktopAppearanceSettings.reduceDynamicBlur
     override val showNerdStats = MutableStateFlow(false)
+    override val showBestPart = MutableStateFlow(false)
     override val showListenTogetherButton = MutableStateFlow(true)
     override val smartAnalysis = MutableStateFlow(SmartAnalysis())
     override val automixDetail = MutableStateFlow<String?>(null)

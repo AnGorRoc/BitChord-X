@@ -443,15 +443,38 @@ object TrackMatcher {
         // chooses to print it.
         text = text.replace(FEATURING, " ")
 
+        var words = text.split(WORD_SPLIT)
+            .map { it.replace(NON_ALNUM, "") }
+            .filter { it.isNotEmpty() && it !in JOINING_WORDS }
+
+        if (words.isEmpty()) {
+            val bracketMatches = BRACKETED.findAll(normalize(raw)).map { it.groupValues[1].trim() }.toList()
+            val candidate = bracketMatches.firstOrNull { segment ->
+                val segWords = segment.split(WORD_SPLIT)
+                    .map { it.replace(NON_ALNUM, "") }
+                    .filter { it.isNotEmpty() }
+                segWords.isNotEmpty() &&
+                    segWords.joinToString("") !in NEUTRAL_SEGMENTS &&
+                    segWords.none { it in VERSION_WORDS } &&
+                    !segWords.all { it in NOISE_WORDS }
+            }
+            if (candidate != null) {
+                val recoveredWords = candidate.split(WORD_SPLIT)
+                    .map { it.replace(NON_ALNUM, "") }
+                    .filter { it.isNotEmpty() && it !in JOINING_WORDS }
+                if (recoveredWords.isNotEmpty()) {
+                    words = recoveredWords
+                    context.removeAll(recoveredWords.toSet())
+                }
+            }
+        }
+
         // CJK languages do not use spaces between
         // words. Standard word splitting and non-alphanumeric filtering fragment
         // these titles into empty or broken strings, so CJK titles keep their
         // raw character sequence intact (stripping only punctuation and whitespace).
-        val containsCJK = text.any { Character.UnicodeBlock.of(it) in CJK_BLOCKS }
+        val containsCJK = (text + words.joinToString("")).any { Character.UnicodeBlock.of(it) in CJK_BLOCKS }
 
-        var words = text.split(WORD_SPLIT)
-            .map { it.replace(NON_ALNUM, "") }
-            .filter { it.isNotEmpty() && it !in JOINING_WORDS }
         // "Paniyon Sa Full Song", "Tum Hi Ho Audio" — an upload's trailing
         // label, printed without brackets to hang it on. The unambiguous take
         // markers get the same treatment ("Kizuna No Kiseki Instrumental"):
@@ -471,7 +494,7 @@ object TrackMatcher {
         }
 
         val coreString = if (containsCJK) {
-            text.replace(Regex("""[\s\p{Punct}・～〜ー-]+"""), "")
+            (if (text.isNotBlank()) text else words.joinToString("")).replace(Regex("""[\s\p{Punct}・～〜ー-]+"""), "")
         } else {
             words.joinToString("")
         }

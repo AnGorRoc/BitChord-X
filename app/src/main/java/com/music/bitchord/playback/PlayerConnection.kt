@@ -25,6 +25,7 @@ import androidx.media3.common.Player
 import androidx.media3.common.Timeline
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionResult
 import androidx.media3.session.SessionToken
 import com.music.bitchord.data.model.ArtistRef
 import com.music.bitchord.data.model.NOTIFICATION_ART_PX
@@ -322,6 +323,27 @@ fun MediaController.setQueueDragActive(active: Boolean) {
 }
 
 /**
+ * A queue-screen tap on a history row: played again at the playhead, keeping
+ * later history as history. False when the service left the queue as it was
+ * (a party, a bounded context, a row that moved): seek to it instead.
+ */
+suspend fun MediaController.replayFromHistory(index: Int, song: Song): Boolean =
+    try {
+        sendCustomCommand(
+            SessionCommand(ACTION_QUEUE_REPLAY_HISTORY, Bundle.EMPTY),
+            bundleOf(
+                EXTRA_QUEUE_MOVE_INDEX to index,
+                EXTRA_QUEUE_MOVE_ENTRY to song.queueEntryId,
+                EXTRA_QUEUE_MOVE_MEDIA to song.videoId,
+            ),
+        ).await().resultCode == SessionResult.RESULT_SUCCESS
+    } catch (cancelled: kotlinx.coroutines.CancellationException) {
+        throw cancelled
+    } catch (_: Exception) {
+        false
+    }
+
+/**
  * Mirrors the controller into Compose state, polling position while playing.
  *
  * Handed back unread, as a [State]: the caller is the app's root, and reading
@@ -374,10 +396,11 @@ fun rememberPlayerState(controller: MediaController?): State<PlayerState> {
             }
             // Synced here too, so seeking while paused or buffering still moves
             // the scrubber (the poll loop only runs on play).
-            position.report(player.currentPosition.coerceAtLeast(0L))
+            val playing = player.isPlaying
+            position.report(player.currentPosition.coerceAtLeast(0L), isPlaying = playing)
             state = state.copy(
                 song = item?.toSong(),
-                isPlaying = player.isPlaying,
+                isPlaying = playing,
                 durationMs = player.duration.coerceAtLeast(0L),
                 error = error,
                 isLoading = player.playbackState == Player.STATE_BUFFERING,
@@ -463,7 +486,7 @@ fun rememberPlayerState(controller: MediaController?): State<PlayerState> {
         snapshotFlow { state.isPlaying || (state.song != null && state.durationMs <= 0L) }
             .collectLatest { active ->
                 while (active) {
-                    position.report(controller.currentPosition.coerceAtLeast(0L))
+                    position.report(controller.currentPosition.coerceAtLeast(0L), isPlaying = controller.isPlaying)
                     val duration = controller.duration.coerceAtLeast(0L)
                     if (duration != state.durationMs) state = state.copy(durationMs = duration)
                     delay(500)

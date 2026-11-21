@@ -107,6 +107,12 @@ fun BrowseActionsMenu(
     target: BrowseTarget,
     onPlayNext: () -> Unit,
     onAddToQueue: () -> Unit,
+    /**
+     * Opens the playlist picker for the whole release — offered on an album,
+     * where a song's "Add to playlist" row has no counterpart until you open
+     * one track at a time.
+     */
+    onAddToPlaylists: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     onPlay: (() -> Unit)? = null,
     onShuffle: (() -> Unit)? = null,
@@ -196,6 +202,13 @@ fun BrowseActionsMenu(
                 stringResource(R.string.add_to_queue),
                 onClick = onAddToQueue,
             )
+            onAddToPlaylists?.let {
+                ActionRow(
+                    icon = SfIcons.AddToPlaylist,
+                    label = stringResource(R.string.add_to_playlist),
+                    onClick = it,
+                )
+            }
             onDownloadAll?.let { download ->
                 // Saying which of the three it is, rather than offering the same row
                 // whatever the state — this is where a release is asked for now that

@@ -682,11 +682,12 @@ fun RowMoreButton(
     modifier: Modifier = Modifier,
     tint: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     iconSize: Dp = 20.dp,
+    hangOutset: Dp = ROW_MORE_OUTSET,
 ) {
     Box(
         modifier = modifier
             .leftOutOfHeldPicture()
-            .hangIntoGutter(ROW_MORE_OUTSET)
+            .then(if (hangOutset > 0.dp) Modifier.hangIntoGutter(hangOutset) else Modifier)
             .size(36.dp)
             .menuAnchor()
             .clip(CircleShape)

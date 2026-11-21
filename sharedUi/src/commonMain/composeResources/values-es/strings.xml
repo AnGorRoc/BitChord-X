@@ -9,6 +9,8 @@
     <string name="automix_analysis_status">Automix · canción actual: %1$s · siguiente: %2$s</string>
     <string name="automix_analyzing">Analizando mezcla</string>
     <string name="automix_not_supported_video">Automix no es compatible con canciones en formato de vídeo</string>
+    <string name="best_part">Mejor Parte</string>
+    <string name="best_part_description">Saltar a la mejor parte</string>
     <string name="automix_stopped_in_party">Automix: detenido en Escuchar juntos</string>
     <string name="autoplay">Reproducción automática</string>
     <string name="autoplay_empty_description">Seguirá reproduciéndose música similar</string>

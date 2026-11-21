@@ -41,6 +41,13 @@ interface PlayerHost {
     /** Looks a Canvas up for [song]; null is the normal answer. */
     suspend fun canvasFor(song: Song): CanvasArtwork?
 
+    /**
+     * Where [song]'s best part starts, in ms: the stretch listeners replay most,
+     * or failing that its chorus. Null when neither is known — a guess is not
+     * worth a button.
+     */
+    suspend fun bestPartMs(song: Song): Long? = null
+
     /** The looping clip over the cover, decoded however this platform decodes video. */
     @Composable
     fun CanvasVideo(spec: CanvasVideoSpec, modifier: Modifier)
@@ -280,12 +287,15 @@ interface PlayerSettingsSource {
     /** A temporary cap over both ceilings, null when none applies — the watch's, on the phone. */
     val streamCeilingOverride: StateFlow<AudioQuality?>
     val preferUsbDac: StateFlow<Boolean>
+    val disableSpotifyCanvas: StateFlow<Boolean>
     val prioritizeSpotifyCanvas: StateFlow<Boolean>
     val reduceAnimation: StateFlow<Boolean>
     val reduceDynamicBlur: StateFlow<Boolean>
     /** Turns [LocalPlayerChrome] off: glyphs and text over the artwork in plain white. */
     val disableBlendEffects: StateFlow<Boolean>
     val showNerdStats: StateFlow<Boolean>
+    /** Whether the "Best Part" button is offered on the artwork. */
+    val showBestPart: StateFlow<Boolean>
     /** Whether the output / Listen Together pill sits under the transport. */
     val showListenTogetherButton: StateFlow<Boolean>
     val smartAnalysis: StateFlow<SmartAnalysis>

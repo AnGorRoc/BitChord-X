@@ -189,6 +189,8 @@
     <string name="skip_silence_float_subtitle">No disponible con salida float de 32 bits</string>
     <string name="equalizer">Ecualizador</string>
     <string name="equalizer_subtitle">El panel de audio del sistema</string>
+    <string name="show_best_part">Botón Mejor Parte</string>
+    <string name="show_best_part_subtitle">Un botón en la carátula que salta a la parte más reproducida de la canción</string>
     <string name="show_nerd_stats">Mostrar datos técnicos</string>
     <string name="show_nerd_stats_subtitle">Códec, tasa de bits y frecuencia de muestreo en el reproductor</string>
     <string name="theme">Tema</string>
@@ -486,6 +488,8 @@
     <string name="spotify_canvas_setup">Configurar Spotify</string>
     <string name="spotify_canvas_setup_description">Para usar Spotify Canvas, proporciona tu cookie sp_dc de Spotify.</string>
     <string name="spotify_canvas_setup_steps">1. Inicia sesión en open.spotify.com desde un navegador.\n2. Abre las herramientas de desarrollo, entra en Aplicación y luego en Cookies.\n3. Copia el valor de la cookie sp_dc.\n4. Pégalo abajo.</string>
+    <string name="disable_spotify_canvas">Desactivar Spotify Canvas</string>
+    <string name="disable_spotify_canvas_subtitle">No usar nunca Spotify Canvas. Las carátulas animadas vendrán solo de Apple Music</string>
     <string name="spotify_canvas_auto_hide">Ocultar controles automáticamente</string>
     <string name="spotify_canvas_auto_hide_subtitle">Contrae el medio reproductor tras 5 segundos mientras se reproduce Spotify Canvas</string>
     <string name="prioritize_spotify_canvas">Priorizar Spotify Canvas</string>
@@ -1839,4 +1843,73 @@
     <string name="drive_backup_row_subtitle">Copia y sincroniza Replay entre tus dispositivos</string>
     <string name="drive_over_cellular">Sincronizar con datos móviles</string>
     <string name="drive_over_cellular_subtitle">Si está desactivado, las sincronizaciones automáticas esperan al Wi-Fi</string>
+    <string name="lyrics_share_canvas">Canvas</string>
+    <string name="lyrics_share_video">Vídeo</string>
+    <string name="lyrics_share_image">Imagen</string>
+    <string name="lyrics_share_saving">Guardando…</string>
+    <string name="lyrics_share_gradient">Degradado</string>
+    <string name="lyrics_share_apple_canvas">Apple</string>
+    <string name="lyrics_share_spotify_canvas">Spotify</string>
+    <string name="lyrics_share_show_logo">Mostrar logo de BitChord</string>
+    <string name="youtube_premium_audio">Audio Premium de YouTube</string>
+    <string name="youtube_premium_audio_subtitle">Solicitar flujo Opus a 256 kbps para cuentas Premium</string>
+    <string name="replay_year_open">Abre tu Replay %1$s</string>
+    <string name="replay_year_building">Construyendo tu año…</string>
+    <string name="replay_year_opener_start">Tu</string>
+    <string name="replay_year_opener_end">en BitChord</string>
+    <string name="replay_year_opener_detail">Recordemos lo que escuchaste.</string>
+    <string name="replay_year_minutes_start">Este año escuchaste durante</string>
+    <plurals name="replay_year_minutes_word">
+        <item quantity="one">minuto</item>
+        <item quantity="other">minutos</item>
+    </plurals>
+    <string name="replay_year_minutes_days_start">Eso es</string>
+    <string name="replay_year_minutes_days_value">%1$s días</string>
+    <string name="replay_year_minutes_hours_value">%1$s horas</string>
+    <string name="replay_year_minutes_days_end">de música.</string>
+    <string name="replay_year_busiest_start">Tu día más activo fue</string>
+    <string name="replay_year_busiest_minutes">%1$s minutos de música en un día</string>
+    <string name="replay_year_busiest_song">Principalmente %1$s</string>
+    <string name="replay_year_clock_start">Te activabas alrededor de</string>
+    <string name="replay_year_night_owl">Búho nocturno</string>
+    <string name="replay_year_night_owl_detail">Gran parte de tu escucha fue después de las 10 pm.</string>
+    <string name="replay_year_early_bird">Madrugador</string>
+    <string name="replay_year_early_bird_detail">Tus días empezaban con música antes de las 10 am.</string>
+    <string name="replay_year_golden_hour">Hora dorada</string>
+    <string name="replay_year_golden_hour_detail">Los atardeceres eran cuando sonaba la música.</string>
+    <string name="replay_year_daytime">Ritmo diurno</string>
+    <string name="replay_year_daytime_detail">Mantuviste la música sonando durante todo el día.</string>
+    <string name="replay_year_all_day">Todo el día</string>
+    <string name="replay_year_all_day_detail">Mañana, tarde o noche, siempre había algo sonando.</string>
+    <string name="replay_year_genres_start">Tu sonido este año</string>
+    <string name="replay_year_artist_start">Tu artista principal este año fue…</string>
+    <string name="replay_year_minutes_together">%1$s minutos juntos</string>
+    <string name="replay_year_top_artists">Tus mejores artistas</string>
+    <string name="replay_year_song_start">Y tu canción del año…</string>
+    <plurals name="replay_year_played_times">
+        <item quantity="one">Reproducida %1$s vez</item>
+        <item quantity="other">Reproducida %1$s veces</item>
+    </plurals>
+    <string name="replay_year_top_songs">El resto de tus mejores canciones</string>
+    <string name="replay_year_albums">Álbumes en los que viviste</string>
+    <string name="replay_year_months">Tu año, mes a mes</string>
+    <string name="replay_year_discovery_start">Este año exploraste</string>
+    <plurals name="replay_year_songs_word">
+        <item quantity="one">canción</item>
+        <item quantity="other">canciones</item>
+    </plurals>
+    <plurals name="replay_year_artists_word">
+        <item quantity="one">artista</item>
+        <item quantity="other">artistas</item>
+    </plurals>
+    <plurals name="replay_year_albums_word">
+        <item quantity="one">álbum</item>
+        <item quantity="other">álbumes</item>
+    </plurals>
+    <string name="replay_year_summary_title">Tu %1$s</string>
+    <string name="replay_year_summary_artists">Artistas principales</string>
+    <string name="replay_year_summary_songs">Canciones principales</string>
+    <string name="replay_year_summary_minutes">Minutos escuchados</string>
+    <string name="replay_year_mute">Silenciar la historia</string>
+    <string name="replay_year_unmute">Activar sonido de la historia</string>
 </resources>

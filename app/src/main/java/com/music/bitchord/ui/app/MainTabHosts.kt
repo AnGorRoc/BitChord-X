@@ -57,6 +57,7 @@ internal fun HomeTabHost(
     onPlayMood: (TopPickMood, String) -> Unit,
     onMoodsShowAll: () -> Unit,
     onOpenDownloads: () -> Unit,
+    replayYear: com.music.bitchord.ui.screens.ReplayYearBadge? = null,
 ) {
     val homeState by viewModel.home.collectAsStateWithLifecycle()
     val hideRecents by AppSettings.hideRecents.collectAsStateWithLifecycle()
@@ -126,6 +127,7 @@ internal fun HomeTabHost(
         onMoodClick = onPlayMood.takeUnless { hideHomeMoods },
         onMoodsShowAll = onMoodsShowAll,
         artworkMotion = artworkMotion,
+        replayYear = replayYear,
         onOpenDownloads = onOpenDownloads,
         onTopPickLongPress = { pick ->
             pick.browseId?.let { browseId ->
