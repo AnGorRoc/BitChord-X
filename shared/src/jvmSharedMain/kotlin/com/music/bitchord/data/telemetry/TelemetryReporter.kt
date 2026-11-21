@@ -47,6 +47,7 @@ object TelemetryReporter {
         val osVersion: String,
         val abi: String,
         val levelProvider: () -> TelemetryLevel,
+        val packageFormat: String = "",
     )
 
     fun configure(
@@ -58,6 +59,7 @@ object TelemetryReporter {
         osVersion: String = "",
         abi: String = "",
         levelProvider: () -> TelemetryLevel = { TelemetryLevel.FULL },
+        packageFormat: String = "",
     ) {
         val base = serverBaseUrl.trim().trimEnd('/')
         if (base.isEmpty()) return
@@ -70,6 +72,7 @@ object TelemetryReporter {
             osVersion = osVersion,
             abi = abi,
             levelProvider = levelProvider,
+            packageFormat = packageFormat,
         )
     }
 
@@ -163,6 +166,7 @@ object TelemetryReporter {
             if (!minimal && cfg.deviceModel.isNotBlank()) put("deviceModel", cfg.deviceModel)
             if (!minimal && cfg.osVersion.isNotBlank()) put("osVersion", cfg.osVersion)
             if (!minimal && cfg.abi.isNotBlank()) put("abi", cfg.abi)
+            if (cfg.packageFormat.isNotBlank()) put("packageFormat", cfg.packageFormat)
         }.toString().toRequestBody(JSON)
 
         val request = Request.Builder()

@@ -50,6 +50,7 @@ class Presence(
     private val appVersion: String = "",
     private val levelProvider: () -> TelemetryLevel = { TelemetryLevel.FULL },
     private val useWebSocket: Boolean = false,
+    private val packageFormat: String = "",
 ) {
     private val open = MutableStateFlow(false)
     @Volatile private var announced = false
@@ -132,6 +133,7 @@ class Presence(
             put("platform", platform.wire)
             if (appVersion.isNotBlank()) put("version", appVersion)
             if (level == TelemetryLevel.MINIMAL) put("level", level.wire)
+            if (packageFormat.isNotBlank()) put("packageFormat", packageFormat)
         }.toString()
 
         val req = Request.Builder().url(url).build()
@@ -186,6 +188,7 @@ class Presence(
                 put("version", appVersion)
             }
             if (level == TelemetryLevel.MINIMAL) put("level", level.wire)
+            if (packageFormat.isNotBlank()) put("packageFormat", packageFormat)
         }.toString().toRequestBody(JSON)
         val request = Request.Builder().url(endpoint).post(body).build()
         // Set before sending: a ping that times out may still have been counted,

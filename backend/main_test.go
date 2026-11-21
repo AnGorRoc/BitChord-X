@@ -765,3 +765,42 @@ func TestMinimalTelemetry(t *testing.T) {
 		t.Fatalf("a full report still needs its message, got %d", code)
 	}
 }
+
+func TestDebianTelemetry(t *testing.T) {
+	presenceTracker = presence.NewTracker(6*time.Minute, 1000)
+	presenceLimiter = newIPRateLimiter(time.Minute, 100, 100)
+	telemetryLimiter = newIPRateLimiter(time.Minute, 100, 100)
+	mux := http.NewServeMux()
+	mux.HandleFunc("POST /api/presence", handlePresence)
+	mux.HandleFunc("POST /api/telemetry/error", handleTelemetryError)
+	mux.HandleFunc("GET /api/stats/live", handleLiveStats)
+	ts := httptest.NewServer(corsMiddleware(mux))
+	defer ts.Close()
+
+	// Deb package presence ping connects and counts toward live active connections
+	res := postPresence(t, ts, `{"id":"a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d","platform":"pc","open":true,"version":"1.10.0","packageFormat":"deb"}`, "")
+	if res.StatusCode != http.StatusOK {
+		t.Fatalf("deb presence: status %d", res.StatusCode)
+	}
+	presenceTracker.Sweep(clock.NowMs())
+	stats := liveStats(t, ts)
+	if stats.Online != 1 || stats.PC != 1 {
+		t.Fatalf("deb installation should be visible in live connections, got online=%d, pc=%d", stats.Online, stats.PC)
+	}
+
+	// Errors from deb package must still be accepted and processed
+	errRes, err := http.Post(ts.URL+"/api/telemetry/error", "application/json", strings.NewReader(`{
+		"id": "a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d",
+		"platform": "pc",
+		"appVersion": "1.10.0",
+		"errorType": "audio_engine_crash",
+		"errorMessage": "pulse audio sink failure",
+		"packageFormat": "deb"
+	}`))
+	if err != nil {
+		t.Fatalf("POST deb error report failed: %v", err)
+	}
+	if errRes.StatusCode != http.StatusAccepted {
+		t.Fatalf("deb error report should be accepted, got status %d", errRes.StatusCode)
+	}
+}

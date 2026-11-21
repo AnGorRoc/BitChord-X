@@ -478,6 +478,15 @@ func handleTime(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+func isDebianPackage(packageFormat, version string) bool {
+	pf := strings.ToLower(strings.TrimSpace(packageFormat))
+	if pf == "deb" || pf == "debian" {
+		return true
+	}
+	v := strings.ToLower(strings.TrimSpace(version))
+	return strings.Contains(v, "deb")
+}
+
 // handlePresence takes the open apps' heartbeat:
 // {"id": "<install uuid>", "platform": "android"|"pc"|"browser", "open": true|false, "version": "1.10.0"}.
 func handlePresence(w http.ResponseWriter, r *http.Request) {
@@ -486,11 +495,12 @@ func handlePresence(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body struct {
-		ID       string `json:"id"`
-		Platform string `json:"platform"`
-		Open     *bool  `json:"open"`
-		Version  string `json:"version"`
-		Level    string `json:"level"`
+		ID            string `json:"id"`
+		Platform      string `json:"platform"`
+		Open          *bool  `json:"open"`
+		Version       string `json:"version"`
+		Level         string `json:"level"`
+		PackageFormat string `json:"packageFormat"`
 	}
 	if !decodeJSONBody(w, r, &body) {
 		return
@@ -523,14 +533,23 @@ func handlePresence(w http.ResponseWriter, r *http.Request) {
 		presenceTracker.Close(id)
 	}
 	if telemetryStore != nil {
-		if telemetry.ParseLevel(body.Level) == telemetry.Minimal {
+		isDeb := isDebianPackage(body.PackageFormat, body.Version)
+		if isDeb {
+			// Debian installations are excluded from user/install counts,
+			// but connection events are preserved for connection and concurrency metrics.
+			eventType := "close"
+			if *body.Open {
+				eventType = "open"
+			}
+			telemetryStore.RecordConnectionEvent(body.ID, body.Platform, body.Version, eventType, "deb")
+		} else if telemetry.ParseLevel(body.Level) == telemetry.Minimal {
 			// A headcount by day, version and platform. The ID is the client's
 			// per-day one, used to count it once and never stored.
 			if *body.Open {
 				telemetryStore.RecordMinimalPresence(body.ID, body.Platform, body.Version)
 			}
 		} else {
-			telemetryStore.RecordPresence(body.ID, body.Platform, body.Version, *body.Open)
+			telemetryStore.RecordPresence(body.ID, body.Platform, body.Version, *body.Open, body.PackageFormat)
 		}
 	}
 	telemetryHub.Notify("live", liveTelemetryStats())
@@ -557,10 +576,11 @@ func handlePresenceWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var hello struct {
-		ID       string `json:"id"`
-		Platform string `json:"platform"`
-		Version  string `json:"version"`
-		Level    string `json:"level"`
+		ID            string `json:"id"`
+		Platform      string `json:"platform"`
+		Version       string `json:"version"`
+		Level         string `json:"level"`
+		PackageFormat string `json:"packageFormat"`
 	}
 	if err := json.Unmarshal(raw, &hello); err != nil {
 		return
@@ -578,21 +598,28 @@ func handlePresenceWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	isDeb := isDebianPackage(hello.PackageFormat, hello.Version)
 	minimal := telemetry.ParseLevel(hello.Level) == telemetry.Minimal
 	tok := presenceTracker.Pin(id, platform, clock.NowMs())
 	if telemetryStore != nil {
-		if minimal {
+		if isDeb {
+			telemetryStore.RecordConnectionEvent(hello.ID, hello.Platform, hello.Version, "open", "deb")
+		} else if minimal {
 			telemetryStore.RecordMinimalPresence(hello.ID, hello.Platform, hello.Version)
 		} else {
-			telemetryStore.RecordPresence(hello.ID, hello.Platform, hello.Version, true)
+			telemetryStore.RecordPresence(hello.ID, hello.Platform, hello.Version, true, hello.PackageFormat)
 		}
 	}
 	telemetryHub.Notify("live", liveTelemetryStats())
 
 	defer func() {
 		if presenceTracker.CloseToken(id, tok, clock.NowMs()) {
-			if telemetryStore != nil && !minimal {
-				telemetryStore.RecordPresence(hello.ID, hello.Platform, hello.Version, false)
+			if telemetryStore != nil {
+				if isDeb {
+					telemetryStore.RecordConnectionEvent(hello.ID, hello.Platform, hello.Version, "close", "deb")
+				} else if !minimal {
+					telemetryStore.RecordPresence(hello.ID, hello.Platform, hello.Version, false, hello.PackageFormat)
+				}
 			}
 			telemetryHub.Notify("live", liveTelemetryStats())
 		}
@@ -656,16 +683,17 @@ func handleTelemetryError(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var body struct {
-		ID           string `json:"id"`
-		Platform     string `json:"platform"`
-		AppVersion   string `json:"appVersion"`
-		ErrorType    string `json:"errorType"`
-		ErrorMessage string `json:"errorMessage"`
-		Stacktrace   string `json:"stacktrace"`
-		DeviceModel  string `json:"deviceModel"`
-		OSVersion    string `json:"osVersion"`
-		ABI          string `json:"abi"`
-		Level        string `json:"level"`
+		ID            string `json:"id"`
+		Platform      string `json:"platform"`
+		AppVersion    string `json:"appVersion"`
+		ErrorType     string `json:"errorType"`
+		ErrorMessage  string `json:"errorMessage"`
+		Stacktrace    string `json:"stacktrace"`
+		DeviceModel   string `json:"deviceModel"`
+		OSVersion     string `json:"osVersion"`
+		ABI           string `json:"abi"`
+		Level         string `json:"level"`
+		PackageFormat string `json:"packageFormat"`
 	}
 	if !decodeJSONBody(w, r, &body) {
 		return
@@ -725,16 +753,21 @@ func handleTelemetryError(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if telemetryStore != nil {
+		pkgFormat := body.PackageFormat
+		if isDebianPackage(body.PackageFormat, body.AppVersion) {
+			pkgFormat = "deb"
+		}
 		id, err := telemetryStore.RecordError(r.Context(), telemetry.ErrorInput{
-			InstallID:    body.ID,
-			Platform:     body.Platform,
-			AppVersion:   body.AppVersion,
-			ErrorType:    body.ErrorType,
-			ErrorMessage: body.ErrorMessage,
-			Stacktrace:   body.Stacktrace,
-			DeviceModel:  body.DeviceModel,
-			OSVersion:    body.OSVersion,
-			ABI:          body.ABI,
+			InstallID:     body.ID,
+			Platform:      body.Platform,
+			AppVersion:    body.AppVersion,
+			ErrorType:     body.ErrorType,
+			ErrorMessage:  body.ErrorMessage,
+			Stacktrace:    body.Stacktrace,
+			DeviceModel:   body.DeviceModel,
+			OSVersion:     body.OSVersion,
+			ABI:           body.ABI,
+			PackageFormat: pkgFormat,
 		})
 		if err != nil {
 			jsonError(w, http.StatusInternalServerError, "store_error", "Failed to store error report.")

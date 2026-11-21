@@ -71,7 +71,9 @@ internal object DesktopPresence {
             .ifEmpty { PartyServers.ORIGINAL_OFFICIAL }
         val appVersion = System.getProperty("jpackage.app-version")
             ?.takeIf { it.isNotBlank() }
+            ?: System.getProperty("bitchord.version")?.takeIf { it.isNotBlank() }
             ?: "desktop"
+        val packageFormat = DesktopPackageFormat.current
         val presence = Presence(
             platform = PresencePlatform.Pc,
             installId = id,
@@ -79,6 +81,7 @@ internal object DesktopPresence {
             appVersion = appVersion,
             levelProvider = { telemetryLevel.value },
             useWebSocket = true,
+            packageFormat = packageFormat,
         )
         TelemetryReporter.configure(
             serverBaseUrl = base,
@@ -89,6 +92,7 @@ internal object DesktopPresence {
             osVersion = System.getProperty("os.version").orEmpty(),
             abi = System.getProperty("os.arch").orEmpty(),
             levelProvider = { telemetryLevel.value },
+            packageFormat = packageFormat,
         )
         TelemetryReporter.installUncaughtHandler()
         CoroutineScope(Dispatchers.Default).launch {

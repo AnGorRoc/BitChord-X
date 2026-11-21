@@ -34,30 +34,32 @@ type LiveStats struct {
 }
 
 type ErrorInput struct {
-	InstallID    string
-	Platform     string
-	AppVersion   string
-	ErrorType    string
-	ErrorMessage string
-	Stacktrace   string
-	DeviceModel  string
-	OSVersion    string
-	ABI          string
+	InstallID     string
+	Platform      string
+	AppVersion    string
+	ErrorType     string
+	ErrorMessage  string
+	Stacktrace    string
+	DeviceModel   string
+	OSVersion     string
+	ABI           string
+	PackageFormat string
 }
 
 type ErrorReport struct {
-	ID           int64     `json:"id"`
-	CreatedAt    time.Time `json:"createdAt"`
-	InstallID    string    `json:"installId"`
-	Platform     string    `json:"platform"`
-	AppVersion   string    `json:"appVersion"`
-	ErrorType    string    `json:"errorType"`
-	ErrorMessage string    `json:"errorMessage"`
-	Stacktrace   string    `json:"stacktrace"`
-	DeviceModel  string    `json:"deviceModel"`
-	OSVersion    string    `json:"osVersion"`
-	ABI          string    `json:"abi"`
-	Resolved     bool      `json:"resolved"`
+	ID            int64     `json:"id"`
+	CreatedAt     time.Time `json:"createdAt"`
+	InstallID     string    `json:"installId"`
+	Platform      string    `json:"platform"`
+	AppVersion    string    `json:"appVersion"`
+	ErrorType     string    `json:"errorType"`
+	ErrorMessage  string    `json:"errorMessage"`
+	Stacktrace    string    `json:"stacktrace"`
+	DeviceModel   string    `json:"deviceModel"`
+	OSVersion     string    `json:"osVersion"`
+	ABI           string    `json:"abi"`
+	PackageFormat string    `json:"packageFormat"`
+	Resolved      bool      `json:"resolved"`
 }
 
 type ErrorFilter struct {
@@ -270,20 +272,25 @@ CREATE TABLE IF NOT EXISTS installs (
 ALTER TABLE installs ADD COLUMN IF NOT EXISTS first_version TEXT NOT NULL DEFAULT '';
 ALTER TABLE installs ADD COLUMN IF NOT EXISTS previous_version TEXT NOT NULL DEFAULT '';
 ALTER TABLE installs ADD COLUMN IF NOT EXISTS upgraded_at TIMESTAMPTZ;
+ALTER TABLE installs ADD COLUMN IF NOT EXISTS package_format TEXT NOT NULL DEFAULT '';
 
 CREATE INDEX IF NOT EXISTS idx_installs_last_seen ON installs (last_seen_at DESC);
 CREATE INDEX IF NOT EXISTS idx_installs_version ON installs (app_version);
+CREATE INDEX IF NOT EXISTS idx_installs_package_format ON installs (package_format);
 
 CREATE TABLE IF NOT EXISTS connection_events (
-	id          BIGSERIAL PRIMARY KEY,
-	install_id  TEXT NOT NULL,
-	platform    TEXT NOT NULL,
-	app_version TEXT NOT NULL DEFAULT '',
-	event_type  TEXT NOT NULL,
-	created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+	id             BIGSERIAL PRIMARY KEY,
+	install_id     TEXT NOT NULL,
+	platform       TEXT NOT NULL,
+	app_version    TEXT NOT NULL DEFAULT '',
+	event_type     TEXT NOT NULL,
+	package_format TEXT NOT NULL DEFAULT '',
+	created_at     TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+ALTER TABLE connection_events ADD COLUMN IF NOT EXISTS package_format TEXT NOT NULL DEFAULT '';
 CREATE INDEX IF NOT EXISTS idx_conn_events_created ON connection_events (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_conn_events_format ON connection_events (package_format);
 
 CREATE TABLE IF NOT EXISTS concurrency_snapshots (
 	id             BIGSERIAL PRIMARY KEY,
@@ -317,6 +324,9 @@ CREATE INDEX IF NOT EXISTS idx_errors_created ON error_reports (created_at DESC)
 CREATE INDEX IF NOT EXISTS idx_errors_resolved ON error_reports (resolved, created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_errors_type ON error_reports (error_type);
 CREATE INDEX IF NOT EXISTS idx_errors_version ON error_reports (app_version);
+
+ALTER TABLE error_reports ADD COLUMN IF NOT EXISTS package_format TEXT NOT NULL DEFAULT '';
+CREATE INDEX IF NOT EXISTS idx_errors_format ON error_reports (package_format);
 
 -- Minimal telemetry: counters only. No install ID, no message, no stack trace,
 -- no device. A row says how many devices opened which version on which day, or
@@ -407,15 +417,57 @@ func (s *Store) Live() LiveStats {
 	return s.liveFn()
 }
 
-// RecordPresence records an install heartbeat or close event asynchronously.
-func (s *Store) RecordPresence(installID, platform, appVersion string, open bool) {
+// RecordConnectionEvent records only connection events (open/close) without tracking or mutating installs.
+// Used for Debian package installations and other non-counted runtime targets.
+func (s *Store) RecordConnectionEvent(installID, platform, appVersion, eventType, packageFormat string) {
 	if s.pool == nil {
 		return
 	}
 	appVersion = truncate(strings.TrimSpace(appVersion), 32)
+	pkgFormat := truncate(strings.TrimSpace(packageFormat), 32)
+	s.enqueue(func(ctx context.Context) {
+		if eventType == "open" {
+			const insertEvent = `
+INSERT INTO connection_events (install_id, platform, app_version, event_type, package_format)
+SELECT $1, $2, $3, 'open', $4
+WHERE NOT EXISTS (
+	SELECT 1 FROM connection_events
+	WHERE install_id = $1 AND event_type = 'open' AND created_at > NOW() - INTERVAL '10 minutes'
+);`
+			if _, err := s.pool.Exec(ctx, insertEvent, installID, platform, appVersion, pkgFormat); err != nil {
+				log.Printf("telemetry: insert open event failed: %v", err)
+			}
+		} else {
+			const insertEvent = `
+INSERT INTO connection_events (install_id, platform, app_version, event_type, package_format)
+VALUES ($1, $2, $3, $4, $5);`
+			if _, err := s.pool.Exec(ctx, insertEvent, installID, platform, appVersion, eventType, pkgFormat); err != nil {
+				log.Printf("telemetry: insert close event failed: %v", err)
+			}
+		}
+	})
+}
+
+// RecordPresence records an install heartbeat or close event asynchronously.
+// Installs identified as deb (or with deb in their version) are routed to RecordConnectionEvent
+// so they are never counted as users or installs.
+func (s *Store) RecordPresence(installID, platform, appVersion string, open bool, packageFormat ...string) {
+	if s.pool == nil {
+		return
+	}
+	appVersion = truncate(strings.TrimSpace(appVersion), 32)
+	pkgFormat := ""
+	if len(packageFormat) > 0 {
+		pkgFormat = truncate(strings.TrimSpace(packageFormat[0]), 32)
+	}
 	eventType := "close"
 	if open {
 		eventType = "open"
+	}
+
+	if strings.EqualFold(pkgFormat, "deb") || strings.Contains(strings.ToLower(appVersion), "deb") {
+		s.RecordConnectionEvent(installID, platform, appVersion, eventType, "deb")
+		return
 	}
 
 	s.enqueue(func(ctx context.Context) {
@@ -423,8 +475,8 @@ func (s *Store) RecordPresence(installID, platform, appVersion string, open bool
 			// A new session is counted when the previous open was more than 10 minutes ago
 			// (a heartbeat is every ~5 minutes).
 			const upsertOpen = `
-INSERT INTO installs (install_id, platform, app_version, first_version, first_seen_at, last_seen_at, session_count, last_open_at)
-VALUES ($1, $2, $3, $3, NOW(), NOW(), 1, NOW())
+INSERT INTO installs (install_id, platform, app_version, first_version, first_seen_at, last_seen_at, session_count, last_open_at, package_format)
+VALUES ($1, $2, $3, $3, NOW(), NOW(), 1, NOW(), $4)
 ON CONFLICT (install_id) DO UPDATE SET
 	platform = EXCLUDED.platform,
 	first_version = CASE WHEN installs.first_version = '' THEN EXCLUDED.app_version ELSE installs.first_version END,
@@ -439,6 +491,7 @@ ON CONFLICT (install_id) DO UPDATE SET
 		ELSE installs.upgraded_at
 	END,
 	app_version = CASE WHEN EXCLUDED.app_version <> '' THEN EXCLUDED.app_version ELSE installs.app_version END,
+	package_format = CASE WHEN EXCLUDED.package_format <> '' THEN EXCLUDED.package_format ELSE installs.package_format END,
 	last_seen_at = NOW(),
 	session_count = CASE
 		WHEN installs.last_open_at IS NULL OR NOW() - installs.last_open_at > INTERVAL '10 minutes'
@@ -446,32 +499,33 @@ ON CONFLICT (install_id) DO UPDATE SET
 		ELSE installs.session_count
 	END,
 	last_open_at = NOW();`
-			if _, err := s.pool.Exec(ctx, upsertOpen, installID, platform, appVersion); err != nil {
+			if _, err := s.pool.Exec(ctx, upsertOpen, installID, platform, appVersion, pkgFormat); err != nil {
 				log.Printf("telemetry: upsert install failed: %v", err)
 			}
 
 			// Log connection event only when starting a session (or once per 10m window)
 			// to keep connection_events compact and meaningful for hourly connection charts.
 			const insertEvent = `
-INSERT INTO connection_events (install_id, platform, app_version, event_type)
-SELECT $1, $2, $3, 'open'
+INSERT INTO connection_events (install_id, platform, app_version, event_type, package_format)
+SELECT $1, $2, $3, 'open', $4
 WHERE NOT EXISTS (
 	SELECT 1 FROM connection_events
 	WHERE install_id = $1 AND event_type = 'open' AND created_at > NOW() - INTERVAL '10 minutes'
 );`
-			if _, err := s.pool.Exec(ctx, insertEvent, installID, platform, appVersion); err != nil {
+			if _, err := s.pool.Exec(ctx, insertEvent, installID, platform, appVersion, pkgFormat); err != nil {
 				log.Printf("telemetry: insert open event failed: %v", err)
 			}
 		} else {
 			const upsertClose = `
 UPDATE installs SET
 	last_seen_at = NOW(),
-	app_version = CASE WHEN $2 <> '' THEN $2 ELSE app_version END
+	app_version = CASE WHEN $2 <> '' THEN $2 ELSE app_version END,
+	package_format = CASE WHEN $3 <> '' THEN $3 ELSE package_format END
 WHERE install_id = $1;`
-			_, _ = s.pool.Exec(ctx, upsertClose, installID, appVersion)
+			_, _ = s.pool.Exec(ctx, upsertClose, installID, appVersion, pkgFormat)
 			_, _ = s.pool.Exec(ctx,
-				`INSERT INTO connection_events (install_id, platform, app_version, event_type) VALUES ($1, $2, $3, $4)`,
-				installID, platform, appVersion, eventType,
+				`INSERT INTO connection_events (install_id, platform, app_version, event_type, package_format) VALUES ($1, $2, $3, $4, $5)`,
+				installID, platform, appVersion, eventType, pkgFormat,
 			)
 		}
 	})
@@ -558,8 +612,8 @@ func (s *Store) RecordError(ctx context.Context, in ErrorInput) (int64, error) {
 	const q = `
 INSERT INTO error_reports (
 	install_id, platform, app_version, error_type, error_message,
-	stacktrace, device_model, os_version, abi
-) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+	stacktrace, device_model, os_version, abi, package_format
+) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 RETURNING id;`
 	var id int64
 	err := s.pool.QueryRow(
@@ -573,6 +627,7 @@ RETURNING id;`
 		truncate(strings.TrimSpace(in.DeviceModel), 120),
 		truncate(strings.TrimSpace(in.OSVersion), 64),
 		truncate(strings.TrimSpace(in.ABI), 32),
+		truncate(strings.TrimSpace(in.PackageFormat), 32),
 	).Scan(&id)
 	return id, err
 }
@@ -620,7 +675,7 @@ func (s *Store) Overview(ctx context.Context, rangeStr string) (OverviewData, er
 
 	since := time.Now().UTC().Add(-dur)
 
-	// 1. Summary KPIs
+	// 1. Summary KPIs (Debian package installs are excluded from install/user counts)
 	const summaryQ = `
 SELECT
 	COUNT(*)::INT AS total_installs,
@@ -631,7 +686,8 @@ SELECT
 	COUNT(*) FILTER (WHERE last_seen_at >= $1 AND first_seen_at < $1)::INT AS returning_in_period,
 	COUNT(*) FILTER (WHERE last_seen_at < NOW() - INTERVAL '14 days')::INT AS lost_installs,
 	COALESCE(SUM(session_count), 0)::BIGINT AS total_sessions
-FROM installs;`
+FROM installs
+WHERE package_format <> 'deb' AND app_version NOT LIKE '%deb%';`
 	err := s.pool.QueryRow(ctx, summaryQ, since).Scan(
 		&out.Summary.TotalInstalls,
 		&out.Summary.DAU,
@@ -721,6 +777,7 @@ FROM (
 		COUNT(*)::INT AS cnt,
 		COUNT(*) FILTER (WHERE last_seen_at >= NOW() - INTERVAL '24 hours')::INT AS act24
 	FROM installs
+	WHERE package_format <> 'deb' AND app_version NOT LIKE '%deb%'
 	GROUP BY ver
 ) i
 LEFT JOIN (
@@ -751,6 +808,7 @@ LIMIT 15;`
 SELECT previous_version, app_version, COUNT(*)::INT AS cnt
 FROM installs
 WHERE previous_version <> '' AND upgraded_at >= $1
+  AND package_format <> 'deb' AND app_version NOT LIKE '%deb%'
 GROUP BY previous_version, app_version
 ORDER BY cnt DESC
 LIMIT 10;`
@@ -766,17 +824,18 @@ LIMIT 10;`
 	}
 	latestVer := s.version
 	if latestVer == "" || latestVer == "dev" {
-		_ = s.pool.QueryRow(ctx, `SELECT app_version FROM installs WHERE app_version <> '' ORDER BY app_version DESC LIMIT 1`).Scan(&latestVer)
+		_ = s.pool.QueryRow(ctx, `SELECT app_version FROM installs WHERE app_version <> '' AND package_format <> 'deb' AND app_version NOT LIKE '%deb%' ORDER BY app_version DESC LIMIT 1`).Scan(&latestVer)
 	}
 	out.LatestVersion = latestVer
 	if latestVer != "" {
 		_ = s.pool.QueryRow(ctx, `
 SELECT COUNT(*)::INT FROM installs
-WHERE last_seen_at >= NOW() - INTERVAL '7 days' AND app_version <> '' AND app_version <> $1;`, latestVer).Scan(&out.OutdatedActive7d)
+WHERE last_seen_at >= NOW() - INTERVAL '7 days' AND app_version <> '' AND app_version <> $1
+  AND package_format <> 'deb' AND app_version NOT LIKE '%deb%';`, latestVer).Scan(&out.OutdatedActive7d)
 	}
 
 	// 5. Platform split
-	const platformsQ = `SELECT platform, COUNT(*)::INT FROM installs GROUP BY platform ORDER BY COUNT(*) DESC;`
+	const platformsQ = `SELECT platform, COUNT(*)::INT FROM installs WHERE package_format <> 'deb' AND app_version NOT LIKE '%deb%' GROUP BY platform ORDER BY COUNT(*) DESC;`
 	if rows, err := s.pool.Query(ctx, platformsQ); err == nil {
 		defer rows.Close()
 		for rows.Next() {
@@ -1077,6 +1136,7 @@ func (s *Store) ListInstalls(ctx context.Context, f InstallFilter) (InstallListR
 		return fmt.Sprintf("$%d", len(args))
 	}
 
+	conds = append(conds, "package_format <> 'deb'", "app_version NOT LIKE '%deb%'")
 	if f.Platform != "" {
 		conds = append(conds, "platform = "+addArg(f.Platform))
 	}
@@ -1126,7 +1186,7 @@ LIMIT %s OFFSET %s;`, where, limitArg, offsetArg)
 		}
 	}
 
-	if vRows, err := s.pool.Query(ctx, `SELECT DISTINCT app_version FROM installs WHERE app_version <> '' ORDER BY app_version DESC LIMIT 30`); err == nil {
+	if vRows, err := s.pool.Query(ctx, `SELECT DISTINCT app_version FROM installs WHERE app_version <> '' AND package_format <> 'deb' AND app_version NOT LIKE '%deb%' ORDER BY app_version DESC LIMIT 30`); err == nil {
 		defer vRows.Close()
 		for vRows.Next() {
 			var v string
@@ -1248,7 +1308,7 @@ func (s *Store) GetDatabaseStats(ctx context.Context) (DatabaseStats, error) {
 	const q = `
 SELECT
 	pg_database_size(current_database())::BIGINT,
-	(SELECT COUNT(*)::BIGINT FROM installs),
+	(SELECT COUNT(*)::BIGINT FROM installs WHERE package_format <> 'deb' AND app_version NOT LIKE '%deb%'),
 	(SELECT COUNT(*)::BIGINT FROM connection_events),
 	(SELECT COUNT(*)::BIGINT FROM concurrency_snapshots),
 	(SELECT COUNT(*)::BIGINT FROM error_reports),

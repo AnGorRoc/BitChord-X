@@ -79,9 +79,17 @@ so the dashboard's history prune keeps a year of them, against 30 days for the f
 `deviceDays` (the sum of devices per day over the range) and `errors` (the ten most frequent types). The dashboard page
 does not draw it yet.
 
+## Debian Linux (.deb) builds
+
+Linux installations from `.deb` packages (tagged with `packageFormat: "deb"`) are excluded from user and installation metrics:
+
+- **Not counted as users or installs**: They are never written to the `installs` table and are excluded from `minimal_usage` device tallies, total installs, active 24h, returning, retention, and install directory views.
+- **Diagnostics preserved**: Technical errors (`error_reports` and `minimal_errors`) and connection heartbeats (`connection_events` and real-time live concurrency) are still received and recorded so package-specific crashes, issues, and network reachability remain visible for debugging without tracking user adoption.
+
 ## Where it is enforced
 
 - `shared/.../data/telemetry/TelemetryLevel.kt`: the levels, and the daily ID.
-- `shared/.../data/telemetry/TelemetryReporter.kt` and `.../presence/Presence.kt`: what each level sends.
-- `backend/telemetry/level.go`, `store.go` and `backend/main.go`: what the server accepts and stores.
-- Tests: `TelemetryLevelTest`, `TelemetryScrubTest`, `backend/telemetry/level_test.go` and `TestMinimalTelemetry`.
+- `shared/.../data/telemetry/TelemetryReporter.kt` and `.../presence/Presence.kt`: what each level sends, including optional `packageFormat`.
+- `desktopApp/.../DesktopPackageFormat.kt` and `DesktopPresence.kt`: packaging detection on Linux.
+- `backend/telemetry/store.go` and `backend/main.go`: exclusion of deb packages from install tallies, preserving error and connection telemetry.
+- Tests: `TelemetryLevelTest`, `TelemetryScrubTest`, `PresenceTest`, `DesktopPackageFormatTest`, `backend/telemetry/level_test.go`, `TestMinimalTelemetry` and `TestDebianTelemetry`.

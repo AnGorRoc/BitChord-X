@@ -84,4 +84,20 @@ class PresenceTest {
         // Already sent by the time closeBlocking returns: no waiting.
         assertEquals(false, nextPing(timeoutSec = 0)!!.isOpen())
     }
+
+    @Test
+    fun includesPackageFormatWhenProvided() {
+        val presence = Presence(
+            platform = PresencePlatform.Pc,
+            installId = id,
+            endpoint = server.url("/api/presence").toString(),
+            appVersion = "1.10.0",
+            packageFormat = "deb",
+        )
+        presence.setOpen(true)
+        val open = nextPing()!!
+        assertEquals("deb", open.getValue("packageFormat").jsonPrimitive.content)
+        assertEquals("1.10.0", open.getValue("version").jsonPrimitive.content)
+        assertEquals("pc", open.getValue("platform").jsonPrimitive.content)
+    }
 }

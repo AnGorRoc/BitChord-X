@@ -499,6 +499,12 @@ if (startupArchiveEnabled && startupClassList.isFile) {
     }
 }
 
+tasks.matching { it.name in setOf("packageDeb", "packageReleaseDeb") }.configureEach {
+    (this as org.jetbrains.compose.desktop.application.tasks.AbstractJPackageTask).freeArgs.addAll(
+        listOf("--java-options", "-Dbitchord.package.format=deb")
+    )
+}
+
 compose.desktop {
     application {
         javaHome = javaToolchains.launcherFor(java.toolchain).map {
