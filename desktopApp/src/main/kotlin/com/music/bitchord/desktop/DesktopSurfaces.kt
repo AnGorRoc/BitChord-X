@@ -20,7 +20,10 @@ import androidx.compose.foundation.border
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.staticCompositionLocalOf
+import dev.chrisbanes.haze.hazeEffect
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -150,11 +153,22 @@ internal fun DesktopDialogPanel(
         )
         return
     }
+    val reduceDynamicBlur by DesktopAppearanceSettings.reduceDynamicBlur.collectAsState()
+    val haze = LocalDesktopHaze.current
+    val scrimModifier = if (haze != null && !reduceDynamicBlur) {
+        Modifier.hazeEffect(state = haze) {
+            blurEnabled = true
+            backgroundColor = DesktopScrim.copy(alpha = 0.55f)
+            blurRadius = 24.dp
+        }
+    } else {
+        Modifier.background(DesktopScrim)
+    }
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         Box(
             Modifier
                 .fillMaxSize()
-                .background(DesktopScrim)
+                .then(scrimModifier)
                 .clickable(
                     interactionSource = remember { MutableInteractionSource() },
                     indication = null,
