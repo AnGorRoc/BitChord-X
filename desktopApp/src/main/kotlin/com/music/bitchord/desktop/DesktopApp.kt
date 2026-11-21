@@ -157,6 +157,7 @@ import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.Code
+import androidx.compose.material.icons.rounded.Feedback
 import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Storage
@@ -5006,6 +5007,7 @@ fun BitChordDesktopApp() {
                                     },
                                     onConfigureWebDav = { showWebDavDialog = true },
                                     onConfigureSmb = { showSmbDialog = true },
+                                    onOpenFeedback = { overlays.settingsPage = DesktopSettingsPage.FEEDBACK },
                                 )
                                 DesktopSettingsPage.EQUALIZER -> DesktopEqualizerDialog(onDismiss = ::goBack)
                                 DesktopSettingsPage.AUDIO_OUTPUT -> DesktopAudioOutputDialog(onDismiss = ::goBack)
@@ -5065,6 +5067,7 @@ fun BitChordDesktopApp() {
                                     onDismiss = ::goBack,
                                 )
                                 DesktopSettingsPage.LICENSES -> DesktopLicensesPage(onDismiss = ::goBack)
+                                DesktopSettingsPage.FEEDBACK -> DesktopFeedbackPanel(onDismiss = ::goBack)
                             }
                             }
                         }
@@ -7715,6 +7718,7 @@ private fun DesktopSettingsScreen(
     onOpenReplay: () -> Unit,
     onConfigureWebDav: () -> Unit = {},
     onConfigureSmb: () -> Unit = {},
+    onOpenFeedback: () -> Unit = {},
 ) {
     var editingSource by remember { mutableStateOf<DesktopSourceConfig?>(null) }
     val sourceProbeKey = sourceConfigs
@@ -7798,6 +7802,25 @@ private fun DesktopSettingsScreen(
                                 icon = Icons.Rounded.Groups,
                                 onClick = onOpenListenTogether,
                             )
+                        }
+                    }
+                    item {
+                        // Only where the server takes feedback; with how many answers are unread.
+                        val feedbackAvailable by DesktopFeedback.available.collectAsState()
+                        if (feedbackAvailable) {
+                            val feedback by DesktopFeedback.center.state.collectAsState()
+                            SettingsGroup {
+                                SettingsNavigationRow(
+                                    title = DesktopStrings["feedback_row", "Feedback and bug reports"],
+                                    subtitle = if (feedback.unread > 0) {
+                                        DesktopStrings["feedback_row_unread", "%d new"].format(feedback.unread)
+                                    } else {
+                                        DesktopStrings["feedback_settings_footer", "Tell the developer about a bug or an idea."]
+                                    },
+                                    icon = Icons.Rounded.Feedback,
+                                    onClick = onOpenFeedback,
+                                )
+                            }
                         }
                     }
                     item {

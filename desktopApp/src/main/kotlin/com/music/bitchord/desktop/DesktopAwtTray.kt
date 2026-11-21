@@ -47,6 +47,18 @@ internal object DesktopAwtTray {
         }
     }
 
+    /**
+     * A balloon from the tray icon (a toast on Windows). Does nothing without a tray: the feedback
+     * row in Settings still shows what is unread.
+     */
+    fun notify(title: String, text: String) {
+        EventQueue.invokeLater {
+            synchronized(lock) {
+                runCatching { icon?.displayMessage(title, text.take(300), TrayIcon.MessageType.INFO) }
+            }
+        }
+    }
+
     fun stop() {
         EventQueue.invokeLater {
             synchronized(lock) {

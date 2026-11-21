@@ -76,6 +76,8 @@ fun main() {
     )
     // The public "apps open right now" count; see Presence.
     DesktopPresence.install()
+    // Bug reports and ideas, and the developer's answers; see FeedbackCenter.
+    DesktopFeedback.install()
     desktopMain()
     kotlin.system.exitProcess(0)
 }

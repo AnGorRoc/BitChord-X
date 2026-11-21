@@ -104,7 +104,7 @@ internal object DesktopPresence {
     }
 
     /** Random and local to this install: not the machine, and not the account. */
-    private fun installId(): String {
+    internal fun installId(): String {
         preferences.get(KEY_INSTALL_ID, null)?.let { return it }
         val id = UUID.randomUUID().toString()
         preferences.put(KEY_INSTALL_ID, id)
