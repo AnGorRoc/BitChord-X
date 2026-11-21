@@ -1917,4 +1917,16 @@
     <string name="replay_year_summary_minutes">Minutos escuchados</string>
     <string name="replay_year_mute">Silenciar la historia</string>
     <string name="replay_year_unmute">Activar sonido de la historia</string>
+    <string name="about_app">Acerca de</string>
+    <string name="about_app_summary">BitChord X %1$s · el equipo y los créditos</string>
+    <string name="about_app_version">Versión %1$s</string>
+    <string name="about_app_check_updates">Buscar actualizaciones</string>
+    <string name="about_app_checking">Buscando…</string>
+    <string name="about_app_up_to_date">Ya tienes la última versión</string>
+    <string name="about_app_team">El equipo</string>
+    <string name="about_app_our_repo">BitChord X en GitHub</string>
+    <string name="about_app_credits">Créditos</string>
+    <string name="about_app_original_role">Proyecto BitChord original</string>
+    <string name="about_app_original_thanks">BitChord X nace del proyecto BitChord original. Gracias por abrirlo a todos.</string>
+    <string name="about_app_original_repo">El BitChord original en GitHub</string>
 </resources>

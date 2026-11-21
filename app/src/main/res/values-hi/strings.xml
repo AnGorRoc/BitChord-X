@@ -1938,4 +1938,16 @@
     <string name="listen_together_own_device_dialog_title">Party on your device</string>
     <string name="listen_together_own_device_dialog_message">Your device “%1$s” is already in this party. Connect to it via Connect to control playback or listen together.</string>
     <string name="listen_together_connect_action">Connect</string>
+    <string name="about_app">परिचय</string>
+    <string name="about_app_summary">BitChord X %1$s · टीम और श्रेय</string>
+    <string name="about_app_version">संस्करण %1$s</string>
+    <string name="about_app_check_updates">अपडेट जाँचें</string>
+    <string name="about_app_checking">जाँच हो रही है…</string>
+    <string name="about_app_up_to_date">आपके पास नवीनतम संस्करण है</string>
+    <string name="about_app_team">टीम</string>
+    <string name="about_app_our_repo">GitHub पर BitChord X</string>
+    <string name="about_app_credits">श्रेय</string>
+    <string name="about_app_original_role">मूल BitChord प्रोजेक्ट</string>
+    <string name="about_app_original_thanks">BitChord X मूल BitChord प्रोजेक्ट से बना है। इसे सबके लिए खोलने के लिए धन्यवाद।</string>
+    <string name="about_app_original_repo">GitHub पर मूल BitChord</string>
 </resources>

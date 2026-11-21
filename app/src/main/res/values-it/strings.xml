@@ -1877,4 +1877,16 @@
     <string name="listen_together_own_device_dialog_title">Party on your device</string>
     <string name="listen_together_own_device_dialog_message">Your device “%1$s” is already in this party. Connect to it via Connect to control playback or listen together.</string>
     <string name="listen_together_connect_action">Connect</string>
+    <string name="about_app">Informazioni</string>
+    <string name="about_app_summary">BitChord X %1$s · il team e i riconoscimenti</string>
+    <string name="about_app_version">Versione %1$s</string>
+    <string name="about_app_check_updates">Cerca aggiornamenti</string>
+    <string name="about_app_checking">Ricerca…</string>
+    <string name="about_app_up_to_date">Hai l\'ultima versione</string>
+    <string name="about_app_team">Il team</string>
+    <string name="about_app_our_repo">BitChord X su GitHub</string>
+    <string name="about_app_credits">Riconoscimenti</string>
+    <string name="about_app_original_role">Progetto BitChord originale</string>
+    <string name="about_app_original_thanks">BitChord X nasce dal progetto BitChord originale. Grazie per averlo aperto a tutti.</string>
+    <string name="about_app_original_repo">Il BitChord originale su GitHub</string>
 </resources>

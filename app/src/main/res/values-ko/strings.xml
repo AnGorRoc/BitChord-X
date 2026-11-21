@@ -1773,4 +1773,16 @@
     <string name="listen_together_own_device_dialog_title">Party on your device</string>
     <string name="listen_together_own_device_dialog_message">Your device “%1$s” is already in this party. Connect to it via Connect to control playback or listen together.</string>
     <string name="listen_together_connect_action">Connect</string>
+    <string name="about_app">정보</string>
+    <string name="about_app_summary">BitChord X %1$s · 팀과 크레딧</string>
+    <string name="about_app_version">버전 %1$s</string>
+    <string name="about_app_check_updates">업데이트 확인</string>
+    <string name="about_app_checking">확인 중…</string>
+    <string name="about_app_up_to_date">최신 버전입니다</string>
+    <string name="about_app_team">팀</string>
+    <string name="about_app_our_repo">GitHub의 BitChord X</string>
+    <string name="about_app_credits">크레딧</string>
+    <string name="about_app_original_role">원작 BitChord 프로젝트</string>
+    <string name="about_app_original_thanks">BitChord X는 원작 BitChord 프로젝트에서 시작됐습니다. 모두에게 공개해 주셔서 감사합니다.</string>
+    <string name="about_app_original_repo">GitHub의 원작 BitChord</string>
 </resources>

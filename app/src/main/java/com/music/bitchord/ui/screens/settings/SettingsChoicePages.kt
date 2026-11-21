@@ -44,7 +44,7 @@ import java.util.Locale
 @Composable
 internal fun SettingsCategoryList(onOpen: (SettingsCategory) -> Unit) {
     SettingsGroup {
-        SettingsCategory.entries.forEachIndexed { index, category ->
+        SettingsCategory.entries.filter { it != SettingsCategory.ABOUT }.forEachIndexed { index, category ->
             if (index > 0) RowDivider()
             SettingsRow(
                 icon = category.icon,

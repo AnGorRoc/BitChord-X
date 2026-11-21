@@ -1923,4 +1923,16 @@
     <string name="listen_together_own_device_dialog_title">Party on your device</string>
     <string name="listen_together_own_device_dialog_message">Your device “%1$s” is already in this party. Connect to it via Connect to control playback or listen together.</string>
     <string name="listen_together_connect_action">Connect</string>
+    <string name="about_app">เกี่ยวกับ</string>
+    <string name="about_app_summary">BitChord X %1$s · ทีมงานและเครดิต</string>
+    <string name="about_app_version">เวอร์ชัน %1$s</string>
+    <string name="about_app_check_updates">ตรวจหาอัปเดต</string>
+    <string name="about_app_checking">กำลังตรวจสอบ…</string>
+    <string name="about_app_up_to_date">คุณใช้เวอร์ชันล่าสุดแล้ว</string>
+    <string name="about_app_team">ทีมงาน</string>
+    <string name="about_app_our_repo">BitChord X บน GitHub</string>
+    <string name="about_app_credits">เครดิต</string>
+    <string name="about_app_original_role">โปรเจกต์ BitChord ต้นฉบับ</string>
+    <string name="about_app_original_thanks">BitChord X เกิดจากโปรเจกต์ BitChord ต้นฉบับ ขอบคุณที่เปิดให้ทุกคนใช้</string>
+    <string name="about_app_original_repo">BitChord ต้นฉบับบน GitHub</string>
 </resources>

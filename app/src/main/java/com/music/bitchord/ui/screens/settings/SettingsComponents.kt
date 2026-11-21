@@ -952,6 +952,9 @@ enum class SettingsCategory(@param:StringRes val title: Int) {
     PRIVACY_DATA(R.string.settings_privacy_data),
     LANGUAGE(R.string.language),
     ADVANCED(R.string.advanced_options),
+
+    /** Not one of the listed categories: its own card at the foot of the main page. */
+    ABOUT(R.string.about_app),
     ;
 
     val icon: ImageVector
@@ -971,6 +974,7 @@ enum class SettingsCategory(@param:StringRes val title: Int) {
             PRIVACY_DATA -> SfIcons.YourData
             LANGUAGE -> SfIcons.Language
             ADVANCED -> SfIcons.Advanced
+            ABOUT -> SfIcons.Info
         }
 }
 

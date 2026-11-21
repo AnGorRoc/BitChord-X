@@ -1918,4 +1918,16 @@
     <string name="listen_together_own_device_dialog_title">Party on your device</string>
     <string name="listen_together_own_device_dialog_message">Your device “%1$s” is already in this party. Connect to it via Connect to control playback or listen together.</string>
     <string name="listen_together_connect_action">Connect</string>
+    <string name="about_app">このアプリについて</string>
+    <string name="about_app_summary">BitChord X %1$s · チームとクレジット</string>
+    <string name="about_app_version">バージョン %1$s</string>
+    <string name="about_app_check_updates">アップデートを確認</string>
+    <string name="about_app_checking">確認中…</string>
+    <string name="about_app_up_to_date">最新バージョンです</string>
+    <string name="about_app_team">チーム</string>
+    <string name="about_app_our_repo">GitHub の BitChord X</string>
+    <string name="about_app_credits">クレジット</string>
+    <string name="about_app_original_role">オリジナルの BitChord プロジェクト</string>
+    <string name="about_app_original_thanks">BitChord X はオリジナルの BitChord プロジェクトから生まれました。みんなに公開してくれてありがとう。</string>
+    <string name="about_app_original_repo">GitHub のオリジナル BitChord</string>
 </resources>

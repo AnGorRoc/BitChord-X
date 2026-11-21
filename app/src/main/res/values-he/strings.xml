@@ -1944,4 +1944,16 @@
     <string name="listen_together_own_device_dialog_title">Party on your device</string>
     <string name="listen_together_own_device_dialog_message">Your device “%1$s” is already in this party. Connect to it via Connect to control playback or listen together.</string>
     <string name="listen_together_connect_action">Connect</string>
+    <string name="about_app">אודות</string>
+    <string name="about_app_summary">BitChord X %1$s · הצוות והקרדיטים</string>
+    <string name="about_app_version">גרסה %1$s</string>
+    <string name="about_app_check_updates">בדיקת עדכונים</string>
+    <string name="about_app_checking">בודק…</string>
+    <string name="about_app_up_to_date">יש לך את הגרסה העדכנית</string>
+    <string name="about_app_team">הצוות</string>
+    <string name="about_app_our_repo">BitChord X ב-GitHub</string>
+    <string name="about_app_credits">קרדיטים</string>
+    <string name="about_app_original_role">פרויקט BitChord המקורי</string>
+    <string name="about_app_original_thanks">BitChord X צמח מפרויקט BitChord המקורי. תודה על פתיחתו לכולם.</string>
+    <string name="about_app_original_repo">BitChord המקורי ב-GitHub</string>
 </resources>

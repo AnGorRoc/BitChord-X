@@ -1917,4 +1917,16 @@
     <string name="listen_together_own_device_dialog_title">Party on your device</string>
     <string name="listen_together_own_device_dialog_message">Your device “%1$s” is already in this party. Connect to it via Connect to control playback or listen together.</string>
     <string name="listen_together_connect_action">Connect</string>
+    <string name="about_app">Tentang</string>
+    <string name="about_app_summary">BitChord X %1$s · tim dan kredit</string>
+    <string name="about_app_version">Versi %1$s</string>
+    <string name="about_app_check_updates">Periksa pembaruan</string>
+    <string name="about_app_checking">Memeriksa…</string>
+    <string name="about_app_up_to_date">Anda menggunakan versi terbaru</string>
+    <string name="about_app_team">Tim</string>
+    <string name="about_app_our_repo">BitChord X di GitHub</string>
+    <string name="about_app_credits">Kredit</string>
+    <string name="about_app_original_role">Proyek BitChord asli</string>
+    <string name="about_app_original_thanks">BitChord X lahir dari proyek BitChord asli. Terima kasih telah membukanya untuk semua orang.</string>
+    <string name="about_app_original_repo">BitChord asli di GitHub</string>
 </resources>

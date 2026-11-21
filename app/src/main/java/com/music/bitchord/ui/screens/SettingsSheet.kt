@@ -3,12 +3,12 @@ package com.music.bitchord.ui.screens
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -19,13 +19,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.LinkAnnotation
-import androidx.compose.ui.text.SpanStyle
-import androidx.compose.ui.text.TextLinkStyles
-import androidx.compose.ui.text.buildAnnotatedString
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextDecoration
-import androidx.compose.ui.text.withLink
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -126,6 +119,11 @@ fun SettingsScreen(
             .verticalScroll(scrollState)
             .padding(contentPadding),
     ) {
+        // About is its own page, with BitChord X itself as its heading.
+        if (section == SettingsCategory.ABOUT) {
+            SettingsAboutPage(version)
+            return@Column
+        }
         SettingsPageTitle(stringResource(section?.title ?: R.string.settings))
         if (section == null) {
             SearchField(
@@ -245,35 +243,8 @@ fun SettingsScreen(
 
         if (section == null && searchQuery.isBlank()) {
             FeedbackSettingsGroup(accountName = account?.name, onClick = onFeedback)
-            Text(
-                text = buildAnnotatedString {
-                    append("bitchord $version  ")
-                    val linkStyles = TextLinkStyles(
-                        style = SpanStyle(
-                            color = MaterialTheme.colorScheme.primary,
-                            textDecoration = TextDecoration.Underline,
-                        ),
-                    )
-                    withLink(LinkAnnotation.Url("https://github.com/AnGorRoc/BitChord-X", linkStyles)) {
-                        append("GitHub")
-                    }
-                    append("  ")
-                    withLink(LinkAnnotation.Url("https://github.com/AnGorRoc", linkStyles)) {
-                        append("Developer")
-                    }
-                    append("  ")
-                    withLink(LinkAnnotation.Url("https://github.com/kushagrasinghx/BitChord", linkStyles)) {
-                        append("Original project")
-                    }
-                    append("\n~YouTube Music & Listen Together Backend")
-                },
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(top = 24.dp, bottom = 8.dp),
-            )
+            SettingsAboutRow(version = version, onClick = { onOpenSection(SettingsCategory.ABOUT) })
+            Spacer(Modifier.height(8.dp))
         }
     }
 }
