@@ -11,10 +11,13 @@ RUN go mod tidy && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/ser
 
 FROM alpine:3.22
 RUN apk add --no-cache ca-certificates tzdata \
-    && adduser -D -H -u 10001 jam
+    && adduser -D -H -u 10001 jam \
+    && mkdir -p /data/feedback && chown -R jam:jam /data
 COPY --from=build /out/server /usr/local/bin/bitchord-jam
 USER jam
 ENV PORT=8000
+# Feedback attachments. Mount a persistent volume here, or every redeploy loses them.
+ENV FEEDBACK_DIR=/data/feedback
 ENV ADMIN_PORT=8001
 EXPOSE 8000 8001
 # busybox wget is in the base image; /healthz answers {"ok":true}.

@@ -394,6 +394,12 @@ func (s *Store) DatabaseEnabled() bool {
 	return s.pool != nil
 }
 
+// Pool is the database connection pool, or nil without a database. Other features that keep
+// their rows in the same database (feedback) share it.
+func (s *Store) Pool() *pgxpool.Pool {
+	return s.pool
+}
+
 func (s *Store) Live() LiveStats {
 	if s.liveFn == nil {
 		return LiveStats{}

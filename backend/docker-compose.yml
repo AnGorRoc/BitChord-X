@@ -39,6 +39,10 @@ services:
       JAM_PUBLIC_ORIGIN: ${JAM_PUBLIC_ORIGIN:-}
       JAM_ALLOWED_ORIGINS: ${JAM_ALLOWED_ORIGINS:-}
       JAM_VERSION: ${JAM_VERSION:-1.9.3}
+      FEEDBACK_DIR: /data/feedback
+    volumes:
+      - feedback:/data/feedback
 
 volumes:
   pgdata:
+  feedback:

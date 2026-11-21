@@ -126,6 +126,17 @@ var (
 	AdminTailscaleOnly   = getBool("ADMIN_TAILSCALE_ONLY", false)
 	DatabaseURL          = strings.TrimSpace(os.Getenv("DATABASE_URL"))
 	TelemetryRatePerMin  = getInt("JAM_TELEMETRY_RATE_PER_MINUTE", 20)
+	// Feedback (bug reports and ideas sent from the apps). Attachments are files under
+	// FeedbackDir, which must be a persistent volume; their total is capped at FeedbackMaxDiskMB.
+	FeedbackEnabled          = getBool("FEEDBACK_ENABLED", true)
+	FeedbackDir              = strings.TrimSpace(os.Getenv("FEEDBACK_DIR"))
+	FeedbackMaxDiskMB        = getInt("FEEDBACK_MAX_DISK_MB", 5000)
+	FeedbackMaxUploadMB      = getInt("FEEDBACK_MAX_UPLOAD_MB", 8)
+	FeedbackRetentionDays    = getInt("FEEDBACK_RETENTION_DAYS", 180)
+	FeedbackTicketsPerHour   = getInt("FEEDBACK_TICKETS_PER_HOUR", 5)
+	FeedbackMessagesPerHour  = getInt("FEEDBACK_MESSAGES_PER_HOUR", 30)
+	FeedbackUploadsPerHour   = getInt("FEEDBACK_UPLOADS_PER_HOUR", 60)
+	FeedbackReadsPerMinute   = getInt("FEEDBACK_READS_PER_MINUTE", 30)
 	TrustedProxyNets     = parseCIDRs(getCSV("JAM_TRUSTED_PROXY_CIDRS", defaultTrustedProxyCIDRs))
 	tailscaleNets        = parseCIDRs([]string{"127.0.0.0/8", "::1/128", "100.64.0.0/10", "fd7a:115c:a1e0::/48"})
 )

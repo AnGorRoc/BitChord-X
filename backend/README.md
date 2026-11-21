@@ -244,6 +244,32 @@ To keep memory, bandwidth, and latency strictly bounded:
   entirely such tracks succeeds without changing the queue. Hand-queued tracks
   are never filtered.
 
+### Feedback — `/api/feedback/…`
+
+Bug reports, ideas and questions sent from the apps, and the developer's answers
+(see `feedback/`). There are no accounts: the first report returns a
+`reporterToken` (`fbr_…`) that the app keeps and sends as
+`Authorization: Bearer` from then on. The server stores only its SHA-256. It is
+unrelated to the telemetry install ID. A token the server does not know is
+replaced on the next report, not refused. Every write takes a client-chosen UUID,
+so retries are recognised instead of duplicated.
+
+| | |
+|---|---|
+| `POST /api/feedback/tickets` | `clientTicketId`, `kind` (`bug`/`idea`/`question`/`other`), `title` (3–140), `body` (≤ 8000), `platform`, `appVersion`, `locale?`, `diagnostics?` (`deviceModel`, `osVersion`, `abi`, `screen`, `telemetryLevel`, `installId` — the install ID is kept only at `full`). → `201` with `ticket`, `message` (the description), `limits`, and `reporterToken` when one was issued; `200` for a retry. |
+| `PUT /api/feedback/tickets/{id}/messages/{mid}/attachments/{uuid}` | Raw body with `Content-Length`: PNG, JPEG or WebP (≤ 8 MB, ≤ 40 MP), or a plain-text log (≤ 512 KB). Images are decoded and re-encoded, which removes EXIF/GPS and anything appended. → `201` / `200` for a retry, `413` over a limit, `415` other types, `507` when the disk quota is full. |
+| `POST /api/feedback/tickets/{id}/messages` | `clientMessageId`, `body`: the person's reply. |
+| `POST /api/feedback/tickets/{id}/rating` | `clientMessageId`, `resolved`, `comment?`. `resolved: false` reopens a closed ticket. |
+| `GET /api/feedback/inbox?since={messageId}` | The person's tickets with unread counts, plus the developer's messages after `since`. Answers `304` to a matching `If-None-Match`, which is the usual case. Variables in messages (`{{nombre}}`) arrive unresolved; the app fills them in locally. |
+| `GET /api/feedback/tickets/{id}` | The whole thread. |
+| `POST /api/feedback/tickets/{id}/read` | `upTo`: marks the developer's messages as read. |
+| `DELETE /api/feedback/tickets/{id}` | Deletes the ticket and its files. |
+
+Someone else's ticket is a `404`, the same as one that does not exist. Origins
+follow the telemetry rule: the apps send none, and the web player sends one of
+`JAM_ALLOWED_ORIGINS`. Without `DATABASE_URL` tickets are kept in memory, which
+is enough for a local test server.
+
 ## Deploying with Coolify (Docker)
 
 `Dockerfile` builds a small Alpine image with a built-in health check, which is
@@ -254,6 +280,9 @@ what Coolify (or plain `docker run`) needs:
 - **One container only.** Parties live in memory, so a second replica is a
   second, disjoint set of parties. A redeploy restarts the process and drops
   every party, so deploy when nobody is listening.
+- **Persistent storage** mounted at `/data/feedback` (the image's
+  `FEEDBACK_DIR`). It holds the feedback attachments; without it, every
+  redeploy loses them.
 
 Behind Cloudflare (proxied DNS or a Cloudflare Tunnel) set:
 
@@ -366,6 +395,15 @@ Every one of these is optional — `config/config.go` carries the same defaults.
 | `JAM_TRUST_PROXY` | `false` | Read `X-Forwarded-For` for rate limiting only when a trusted proxy terminates requests. |
 | `JAM_PUBLIC_ORIGIN` | *(none)* | Public origin emitted verbatim in invite deep links, e.g. `https://party.example.com`. Set it when TLS terminates upstream and `X-Forwarded-Proto` may be rewritten or dropped along the way. |
 | `PORT` | `8000` | Port the server listens on. |
+| `FEEDBACK_ENABLED` | `true` | Serve the feedback API. |
+| `FEEDBACK_DIR` | `data/feedback` (`/data/feedback` in the image) | Where attachments are stored, named by their SHA-256. |
+| `FEEDBACK_MAX_DISK_MB` | `5000` | Total size of all attachments. Over it, uploads get `507` and text is still accepted. |
+| `FEEDBACK_MAX_UPLOAD_MB` | `8` | Largest single upload. |
+| `FEEDBACK_RETENTION_DAYS` | `180` | Attachments of tickets closed this long ago are deleted (the text stays). |
+| `FEEDBACK_TICKETS_PER_HOUR` | `5` | New tickets per client IP. |
+| `FEEDBACK_MESSAGES_PER_HOUR` | `30` | Replies, ratings and deletions per client IP. |
+| `FEEDBACK_UPLOADS_PER_HOUR` | `60` | Attachment uploads per client IP. |
+| `FEEDBACK_READS_PER_MINUTE` | `30` | Inbox and thread reads per client IP. |
 
 ## Layout
 
@@ -373,6 +411,7 @@ Every one of these is optional — `config/config.go` carries the same defaults.
 clock/clock.go        The one clock, monotonic so anchors never jump
 codes/codes.go        Six-character codes, and reading a mistyped one charitably
 config/config.go      Environment knobs
+feedback/             Bug reports and ideas from the apps: API, storage, attachment processing
 hub/hub.go            Who holds a socket, and how a frame reaches everyone
 party/party.go        Party, Member, PlaybackState — the sync rule, in-memory state
 protocol/protocol.go  Action and frame-type names

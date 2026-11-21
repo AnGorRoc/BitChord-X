@@ -129,6 +129,13 @@ func main() {
 	mux.HandleFunc("GET /api/stats/live", handleLiveStats)
 	mux.HandleFunc("GET /api/stats/live/badge.svg", handleLiveBadge)
 
+	// Bug reports, ideas and the developer's answers
+	if config.FeedbackEnabled {
+		if err := registerFeedback(mux); err != nil {
+			log.Fatalf("Feedback init failed: %v", err)
+		}
+	}
+
 	// Web invite endpoint
 	mux.HandleFunc("GET /invite/{code}", handleInviteLanding)
 
