@@ -623,8 +623,24 @@ internal object DesktopSourceRegistry {
     /** The runtime agreement that says two rows are the same recording. */
     private const val SAME_RECORDING_SEC = 2
 
+
+    /**
+     * Whether any source in use could hand over a Dolby Atmos mix: addons and
+     * modules can, when what they front has one. YouTube, JioSaavn and
+     * Tidal never do — they serve stereo only.
+     */
+    fun mayServeDolbyAtmos(configs: List<DesktopSourceConfig> = configs()): Boolean =
+        configs.filter { it.enabled }.any { it.kind in ATMOS_CAPABLE_KINDS }
+
+    private val ATMOS_CAPABLE_KINDS = setOf(
+        DesktopSourceKind.ADDON,
+        DesktopSourceKind.CUSTOM_MODULE,
+        DesktopSourceKind.MODULE,
+    )
+
     /** The smallest bitrate gain worth a break in the audio for. */
     private const val UPGRADE_MIN_GAIN_KBPS = 96
+
 
     /** The ceiling a call is made under: an explicit override, else the stored rung. */
     internal fun ceiling(qualityOverride: String?): DesktopAudioQuality =

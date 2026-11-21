@@ -7845,15 +7845,21 @@ private fun DesktopSettingsScreen(
                                 icon = Icons.Rounded.Headphones,
                                 onClick = onOpenAudioOutput,
                             )
+                            val atmosSource = remember(sourceConfigs) { DesktopSourceRegistry.mayServeDolbyAtmos(sourceConfigs) }
+                            val dolbyAtmosSupported = DesktopCodecs.supportsDolbyAtmos
+                            val dolbyAtmosSubtitle = when {
+                                !dolbyAtmosSupported -> DesktopStrings["dolby_atmos_unavailable", "This device can't play Atmos, so these songs play in their usual version"]
+                                !atmosSource -> DesktopStrings["dolby_atmos_no_source", "Requires an enabled Addon or Custom Module supporting Atmos."]
+                                else -> "Prefer an add-on's immersive mix and decode E-AC-3 with FFmpeg"
+                            }
+                            val dolbyAtmosBadge = DesktopStrings["dolby_atmos_needs_source", "NEEDS SOURCE"]
+                                .takeIf { dolbyAtmosSupported && !atmosSource && dolbyAtmos }
                             SettingsToggle(
                                 DesktopStrings["dolby_atmos", "Dolby Atmos"],
-                                if (DesktopCodecs.supportsDolbyAtmos) {
-                                    "Prefer an add-on's immersive mix and decode E-AC-3 with FFmpeg"
-                                } else {
-                                    DesktopStrings["dolby_atmos_unavailable", "This device can't play Atmos, so these songs play in their usual version"]
-                                },
-                                dolbyAtmos && DesktopCodecs.supportsDolbyAtmos,
-                                { if (DesktopCodecs.supportsDolbyAtmos) onDolbyAtmosChange(it) },
+                                dolbyAtmosSubtitle,
+                                dolbyAtmos && dolbyAtmosSupported,
+                                badge = dolbyAtmosBadge,
+                                onCheckedChange = { if (dolbyAtmosSupported) onDolbyAtmosChange(it) },
                             )
                             val persistence = remember { DesktopPersistence() }
                             var directSource by remember { mutableStateOf(persistence.directSourceStream()) }
@@ -8106,15 +8112,21 @@ private fun DesktopSettingsScreen(
                             spatialAudio,
                             onSpatialAudioChange,
                         )
+                        val atmosSource = remember(sourceConfigs) { DesktopSourceRegistry.mayServeDolbyAtmos(sourceConfigs) }
+                        val dolbyAtmosSupported = DesktopCodecs.supportsDolbyAtmos
+                        val dolbyAtmosSubtitle = when {
+                            !dolbyAtmosSupported -> DesktopStrings["dolby_atmos_unavailable", "This device can't play Atmos, so these songs play in their usual version"]
+                            !atmosSource -> DesktopStrings["dolby_atmos_no_source", "Requires an enabled Addon or Custom Module supporting Atmos."]
+                            else -> "Prefer an add-on's immersive mix and decode E-AC-3 with FFmpeg"
+                        }
+                        val dolbyAtmosBadge = DesktopStrings["dolby_atmos_needs_source", "NEEDS SOURCE"]
+                            .takeIf { dolbyAtmosSupported && !atmosSource && dolbyAtmos }
                         SettingsToggle(
                             DesktopStrings["dolby_atmos", "Dolby Atmos"],
-                            if (DesktopCodecs.supportsDolbyAtmos) {
-                                "Prefer an add-on's immersive mix and decode E-AC-3 with FFmpeg"
-                            } else {
-                                DesktopStrings["dolby_atmos_unavailable", "This device can't play Atmos, so these songs play in their usual version"]
-                            },
-                            dolbyAtmos && DesktopCodecs.supportsDolbyAtmos,
-                            { if (DesktopCodecs.supportsDolbyAtmos) onDolbyAtmosChange(it) },
+                            dolbyAtmosSubtitle,
+                            dolbyAtmos && dolbyAtmosSupported,
+                            badge = dolbyAtmosBadge,
+                            onCheckedChange = { if (dolbyAtmosSupported) onDolbyAtmosChange(it) },
                         )
                         SettingsNavigationRow(
                             title = DesktopStrings["equalizer", "Equalizer"],
@@ -10364,7 +10376,27 @@ internal fun DesktopBareSlider(
 }
 
 @Composable
-private fun SettingsToggle(title: String, subtitle: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+private fun SettingsToggle(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+) = SettingsToggle(
+    title = title,
+    subtitle = subtitle,
+    checked = checked,
+    badge = null,
+    onCheckedChange = onCheckedChange,
+)
+
+@Composable
+private fun SettingsToggle(
+    title: String,
+    subtitle: String,
+    checked: Boolean,
+    badge: String?,
+    onCheckedChange: (Boolean) -> Unit,
+) {
     if (!settingsRowVisible(title, subtitle)) return
     Row(
         Modifier
@@ -10374,11 +10406,29 @@ private fun SettingsToggle(title: String, subtitle: String, checked: Boolean, on
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text(
-                title,
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    title,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = MaterialTheme.colorScheme.onBackground,
+                )
+                if (!badge.isNullOrBlank()) {
+                    Spacer(Modifier.width(8.dp))
+                    Box(
+                        Modifier
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(DesktopDestructive.copy(alpha = 0.20f))
+                            .padding(horizontal = 6.dp, vertical = 2.dp),
+                    ) {
+                        Text(
+                            badge,
+                            color = DesktopDestructive,
+                            style = MaterialTheme.typography.labelSmall,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
+                }
+            }
             Text(
                 subtitle,
                 color = DesktopSecondary,
