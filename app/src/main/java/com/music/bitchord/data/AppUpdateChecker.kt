@@ -2,14 +2,20 @@ package com.music.bitchord.data
 
 import android.content.Context
 import android.content.Intent
+import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.core.content.FileProvider
 import com.music.bitchord.BuildConfig
+import com.music.bitchord.data.settings.AppSettings
+import com.music.bitchord.download.Downloads
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
@@ -133,6 +139,10 @@ object AppUpdateChecker {
      * download.
      */
     suspend fun downloadApk(context: Context): Unit = withContext(Dispatchers.IO) {
+        val current = _download.value
+        if (current is DownloadState.Downloading || current is DownloadState.Ready) {
+            return@withContext
+        }
         val info = _available.value ?: return@withContext
         val url = info.apkUrl ?: return@withContext
         downloadCancelled = false
@@ -156,6 +166,7 @@ object AppUpdateChecker {
                         var readTotal = 0L
                         while (true) {
                             if (downloadCancelled) {
+                                target.delete()
                                 _download.value = DownloadState.Idle
                                 return@withContext
                             }
@@ -173,11 +184,81 @@ object AppUpdateChecker {
             }
             _download.value = DownloadState.Ready(target)
         }.onFailure { error ->
+            runCatching {
+                val dir = File(context.cacheDir, CACHE_SUBDIR)
+                File(dir, "bitchord-${info.version}.apk").delete()
+            }
             _download.value = if (downloadCancelled) {
                 DownloadState.Idle
             } else {
                 DownloadState.Failed(error.message ?: "Download failed")
             }
+        }
+    }
+
+    /**
+     * Checks if the device is currently on an unmetered Wi-Fi or Ethernet
+     * connection with validated internet access and decent downstream bandwidth.
+     */
+    fun isDecentWifi(context: Context): Boolean {
+        val connectivity = context.getSystemService(ConnectivityManager::class.java) ?: return false
+        val network = connectivity.activeNetwork ?: return false
+        val caps = connectivity.getNetworkCapabilities(network) ?: return false
+
+        val isWifiOrEthernet = caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+            caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)
+        if (!isWifiOrEthernet) return false
+
+        val hasInternet = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+        val isValidated = caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+        if (!hasInternet || !isValidated) return false
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P &&
+            !caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_SUSPENDED)
+        ) {
+            return false
+        }
+
+        // Avoid metered Wi-Fi (such as mobile phone hotspots)
+        if (!caps.hasCapability(NetworkCapabilities.NET_CAPABILITY_NOT_METERED)) {
+            return false
+        }
+
+        // Check bandwidth: if link speed is reported, ensure downstream is decent (>= 1500 Kbps)
+        val bandwidthKbps = caps.linkDownstreamBandwidthKbps
+        if (bandwidthKbps in 1..1499) {
+            return false
+        }
+
+        return true
+    }
+
+    /**
+     * If an update with an APK is available and the device is connected to a decent
+     * Wi-Fi network, waits until the app has settled into a steady state and then
+     * silently downloads the update APK in the background.
+     */
+    suspend fun autoDownloadIfEligible(context: Context) {
+        val info = _available.value ?: return
+        if (info.apkUrl == null) return
+        if (!isDecentWifi(context)) return
+
+        // Wait until onboarding is complete if currently active
+        if (!AppSettings.onboardingComplete.value) {
+            AppSettings.onboardingComplete.first { it }
+        }
+
+        // Give the cold start and initial UI rendering 8 seconds to settle
+        delay(8000)
+
+        // Wait if there are active bulk track downloads in progress
+        while (Downloads.active.value.isNotEmpty()) {
+            delay(3000)
+        }
+
+        // Re-check conditions after the stabilization delay
+        if (isDecentWifi(context) && _download.value is DownloadState.Idle) {
+            downloadApk(context)
         }
     }
 
