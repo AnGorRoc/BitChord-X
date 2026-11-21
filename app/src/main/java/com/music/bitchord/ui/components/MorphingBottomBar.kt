@@ -134,6 +134,7 @@ fun MorphingBottomBar(
     searchFocusRequester: FocusRequester,
     hazeState: HazeState,
     isInline: Boolean = false,
+    isSearching: Boolean = selectedIndex == TAB_SEARCH,
     onExpandInline: () -> Unit = {},
     inlineSong: Song? = null,
     isPlaying: Boolean = false,
@@ -158,7 +159,6 @@ fun MorphingBottomBar(
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
 
-    val isSearching = selectedIndex == TAB_SEARCH
     val searchProgress by animateFloatAsState(
         targetValue = if (isSearching) 1f else 0f,
         animationSpec = if (reduceAnimation) snap() else spring(
@@ -243,16 +243,18 @@ fun MorphingBottomBar(
 
     LaunchedEffect(isSearching) {
         if (isSearching) {
-            delay(100)
-            try {
-                searchFocusRequester.requestFocus()
-                keyboardController?.show()
-            } catch (_: Exception) {
-                delay(120)
+            if (query.isEmpty()) {
+                delay(100)
                 try {
                     searchFocusRequester.requestFocus()
                     keyboardController?.show()
-                } catch (_: Exception) {}
+                } catch (_: Exception) {
+                    delay(120)
+                    try {
+                        searchFocusRequester.requestFocus()
+                        keyboardController?.show()
+                    } catch (_: Exception) {}
+                }
             }
         } else {
             focusManager.clearFocus()
@@ -411,6 +413,12 @@ fun MorphingBottomBar(
                                 .padding(horizontal = PILL_INSET, vertical = 4.dp),
                         ) {
                     // Liquid sliding indicator pill
+                    val showNavPill = selectedIndex < 3
+                    val navPillAlpha by animateFloatAsState(
+                        targetValue = if (showNavPill) 1f else 0f,
+                        animationSpec = glassSpec,
+                        label = "navPillAlpha",
+                    )
                     if (tabWidthPx > 0f) {
                         Box(
                             modifier = Modifier
@@ -420,6 +428,7 @@ fun MorphingBottomBar(
                                     translationX = animatedPillOffset
                                     scaleX = 1f + lag * STRETCH
                                     scaleY = 1f - lag * STRETCH * SQUASH
+                                    alpha = navPillAlpha
                                 }
                                 .clip(pillShape)
                                 .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)),
@@ -692,7 +701,7 @@ fun MorphingBottomBar(
                     Icon(
                         imageVector = tabs.getOrNull(TAB_SEARCH)?.icon ?: Icons.Rounded.Search,
                         contentDescription = stringResource(Res.string.search),
-                        tint = if (isSearching) MaterialTheme.colorScheme.primary else contentColor.copy(alpha = 0.75f),
+                        tint = if (selectedIndex == TAB_SEARCH) MaterialTheme.colorScheme.primary else contentColor.copy(alpha = 0.75f),
                         modifier = Modifier
                             .size(25.dp)
                             .graphicsLayer {

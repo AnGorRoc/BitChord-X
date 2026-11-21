@@ -318,17 +318,24 @@ fun SearchScreen(
                         // Picking one is done typing, so the keyboard comes down
                         // with it and the results get the whole screen.
                         onClick = { term ->
-                            onSuggestionClick(term)
                             focusManager.clearFocus()
+                            keyboardController?.hide()
+                            onSuggestionClick(term)
                         },
                         onFill = onQueryChange,
                     )
                     if (showTypeahead) {
                         searchTypeaheadDropdown(
                             typeaheadResults = typeaheadResults,
-                            onSongClick = { song -> onTopResultPlay(song) },
+                            onSongClick = { song ->
+                                focusManager.clearFocus()
+                                keyboardController?.hide()
+                                onTopResultPlay(song)
+                            },
                             onSongLongPress = onTypeaheadLongPress,
                             onBrowseClick = { item ->
+                                focusManager.clearFocus()
+                                keyboardController?.hide()
                                 onBrowseClick(item)
                             },
                             currentSong = currentSong,
@@ -343,7 +350,11 @@ fun SearchScreen(
                         history = history,
                         currentSong = currentSong,
                         isPlaying = isPlaying,
-                        onClick = onHistoryClick,
+                        onClick = { entity ->
+                            focusManager.clearFocus()
+                            keyboardController?.hide()
+                            onHistoryClick(entity)
+                        },
                         onSongLongPress = onSongLongPress,
                         onRemove = onHistoryRemove,
                         onClear = onHistoryClear,
@@ -427,7 +438,11 @@ fun SearchScreen(
                                 )
                                 is SearchResult.Browse -> BrowseRow(
                                     item = row.item,
-                                    onClick = { onBrowseClick(row.item) },
+                                    onClick = {
+                                        focusManager.clearFocus()
+                                        keyboardController?.hide()
+                                        onBrowseClick(row.item)
+                                    },
                                     onLongPress = onBrowseLongPress?.let { { it(row.item) } },
                                 )
                             }

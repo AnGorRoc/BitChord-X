@@ -311,6 +311,7 @@ fun LandscapeNavBarRail(
     onDismissSearch: () -> Unit,
     searchOnTop: Boolean,
     hazeState: HazeState,
+    isSearching: Boolean = selectedIndex == TAB_SEARCH_INDEX,
     modifier: Modifier = Modifier,
 ) {
     val layoutDirection = LocalLayoutDirection.current
@@ -343,7 +344,6 @@ fun LandscapeNavBarRail(
         if (searchOnTop) raw.reversed() else raw
     }
 
-    val isSearching = selectedIndex == TAB_SEARCH_INDEX
     var lastSelectedNavTab by remember {
         mutableIntStateOf(if (selectedIndex < 3) selectedIndex else 0)
     }
@@ -406,7 +406,7 @@ fun LandscapeNavBarRail(
 
     val searchCircle: @Composable () -> Unit = {
         val searchTint by animateColorAsState(
-            targetValue = if (isSearching) MaterialTheme.colorScheme.primary else contentColor.copy(alpha = 0.85f),
+            targetValue = if (selectedIndex == TAB_SEARCH_INDEX) MaterialTheme.colorScheme.primary else contentColor.copy(alpha = 0.85f),
             animationSpec = tween(200),
             label = "landscapeSearchTint",
         )
@@ -452,7 +452,13 @@ fun LandscapeNavBarRail(
                 .border(GLASS_EDGE_WIDTH, GLASS_EDGE_COLOR, pillShape)
                 .padding(horizontal = 4.dp, vertical = PILL_INSET),
         ) {
-            if (tabHeightPx > 0f && !isSearching) {
+            val showLandscapeNavPill = selectedIndex < 3 && !isSearching
+            val landscapeNavPillAlpha by animateFloatAsState(
+                targetValue = if (showLandscapeNavPill) 1f else 0f,
+                animationSpec = glassSpec,
+                label = "landscapeNavPillAlpha",
+            )
+            if (tabHeightPx > 0f) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -461,6 +467,7 @@ fun LandscapeNavBarRail(
                             translationY = animatedPillOffset
                             scaleY = 1f + lag * STRETCH
                             scaleX = 1f - lag * STRETCH * SQUASH
+                            alpha = landscapeNavPillAlpha
                         }
                         .clip(pillShape)
                         .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)),
@@ -511,7 +518,7 @@ fun LandscapeNavBarRail(
             ) {
                 displayIndices.forEach { realIndex ->
                     val tab = navTabs[realIndex]
-                    val isSelected = realIndex == lastSelectedNavTab && !isSearching
+                    val isSelected = realIndex == lastSelectedNavTab && selectedIndex < 3 && !isSearching
                     val scale by animateFloatAsState(
                         targetValue = if (isSelected) 1.08f else 1f,
                         animationSpec = glassSpec,

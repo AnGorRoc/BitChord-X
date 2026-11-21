@@ -4488,8 +4488,9 @@ private fun BitChordApp(
                         }
                     }
                 }
+                val isSearchActive = selectedTab == TAB_SEARCH && route == null && detail == null && selectedMoodGenre == null
                 if (isLandscapeChrome) {
-                    if (selectedTab == TAB_SEARCH && route == null && detail == null && selectedMoodGenre == null) {
+                    if (isSearchActive) {
                         SearchSourceSwitcher(
                             searchSource = searchSource,
                             onSearchSourceChange = { onSearchSourceChange(it) },
@@ -4501,7 +4502,7 @@ private fun BitChordApp(
                                 .padding(landscapeSidePadding),
                         )
                     }
-                    if ((player.song != null && !keyboardUp) || selectedTab == TAB_SEARCH) {
+                    if ((player.song != null && !keyboardUp) || isSearchActive) {
                         WithColor(chromePageColor) { pageColor ->
                         BottomFadeScrim(
                             withMiniPlayer = false,
@@ -4512,7 +4513,7 @@ private fun BitChordApp(
                         }
                     }
                     FloatingBarsTapGuard(
-                        barsHeight = { if (selectedTab == TAB_SEARCH || player.song == null || keyboardUp) 0 else floatingBarsHeight.intValue },
+                        barsHeight = { if (isSearchActive || player.song == null || keyboardUp) 0 else floatingBarsHeight.intValue },
                         modifier = Modifier.align(Alignment.BottomCenter),
                     )
                     com.music.bitchord.ui.components.LandscapeTopBarRail(
@@ -4532,6 +4533,7 @@ private fun BitChordApp(
                         onDismissSearch = dismissSearch,
                         searchOnTop = topBarOnLeft,
                         hazeState = hazeState,
+                        isSearching = isSearchActive,
                         modifier = Modifier.align(if (topBarOnLeft) Alignment.CenterEnd else Alignment.CenterStart),
                     )
                     Column(
@@ -4544,7 +4546,7 @@ private fun BitChordApp(
                         horizontalAlignment = Alignment.CenterHorizontally,
                     ) {
                         QueueActionNoticeHost(queueNotice)
-                        if (selectedTab == TAB_SEARCH) {
+                        if (isSearchActive) {
                             SearchBottomPill(
                                 query = query,
                                 onQueryChange = viewModel::onQueryChange,
@@ -4698,7 +4700,7 @@ private fun BitChordApp(
                                 detail != null && detailActiveShelf != null -> true
                                 detail != null -> detailScrolled
                                 selectedMoodGenre != null -> true
-                                else -> scrolled || selectedTab == TAB_SEARCH
+                                else -> scrolled || isSearchActive
                             }
                         },
                         refreshing = currentFeed != null && currentFeed in refreshing,
@@ -4725,9 +4727,7 @@ private fun BitChordApp(
                                 )
                             }
                         } else null,
-                        accessory = if (
-                            selectedTab == TAB_SEARCH && route == null && detail == null && selectedMoodGenre == null
-                        ) {
+                        accessory = if (isSearchActive) {
                             {
                                 SearchSourceSwitcher(
                                     searchSource = searchSource,
@@ -4758,7 +4758,7 @@ private fun BitChordApp(
                     )
                     }
                     FloatingBarsTapGuard(
-                        barsHeight = { if (selectedTab == TAB_SEARCH) 0 else floatingBarsHeight.intValue },
+                        barsHeight = { if (isSearchActive) 0 else floatingBarsHeight.intValue },
                         modifier = Modifier.align(Alignment.BottomCenter),
                     )
                     val effectiveInline = navBarScroll.isInline && selectedTab != TAB_SEARCH && !keyboardUp && player.song != null
@@ -4845,6 +4845,7 @@ private fun BitChordApp(
                             searchFocusRequester = searchFieldFocus,
                             hazeState = hazeState,
                             isInline = effectiveInline,
+                            isSearching = isSearchActive,
                             onExpandInline = { navBarScroll.expand() },
                             inlineSong = player.song,
                             isPlaying = player.isPlaying,
