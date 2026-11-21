@@ -396,6 +396,24 @@ object ListenTogether {
     fun effectiveIdleServerBase(): String = _effectiveIdleServer.value
 
     /**
+     * The server idle operations should be on once everything is reachable: the one the
+     * listener chose, or this build's own when none is chosen. Anything else is a fallback
+     * that has to be left as soon as the preferred server answers again.
+     */
+    fun preferredIdleServer(): String = _customServer.value.ifBlank { defaultServer }
+
+    private fun isOnFallbackServer(): Boolean = effectiveIdleServerBase() != preferredIdleServer()
+
+    /**
+     * Re-probes before an idle create or join when idle operations are on a fallback, so a
+     * server that came back is used at once rather than after the next poll.
+     */
+    private suspend fun ensureIdleServerCurrent() {
+        if (!isOnFallbackServer()) return
+        resolveServerConnectionSerialized(showChecking = false)
+    }
+
+    /**
      * The server a party switch should target when the invite itself does not
      * name one.
      *
@@ -475,13 +493,7 @@ object ListenTogether {
 
     fun setScreenActive(active: Boolean) {
         isScreenActive = active
-        if (active && !shouldSkipIdleProbe(
-                screenActive = true,
-                connectionLive = _state.value.connection == Connection.LIVE,
-                inParty = _state.value.code != null,
-                metered = runCatching { AppSettings.meteredConnection.value }.getOrNull(),
-            )
-        ) {
+        if (active && shouldProbeIdleNow(screenActive = true)) {
             refreshServerHealth(showChecking = false)
         }
     }
@@ -493,36 +505,48 @@ object ListenTogether {
      * monitor polled `/healthz` every 10s whenever the screen was open, even
      * on metered data with no party. The socket itself proves reachability
      * while live, and nothing reads the status row unless the screen is open.
+     *
+     * [onFallback] is the exception that keeps the app honest: while idle
+     * operations sit on a fallback server, the preferred one must be noticed
+     * when it returns, even with the screen closed. Metered and live-socket
+     * rules still apply, so this never polls where the rules above forbid it.
      */
     internal fun shouldSkipIdleProbe(
         screenActive: Boolean,
         connectionLive: Boolean,
         inParty: Boolean,
         metered: Boolean?,
+        onFallback: Boolean = false,
     ): Boolean {
-        if (!screenActive) return true
+        if (!screenActive && !onFallback) return true
         if (connectionLive) return true
         if (!inParty && metered == true) return true
         return false
+    }
+
+    private fun shouldProbeIdleNow(screenActive: Boolean): Boolean {
+        val snapshot = _state.value
+        return !shouldSkipIdleProbe(
+            screenActive = screenActive,
+            connectionLive = snapshot.connection == Connection.LIVE,
+            inParty = snapshot.code != null,
+            metered = runCatching { AppSettings.meteredConnection.value }.getOrNull(),
+            onFallback = isOnFallbackServer(),
+        )
     }
 
     private fun startHealthMonitor() {
         healthMonitorJob?.cancel()
         healthMonitorJob = scope.launch {
             while (isActive) {
-                delay(HEALTH_POLL_INTERVAL_MS)
+                // Open screen: poll quickly. Closed screen: only a fallback needs
+                // watching, and a slow check is enough to leave it.
+                delay(if (isScreenActive) HEALTH_POLL_INTERVAL_MS else HEALTH_BACKGROUND_RECHECK_MS)
                 // Nobody is looking at the status row unless the screen is open,
                 // and every poll is a request to a server shared by every install.
                 // A live party socket already proves the server is reachable.
                 // Off-party polls are also skipped on metered connections (#788).
-                val snapshot = _state.value
-                if (!shouldSkipIdleProbe(
-                        screenActive = isScreenActive,
-                        connectionLive = snapshot.connection == Connection.LIVE,
-                        inParty = snapshot.code != null,
-                        metered = runCatching { AppSettings.meteredConnection.value }.getOrNull(),
-                    )
-                ) {
+                if (shouldProbeIdleNow(screenActive = isScreenActive)) {
                     refreshServerHealth(showChecking = false)
                 }
             }
@@ -720,14 +744,7 @@ object ListenTogether {
                         override fun onAvailable(network: Network) {
                             // A real network switch is worth one recheck, unless
                             // it would be skipped as idle anyway (#788).
-                            val snapshot = _state.value
-                            if (!shouldSkipIdleProbe(
-                                    screenActive = isScreenActive,
-                                    connectionLive = snapshot.connection == Connection.LIVE,
-                                    inParty = snapshot.code != null,
-                                    metered = runCatching { AppSettings.meteredConnection.value }.getOrNull(),
-                                )
-                            ) {
+                            if (shouldProbeIdleNow(screenActive = isScreenActive)) {
                                 refreshServerHealth(showChecking = false)
                             }
                         }
@@ -814,6 +831,7 @@ object ListenTogether {
     // ------------------------------------------------------------ joining --
 
     suspend fun createParty(nickname: String = nickname(), maxMembers: Int = 5): Result<String> = switchMutex.withLock {
+        ensureIdleServerCurrent()
         val primary = effectiveIdleServerBase()
         val primaryNormalized = resolveHttpBase(primary)
         val attempt = runCatching {
@@ -893,6 +911,7 @@ object ListenTogether {
      * that are intentionally not part of this API.
      */
     suspend fun joinParty(code: String, nickname: String = nickname()): Result<String> = switchMutex.withLock {
+        ensureIdleServerCurrent()
         val targetServer = resolveHttpBase(effectiveIdleServerBase())
         runCatching {
             doJoinOnServer(targetServer, code, nickname)
@@ -2057,6 +2076,9 @@ object ListenTogether {
     // Polled only while the Listen Together screen is open and no party socket is
     // live (see shouldSkipIdleProbe), so 10s costs nothing when nobody is looking.
     private const val HEALTH_POLL_INTERVAL_MS = 10_000L
+    // With the screen closed, only a fallback server is checked, and only this often,
+    // so the preferred one is noticed again without polling in the background.
+    private const val HEALTH_BACKGROUND_RECHECK_MS = 60_000L
     // Debounces rapid screen toggles and network-callback bursts. Must stay at or
     // below the poll interval, or the debounce silently stretches the poll.
     private const val HEALTH_MIN_GAP_MS = 5_000L
