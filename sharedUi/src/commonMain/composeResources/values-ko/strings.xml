@@ -338,4 +338,9 @@
   <string name="nothing_to_explore">지금은 탐색할 항목 없음</string>
   <string name="connect_join_with_code">코드로 참여</string>
   <string name="connect_sounding_label">재생 중인 기기</string>
+    <string name="live_title">지금 라이브</string>
+    <string name="live_subtitle">24시간 쉬지 않는 스테이션, 지금 방송 중</string>
+    <string name="live_on_air">방송 중</string>
+    <string name="live_broadcast">라이브 방송</string>
+    <string name="live_tune_in">듣기</string>
 </resources>

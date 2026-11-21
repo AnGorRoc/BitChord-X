@@ -337,4 +337,9 @@
   <string name="nothing_to_explore">Nie ma teraz nic do odkrycia</string>
   <string name="connect_join_with_code">Dołącz za pomocą kodu</string>
   <string name="connect_sounding_label">Odtwarzanie na</string>
+    <string name="live_title">Na żywo</string>
+    <string name="live_subtitle">Stacje nadające całą dobę, na antenie teraz</string>
+    <string name="live_on_air">Na antenie</string>
+    <string name="live_broadcast">Transmisja na żywo</string>
+    <string name="live_tune_in">Włącz</string>
 </resources>

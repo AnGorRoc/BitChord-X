@@ -337,4 +337,9 @@
   <string name="nothing_to_explore">Belum ada yang bisa dijelajahi saat ini</string>
   <string name="connect_join_with_code">Gabung dengan kode</string>
   <string name="connect_sounding_label">Diputar di</string>
+    <string name="live_title">Siaran langsung</string>
+    <string name="live_subtitle">Stasiun nonstop, sedang mengudara sekarang</string>
+    <string name="live_on_air">Sedang mengudara</string>
+    <string name="live_broadcast">Siaran langsung</string>
+    <string name="live_tune_in">Dengarkan</string>
 </resources>

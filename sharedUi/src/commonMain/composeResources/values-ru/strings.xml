@@ -337,4 +337,9 @@
   <string name="nothing_to_explore">Сейчас нечего смотреть в обзоре</string>
   <string name="connect_join_with_code">Присоединиться по коду</string>
   <string name="connect_sounding_label">Играет на</string>
+    <string name="live_title">В эфире</string>
+    <string name="live_subtitle">Станции круглосуточно, прямо сейчас в эфире</string>
+    <string name="live_on_air">В эфире</string>
+    <string name="live_broadcast">Прямая трансляция</string>
+    <string name="live_tune_in">Слушать</string>
 </resources>

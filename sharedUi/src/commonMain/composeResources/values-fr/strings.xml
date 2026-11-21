@@ -337,4 +337,9 @@
   <string name="nothing_to_explore">Rien à explorer pour le moment</string>
   <string name="connect_join_with_code">Rejoindre avec un code</string>
   <string name="connect_sounding_label">Lecture sur</string>
+    <string name="live_title">En direct</string>
+    <string name="live_subtitle">Des stations 24 h/24, à l\'antenne en ce moment</string>
+    <string name="live_on_air">À l\'antenne</string>
+    <string name="live_broadcast">Émission en direct</string>
+    <string name="live_tune_in">Écouter</string>
 </resources>

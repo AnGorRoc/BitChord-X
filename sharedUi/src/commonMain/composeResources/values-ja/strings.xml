@@ -337,4 +337,9 @@
   <string name="nothing_to_explore">現在探索できるものはありません</string>
   <string name="connect_join_with_code">コードで参加</string>
   <string name="connect_sounding_label">再生中のデバイス</string>
+    <string name="live_title">ライブ配信中</string>
+    <string name="live_subtitle">24時間放送中のステーション、いままさに放送中</string>
+    <string name="live_on_air">放送中</string>
+    <string name="live_broadcast">ライブ配信</string>
+    <string name="live_tune_in">聴く</string>
 </resources>

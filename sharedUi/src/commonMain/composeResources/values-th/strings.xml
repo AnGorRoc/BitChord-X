@@ -337,4 +337,9 @@
   <string name="nothing_to_explore">ยังไม่มีอะไรให้สำรวจตอนนี้</string>
   <string name="connect_join_with_code">เข้าร่วมด้วยรหัส</string>
   <string name="connect_sounding_label">กำลังเล่นบน</string>
+    <string name="live_title">ถ่ายทอดสดตอนนี้</string>
+    <string name="live_subtitle">สถานีตลอด 24 ชั่วโมง ออกอากาศอยู่ตอนนี้</string>
+    <string name="live_on_air">กำลังออกอากาศ</string>
+    <string name="live_broadcast">ถ่ายทอดสด</string>
+    <string name="live_tune_in">ฟังเลย</string>
 </resources>

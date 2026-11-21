@@ -337,4 +337,9 @@
   <string name="nothing_to_explore">Niente da esplorare al momento</string>
   <string name="connect_join_with_code">Unisciti con un codice</string>
   <string name="connect_sounding_label">In riproduzione su</string>
+    <string name="live_title">In diretta</string>
+    <string name="live_subtitle">Stazioni attive 24 ore su 24, in onda adesso</string>
+    <string name="live_on_air">In onda</string>
+    <string name="live_broadcast">Trasmissione in diretta</string>
+    <string name="live_tune_in">Sintonizzati</string>
 </resources>
