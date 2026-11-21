@@ -56,32 +56,24 @@ internal fun rememberCanvasArtwork(song: Song): CanvasArtwork? {
     // which is the flicker. A different song keys differently and starts
     // clean; the same-titled-impostor case is guarded where the clip is
     // adopted, by [CanvasArtwork.matches].
-    var canvas by remember(song.title, song.artist) { mutableStateOf<CanvasArtwork?>(null) }
+    var canvas by remember(song.title, song.artist) {
+        mutableStateOf(if (canvasAllowedNow) PlayerPlatform.host.cachedCanvas(song) else null)
+    }
+    var lastPrioritizeSpotify by remember { mutableStateOf(prioritizeSpotifyCanvas) }
     LaunchedEffect(song.videoId, song.albumName, canvasAllowedNow, prioritizeSpotifyCanvas) {
         if (!canvasAllowedNow) {
             canvas = null
             return@LaunchedEffect
         }
-        // Anything already settled for this track paints immediately: a
-        // reopened player, or a track coming round again in the queue.
-        //
-        // Across a version switch the clip found for the last cut is carried
-        // over rather than dropped — same title and artist, so the same
-        // search, so the same clip — and only while it still *answers* to
-        // what is playing: [CanvasArtwork.matches] is what stops a preserved
-        // clip from being a different song's that happens to share a title.
-        canvas = PlayerPlatform.host.cachedCanvas(song)
-            ?: canvas?.takeIf { it.matches(song.title, song.artist, song.albumName) }
+        val priorityChanged = lastPrioritizeSpotify != prioritizeSpotifyCanvas
+        lastPrioritizeSpotify = prioritizeSpotifyCanvas
+        val preserved = if (priorityChanged) null else canvas?.takeIf {
+            it.matches(song.title, song.artist, song.albumName)
+        }
+        canvas = PlayerPlatform.host.cachedCanvas(song) ?: preserved
+        if (canvas != null && !priorityChanged) return@LaunchedEffect
 
-        // The album name is looked up separately and lands a moment after the
-        // player opens, and it is the field that makes the catalogue searches
-        // match. Give it that moment: if it arrives, this effect restarts and
-        // all that was spent waiting is the wait. If it never does — a track
-        // with no album, or a lookup that failed — the search still goes out,
-        // just a beat later, which is imperceptible for decoration.
         if (canvas == null && song.albumName == null) delay(ALBUM_SETTLE_MS)
-        // Keep what an earlier pass found if this one comes back empty, rather
-        // than pulling a playing clip out from under itself.
         canvas = PlayerPlatform.host.canvasFor(song) ?: canvas
     }
 

@@ -56,12 +56,17 @@ internal fun rememberCanvasArtwork(song: Song): CanvasArtwork? {
     // which is the flicker. A different song keys differently and starts
     // clean; the same-titled-impostor case is guarded where the clip is
     // adopted, by [CanvasArtwork.matches].
-    var canvas by remember(song.title, song.artist) { mutableStateOf<CanvasArtwork?>(null) }
+    var canvas by remember(song.title, song.artist) {
+        mutableStateOf(if (canvasAllowedNow) PlayerPlatform.host.cachedCanvas(song) else null)
+    }
+    var lastPrioritizeSpotify by remember { mutableStateOf(prioritizeSpotifyCanvas) }
     LaunchedEffect(song.videoId, song.albumName, canvasAllowedNow, prioritizeSpotifyCanvas) {
         if (!canvasAllowedNow) {
             canvas = null
             return@LaunchedEffect
         }
+        val priorityChanged = lastPrioritizeSpotify != prioritizeSpotifyCanvas
+        lastPrioritizeSpotify = prioritizeSpotifyCanvas
         // Anything already settled for this track paints immediately: a
         // reopened player, or a track coming round again in the queue.
         //
@@ -70,8 +75,11 @@ internal fun rememberCanvasArtwork(song: Song): CanvasArtwork? {
         // search, so the same clip — and only while it still *answers* to
         // what is playing: [CanvasArtwork.matches] is what stops a preserved
         // clip from being a different song's that happens to share a title.
-        canvas = PlayerPlatform.host.cachedCanvas(song)
-            ?: canvas?.takeIf { it.matches(song.title, song.artist, song.albumName) }
+        val preserved = if (priorityChanged) null else canvas?.takeIf {
+            it.matches(song.title, song.artist, song.albumName)
+        }
+        canvas = PlayerPlatform.host.cachedCanvas(song) ?: preserved
+        if (canvas != null && !priorityChanged) return@LaunchedEffect
 
         // The album name is looked up separately and lands a moment after the
         // player opens, and it is the field that makes the catalogue searches

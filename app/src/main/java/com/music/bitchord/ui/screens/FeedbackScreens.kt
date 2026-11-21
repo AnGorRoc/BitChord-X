@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -168,7 +169,9 @@ fun FeedbackScreen(
         Modifier
             .fillMaxWidth()
             .verticalScroll(rememberSaveable(saver = ScrollState.Saver) { ScrollState(0) })
-            .padding(contentPadding),
+            .padding(contentPadding)
+            // With no bars over it, the keyboard is all that can hide a field.
+            .imePadding(),
     ) {
         SettingsPageTitle(stringResource(R.string.feedback_page_title))
         Text(
@@ -378,7 +381,9 @@ fun FeedbackComposeScreen(
         Modifier
             .fillMaxWidth()
             .verticalScroll(rememberScrollState())
-            .padding(contentPadding),
+            .padding(contentPadding)
+            // With no bars over it, the keyboard is all that can hide a field.
+            .imePadding(),
     ) {
         SettingsPageTitle(stringResource(R.string.feedback_new))
 
@@ -605,7 +610,7 @@ fun FeedbackThreadScreen(
     val scroll = rememberScrollState()
     LaunchedEffect(messages.size, outgoing.size) { scroll.animateScrollTo(scroll.maxValue) }
 
-    Column(Modifier.fillMaxWidth().verticalScroll(scroll).padding(contentPadding)) {
+    Column(Modifier.fillMaxWidth().verticalScroll(scroll).padding(contentPadding).imePadding()) {
         Text(
             ticket?.title.orEmpty(),
             style = MaterialTheme.typography.headlineSmall,

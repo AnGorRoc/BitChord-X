@@ -68,6 +68,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.statusBars
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
@@ -2670,6 +2671,14 @@ private fun BitChordApp(
         },
     )
     val floatingBarsHeight = remember { mutableIntStateOf(0) }
+    // Feedback is a page to write in: no mini player or tab bar over it, so its
+    // fields and its send button are never under them, and only the system's
+    // own bar to leave room for below.
+    val feedbackPage = route == AppRoute.Feedback || route == AppRoute.FeedbackNew || route is AppRoute.FeedbackThread
+    val feedbackPadding = PaddingValues(
+        top = listPadding.calculateTopPadding(),
+        bottom = WindowInsets.navigationBars.asPaddingValues().calculateBottomPadding() + 24.dp,
+    )
 
     // Whether the keyboard is up. Only the flip is read here — never its
     // height, which changes every frame of the animation and would recompose
@@ -3564,20 +3573,20 @@ private fun BitChordApp(
                         } else if (pageRoute == AppRoute.Feedback) {
                             com.music.bitchord.ui.screens.FeedbackScreen(
                                 accountName = account?.name,
-                                contentPadding = listPadding,
+                                contentPadding = feedbackPadding,
                                 onNew = { navigator.push(AppRoute.FeedbackNew) },
                                 onOpenTicket = { navigator.push(AppRoute.FeedbackThread(it)) },
                             )
                         } else if (pageRoute == AppRoute.FeedbackNew) {
                             com.music.bitchord.ui.screens.FeedbackComposeScreen(
                                 accountName = account?.name,
-                                contentPadding = listPadding,
+                                contentPadding = feedbackPadding,
                                 onDone = { navigator.pop() },
                             )
                         } else if (pageRoute is AppRoute.FeedbackThread) {
                             com.music.bitchord.ui.screens.FeedbackThreadScreen(
                                 ticketId = pageRoute.ticketId,
-                                contentPadding = listPadding,
+                                contentPadding = feedbackPadding,
                                 onDeleted = { navigator.pop() },
                             )
                         } else if (pageRoute is AppRoute.SettingsChoice) {
@@ -4558,7 +4567,7 @@ private fun BitChordApp(
                             )
                         } else {
                             AnimatedVisibility(
-                                visible = player.song != null && !keyboardUp,
+                                visible = player.song != null && !keyboardUp && !feedbackPage,
                                 enter = if (reducePlayerMotion) {
                                     fadeIn(tween(180)) + expandVertically(tween(200))
                                 } else {
@@ -4747,6 +4756,7 @@ private fun BitChordApp(
                     )
     
                     // Drawn before the bars so their own glass reads on top of it.
+                    if (!feedbackPage) {
                     WithColor(chromePageColor) { pageColor ->
                     BottomFadeScrim(
                         withMiniPlayer = player.song != null,
@@ -4863,6 +4873,7 @@ private fun BitChordApp(
                             onBlockedControl = showHostOnlyNotice,
                             modifier = Modifier.fillMaxWidth(),
                         )
+                    }
                     }
                 }
             }

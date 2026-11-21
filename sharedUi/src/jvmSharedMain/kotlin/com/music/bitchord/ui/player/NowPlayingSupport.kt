@@ -164,7 +164,7 @@ internal val VERSION_PILL_ART_INSET = 12.dp
  * short enough to still be reading as artwork where it ends reads as a picture
  * that was cut off rather than one that ran out.
  */
-internal const val HERO_FADE_FRACTION = 0.18f
+internal const val HERO_FADE_FRACTION = 0.24f
 
 /** A modest floor while a subview replaces the hero with its blurred artwork backdrop. */
 internal const val SUBVIEW_STATUS_SCRIM_MIN_ALPHA = 0.40f
@@ -208,6 +208,7 @@ internal fun PlayerMeshBackdrop(
     seamTarget: () -> Dp,
     alpha: () -> Float,
     sharedProgress: (() -> Float)? = null,
+    modifier: Modifier = Modifier,
 ) {
     val mesh = key(trackKey) { rememberArtworkMesh(imageUrl, canvasFrame(), ART_PX) }
     val currentSeamTarget by rememberUpdatedState(seamTarget)
@@ -227,7 +228,7 @@ internal fun PlayerMeshBackdrop(
         mesh = mesh,
         seam = { seam.value },
         sharedProgress = sharedProgress,
-        modifier = Modifier.graphicsLayer { this.alpha = alpha() },
+        modifier = modifier.graphicsLayer { this.alpha = alpha() },
     )
 }
 

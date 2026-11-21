@@ -440,6 +440,7 @@ class CanvasVideoSpec(
     val resumeDelayMs: Long,
     val startPositionMs: Long,
     val revealInstantly: Boolean,
+    val opaqueUnderCover: Boolean = false,
     val captureStill: Boolean,
     val onStillCaptured: (ImageBitmap?, Long) -> Unit,
     val onResumed: () -> Unit,
@@ -478,6 +479,13 @@ fun CanvasArtworkPlayer(
     /** Shows the first frame at once rather than fading it in: there is a still under it that it matches. */
     revealInstantly: Boolean = false,
     /**
+     * True when an opaque still cover sits directly over this clip at identical
+     * bounds and fades out by `1f - coverAlpha`. Keeping the clip underneath at
+     * full [presentationAlpha] during the crossfade prevents the 25% midpoint
+     * opacity dip caused by blending two semi-transparent layers.
+     */
+    opaqueUnderCover: Boolean = false,
+    /**
      * Asks for the frame on screen, once each time this turns true, through
      * [onStillCaptured] with the position it was taken at — null if it could
      * not be read. Only while [pausedForTransition], so the frame holds still.
@@ -507,6 +515,7 @@ fun CanvasArtworkPlayer(
             resumeDelayMs = resumeDelayMs,
             startPositionMs = startPositionMs,
             revealInstantly = revealInstantly,
+            opaqueUnderCover = opaqueUnderCover,
             captureStill = captureStill,
             onStillCaptured = onStillCaptured,
             onResumed = onResumed,

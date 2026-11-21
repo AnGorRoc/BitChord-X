@@ -27,9 +27,11 @@ import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.ui.draw.blur
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
@@ -2216,40 +2218,86 @@ fun NowPlayingScreen(
                 // The tablet has no mirrored main-player treatment to crossfade from.
                 // Legacy mesh is the whole backdrop on every page, so the lyrics and
                 // queue panels must not crossfade the blurred artwork over it.
-                val legacyMeshBackdrop = !tabletArtworkBackdrop && !spotifyCanvasPresentation &&
-                    legacyMesh && !canvasFirstPortrait
+                val reduceDynamicBlur by PlayerSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
+                val canBlur = !reduceDynamicBlur && renderEffectBlurSupported
+
+                val isBlurActive = (tabletArtworkBackdrop || lyricsOpen || queueOpen) &&
+                    !spotifyCanvasPresentation && (tabletArtworkBackdrop || fullArtworkBlurImage != null)
+
+                val targetBlurRadius = when {
+                    !canBlur -> 0.dp
+                    isBlurActive -> 32.dp
+                    else -> 0.dp
+                }
+                val animatedBackdropBlur by animateDpAsState(
+                    targetValue = targetBlurRadius,
+                    animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+                    label = "desktopBackdropBlur",
+                )
+
+                val legacyMeshTargetAlpha = if (
+                    !tabletArtworkBackdrop && !spotifyCanvasPresentation &&
+                    legacyMesh && !canvasFirstPortrait && !lyricsOpen && !queueOpen
+                ) 1f else 0f
+
+                val defaultMeshTargetAlpha = if (
+                    !tabletArtworkBackdrop && !spotifyCanvasPresentation &&
+                    !legacyMesh && !lyricsOpen && !queueOpen
+                ) 1f else 0f
+
+                val fullArtworkBlurTargetAlpha = if (isBlurActive) 1f else 0f
+
+                val legacyMeshAlpha by animateFloatAsState(
+                    targetValue = legacyMeshTargetAlpha,
+                    animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+                    label = "legacyMeshAlpha",
+                )
+
+                val defaultMeshAlpha by animateFloatAsState(
+                    targetValue = defaultMeshTargetAlpha,
+                    animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
+                    label = "defaultMeshAlpha",
+                )
+
                 val fullArtworkBackdropAlpha by animateFloatAsState(
-                    targetValue = if (
-                        !legacyMeshBackdrop &&
-                        (tabletArtworkBackdrop || lyricsOpen || queueOpen) &&
-                        (tabletArtworkBackdrop || fullArtworkBlurImage != null)
-                    ) 1f else 0f,
-                    animationSpec = tween(durationMillis = 360, easing = FastOutSlowInEasing),
+                    targetValue = fullArtworkBlurTargetAlpha,
+                    animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
                     label = "fullArtworkBackdropCrossfade",
                 )
-                if (legacyMeshBackdrop) {
-                    // v1.5's backdrop, restored verbatim: no seam, because the blobs
-                    // are not anchored to anything on screen — they fill the player and
-                    // the artwork simply sits on top of them. Keyed on the track, so
-                    // they drift when the player opens and on every skip, then rest.
-                    // Position ticks recompose this screen twice a second and must not
-                    // drag a full-screen blur along with them, which is why the palette
-                    // is passed as one immutable value.
+
+                if (legacyMeshAlpha > 0.001f) {
                     MeshGradientBackground(
                         palette = rememberArtworkColors(remoteArt, canvasFrame),
                         trackKey = song.videoId,
-                        modifier = Modifier.graphicsLayer { alpha = 1f - fullArtworkBackdropAlpha },
+                        modifier = Modifier
+                            .graphicsLayer { alpha = legacyMeshAlpha }
+                            .then(
+                                if (canBlur && animatedBackdropBlur > 0.dp) {
+                                    Modifier.blur(animatedBackdropBlur)
+                                } else Modifier,
+                            ),
                     )
-                } else if (!tabletArtworkBackdrop && !spotifyCanvasPresentation) {
+                }
+
+                if (defaultMeshAlpha > 0.001f) {
                     ArtworkMeshBackdrop(
                         mesh = artMesh,
                         seam = if (canvasFirstPortrait) renderedCanvasBottom else if (heroMode) heroHeight else 0.dp,
-                        modifier = Modifier.graphicsLayer { alpha = 1f - fullArtworkBackdropAlpha },
+                        modifier = Modifier
+                            .graphicsLayer { alpha = defaultMeshAlpha }
+                            .then(
+                                if (canBlur && animatedBackdropBlur > 0.dp) {
+                                    Modifier.blur(animatedBackdropBlur)
+                                } else Modifier,
+                            ),
                     )
                 }
-                fullArtworkBlurContent(
-                    Modifier.graphicsLayer { alpha = fullArtworkBackdropAlpha },
-                )
+
+                if (fullArtworkBackdropAlpha > 0.001f) {
+                    fullArtworkBlurContent(
+                        Modifier.graphicsLayer { alpha = fullArtworkBackdropAlpha },
+                    )
+                }
 
                 // Mount once, behind the controls. A known portrait aspect changes the
                 // invisible view to full-player bounds before its first frame is shown.

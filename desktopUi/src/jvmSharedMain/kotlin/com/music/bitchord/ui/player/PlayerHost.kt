@@ -426,6 +426,7 @@ class CanvasVideoSpec(
     val resumeDelayMs: Long,
     val startPositionMs: Long,
     val revealInstantly: Boolean,
+    val opaqueUnderCover: Boolean = false,
     val captureStill: Boolean,
     val onStillCaptured: (ImageBitmap?, Long) -> Unit,
     val onResumed: () -> Unit,
@@ -460,6 +461,7 @@ fun CanvasArtworkPlayer(
     startPositionMs: Long = 0L,
     /** Shows the first frame at once rather than fading it in: there is a still under it that it matches. */
     revealInstantly: Boolean = false,
+    opaqueUnderCover: Boolean = false,
     /**
      * Asks for the frame on screen, once each time this turns true, through
      * [onStillCaptured] with the position it was taken at — null if it could
@@ -490,6 +492,7 @@ fun CanvasArtworkPlayer(
             resumeDelayMs = resumeDelayMs,
             startPositionMs = startPositionMs,
             revealInstantly = revealInstantly,
+            opaqueUnderCover = opaqueUnderCover,
             captureStill = captureStill,
             onStillCaptured = onStillCaptured,
             onResumed = onResumed,

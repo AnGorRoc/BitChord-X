@@ -1,11 +1,14 @@
 package com.music.bitchord.desktop
 
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -159,6 +162,7 @@ internal fun DesktopCanvasVideo(spec: CanvasVideoSpec, modifier: Modifier) {
     // clip — another every so often.
     LaunchedEffect(rendered, spec.refreshFrameEveryMs) {
         if (!rendered) return@LaunchedEffect
+        if (!spec.revealInstantly) delay(360L)
         frame?.let(reportFrame)
         val interval = spec.refreshFrameEveryMs ?: return@LaunchedEffect
         while (isActive) {
@@ -169,11 +173,16 @@ internal fun DesktopCanvasVideo(spec: CanvasVideoSpec, modifier: Modifier) {
 
     val alpha by animateFloatAsState(
         targetValue = if (rendered) 1f else 0f,
-        animationSpec = tween(durationMillis = 320),
+        animationSpec = if (!rendered || spec.revealInstantly) {
+            snap()
+        } else {
+            tween(durationMillis = 320, easing = FastOutSlowInEasing)
+        },
         label = "canvasAlpha",
     )
-    LaunchedEffect(Unit) {
-        snapshotFlow { alpha * presentationAlpha() }.collect { reportCover(it) }
+    SideEffect {
+        val effectiveCover = (if (rendered) alpha else 0f) * presentationAlpha()
+        reportCover(effectiveCover)
     }
     DisposableEffect(Unit) {
         onDispose {
@@ -186,7 +195,16 @@ internal fun DesktopCanvasVideo(spec: CanvasVideoSpec, modifier: Modifier) {
     val bottomFadeEndPx = spec.bottomFadeEndPx
     Canvas(
         modifier = modifier.graphicsLayer {
-            this.alpha = alpha * presentationAlpha()
+            val presAlpha = presentationAlpha()
+            val effectiveCover = (if (rendered) alpha else 0f) * presAlpha
+            reportCover(effectiveCover)
+            this.alpha = if (effectiveCover <= 0f) {
+                0f
+            } else if (spec.opaqueUnderCover) {
+                presAlpha
+            } else {
+                effectiveCover
+            }
             // Offscreen so the bottom dissolve masks the clip, not what is behind it.
             if (bottomFade > 0.001f) compositingStrategy = CompositingStrategy.Offscreen
         },
