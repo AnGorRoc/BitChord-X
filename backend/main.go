@@ -419,12 +419,17 @@ func handleInfo(w http.ResponseWriter, r *http.Request) {
 	if version == "" {
 		version = "dev"
 	}
+	features := serverFeatures
+	if config.FeedbackEnabled {
+		// POST /api/feedback/… (bug reports and ideas from the apps); off with FEEDBACK_ENABLED.
+		features = append(append([]string{}, serverFeatures...), "feedback")
+	}
 	jsonResponse(w, http.StatusOK, map[string]interface{}{
 		"service":  "bitchord-listen-together",
 		"flavor":   "bitchord-x",
 		"protocol": 1,
 		"version":  version,
-		"features": serverFeatures,
+		"features": features,
 		"limits": map[string]interface{}{
 			"defaultMaxMembers": config.MaxMembers,
 			"minMembers":        2,
