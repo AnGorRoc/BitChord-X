@@ -194,6 +194,7 @@ import androidx.compose.material.icons.rounded.MoreHoriz
 import androidx.compose.material.icons.rounded.Sort
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.VisibilityOff
+import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.automirrored.rounded.VolumeOff
 import androidx.compose.material.icons.automirrored.rounded.VolumeDown
@@ -807,6 +808,7 @@ fun BitChordDesktopApp() {
     var accounts by remember { mutableStateOf(DesktopAccounts.accounts()) }
     var activeAccountId by remember { mutableStateOf(DesktopAccounts.activeAccountId()) }
     var activeProfileId by remember { mutableStateOf(DesktopAccounts.activeProfileId()) }
+    var offlineMode by remember { mutableStateOf(persistence.offlineMode()) }
     var signInBusy by remember { mutableStateOf<String?>(null) }
     var signInError by remember { mutableStateOf<String?>(null) }
     var webSignInJob by remember { mutableStateOf<Job?>(null) }
@@ -4142,6 +4144,11 @@ fun BitChordDesktopApp() {
                 topBar = { compact ->
                     DesktopTopBar(
                         compact = compact,
+                        offlineMode = offlineMode,
+                        onToggleOfflineMode = {
+                            offlineMode = !offlineMode
+                            persistence.saveOfflineMode(offlineMode)
+                        },
                         song = selectedSong,
                         isPlaying = playback.isPlaying,
                         isLoading = playback.isLoading,
@@ -4927,6 +4934,11 @@ fun BitChordDesktopApp() {
                                     sleepAfterTrack = sleepAfterTrack,
                                     sleepRemainingMs = sleepRemainingMs,
                                     onSleepTimerCycle = ::cycleSleepTimer,
+                                    offlineMode = offlineMode,
+                                    onOfflineModeChange = {
+                                        offlineMode = it
+                                        persistence.saveOfflineMode(it)
+                                    },
                                     sourceConfigs = sourceConfigs,
                                     sourceStatus = sourceStatus,
                                     onSourceEnabledChange = { config, enabled ->
@@ -5509,6 +5521,8 @@ private fun DesktopTopBar(
     /** The app's one way back — every page's own arrow was folded into this. */
     canGoBack: Boolean,
     onBack: () -> Unit,
+    offlineMode: Boolean = false,
+    onToggleOfflineMode: () -> Unit = {},
 ) {
     val titleBarEnabled by DesktopTitleBarSetting.enabled.collectAsState()
     val inlineCaption = DesktopPlatform.drawsOwnWindowFrame && !titleBarEnabled
@@ -5729,6 +5743,35 @@ private fun DesktopTopBar(
                         modifier = Modifier.width(78.dp),
                     )
                     Spacer(Modifier.width(5.dp))
+                    AnimatedVisibility(
+                        visible = offlineMode,
+                        enter = fadeIn() + expandHorizontally(),
+                        exit = fadeOut() + shrinkHorizontally(),
+                    ) {
+                        Row(
+                            Modifier
+                                .padding(end = 4.dp)
+                                .clip(RoundedCornerShape(12.dp))
+                                .background(Color.White.copy(alpha = 0.08f))
+                                .clickable(onClick = onToggleOfflineMode)
+                                .padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            Icon(
+                                Icons.Rounded.CloudOff,
+                                contentDescription = DesktopStrings["offline_mode", "Offline mode"],
+                                tint = DesktopAccent,
+                                modifier = Modifier.size(14.dp),
+                            )
+                            Spacer(Modifier.width(4.dp))
+                            Text(
+                                DesktopStrings["offline_mode", "Offline"],
+                                style = MaterialTheme.typography.labelSmall,
+                                color = Color.White,
+                                fontWeight = FontWeight.Medium,
+                            )
+                        }
+                    }
                     DesktopConnectButton()
                     DesktopToolbarButton(onClick = onOpenAudioOutput, size = 32.dp) {
                         Icon(
@@ -7658,6 +7701,8 @@ private fun DesktopSettingsScreen(
     sleepAfterTrack: Boolean,
     sleepRemainingMs: Long?,
     onSleepTimerCycle: () -> Unit,
+    offlineMode: Boolean = false,
+    onOfflineModeChange: (Boolean) -> Unit = {},
     sourceConfigs: List<DesktopSourceConfig>,
     sourceStatus: Map<String, String>,
     onSourceEnabledChange: (DesktopSourceConfig, Boolean) -> Unit,
@@ -7892,15 +7937,11 @@ private fun DesktopSettingsScreen(
                                     persistence.saveLosslessDowngrade(it)
                                 },
                             )
-                            var offlineMode by remember { mutableStateOf(persistence.offlineMode()) }
                             SettingsToggle(
                                 "Offline mode",
                                 "Only play songs that are saved or cached locally",
                                 offlineMode,
-                                {
-                                    offlineMode = it
-                                    persistence.saveOfflineMode(it)
-                                },
+                                onCheckedChange = onOfflineModeChange,
                             )
                             var slackSeconds by remember { mutableStateOf(persistence.upgradeLengthSlackSeconds()) }
                             Column(Modifier.fillMaxWidth().padding(vertical = 10.dp)) {
