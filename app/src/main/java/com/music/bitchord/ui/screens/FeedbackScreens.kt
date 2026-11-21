@@ -325,7 +325,8 @@ private fun NoteField(value: String, onValueChange: (String) -> Unit, placeholde
             textStyle = MaterialTheme.typography.bodyMedium.copy(fontSize = 15.sp, color = MaterialTheme.colorScheme.onBackground),
             cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
             keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-            modifier = Modifier.fillMaxWidth(),
+            // The whole box is the field, so a tap anywhere in it puts the cursor there.
+            modifier = Modifier.fillMaxWidth().heightIn(min = (minHeight - 20).dp),
         )
     }
 }
