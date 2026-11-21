@@ -10,7 +10,6 @@ import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -36,14 +35,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.CornerRadius
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -54,7 +48,6 @@ import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.model.UiState
 import com.music.bitchord.sharedui.resources.Res
 import com.music.bitchord.sharedui.resources.live_badge
-import com.music.bitchord.sharedui.resources.live_on_air
 import com.music.bitchord.sharedui.resources.live_station_chill
 import com.music.bitchord.sharedui.resources.live_station_jazz
 import com.music.bitchord.sharedui.resources.live_station_lofi
@@ -69,16 +62,12 @@ import com.music.bitchord.ui.components.ShimmerBox
 import org.jetbrains.compose.resources.stringResource
 
 /*
- * Explore's live section. Broadcasts are the one kind of item that is not a
- * track, and they are drawn so they never read as one: a "studio" palette of
- * near-black and signal red instead of the page's own colours, 16:9 frames
- * with a pulsing on-air lamp, and a tuner instead of a shelf title — the
- * stations are switched between, not browsed.
+ * Explore's live section: a station switch and a row of 16:9 broadcast cards,
+ * kept visually quiet. Only the small red LIVE badge marks them as not-tracks.
  */
 
 /** The on-air red. Fixed rather than themed: it is a signal, not a brand colour. */
 internal val OnAirRed = Color(0xFFFF2D46)
-private val StudioBlack = Color(0xFF0B0B10)
 
 @Composable
 private fun LiveStation.label(): String = stringResource(
@@ -138,99 +127,74 @@ private val LIVE_CARD_WIDTH = 264.dp
 
 @Composable
 private fun LiveHeader() {
-    Row(
+    Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(start = PAGE_GUTTER, end = PAGE_GUTTER, top = 24.dp, bottom = 10.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        OnAirLamp(size = 14.dp)
-        Column {
-            Text(
-                text = stringResource(Res.string.live_title),
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Black,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
-            Text(
-                text = stringResource(Res.string.live_subtitle),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
+        Text(
+            text = stringResource(Res.string.live_title),
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+        Text(
+            text = stringResource(Res.string.live_subtitle),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
     }
 }
 
-/**
- * The station switch, drawn as a radio dial: a strip of frequencies under a
- * hairline, the tuned one lit in on-air red with its needle.
- */
+/** The station switch: plain chips, the selected one filled. */
 @Composable
 private fun LiveTuner(selected: LiveStation, onSelect: (LiveStation) -> Unit) {
     LazyRow(
         contentPadding = PaddingValues(horizontal = PAGE_GUTTER),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
-        modifier = Modifier.padding(bottom = 12.dp),
+        modifier = Modifier.padding(bottom = 14.dp),
     ) {
         items(LiveStation.entries, key = { it.id }) { station ->
             val tuned = station == selected
             val ink by animateColorAsState(
-                targetValue = if (tuned) Color.White else MaterialTheme.colorScheme.onSurfaceVariant,
-                animationSpec = tween(220, easing = FastOutSlowInEasing),
+                targetValue = if (tuned) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
+                animationSpec = tween(200, easing = FastOutSlowInEasing),
                 label = "tunerInk",
             )
             val plate by animateColorAsState(
-                targetValue = if (tuned) OnAirRed else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.55f),
-                animationSpec = tween(220, easing = FastOutSlowInEasing),
+                targetValue = if (tuned) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                animationSpec = tween(200, easing = FastOutSlowInEasing),
                 label = "tunerPlate",
             )
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(plate)
-                        .clickable { onSelect(station) }
-                        .padding(horizontal = 14.dp, vertical = 7.dp),
-                ) {
-                    Text(
-                        text = station.label().uppercase(),
-                        color = ink,
-                        fontFamily = FontFamily.Monospace,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 12.sp,
-                        letterSpacing = 1.5.sp,
-                    )
-                }
-                Spacer(Modifier.height(4.dp))
-                // The needle: only under the tuned station.
-                Box(
-                    Modifier
-                        .size(width = 18.dp, height = 3.dp)
-                        .clip(CircleShape)
-                        .background(if (tuned) OnAirRed else Color.Transparent),
+            Box(
+                modifier = Modifier
+                    .clip(CircleShape)
+                    .background(plate)
+                    .clickable { onSelect(station) }
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+            ) {
+                Text(
+                    text = station.label(),
+                    color = ink,
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Medium,
                 )
             }
         }
     }
 }
 
-/** A 16:9 frame of the broadcast with the studio dressing. */
+/** A 16:9 frame of the broadcast with a small live badge. */
 @Composable
 private fun BroadcastCard(broadcast: Song, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(20.dp)
+    val shape = RoundedCornerShape(16.dp)
     Column(modifier = Modifier.width(LIVE_CARD_WIDTH)) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .aspectRatio(16f / 9f)
                 .clip(shape)
-                .background(StudioBlack)
-                .border(
-                    width = 1.5.dp,
-                    brush = Brush.linearGradient(listOf(OnAirRed, OnAirRed.copy(alpha = 0.15f), OnAirRed.copy(alpha = 0.6f))),
-                    shape = shape,
-                )
+                .background(MaterialTheme.colorScheme.surfaceVariant)
                 .clickable(onClick = onClick),
         ) {
             broadcast.thumbnailUrl?.let { art ->
@@ -238,40 +202,20 @@ private fun BroadcastCard(broadcast: Song, onClick: () -> Unit) {
                     model = art,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
-                    modifier = Modifier.fillMaxSize().graphicsLayer { alpha = 0.88f },
+                    modifier = Modifier.fillMaxSize(),
                 )
             }
-            Scanlines(Modifier.fillMaxSize())
             Box(
                 Modifier
                     .fillMaxSize()
                     .background(
                         Brush.verticalGradient(
-                            0f to Color.Black.copy(alpha = 0.35f),
-                            0.35f to Color.Transparent,
-                            0.6f to Color.Transparent,
-                            1f to Color.Black.copy(alpha = 0.85f),
+                            0f to Color.Black.copy(alpha = 0.3f),
+                            0.4f to Color.Transparent,
                         ),
                     ),
             )
             LiveBadge(Modifier.align(Alignment.TopStart).padding(10.dp))
-            Row(
-                modifier = Modifier
-                    .align(Alignment.BottomStart)
-                    .fillMaxWidth()
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = stringResource(Res.string.live_on_air).uppercase(),
-                    color = Color.White.copy(alpha = 0.75f),
-                    fontFamily = FontFamily.Monospace,
-                    fontSize = 10.sp,
-                    letterSpacing = 1.5.sp,
-                    modifier = Modifier.weight(1f),
-                )
-                SignalBars(Modifier.size(width = 22.dp, height = 14.dp))
-            }
         }
         Spacer(Modifier.height(8.dp))
         Text(
@@ -328,45 +272,5 @@ fun OnAirLamp(size: androidx.compose.ui.unit.Dp, color: Color = OnAirRed) {
         val r = this.size.minDimension / 2
         drawCircle(color.copy(alpha = (1f - pulse) * 0.5f), radius = r * (1f + pulse * 0.9f))
         drawCircle(color, radius = r * 0.72f)
-    }
-}
-
-/** Three bars rising and falling out of phase — the station is transmitting. */
-@Composable
-private fun SignalBars(modifier: Modifier) {
-    val transition = rememberInfiniteTransition(label = "signal")
-    val phase by transition.animateFloat(
-        initialValue = 0f,
-        targetValue = (2 * Math.PI).toFloat(),
-        animationSpec = infiniteRepeatable(tween(1100, easing = LinearEasing), RepeatMode.Restart),
-        label = "signalPhase",
-    )
-    Canvas(modifier) {
-        val bars = 3
-        val gap = size.width * 0.18f
-        val w = (size.width - gap * (bars - 1)) / bars
-        repeat(bars) { i ->
-            val level = 0.35f + 0.65f * ((kotlin.math.sin(phase + i * 1.9f) + 1f) / 2f)
-            val h = size.height * level
-            drawRoundRect(
-                color = if (i == bars - 1) OnAirRed else Color.White,
-                topLeft = Offset(i * (w + gap), size.height - h),
-                size = Size(w, h),
-                cornerRadius = CornerRadius(w / 2, w / 2),
-            )
-        }
-    }
-}
-
-/** Faint horizontal lines over the frame: the monitor-wall look. */
-@Composable
-private fun Scanlines(modifier: Modifier) {
-    Canvas(modifier) {
-        val step = 3.dp.toPx()
-        var y = 0f
-        while (y < size.height) {
-            drawRect(Color.Black.copy(alpha = 0.12f), topLeft = Offset(0f, y), size = Size(size.width, 1f))
-            y += step
-        }
     }
 }
