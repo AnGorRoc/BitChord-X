@@ -739,7 +739,7 @@ func TestMinimalTelemetry(t *testing.T) {
 	ts := httptest.NewServer(corsMiddleware(mux))
 	defer ts.Close()
 
-	res := postPresence(t, ts, `{"id":"3f2b8c1e-0d4a-4a55-9f0e-1c2d3e4f5a6b","platform":"android","open":true,"version":"1.9.3","level":"minimal"}`, "")
+	res := postPresence(t, ts, `{"id":"3f2b8c1e-0d4a-4a55-9f0e-1c2d3e4f5a6b","platform":"android","open":true,"version":"1.10.0","level":"minimal"}`, "")
 	if res.StatusCode != http.StatusOK {
 		t.Fatalf("minimal presence: status %d", res.StatusCode)
 	}
@@ -755,13 +755,13 @@ func TestMinimalTelemetry(t *testing.T) {
 		}
 		return res.StatusCode
 	}
-	if code := post(`{"platform":"android","appVersion":"1.9.3","errorType":"uncaught_crash","errorMessage":"uncaught_crash","level":"minimal"}`); code != http.StatusAccepted {
+	if code := post(`{"platform":"android","appVersion":"1.10.0","errorType":"uncaught_crash","errorMessage":"uncaught_crash","level":"minimal"}`); code != http.StatusAccepted {
 		t.Fatalf("a minimal report with only a type should be accepted, got %d", code)
 	}
-	if code := post(`{"platform":"android","appVersion":"1.9.3","level":"minimal"}`); code != http.StatusUnprocessableEntity {
+	if code := post(`{"platform":"android","appVersion":"1.10.0","level":"minimal"}`); code != http.StatusUnprocessableEntity {
 		t.Fatalf("a minimal report still needs its type, got %d", code)
 	}
-	if code := post(`{"platform":"android","appVersion":"1.9.3","errorType":"uncaught_crash"}`); code != http.StatusUnprocessableEntity {
+	if code := post(`{"platform":"android","appVersion":"1.10.0","errorType":"uncaught_crash"}`); code != http.StatusUnprocessableEntity {
 		t.Fatalf("a full report still needs its message, got %d", code)
 	}
 }

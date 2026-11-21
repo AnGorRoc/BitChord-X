@@ -479,7 +479,7 @@ func handleTime(w http.ResponseWriter, r *http.Request) {
 }
 
 // handlePresence takes the open apps' heartbeat:
-// {"id": "<install uuid>", "platform": "android"|"pc"|"browser", "open": true|false, "version": "1.9.3"}.
+// {"id": "<install uuid>", "platform": "android"|"pc"|"browser", "open": true|false, "version": "1.10.0"}.
 func handlePresence(w http.ResponseWriter, r *http.Request) {
 	if !presenceLimiter.Allow(clientIP(r)) {
 		jsonError(w, http.StatusTooManyRequests, "rate_limited", "Too many presence pings from this address.")
