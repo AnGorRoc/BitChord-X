@@ -173,6 +173,7 @@
     <string name="dolby_atmos_unavailable">This device can\'t play Atmos, so these songs play in their usual version</string>
     <string name="dolby_atmos_no_source">None of your sources has Dolby Atmos. YouTube doesn’t offer it; add an addon that does under Sources.</string>
     <string name="dolby_atmos_needs_source">Needs a source</string>
+    <string name="pipeline_sources_status">Sources</string>
     <string name="spatial_audio">Spatial audio</string>
     <string name="spatial_audio_subtitle">Widens stereo tracks for a more immersive feel</string>
     <string name="animated_cover_cellular">Play animated cover over cellular</string>

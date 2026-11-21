@@ -358,11 +358,14 @@ internal object DesktopSourceRegistry {
         excludedSourceId: String? = null,
     ): Result<DesktopLiveResolution> = runCatching {
         val available = playbackAdapters(quality)
+        DesktopSourceTracker.reset(configs())
         val owned = available.any { it.owns(song) } ||
             DesktopModuleSource.parseTrack(song.videoId) != null ||
             song.videoId.startsWith("jiosaavn:")
         if (owned) {
-            return@runCatching DesktopLiveResolution(resolve(song, quality, excludedSourceId).getOrThrow())
+            val resolved = resolve(song, quality, excludedSourceId).getOrThrow()
+            DesktopSourceTracker.setWinner(resolved.sourceId ?: "module", "Playing (${resolved.format.summary})")
+            return@runCatching DesktopLiveResolution(resolved)
         }
 
         val youtube = available.firstOrNull {
@@ -379,7 +382,28 @@ internal object DesktopSourceRegistry {
         }
         // Nothing outranks YouTube, so there is no race to run — this is the plain resolve.
         if (higher.isEmpty() || youtube == null) {
-            return@runCatching DesktopLiveResolution(resolve(song, quality, excludedSourceId).getOrThrow())
+            val resolved = resolve(song, quality, excludedSourceId).getOrThrow()
+            DesktopSourceTracker.setWinner(resolved.sourceId ?: "youtube", "Playing (${resolved.format.summary})")
+            return@runCatching DesktopLiveResolution(resolved)
+        }
+
+        val wantsLossless = ceiling(quality) == DesktopAudioQuality.LOSSLESS
+        val losslessFromStart = wantsLossless && DesktopPersistence().losslessFromStart()
+        if (losslessFromStart && higher.isNotEmpty() && !song.isVideo) {
+            DesktopTrackLog.log("lossless from start: waiting for lossless copy of '${song.title}' before starting on YouTube")
+            val lossless = withTimeoutOrNull(LOSSLESS_FROM_START_TIMEOUT_MS) {
+                firstSubstitute(higher, song, quality)?.takeIf { it.format.isLossless || it.format.isDolbyAtmos }
+            }
+            if (lossless != null) {
+                val winnerId = lossless.sourceId ?: higher.first().config.id
+                DesktopSourceTracker.setWinner(winnerId, "Playing (${lossless.format.summary.ifBlank { "Lossless" }})")
+                DesktopSourceTracker.record(youtube.config.id, youtube.descriptor.name, "Skipped · lossless chosen")
+                DesktopTrackLog.log(
+                    "lossless from start resolved: '${song.title}' served by ${sourceNameFor(lossless)} at ${lossless.format.summary}",
+                )
+                return@runCatching DesktopLiveResolution(lossless, betterThan(lossless, higher, song, quality))
+            }
+            DesktopTrackLog.log("no lossless copy of '${song.title}' in ${LOSSLESS_FROM_START_TIMEOUT_MS}ms; falling back to race")
         }
 
         // Both legs are parented to the registry's own scope rather than the caller's.
@@ -409,6 +433,9 @@ internal object DesktopSourceRegistry {
 
         if (quick != null) {
             fallback.cancel()
+            val winnerId = quick.sourceId ?: higher.first().config.id
+            DesktopSourceTracker.setWinner(winnerId, "Playing (${quick.format.summary.ifBlank { "Lossless" }})")
+            DesktopSourceTracker.record(youtube.config.id, youtube.descriptor.name, "Skipped · replaced")
             DesktopTrackLog.log(
                 "substituted: '${song.title}' served by ${sourceNameFor(quick)} over YouTube" +
                     " at ${quick.format.summary.ifBlank { "an unstated format" }}",
@@ -420,6 +447,7 @@ internal object DesktopSourceRegistry {
         val youtubeStream = fallback.await()
             ?: lookup.await()
             ?: error("No enabled music source could play this track")
+        DesktopSourceTracker.setWinner(youtube.config.id, "Playing (${youtubeStream.format.summary.ifBlank { "Opus 160 kbps" }})")
         // Still running means it lost the race rather than ran out of answers.
         val pending = lookup.takeIf { it.isActive }
         if (pending != null) {
@@ -484,6 +512,17 @@ internal object DesktopSourceRegistry {
     }
 
     /**
+     * Whether [stream] is worth starting a track on instead of YouTube's own copy.
+     * Anything lossless or Atmos passes. A lossy settle-for has to beat YouTube's usual Opus (~160kbps).
+     */
+    internal fun beatsYouTubeAtStart(stream: DesktopStream): Boolean {
+        val format = stream.format
+        if (format.isLossless || format.isDolbyAtmos) return true
+        val kbps = format.kbps ?: return true
+        return kbps > YOUTUBE_OPUS_KBPS
+    }
+
+    /**
      * A second look, asked from scratch once the first one has settled for nothing better.
      *
      * The live race deliberately takes the first copy that beats YouTube, so a slower lossless
@@ -528,6 +567,7 @@ internal object DesktopSourceRegistry {
             // A leg cancelled by a sibling winning the race has not missed anything.
             if (currentCoroutineContext().isActive) {
                 DesktopTrackLog.log("${source.descriptor.name} has no copy of '${song.title}'")
+                DesktopSourceTracker.record(source.config.id, source.descriptor.name, "Not in catalogue")
             }
             return null
         }
@@ -538,10 +578,19 @@ internal object DesktopSourceRegistry {
             if (!playableHere(source, stream)) continue
             val served = stream.format
             if (!wantsLossless || served.isLossless || served.isDolbyAtmos) {
+                if (!beatsYouTubeAtStart(stream)) {
+                    DesktopTrackLog.log(
+                        "${source.descriptor.name}'s ${served.summary} is worse than YouTube's own; " +
+                            "looking further for '${song.title}'",
+                    )
+                    DesktopSourceTracker.record(source.config.id, source.descriptor.name, "Inferior bitrate (${served.summary})")
+                    continue
+                }
                 DesktopTrackLog.log(
                     "${source.descriptor.name} matched '${match.title}' by '${match.artist}'" +
                         " → ${served.summary.ifBlank { "an unstated format" }}",
                 )
+                DesktopSourceTracker.record(source.config.id, source.descriptor.name, "Available (${served.summary})")
                 return stream
             }
             DesktopTrackLog.log(
@@ -549,7 +598,9 @@ internal object DesktopSourceRegistry {
                     " for '${match.title}'; looking further",
             )
             // The floor is the best of what was refused, not the first of it.
-            settleFor = betterOf(settleFor, stream)
+            if (beatsYouTubeAtStart(stream)) {
+                settleFor = betterOf(settleFor, stream)
+            }
         }
         if (settleFor == null && currentCoroutineContext().isActive) {
             DesktopTrackLog.log("${source.descriptor.name} matched '${song.title}' but returned no stream")
@@ -623,6 +674,8 @@ internal object DesktopSourceRegistry {
     /** The runtime agreement that says two rows are the same recording. */
     private const val SAME_RECORDING_SEC = 2
 
+    /** How long we wait for a lossless or Atmos stream when losslessFromStart is on. */
+    private const val LOSSLESS_FROM_START_TIMEOUT_MS = 3500L
 
     /**
      * Whether any source in use could hand over a Dolby Atmos mix: addons and
@@ -641,6 +694,8 @@ internal object DesktopSourceRegistry {
     /** The smallest bitrate gain worth a break in the audio for. */
     private const val UPGRADE_MIN_GAIN_KBPS = 96
 
+    /** The Opus YouTube usually serves; a lossy copy has to beat it to start a track instead. */
+    private const val YOUTUBE_OPUS_KBPS = 160
 
     /** The ceiling a call is made under: an explicit override, else the stored rung. */
     internal fun ceiling(qualityOverride: String?): DesktopAudioQuality =

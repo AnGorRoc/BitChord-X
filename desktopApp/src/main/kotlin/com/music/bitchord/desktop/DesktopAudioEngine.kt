@@ -349,7 +349,9 @@ class DesktopPlaybackEngine(
                     if (current.streamFormat?.isDolbyAtmos == true) return@launch
                     if (DesktopMusicSources.ceiling(null) != DesktopAudioQuality.LOSSLESS) return@launch
                     val playing = DesktopStream(url = "", format = current.streamFormat ?: DesktopStreamFormat(), sourceId = current.streamSourceId)
-                    if (take(song, DesktopMusicSources.upgradeFor(song, playing))) return@launch
+                    val upgraded = DesktopMusicSources.upgradeFor(song, playing)
+                    if (take(song, upgraded)) return@launch
+                    if (upgraded == null) return@launch
                 }
                 DesktopTrackLog.log("no better copy of '${song.title}' was found")
             } finally {

@@ -1,19 +1,26 @@
 package com.music.bitchord.desktop
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -52,6 +59,14 @@ internal fun DesktopAudioPipelineDialog(
                 PipelineRow(DesktopStrings["pipeline_bit_depth", "Bit depth"], source?.bitDepth?.let { "$it-bit" })
                 PipelineRow(DesktopStrings["pipeline_channels", "Channels"], channelLabel(source?.channels))
                 PipelineRow(DesktopStrings["source", "Source"], sourceName)
+            }
+            val sourceAttempts by DesktopSourceTracker.state.collectAsState()
+            if (sourceAttempts.isNotEmpty()) {
+                PipelineStage(DesktopStrings["pipeline_sources_status", "Resolution by source"]) {
+                    for (attempt in sourceAttempts) {
+                        PipelineSourceRow(attempt)
+                    }
+                }
             }
             PipelineStage(DesktopStrings["pipeline_decoder", "Decoder"]) {
                 PipelineRow(DesktopStrings["pipeline_decoder_name", "Decoder"], pipeline.decoderLabel)
@@ -141,6 +156,40 @@ private fun PipelineRow(label: String, value: String?) {
             color = Color.White,
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.Medium,
+            textAlign = TextAlign.End,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1.1f),
+        )
+    }
+}
+
+@Composable
+private fun PipelineSourceRow(attempt: DesktopSourceAttempt) {
+    Row(
+        Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        if (attempt.isWinner) {
+            Box(
+                Modifier.padding(end = 8.dp).size(6.dp).clip(CircleShape).background(DesktopAccent),
+            )
+        }
+        Text(
+            attempt.displayName,
+            color = if (attempt.isWinner) Color.White else DesktopSecondary,
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = if (attempt.isWinner) FontWeight.SemiBold else FontWeight.Normal,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(0.9f),
+        )
+        Spacer(Modifier.width(12.dp))
+        Text(
+            attempt.status,
+            color = if (attempt.isWinner) DesktopAccent else DesktopSecondary.copy(alpha = 0.85f),
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = if (attempt.isWinner) FontWeight.Medium else FontWeight.Normal,
             textAlign = TextAlign.End,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,

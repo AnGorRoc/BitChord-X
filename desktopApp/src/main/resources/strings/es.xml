@@ -744,6 +744,7 @@
     <string name="dolby_atmos_unavailable">Este dispositivo no admite Atmos, por lo que las canciones se reproducirán en su versión habitual</string>
     <string name="dolby_atmos_no_source">Ninguna de tus fuentes tiene Dolby Atmos. YouTube no lo ofrece; agregá un addon que lo tenga en Fuentes.</string>
     <string name="dolby_atmos_needs_source">Falta una fuente</string>
+    <string name="pipeline_sources_status">Fuentes</string>
     <string name="source_already_added">Ya añadido como %1$s</string>
     <string name="source_skipped_by_quality">No usado en %1$s · la calidad está establecida en %2$s</string>
     <string name="source_unrecognised">BitChord no pudo reconocer ese enlace</string>
