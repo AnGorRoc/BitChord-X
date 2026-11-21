@@ -1,0 +1,27 @@
+{
+  "_comment": "Shared definition of reply variables. The server (feedback/template.go), the dashboard preview and the apps must all produce these outputs.",
+  "render": [
+    { "template": "Hola {{nombre}}, gracias", "vars": { "nombre": "Ana" }, "out": "Hola Ana, gracias" },
+    { "template": "Hola {{nombre}}, gracias", "vars": {}, "out": "Hola, gracias" },
+    { "template": "¡Listo, {{nombre}}!", "vars": {}, "out": "¡Listo!" },
+    { "template": "¡Gracias, {{nombre|crack}}!", "vars": {}, "out": "¡Gracias, crack!" },
+    { "template": "¡Gracias, {{nombre|crack}}!", "vars": { "nombre": "Leo" }, "out": "¡Gracias, Leo!" },
+    { "template": "Hola {{nombre}}.", "vars": { "nombre": "  " }, "out": "Hola." },
+    { "template": "Mira {{nombre}} esto", "vars": {}, "out": "Mira esto" },
+    { "template": "{{nombre}} hola", "vars": {}, "out": "hola" },
+    { "template": "Hola {{nombre}}", "vars": {}, "out": "Hola" },
+    { "template": "Línea\n{{nombre}} sigue", "vars": {}, "out": "Línea\nsigue" },
+    { "template": "{{ nombre | amigo }} y {{NOMBRE}}", "vars": { "nombre": "Sol" }, "out": "Sol y Sol" },
+    { "template": "Versión {{version}} en {{plataforma}}", "vars": { "version": "2.1", "plataforma": "Android" }, "out": "Versión 2.1 en Android" },
+    { "template": "Sin cerrar {{nombre y {sueltas}", "vars": { "nombre": "Ana" }, "out": "Sin cerrar {{nombre y {sueltas}" },
+    { "template": "Desconocida: {{color|azul}}", "vars": {}, "out": "Desconocida: azul" },
+    { "template": "Nada de HTML: {{nombre}}", "vars": { "nombre": "<b>x</b>" }, "out": "Nada de HTML: <b>x</b>" },
+    { "template": "{{titulo}}: ({{nombre}})", "vars": { "titulo": "Crash" }, "out": "Crash: ()" }
+  ],
+  "lint": [
+    { "template": "Hola {{nombre}} {{version}}", "problems": [] },
+    { "template": "Hola {{nobre}}", "problems": ["unknown:nobre"] },
+    { "template": "Hola {{nombre", "problems": ["malformed"] },
+    { "template": "{{x}} {{ y }} {{", "problems": ["malformed", "unknown:x", "unknown:y"] }
+  ]
+}

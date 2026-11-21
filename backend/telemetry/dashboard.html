@@ -235,6 +235,96 @@
       box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5); z-index: 60; max-width: 340px;
     }
     .toast.show { display: block; }
+
+    /* Feedback */
+    .fb-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
+    .fb-kpis .card { padding: 11px 14px; }
+    .fb-kpis .kpi-val { font-size: 22px; margin: 2px 0 0; }
+    .fb-layout { display: grid; grid-template-columns: minmax(320px, 400px) minmax(0, 1fr); gap: 14px; align-items: start; }
+    @media (max-width: 1100px) { .fb-layout { grid-template-columns: minmax(0, 1fr); } }
+    .fb-listcard { padding: 12px; display: flex; flex-direction: column; gap: 10px; position: sticky; top: 14px; max-height: calc(100vh - 28px); }
+    @media (max-width: 1100px) { .fb-listcard { position: static; max-height: none; } }
+    .fb-listcard .seg { flex-wrap: wrap; }
+    .fb-filters { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+    .fb-filters input[type="text"] { grid-column: 1 / -1; }
+    .fb-filters select, .fb-filters input { width: 100%; min-width: 0; }
+    .fb-list { overflow-y: auto; display: flex; flex-direction: column; gap: 4px; margin: 0 -4px; padding: 0 4px; min-height: 120px; }
+    .fb-item {
+      display: block; width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer;
+      background: transparent; border: 1px solid transparent; border-radius: 9px; padding: 9px 10px;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .fb-item:hover { background: var(--surface-2); }
+    .fb-item:focus-visible { outline: 2px solid var(--blue); outline-offset: 1px; }
+    .fb-item.sel { background: var(--surface-2); border-color: var(--border); }
+    .fb-item-top { display: flex; align-items: center; gap: 7px; min-width: 0; }
+    .fb-item-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; color: var(--muted); }
+    .fb-item.unread .fb-item-title { color: var(--text); font-weight: 650; }
+    .fb-unread-dot { width: 7px; height: 7px; border-radius: 999px; background: var(--accent); flex-shrink: 0; }
+    .fb-item-snip { color: var(--muted); font-size: 12px; margin: 3px 0 5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .fb-item-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 11px; color: var(--muted); }
+    .fb-prio { font-weight: 700; font-size: 11px; }
+    .fb-prio.p3 { color: var(--amber); } .fb-prio.p4 { color: var(--red); }
+    .fb-kind { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; padding: 1px 6px; border-radius: 5px; background: var(--surface-2); border: 1px solid var(--border); color: var(--muted); flex-shrink: 0; }
+    .fb-kind.bug { color: var(--red); border-color: rgba(248, 113, 113, 0.3); }
+    .fb-kind.idea { color: var(--green); border-color: rgba(45, 212, 191, 0.3); }
+    .fb-kind.question { color: var(--blue); border-color: rgba(96, 165, 250, 0.3); }
+    .fb-empty { color: var(--muted); font-size: 12px; text-align: center; padding: 28px 12px; }
+
+    .fb-detail { padding: 0; min-height: 420px; display: flex; flex-direction: column; }
+    .fb-detail-empty { flex: 1; display: grid; place-items: center; color: var(--muted); font-size: 13px; padding: 40px; text-align: center; }
+    .fb-head { padding: 16px 18px 12px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 10px; }
+    .fb-head h3 { margin: 0; font-size: 17px; letter-spacing: -0.01em; overflow-wrap: anywhere; }
+    .fb-head-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+    .fb-head-row .grow { flex: 1; }
+    .fb-head input[type="text"] { min-width: 160px; }
+    .fb-section { padding: 14px 18px; border-bottom: 1px solid var(--border); }
+    .fb-section > summary { cursor: pointer; color: var(--muted); font-size: 12px; font-weight: 600; list-style: none; }
+    .fb-section > summary::-webkit-details-marker { display: none; }
+    .fb-section > summary::before { content: '▸ '; }
+    .fb-section[open] > summary::before { content: '▾ '; }
+    .fb-section .modal-grid { margin-top: 10px; }
+    .fb-thread { padding: 16px 18px; display: flex; flex-direction: column; gap: 12px; }
+    .fb-msg { max-width: 82%; display: flex; flex-direction: column; gap: 4px; }
+    .fb-msg.user { align-self: flex-start; }
+    .fb-msg.admin { align-self: flex-end; align-items: flex-end; }
+    .fb-bubble { padding: 10px 12px; border-radius: 12px; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 13px; line-height: 1.5; }
+    .fb-msg.user .fb-bubble { background: var(--surface-2); border: 1px solid var(--border); border-top-left-radius: 4px; }
+    .fb-msg.admin .fb-bubble { background: var(--accent-soft); border: 1px solid rgba(251, 79, 103, 0.28); border-top-right-radius: 4px; }
+    .fb-msg.thanks .fb-bubble { background: var(--green-soft); border-color: rgba(45, 212, 191, 0.3); }
+    .fb-msg-meta { font-size: 11px; color: var(--muted); }
+    .fb-sys { align-self: center; font-size: 11px; color: var(--muted); padding: 3px 10px; border-radius: 999px; border: 1px dashed var(--border); }
+    .fb-sys.good { color: var(--green); border-color: rgba(45, 212, 191, 0.4); }
+    .fb-sys.bad { color: var(--red); border-color: rgba(248, 113, 113, 0.4); }
+    .fb-var { color: var(--blue); background: var(--blue-soft); border-radius: 4px; padding: 0 2px; font-family: var(--mono); font-size: 0.92em; }
+    .fb-atts { display: flex; flex-wrap: wrap; gap: 6px; }
+    .fb-att { border: 1px solid var(--border); background: var(--surface-2); border-radius: 8px; padding: 0; cursor: zoom-in; overflow: hidden; width: 104px; height: 104px; display: grid; place-items: center; color: var(--muted); font: inherit; font-size: 11px; }
+    .fb-att img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .fb-att.log { cursor: pointer; width: auto; height: auto; padding: 8px 10px; }
+
+    .fb-compose { margin-top: auto; padding: 14px 18px; border-top: 1px solid var(--border); background: var(--surface); border-radius: 0 0 var(--radius) var(--radius); display: flex; flex-direction: column; gap: 8px; position: sticky; bottom: 0; }
+    @media (max-width: 1100px) { .fb-compose { position: static; } }
+    .fb-compose textarea, .fb-tpl-form textarea {
+      width: 100%; min-height: 92px; resize: vertical; background: var(--bg); color: var(--text);
+      border: 1px solid var(--border); border-radius: 9px; padding: 9px 11px; font: inherit; font-size: 13px; line-height: 1.5;
+    }
+    .fb-compose textarea:focus, .fb-tpl-form textarea:focus { outline: none; border-color: var(--blue); }
+    .fb-chips { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+    .fb-chip { font-family: var(--mono); font-size: 11px; padding: 2px 8px; border-radius: 999px; cursor: pointer; background: var(--blue-soft); color: var(--blue); border: 1px solid rgba(96, 165, 250, 0.3); }
+    .fb-chip:hover { filter: brightness(1.15); }
+    .fb-preview { font-size: 12px; color: var(--muted); background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; white-space: pre-wrap; overflow-wrap: anywhere; }
+    .fb-preview strong { color: var(--text); font-weight: 600; }
+    .fb-lint { font-size: 12px; color: var(--amber); }
+    .fb-compose-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+    .fb-compose-row .grow { flex: 1; }
+    .fb-name-input { width: 110px; }
+    .kbd { font-family: var(--mono); font-size: 10px; padding: 1px 5px; border: 1px solid var(--border); border-radius: 4px; color: var(--muted); }
+
+    .fb-lightbox .modal { max-width: min(1100px, 96vw); }
+    .fb-lightbox img { max-width: 100%; max-height: 74vh; display: block; margin: 0 auto; border-radius: 8px; background: #fff; }
+    .fb-tpl-list { display: flex; flex-direction: column; gap: 6px; }
+    .fb-tpl-form { display: flex; flex-direction: column; gap: 8px; }
+    .fb-tpl-form input[type="text"] { width: 100%; }
   </style>
 </head>
 <body>
@@ -263,6 +353,13 @@
             Errores y Triage
           </span>
           <span class="nav-badge" id="navErrBadge">0</span>
+        </a>
+        <a href="/admin/feedback" data-page="feedback">
+          <span class="nav-left">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            Feedback
+          </span>
+          <span class="nav-badge" id="navFbBadge">0</span>
         </a>
         <a href="/admin/installs" data-page="installs">
           <span class="nav-left">
@@ -424,6 +521,75 @@
             <div style="display:flex;gap:6px">
               <button class="btn sm" id="prevPage">Anterior</button>
               <button class="btn sm" id="nextPage">Siguiente</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAGE: FEEDBACK -->
+      <section class="view" id="view-feedback">
+        <div class="fb-kpis" id="fbKpis"></div>
+        <div class="fb-layout">
+          <div class="card fb-listcard">
+            <div class="seg" id="fbStatusSeg" role="tablist" aria-label="Estado">
+              <button data-status="open" class="active">Abiertos</button>
+              <button data-status="unread">Sin leer</button>
+              <button data-status="need_info">Esperando</button>
+              <button data-status="closed">Cerrados</button>
+              <button data-status="">Todos</button>
+            </div>
+            <div class="fb-filters">
+              <input type="text" id="fbSearch" placeholder="Buscar en títulos y mensajes…  ( / )" aria-label="Buscar" />
+              <select id="fbKind" aria-label="Tipo">
+                <option value="">Todos los tipos</option>
+                <option value="bug">Bugs</option>
+                <option value="idea">Ideas</option>
+                <option value="question">Preguntas</option>
+                <option value="other">Otros</option>
+              </select>
+              <select id="fbPlatform" aria-label="Plataforma">
+                <option value="">Todas las plataformas</option>
+                <option value="android">Android</option>
+                <option value="pc">PC</option>
+                <option value="browser">Web</option>
+              </select>
+              <select id="fbVersion" aria-label="Versión"><option value="">Todas las versiones</option></select>
+              <select id="fbTag" aria-label="Etiqueta"><option value="">Todas las etiquetas</option></select>
+            </div>
+            <div class="fb-list" id="fbList" role="listbox" aria-label="Tickets"></div>
+            <button class="btn sm" id="fbMore" style="display:none;align-self:center">Cargar más</button>
+            <div class="card-hint" style="text-align:center"><span class="kbd">j</span> <span class="kbd">k</span> moverse · <span class="kbd">r</span> responder · <span class="kbd">u</span> no leído</div>
+          </div>
+
+          <div class="card fb-detail" id="fbDetail">
+            <div class="fb-detail-empty" id="fbEmpty">Elige un ticket de la lista para ver la conversación.</div>
+            <div id="fbDetailBody" style="display:none"></div>
+            <div class="fb-compose" id="fbCompose" style="display:none">
+              <div class="fb-compose-row">
+                <select id="fbTplSelect" aria-label="Plantilla"><option value="">Plantilla…</option></select>
+                <button class="btn sm" id="fbTplManage" type="button">Editar plantillas</button>
+                <span class="grow"></span>
+                <div class="seg" id="fbKindSeg">
+                  <button data-kind="message" class="active" type="button">Mensaje</button>
+                  <button data-kind="thanks" type="button">Agradecimiento</button>
+                </div>
+              </div>
+              <div class="fb-chips" id="fbChips"><span class="card-hint">Variables:</span></div>
+              <textarea id="fbReply" placeholder="Escribe la respuesta. {{nombre}} se rellena en el teléfono de la persona; el servidor nunca lo ve." aria-label="Respuesta"></textarea>
+              <div class="fb-lint" id="fbLint" style="display:none"></div>
+              <div class="fb-preview" id="fbPreview" style="display:none"></div>
+              <div class="fb-compose-row">
+                <label class="card-hint">Vista previa como <input type="text" id="fbSampleName" class="fb-name-input" value="Ana" aria-label="Nombre de ejemplo" /></label>
+                <span class="grow"></span>
+                <select id="fbAfterStatus" aria-label="Estado después de enviar">
+                  <option value="">Sin cambiar estado</option>
+                  <option value="need_info">→ Esperando info</option>
+                  <option value="in_progress">→ En progreso</option>
+                  <option value="done">→ Hecho</option>
+                  <option value="wontfix">→ No se hará</option>
+                </select>
+                <button class="btn primary" id="fbSend" type="button">Enviar <span class="kbd" style="color:#fff;border-color:rgba(255,255,255,.4)">Ctrl ↵</span></button>
+              </div>
             </div>
           </div>
         </div>
@@ -623,12 +789,59 @@
     </div>
   </div>
 
+  <!-- Feedback: attachment viewer -->
+  <div class="modal-bg fb-lightbox" id="fbViewer">
+    <div class="modal">
+      <div class="modal-head">
+        <strong id="fbViewerTitle">Adjunto</strong>
+        <div style="display:flex;gap:6px">
+          <a class="btn sm" id="fbViewerOpen" target="_blank" rel="noopener">Abrir original</a>
+          <button class="btn sm" id="fbViewerClose">Cerrar</button>
+        </div>
+      </div>
+      <div class="modal-body" id="fbViewerBody"></div>
+    </div>
+  </div>
+
+  <!-- Feedback: reply templates -->
+  <div class="modal-bg" id="fbTplModal">
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <strong>Plantillas de respuesta</strong>
+          <div class="card-hint">Las variables se rellenan en la app de cada persona.</div>
+        </div>
+        <button class="btn sm" id="fbTplClose">Cerrar</button>
+      </div>
+      <div class="modal-body">
+        <div class="fb-tpl-list" id="fbTplList"></div>
+        <div class="fb-tpl-form">
+          <strong id="fbTplFormTitle">Nueva plantilla</strong>
+          <input type="text" id="fbTplName" placeholder="Nombre" maxlength="60" aria-label="Nombre de la plantilla" />
+          <select id="fbTplKind" aria-label="Tipo de plantilla">
+            <option value="message">Mensaje</option>
+            <option value="thanks">Agradecimiento</option>
+          </select>
+          <textarea id="fbTplBody" placeholder="Hola {{nombre}}, …" aria-label="Texto de la plantilla"></textarea>
+          <div class="fb-lint" id="fbTplLint" style="display:none"></div>
+          <div class="fb-preview" id="fbTplPreview"></div>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="btn" id="fbTplNew">Nueva</button>
+        <button class="btn" id="fbTplDelete" style="color:var(--red);display:none">Eliminar</button>
+        <button class="btn primary" id="fbTplSave">Guardar</button>
+      </div>
+    </div>
+  </div>
+
   <div class="toast" id="toast"></div>
 
   <script>
     const PAGES = {
       overview: { title: 'Resumen', desc: 'Estado en vivo, concurrencia, retencion y adopcion de versiones.' },
       errors:   { title: 'Errores y Triage', desc: 'Inspeccion de fallos, dispositivos afectados y resolucion.' },
+      feedback: { title: 'Feedback', desc: 'Bugs, ideas y preguntas enviados desde las apps. Las respuestas llegan como notificacion.' },
       installs: { title: 'Instalaciones y Retencion', desc: 'Usuarios activos, recurrentes, perdidos (>14d) y versiones.' },
       parties:  { title: 'Listen Together', desc: 'Salas activas, miembros y sockets en tiempo real.' },
       ai:       { title: 'AI & Direct API', desc: 'Endpoints JSON y Markdown directos para agentes IA sin navegador.' },
@@ -674,13 +887,15 @@
     function pageFromPath() {
       const seg = location.pathname.replace(/^\/+|\/+$/g, '').split('/');
       const candidate = seg[0] === 'admin' ? (seg[1] || 'overview') : (seg[0] || 'overview');
+      // /admin/feedback/{ticket} opens that ticket.
+      if (candidate === 'feedback' && seg[0] === 'admin') fb.selected = seg[2] ? decodeURIComponent(seg[2]) : null;
       return PAGES[candidate] ? candidate : 'overview';
     }
 
     function navigate(page, push = true) {
       if (!PAGES[page]) page = 'overview';
       state.page = page;
-      if (push) history.pushState({ page }, '', '/admin/' + page);
+      if (push) history.pushState({ page }, '', '/admin/' + page + (page === 'feedback' && fb.selected ? '/' + encodeURIComponent(fb.selected) : ''));
       document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
       $('view-' + page).classList.add('active');
       $('navMenu').querySelectorAll('a').forEach(a => a.classList.toggle('active', a.dataset.page === page));
@@ -1065,8 +1280,10 @@
     }
 
     async function loadCurrentPage() {
+      loadFeedbackSummary();
       await loadOverview();
       if (state.page === 'errors') await loadErrors();
+      if (state.page === 'feedback') await loadFeedbackPage();
       if (state.page === 'installs') await loadInstalls();
       if (state.page === 'ai') await loadAI();
       if (state.page === 'system') await loadDatabase();
@@ -1114,6 +1331,12 @@
             showToast(`Nuevo error: ${msg.data?.errorType || 'runtime'} (${msg.data?.appVersion || '-'})`);
             pushWSEvent('error', `${msg.data?.errorType || 'runtime'} (${msg.data?.appVersion || '-'})`);
             scheduleRefresh();
+          } else if (msg.type === 'feedback') {
+            const d = msg.data || {};
+            if (d.event === 'ticket') showToast('Nuevo feedback: ' + (d.title || ''));
+            else if (d.event === 'message' && state.page !== 'feedback') showToast('Nueva respuesta en: ' + (d.title || d.id || ''));
+            pushWSEvent('feedback', `${d.event || ''} ${d.id || ''}`);
+            fbRefresh(!d.id || d.id === fb.selected);
           } else if (msg.type === 'error_updated' || msg.type === 'error_deleted' || msg.type === 'snapshot') {
             pushWSEvent(msg.type, 'Actualizacion recibida');
             scheduleRefresh();
@@ -1225,6 +1448,561 @@
       const data = await res.json().catch(() => ({}));
       showToast(`Registros historicos depurados: ${fmtNum(data.deleted || 0)}`);
       loadCurrentPage();
+    });
+
+
+    // ---------- Feedback ----------
+
+    // <fb-template> Reply variables: the same rules as feedback/template.go, checked against
+    // feedback/testdata/template_vectors.json. The server stores replies unresolved; the app
+    // fills them in. This copy is only for the preview.
+    const FB_TOKEN = /\{\{\s*([A-Za-z_]{1,24})\s*(?:\|([^{}\n]{0,60}))?\}\}/;
+    const FB_VARS = ['nombre', 'version', 'plataforma', 'ticket', 'titulo'];
+    function fbRender(body, vars) {
+      let out = '', rest = body, skip = false;
+      const drop = (s) => (skip && s.startsWith(' ')) ? s.slice(1) : s;
+      for (;;) {
+        const m = FB_TOKEN.exec(rest);
+        if (!m) return out + drop(rest);
+        out += drop(rest.slice(0, m.index));
+        skip = false;
+        const name = m[1].toLowerCase();
+        const given = vars && Object.prototype.hasOwnProperty.call(vars, name) ? vars[name] : '';
+        let value = String(given ?? '').trim();
+        if (!value && m[2] !== undefined) value = m[2].trim();
+        rest = rest.slice(m.index + m[0].length);
+        if (value) { out += value; continue; }
+        if (rest === '' || ',.!?;:)'.includes(rest[0])) {
+          if (out.endsWith(', ')) out = out.slice(0, -2);
+          else if (out.endsWith(' ')) out = out.slice(0, -1);
+        } else if (rest[0] === ' ' && (out === '' || out.endsWith(' ') || out.endsWith('\n'))) {
+          skip = true;
+        }
+      }
+    }
+    function fbLint(body) {
+      const problems = new Set();
+      const g = new RegExp(FB_TOKEN.source, 'g');
+      for (const m of body.matchAll(g)) {
+        const name = m[1].toLowerCase();
+        if (!FB_VARS.includes(name)) problems.add('unknown:' + name);
+      }
+      if (body.replace(g, '').includes('{{')) problems.add('malformed');
+      return [...problems].sort();
+    }
+    // </fb-template>
+
+    const FB_STATUS = {
+      new: ['Nuevo', 'blue'], reviewed: ['Revisado', ''], need_info: ['Esperando info', 'amber'],
+      in_progress: ['En progreso', 'blue'], done: ['Hecho', 'green'], wontfix: ['No se hará', ''], duplicate: ['Duplicado', '']
+    };
+    const FB_KIND = { bug: 'Bug', idea: 'Idea', question: 'Pregunta', other: 'Otro' };
+    const FB_PLATFORM = { android: 'Android', pc: 'PC', browser: 'Web' };
+    const FB_PRIO = ['Sin prioridad', 'Baja', 'Normal', 'Alta', 'Urgente'];
+    const fb = {
+      status: 'open', items: [], next: '', selected: null, detail: null, drafts: {}, kind: 'message',
+      templates: null, editingTpl: null, metaOpen: false, listSeq: 0, refreshTimer: null, searchTimer: null
+    };
+
+    const fbStatusPill = (s) => `<span class="pill ${(FB_STATUS[s] || [])[1] || ''}">${esc((FB_STATUS[s] || [s])[0])}</span>`;
+    const fbAgo = (ms) => {
+      const s = (Date.now() - ms) / 1000;
+      if (s < 60) return 'ahora';
+      if (s < 3600) return `hace ${Math.floor(s / 60)} min`;
+      if (s < 86400) return `hace ${Math.floor(s / 3600)} h`;
+      if (s < 86400 * 30) return `hace ${Math.floor(s / 86400)} d`;
+      return new Date(ms).toLocaleDateString('es-AR');
+    };
+    const fbBytes = (n) => !n ? '0 KB' : n >= 1048576 ? (n / 1048576).toFixed(1) + ' MB' : Math.max(1, Math.round(n / 1024)) + ' KB';
+    const fbTicketUrl = (id) => '/api/admin/feedback/tickets/' + encodeURIComponent(id);
+
+    async function fbApi(method, path, body) {
+      const res = await fetch(path, {
+        method,
+        headers: body ? { 'Content-Type': 'application/json' } : {},
+        body: body ? JSON.stringify(body) : undefined
+      });
+      const data = res.status === 204 ? null : await res.json().catch(() => null);
+      if (!res.ok) {
+        const err = new Error((data && data.message) || ('HTTP ' + res.status));
+        err.data = data;
+        throw err;
+      }
+      return data;
+    }
+
+    async function loadFeedbackSummary() {
+      try {
+        const d = await fbApi('GET', '/api/admin/feedback/summary');
+        const b = $('navFbBadge');
+        b.textContent = d.summary.unread;
+        b.classList.toggle('show', d.summary.unread > 0);
+        if (state.page === 'feedback') renderFbKpis(d);
+      } catch (_) { /* feedback disabled on this server */ }
+    }
+
+    function renderFbKpis(d) {
+      const s = d.summary;
+      const k = (label, val, sub) => `<div class="card"><div class="kpi-label">${label}</div><div class="kpi-val">${val}</div>${sub ? `<div class="kpi-sub">${sub}</div>` : ''}</div>`;
+      $('fbKpis').innerHTML =
+        k('Abiertos', fmtNum(s.open)) +
+        k('Sin leer', fmtNum(s.unread)) +
+        k('Esperando info', fmtNum((s.byStatus || {}).need_info || 0)) +
+        k('Bugs / ideas', `${fmtNum((s.byKind || {}).bug || 0)} / ${fmtNum((s.byKind || {}).idea || 0)}`) +
+        k('Satisfacción', `👍 ${fmtNum(s.thumbsUp)} · 👎 ${fmtNum(s.thumbsDown)}`) +
+        k('Adjuntos', fbBytes(s.diskBytes), `de ${fbBytes(d.limits.maxDiskBytes)}`);
+      syncSelect($('fbVersion'), s.versions || [], 'Todas las versiones');
+      syncSelect($('fbTag'), s.tags || [], 'Todas las etiquetas');
+    }
+
+    async function loadFeedbackList(append = false) {
+      const p = new URLSearchParams({
+        status: fb.status, kind: $('fbKind').value, platform: $('fbPlatform').value,
+        version: $('fbVersion').value, tag: $('fbTag').value, q: $('fbSearch').value.trim(), limit: 40
+      });
+      if (append && fb.next) p.set('cursor', fb.next);
+      const seq = ++fb.listSeq;
+      let d;
+      try { d = await fbApi('GET', '/api/admin/feedback/tickets?' + p); } catch (_) { return; }
+      if (seq !== fb.listSeq) return;
+      fb.items = append ? fb.items.concat(d.items) : d.items;
+      fb.next = d.next || '';
+      renderFbList();
+    }
+
+    function fbSnippet(t) {
+      if (t.lastAuthor === 'admin' && FB_STATUS[t.snippet]) return 'Estado → ' + FB_STATUS[t.snippet][0];
+      if (t.lastAuthor === 'user' && t.snippet === '') return '(valoración)';
+      return (t.lastAuthor === 'admin' ? 'Tú: ' : '') + t.snippet;
+    }
+
+    function renderFbList() {
+      const list = $('fbList');
+      $('fbMore').style.display = fb.next ? '' : 'none';
+      if (!fb.items.length) {
+        list.innerHTML = '<div class="fb-empty">Nada por aquí con estos filtros.</div>';
+        return;
+      }
+      list.innerHTML = fb.items.map(t => {
+        const sel = t.id === fb.selected;
+        const extra = [
+          t.attachmentCount ? `📎 ${t.attachmentCount}` : '',
+          `💬 ${t.messageCount}`,
+          t.satisfaction === 1 ? '👍' : t.satisfaction === -1 ? '👎' : ''
+        ].filter(Boolean).join(' · ');
+        return `
+        <button class="fb-item${t.unreadAdmin ? ' unread' : ''}${sel ? ' sel' : ''}" role="option" aria-selected="${sel}" data-id="${esc(t.id)}">
+          <div class="fb-item-top">
+            ${t.unreadAdmin ? '<span class="fb-unread-dot" title="Sin leer"></span>' : ''}
+            <span class="fb-kind ${esc(t.kind)}">${esc(FB_KIND[t.kind] || t.kind)}</span>
+            <span class="fb-item-title">${esc(t.title)}</span>
+            ${t.priority >= 3 ? `<span class="fb-prio p${t.priority}" title="${FB_PRIO[t.priority]}">${t.priority === 4 ? '!!' : '!'}</span>` : ''}
+          </div>
+          <div class="fb-item-snip">${esc(fbSnippet(t))}</div>
+          <div class="fb-item-meta">${fbStatusPill(t.status)}<span>${esc(FB_PLATFORM[t.platform] || t.platform)} ${esc(t.appVersion)}</span>·<span>${fbAgo(t.updatedAtMs)}</span>·<span>${extra}</span></div>
+        </button>`;
+      }).join('');
+    }
+
+    async function fbSelect(id, push = true) {
+      if (fb.selected && fb.selected !== id) fb.drafts[fb.selected] = $('fbReply').value;
+      fb.selected = id;
+      if (push) history.replaceState({ page: 'feedback' }, '', '/admin/feedback/' + encodeURIComponent(id));
+      document.querySelectorAll('#fbList .fb-item').forEach(b => {
+        const on = b.dataset.id === id;
+        b.classList.toggle('sel', on);
+        b.setAttribute('aria-selected', String(on));
+        if (on) b.scrollIntoView({ block: 'nearest' });
+      });
+      $('fbReply').value = fb.drafts[id] || '';
+      await loadFbDetail();
+      const d = fb.detail;
+      if (d && d.id === id && d.unreadAdmin) {
+        // Opening a ticket reads it.
+        try { await fbApi('PATCH', fbTicketUrl(id), { unreadAdmin: false }); } catch (_) {}
+        d.unreadAdmin = false;
+        const it = fb.items.find(x => x.id === id);
+        if (it) it.unreadAdmin = false;
+        renderFbList();
+        loadFeedbackSummary();
+      }
+    }
+
+    function fbShowEmpty(text) {
+      fb.detail = null;
+      $('fbDetailBody').style.display = 'none';
+      $('fbCompose').style.display = 'none';
+      $('fbEmpty').style.display = '';
+      $('fbEmpty').textContent = text;
+    }
+
+    async function loadFbDetail() {
+      const id = fb.selected;
+      if (!id) return fbShowEmpty('Elige un ticket de la lista para ver la conversación.');
+      let d;
+      try { d = await fbApi('GET', fbTicketUrl(id)); } catch (_) { return fbShowEmpty('Ese ticket ya no existe.'); }
+      if (id !== fb.selected) return;
+      fb.detail = d;
+      renderFbDetail(d);
+      fbUpdatePreview();
+    }
+
+    function fbHighlightVars(text) {
+      return esc(text).replace(new RegExp(FB_TOKEN.source, 'g'), m => `<span class="fb-var">${m}</span>`);
+    }
+
+    function fbMsgHtml(m) {
+      const when = new Date(m.createdAtMs).toLocaleString('es-AR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+      if (m.kind === 'status') {
+        return `<div class="fb-sys">Estado → ${esc((FB_STATUS[m.body] || [m.body])[0])} · ${esc(when)}</div>`;
+      }
+      if (m.kind === 'resolved' || m.kind === 'unresolved') {
+        const good = m.kind === 'resolved';
+        const line = `<div class="fb-sys ${good ? 'good' : 'bad'}">${good ? '👍 Dice que se resolvió' : '👎 Dice que sigue sin resolverse'} · ${esc(when)}</div>`;
+        return m.body ? line + `<div class="fb-msg user"><div class="fb-bubble">${esc(m.body)}</div></div>` : line;
+      }
+      const mine = m.author === 'admin';
+      const atts = (m.attachments || []).map(a => a.kind === 'image'
+        ? `<button class="fb-att" data-aid="${a.id}" data-kind="image" title="${a.width}×${a.height} · ${fbBytes(a.bytes)}"><img loading="lazy" alt="Captura de ${a.width}×${a.height}" src="/api/admin/feedback/attachments/${a.id}?thumb=1"></button>`
+        : `<button class="fb-att log" data-aid="${a.id}" data-kind="log">📄 Registro · ${fbBytes(a.bytes)}</button>`).join('');
+      const meta = mine
+        ? `${m.kind === 'thanks' ? 'Agradecimiento' : 'Tú'} · ${esc(when)} · ${m.readAtMs ? 'Leído' : 'Sin leer'}`
+        : esc(when);
+      return `<div class="fb-msg ${mine ? 'admin' : 'user'}${m.kind === 'thanks' ? ' thanks' : ''}">
+        <div class="fb-bubble">${mine ? fbHighlightVars(m.body) : esc(m.body)}</div>
+        ${atts ? `<div class="fb-atts">${atts}</div>` : ''}
+        <div class="fb-msg-meta">${meta}</div>
+      </div>`;
+    }
+
+    function renderFbDetail(d) {
+      $('fbEmpty').style.display = 'none';
+      $('fbCompose').style.display = '';
+      const body = $('fbDetailBody');
+      body.style.display = '';
+      const dg = d.diagnostics || {};
+      const rep = d.reporter || {};
+      const meta = [
+        ['Plataforma', FB_PLATFORM[d.platform] || d.platform], ['Versión', d.appVersion || '-'], ['Idioma', d.locale || '-'],
+        ['Dispositivo', dg.deviceModel || '-'], ['Sistema', dg.osVersion || '-'], ['ABI', dg.abi || '-'],
+        ['Pantalla', dg.screen || '-'], ['Telemetría', dg.telemetryLevel || 'no compartida'],
+        ['Creado', new Date(d.createdAtMs).toLocaleString('es-AR')],
+        ['Remitente', `${rep.tickets} ticket(s) desde ${new Date(rep.sinceMs).toLocaleDateString('es-AR')}${rep.blocked ? ' · BLOQUEADO' : ''}`]
+      ];
+      const statusOpts = Object.keys(FB_STATUS).map(s => `<option value="${s}"${s === d.status ? ' selected' : ''}>${FB_STATUS[s][0]}</option>`).join('');
+      const prioOpts = FB_PRIO.map((l, i) => `<option value="${i}"${i === d.priority ? ' selected' : ''}>${l}</option>`).join('');
+      const errors = d.errors || [];
+      body.innerHTML = `
+        <div class="fb-head">
+          <div class="fb-head-row">
+            <span class="fb-kind ${esc(d.kind)}">${esc(FB_KIND[d.kind] || d.kind)}</span>
+            <span class="mono card-hint">${esc(d.id)}</span>
+            ${d.duplicateOf ? `<span class="pill">Duplicado de <a href="/admin/feedback/${esc(d.duplicateOf)}" data-fb-link="${esc(d.duplicateOf)}" style="color:inherit;margin-left:4px">${esc(d.duplicateOf)}</a></span>` : ''}
+            ${d.satisfaction === 1 ? '<span class="pill green">👍 Resuelto para la persona</span>' : d.satisfaction === -1 ? '<span class="pill red">👎 Sigue sin resolverse</span>' : ''}
+            ${rep.blocked ? '<span class="pill amber">Remitente bloqueado</span>' : ''}
+          </div>
+          <h3>${esc(d.title)}</h3>
+          <div class="fb-head-row">
+            <select id="fbStatus" aria-label="Estado">${statusOpts}</select>
+            <select id="fbPriority" aria-label="Prioridad">${prioOpts}</select>
+            <input type="text" id="fbTags" value="${esc((d.tags || []).join(', '))}" placeholder="etiquetas, separadas por coma" aria-label="Etiquetas" />
+            <span class="grow"></span>
+            <button class="btn sm" id="fbUnread" type="button">Marcar no leído</button>
+            <button class="btn sm" id="fbCopyMd" type="button">Copiar para IA</button>
+            <button class="btn sm" id="fbDup" type="button">Duplicado…</button>
+            <button class="btn sm" id="fbBlock" type="button" style="color:var(--amber)">${rep.blocked ? 'Desbloquear' : 'Bloquear'}</button>
+            <button class="btn sm" id="fbDelete" type="button" style="color:var(--red)">Eliminar</button>
+          </div>
+        </div>
+        <details class="fb-section" id="fbMeta"${fb.metaOpen ? ' open' : ''}>
+          <summary>Información técnica${errors.length ? ` · ${errors.length} error(es) del mismo dispositivo` : ''}</summary>
+          <div class="modal-grid">${meta.map(([k, v]) => `<div class="meta-box"><label>${k}</label>${esc(v)}</div>`).join('')}</div>
+          ${dg.installId ? `<div class="card-hint" style="margin-top:8px">Install ID <span class="mono">${esc(dg.installId)}</span></div>` : ''}
+          ${errors.length ? `<div class="mini-list" style="margin-top:10px">${errors.map(e => `
+            <div class="mini-item"><span><span class="mono">#${e.id}</span> <strong class="mono">${esc(e.errorType)}</strong> ${esc(e.errorMessage)}</span><span class="card-hint">${esc(e.appVersion)} · ${fbAgo(e.createdAtMs)}</span></div>`).join('')}</div>` : ''}
+        </details>
+        <div class="fb-thread" id="fbThread">${(d.thread || []).map(fbMsgHtml).join('')}</div>`;
+
+      const patch = async (p, okText) => {
+        try {
+          await fbApi('PATCH', fbTicketUrl(d.id), p);
+          if (okText) showToast(okText);
+        } catch (e) { showToast('No se pudo guardar: ' + e.message); }
+        fbRefresh(true);
+      };
+      $('fbStatus').addEventListener('change', (e) => patch({ status: e.target.value }, 'Estado actualizado: la persona lo verá en su app'));
+      $('fbPriority').addEventListener('change', (e) => patch({ priority: Number(e.target.value) }));
+      $('fbTags').addEventListener('change', (e) => patch({ tags: e.target.value.split(',').map(s => s.trim()).filter(Boolean) }));
+      $('fbUnread').addEventListener('click', () => patch({ unreadAdmin: true }, 'Marcado como no leído'));
+      $('fbMeta').addEventListener('toggle', (e) => { fb.metaOpen = e.target.open; });
+      $('fbCopyMd').addEventListener('click', async () => {
+        const res = await fetch(fbTicketUrl(d.id) + '?format=md');
+        if (res.ok) { await navigator.clipboard.writeText(await res.text()); showToast('Ticket copiado en Markdown'); }
+      });
+      $('fbDup').addEventListener('click', () => {
+        const orig = (prompt('ID del ticket original (fb_…). Vacío para quitar la marca:', d.duplicateOf || '') ?? null);
+        if (orig === null) return;
+        const id = orig.trim();
+        patch(id ? { duplicateOf: id, status: 'duplicate' } : { duplicateOf: '' }, id ? 'Marcado como duplicado' : 'Marca de duplicado quitada');
+      });
+      $('fbBlock').addEventListener('click', async () => {
+        const block = !rep.blocked;
+        if (block && !confirm('¿Bloquear a quien envió este ticket? Seguirá viendo "enviado", pero sus reportes nuevos se descartan.')) return;
+        try { await fbApi('POST', fbTicketUrl(d.id) + '/block', { blocked: block }); showToast(block ? 'Remitente bloqueado' : 'Remitente desbloqueado'); }
+        catch (e) { showToast('No se pudo: ' + e.message); }
+        fbRefresh(true);
+      });
+      $('fbDelete').addEventListener('click', async () => {
+        if (!confirm(`¿Eliminar "${d.title}" con sus mensajes y adjuntos? No se puede deshacer.`)) return;
+        try { await fbApi('DELETE', fbTicketUrl(d.id)); } catch (e) { return showToast('No se pudo eliminar: ' + e.message); }
+        delete fb.drafts[d.id];
+        fb.selected = null;
+        history.replaceState({ page: 'feedback' }, '', '/admin/feedback');
+        fbShowEmpty('Ticket eliminado.');
+        showToast('Ticket eliminado');
+        fbRefresh(false);
+      });
+    }
+
+    async function fbOpenAttachment(aid, kind) {
+      const url = `/api/admin/feedback/attachments/${aid}`;
+      $('fbViewerOpen').href = url;
+      const body = $('fbViewerBody');
+      body.innerHTML = '';
+      if (kind === 'image') {
+        $('fbViewerTitle').textContent = 'Captura';
+        const img = document.createElement('img');
+        img.src = url;
+        img.alt = 'Captura adjunta';
+        body.appendChild(img);
+      } else {
+        $('fbViewerTitle').textContent = 'Registro';
+        const pre = document.createElement('pre');
+        pre.className = 'code';
+        pre.textContent = 'Cargando…';
+        body.appendChild(pre);
+        fetch(url).then(r => r.ok ? r.text() : Promise.reject()).then(t => { pre.textContent = t; }).catch(() => { pre.textContent = 'No se pudo cargar el archivo.'; });
+      }
+      $('fbViewer').classList.add('open');
+    }
+
+    function fbVarsFor(d, name) {
+      return {
+        nombre: name, version: d ? d.appVersion : '', plataforma: d ? (FB_PLATFORM[d.platform] || d.platform) : '',
+        ticket: d ? d.id : '', titulo: d ? d.title : ''
+      };
+    }
+
+    function fbLintText(problems) {
+      return problems.map(p => p === 'malformed'
+        ? 'Hay un "{{" que no forma una variable.'
+        : `{{${p.slice(8)}}} no existe; la app no sabría qué poner. Usa ${FB_VARS.map(v => '{{' + v + '}}').join(', ')}.`).join(' ');
+    }
+
+    // fbShowPreview fills a lint line and a preview box for text: how it reads with a name, and
+    // without one (the person may not be signed in).
+    function fbShowPreview(text, lintEl, previewEl, d) {
+      const problems = fbLint(text);
+      lintEl.style.display = problems.length ? '' : 'none';
+      lintEl.textContent = fbLintText(problems);
+      if (!text.trim()) { previewEl.style.display = 'none'; return problems; }
+      previewEl.style.display = '';
+      const name = $('fbSampleName').value.trim() || 'Ana';
+      let html = `<strong>Así lo verá ${esc(name)}:</strong> ${esc(fbRender(text, fbVarsFor(d, name)))}`;
+      if (/\{\{\s*nombre/i.test(text)) html += `\n<strong>Sin nombre:</strong> ${esc(fbRender(text, fbVarsFor(d, '')))}`;
+      previewEl.innerHTML = html;
+      return problems;
+    }
+
+    function fbUpdatePreview() {
+      return fbShowPreview($('fbReply').value, $('fbLint'), $('fbPreview'), fb.detail);
+    }
+
+    function fbSetKind(kind) {
+      fb.kind = kind;
+      $('fbKindSeg').querySelectorAll('button').forEach(b => b.classList.toggle('active', b.dataset.kind === kind));
+    }
+
+    function fbInsertAtCursor(el, text) {
+      const start = el.selectionStart ?? el.value.length, end = el.selectionEnd ?? el.value.length;
+      el.value = el.value.slice(0, start) + text + el.value.slice(end);
+      el.selectionStart = el.selectionEnd = start + text.length;
+      el.focus();
+      el.dispatchEvent(new Event('input'));
+    }
+
+    async function fbSend() {
+      const d = fb.detail;
+      const text = $('fbReply').value.trim();
+      if (!d || !text) return;
+      if (fbUpdatePreview().length) return showToast('Corrige las variables antes de enviar');
+      const btn = $('fbSend');
+      btn.disabled = true;
+      try {
+        const after = $('fbAfterStatus').value;
+        await fbApi('POST', fbTicketUrl(d.id) + '/messages', { kind: fb.kind, body: text, status: after || undefined });
+        $('fbReply').value = '';
+        delete fb.drafts[d.id];
+        $('fbAfterStatus').value = '';
+        fbSetKind('message');
+        fbUpdatePreview();
+        showToast('Respuesta enviada: le llegará como notificación');
+        fbRefresh(true);
+      } catch (e) {
+        showToast('No se envió: ' + (e.data && e.data.problems ? fbLintText(e.data.problems) : e.message));
+      } finally {
+        btn.disabled = false;
+      }
+    }
+
+    async function loadFbTemplates() {
+      try {
+        const d = await fbApi('GET', '/api/admin/feedback/templates');
+        fb.templates = d.templates || [];
+      } catch (_) { fb.templates = []; }
+      $('fbTplSelect').innerHTML = '<option value="">Plantilla…</option>' +
+        fb.templates.map(t => `<option value="${t.id}">${esc(t.name)}${t.kind === 'thanks' ? ' 🙏' : ''}</option>`).join('');
+      renderFbTplList();
+    }
+
+    function renderFbTplList() {
+      $('fbTplList').innerHTML = (fb.templates || []).map(t => `
+        <div class="mini-item">
+          <div style="min-width:0"><strong>${esc(t.name)}</strong> ${t.kind === 'thanks' ? '<span class="pill green">Agradecimiento</span>' : ''}
+            <div class="card-hint" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(t.body)}</div></div>
+          <button class="btn sm" data-tpl="${t.id}" type="button">Editar</button>
+        </div>`).join('') || '<div class="card-hint">Todavía no hay plantillas.</div>';
+    }
+
+    function fbEditTemplate(t) {
+      fb.editingTpl = t || null;
+      $('fbTplFormTitle').textContent = t ? 'Editar plantilla' : 'Nueva plantilla';
+      $('fbTplName').value = t ? t.name : '';
+      $('fbTplKind').value = t ? t.kind : 'message';
+      $('fbTplBody').value = t ? t.body : '';
+      $('fbTplDelete').style.display = t ? '' : 'none';
+      fbShowPreview($('fbTplBody').value, $('fbTplLint'), $('fbTplPreview'), fb.detail);
+    }
+
+    async function loadFeedbackPage() {
+      if (fb.templates === null) loadFbTemplates();
+      await loadFeedbackList();
+      if (fb.selected && (!fb.detail || fb.detail.id !== fb.selected)) await fbSelect(fb.selected, false);
+    }
+
+    // fbRefresh reloads what an action or a live event may have changed. The composer is not
+    // part of what is redrawn, so a reply being typed survives it.
+    function fbRefresh(withDetail) {
+      clearTimeout(fb.refreshTimer);
+      fb.refreshTimer = setTimeout(() => {
+        loadFeedbackSummary();
+        if (state.page !== 'feedback') return;
+        loadFeedbackList();
+        if (withDetail && fb.selected) loadFbDetail();
+      }, 250);
+    }
+
+    function fbMove(step) {
+      if (!fb.items.length) return;
+      const i = fb.items.findIndex(t => t.id === fb.selected);
+      const next = fb.items[Math.max(0, Math.min(fb.items.length - 1, i < 0 ? 0 : i + step))];
+      if (next && next.id !== fb.selected) fbSelect(next.id);
+    }
+
+    $('fbStatusSeg').querySelectorAll('button').forEach(btn => btn.addEventListener('click', () => {
+      $('fbStatusSeg').querySelectorAll('button').forEach(b => b.classList.toggle('active', b === btn));
+      fb.status = btn.dataset.status;
+      loadFeedbackList();
+    }));
+    ['fbKind', 'fbPlatform', 'fbVersion', 'fbTag'].forEach(id => $(id).addEventListener('change', () => loadFeedbackList()));
+    $('fbSearch').addEventListener('input', () => {
+      clearTimeout(fb.searchTimer);
+      fb.searchTimer = setTimeout(() => loadFeedbackList(), 300);
+    });
+    $('fbMore').addEventListener('click', () => loadFeedbackList(true));
+    $('fbList').addEventListener('click', (e) => {
+      const item = e.target.closest('.fb-item');
+      if (item) fbSelect(item.dataset.id);
+    });
+    $('fbDetailBody').addEventListener('click', (e) => {
+      const att = e.target.closest('.fb-att');
+      if (att) return fbOpenAttachment(att.dataset.aid, att.dataset.kind);
+      const link = e.target.closest('a[data-fb-link]');
+      if (link) { e.preventDefault(); fbSelect(link.dataset.fbLink); }
+    });
+    $('fbChips').insertAdjacentHTML('beforeend', FB_VARS.map(v => `<button class="fb-chip" type="button" data-var="${v}">{{${v}}}</button>`).join(''));
+    $('fbChips').addEventListener('click', (e) => {
+      const chip = e.target.closest('.fb-chip');
+      if (chip) fbInsertAtCursor($('fbReply'), '{{' + chip.dataset.var + '}}');
+    });
+    $('fbReply').addEventListener('input', () => {
+      if (fb.selected) fb.drafts[fb.selected] = $('fbReply').value;
+      fbUpdatePreview();
+    });
+    $('fbReply').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); fbSend(); }
+    });
+    $('fbSampleName').addEventListener('input', () => {
+      fbUpdatePreview();
+      fbShowPreview($('fbTplBody').value, $('fbTplLint'), $('fbTplPreview'), fb.detail);
+    });
+    $('fbKindSeg').querySelectorAll('button').forEach(b => b.addEventListener('click', () => fbSetKind(b.dataset.kind)));
+    $('fbSend').addEventListener('click', fbSend);
+    $('fbTplSelect').addEventListener('change', (e) => {
+      const t = (fb.templates || []).find(x => String(x.id) === e.target.value);
+      e.target.value = '';
+      if (!t) return;
+      const area = $('fbReply');
+      if (area.value.trim() && !confirm('¿Reemplazar lo que llevas escrito por la plantilla?')) return;
+      area.value = t.body;
+      fbSetKind(t.kind);
+      area.focus();
+      area.dispatchEvent(new Event('input'));
+    });
+
+    const fbCloseViewer = () => { $('fbViewer').classList.remove('open'); $('fbViewerBody').innerHTML = ''; };
+    $('fbViewerClose').addEventListener('click', fbCloseViewer);
+    $('fbViewer').addEventListener('click', (e) => { if (e.target === $('fbViewer')) fbCloseViewer(); });
+    const fbCloseTpl = () => $('fbTplModal').classList.remove('open');
+    $('fbTplManage').addEventListener('click', () => { fbEditTemplate(null); $('fbTplModal').classList.add('open'); $('fbTplName').focus(); });
+    $('fbTplClose').addEventListener('click', fbCloseTpl);
+    $('fbTplModal').addEventListener('click', (e) => { if (e.target === $('fbTplModal')) fbCloseTpl(); });
+    $('fbTplList').addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-tpl]');
+      if (b) fbEditTemplate((fb.templates || []).find(t => String(t.id) === b.dataset.tpl));
+    });
+    $('fbTplBody').addEventListener('input', () => fbShowPreview($('fbTplBody').value, $('fbTplLint'), $('fbTplPreview'), fb.detail));
+    $('fbTplNew').addEventListener('click', () => fbEditTemplate(null));
+    $('fbTplSave').addEventListener('click', async () => {
+      const t = fb.editingTpl;
+      const body = { name: $('fbTplName').value.trim(), kind: $('fbTplKind').value, body: $('fbTplBody').value };
+      try {
+        const d = await fbApi(t ? 'PUT' : 'POST', '/api/admin/feedback/templates' + (t ? '/' + t.id : ''), body);
+        showToast('Plantilla guardada');
+        await loadFbTemplates();
+        fbEditTemplate(d.template);
+      } catch (e) {
+        showToast('No se guardó: ' + (e.data && e.data.problems ? fbLintText(e.data.problems) : e.message));
+      }
+    });
+    $('fbTplDelete').addEventListener('click', async () => {
+      const t = fb.editingTpl;
+      if (!t || !confirm(`¿Eliminar la plantilla "${t.name}"?`)) return;
+      try { await fbApi('DELETE', '/api/admin/feedback/templates/' + t.id); } catch (e) { return showToast('No se eliminó: ' + e.message); }
+      await loadFbTemplates();
+      fbEditTemplate(null);
+    });
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') { fbCloseViewer(); fbCloseTpl(); return; }
+      if (state.page !== 'feedback' || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.target.closest('input, textarea, select, [contenteditable]')) return;
+      if ($('fbTplModal').classList.contains('open') || $('fbViewer').classList.contains('open')) return;
+      if (e.key === 'j') fbMove(1);
+      else if (e.key === 'k') fbMove(-1);
+      else if (e.key === 'r' && fb.detail) { e.preventDefault(); $('fbReply').focus(); }
+      else if (e.key === 'u' && fb.detail) $('fbUnread').click();
+      else if (e.key === '/') { e.preventDefault(); $('fbSearch').focus(); }
     });
 
     navigate(pageFromPath(), false);

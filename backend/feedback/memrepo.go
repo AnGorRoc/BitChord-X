@@ -18,18 +18,25 @@ type memRepo struct {
 	tickets     map[int64]*memTicket
 	messages    map[int64]*Message
 	attachments map[int64]*Attachment
+	templates   map[int64]*Template
 }
 
 type memReporter struct {
 	Reporter
-	hash string
+	hash    string
+	created int64
 }
 
 type memTicket struct {
 	Ticket
-	clientID   string
-	unreadAdm  bool
-	msgClients map[string]int64
+	clientID    string
+	unreadAdm   bool
+	msgClients  map[string]int64
+	priority    int
+	tags        []string
+	locale      string
+	diag        Diagnostics
+	duplicateOf int64
 }
 
 // NewMemRepo returns an empty in-memory repository.
@@ -43,6 +50,7 @@ func newMemRepo(now func() time.Time) *memRepo {
 		tickets:     map[int64]*memTicket{},
 		messages:    map[int64]*Message{},
 		attachments: map[int64]*Attachment{},
+		templates:   map[int64]*Template{},
 	}
 }
 
@@ -66,7 +74,7 @@ func (m *memRepo) CreateReporter(_ context.Context, hash, _, _ string) (Reporter
 	if id, ok := m.byHash[hash]; ok {
 		return m.reporters[id].Reporter, nil
 	}
-	r := &memReporter{Reporter: Reporter{ID: m.next(), InboxVersion: 1}, hash: hash}
+	r := &memReporter{Reporter: Reporter{ID: m.next(), InboxVersion: 1}, hash: hash, created: m.now().UnixMilli()}
 	m.reporters[r.ID] = r
 	m.byHash[hash] = r.ID
 	return r.Reporter, nil
@@ -105,6 +113,7 @@ func (m *memRepo) CreateTicket(_ context.Context, in NewTicket, publicID string)
 			Status: StatusNew, Platform: in.Platform, AppVersion: in.AppVersion, CreatedAt: now, UpdatedAt: now,
 		},
 		clientID: in.ClientTicketID, unreadAdm: true, msgClients: map[string]int64{},
+		tags: []string{}, locale: in.Locale, diag: in.Diagnostics,
 	}
 	m.tickets[t.ID] = t
 	msg := &Message{ID: m.next(), TicketID: t.ID, Author: AuthorUser, Kind: MsgText, Body: in.Body, CreatedAt: now}
@@ -204,7 +213,7 @@ func (m *memRepo) UserMessage(_ context.Context, ticketID, messageID int64) (Mes
 func (m *memRepo) SetRating(_ context.Context, t Ticket, clientID string, resolved bool, comment string) (Message, bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	mt, msg, created, err := m.addUser(t, clientID, MsgRating, comment)
+	mt, msg, created, err := m.addUser(t, clientID, ratingKind(resolved), comment)
 	if err != nil || !created {
 		return msg, created, err
 	}

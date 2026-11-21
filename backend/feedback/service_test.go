@@ -66,6 +66,7 @@ func newHarness(t *testing.T, mod func(*Options)) *harness {
 	h.svc = svc
 	mux := http.NewServeMux()
 	svc.Register(mux)
+	svc.RegisterAdmin(mux)
 	h.srv = httptest.NewServer(mux)
 	t.Cleanup(h.srv.Close)
 	return h

@@ -525,7 +525,7 @@ func (s *Service) handleRating(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if rep.Blocked {
-		writeJSON(w, http.StatusCreated, map[string]any{"message": Message{Author: AuthorUser, Kind: MsgRating, Body: comment, CreatedAt: s.now().UnixMilli(), Attachments: []Attachment{}}})
+		writeJSON(w, http.StatusCreated, map[string]any{"message": Message{Author: AuthorUser, Kind: ratingKind(*body.Resolved), Body: comment, CreatedAt: s.now().UnixMilli(), Attachments: []Attachment{}}})
 		return
 	}
 	m, created, err := s.repo.SetRating(r.Context(), t, clientID, *body.Resolved, comment)

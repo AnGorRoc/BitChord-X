@@ -22,8 +22,13 @@ var logoPNG []byte
 // NewAdminHandler builds the HTTP handler intended for the private LAN/Tailscale
 // port (ADMIN_PORT, default 8001). When adminSecret is empty, no password is
 // required; when set, HTTP Basic Auth or Bearer token authentication is enforced.
-func NewAdminHandler(store *Store, liveHub *LiveHub, adminSecret string) http.Handler {
+// extra adds routes from other features (feedback); they get the same authentication and CSRF
+// check as the rest.
+func NewAdminHandler(store *Store, liveHub *LiveHub, adminSecret string, extra ...func(*http.ServeMux)) http.Handler {
 	mux := http.NewServeMux()
+	for _, register := range extra {
+		register(mux)
+	}
 
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, http.StatusOK, map[string]interface{}{
@@ -42,6 +47,8 @@ func NewAdminHandler(store *Store, liveHub *LiveHub, adminSecret string) http.Ha
 	mux.HandleFunc("GET /admin/parties", serveDashboard)
 	mux.HandleFunc("GET /admin/ai", serveDashboard)
 	mux.HandleFunc("GET /admin/system", serveDashboard)
+	mux.HandleFunc("GET /admin/feedback", serveDashboard)
+	mux.HandleFunc("GET /admin/feedback/{id}", serveDashboard)
 	mux.HandleFunc("GET /logo.png", serveLogo)
 	mux.HandleFunc("GET /favicon.ico", serveLogo)
 
@@ -389,7 +396,9 @@ func serveLLMsTxt(w http.ResponseWriter, r *http.Request) {
 - POST /api/admin/errors/{id}/resolve       : Body {"resolved": true|false} to mark an error resolved.
 - POST /api/admin/errors/resolve-type       : Body {"errorType": "...", "resolved": true} to bulk-resolve.
 - GET /api/admin/export.csv                 : CSV export of error reports.
-- WS  /ws/admin/live                        : Real-time WebSocket stream (live, error, error_updated, error_deleted).
+- GET /api/admin/ai/feedback?status=open    : Open bug reports and ideas from the apps, in Markdown (format=json for JSON).
+- GET /api/admin/feedback/tickets/{id}?format=md : One feedback ticket with its whole thread.
+- WS  /ws/admin/live                        : Real-time WebSocket stream (live, error, error_updated, error_deleted, feedback).
 `
 	writeMarkdown(w, http.StatusOK, txt)
 }

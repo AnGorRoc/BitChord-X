@@ -265,6 +265,26 @@ so retries are recognised instead of duplicated.
 | `POST /api/feedback/tickets/{id}/read` | `upTo`: marks the developer's messages as read. |
 | `DELETE /api/feedback/tickets/{id}` | Deletes the ticket and its files. |
 
+**On the dashboard** (`/admin/feedback`, on the private admin port) the
+developer reads the tickets, answers them, and changes their status, priority,
+tags or duplicate mark. A reply can carry variables, `{{nombre}}`,
+`{{nombre|fallback}}`, `{{version}}`, `{{plataforma}}`, `{{ticket}}` and
+`{{titulo}}`, which are stored as written and filled in by the person's app.
+A misspelt variable is refused. The rules are defined once, in
+`feedback/testdata/template_vectors.json`: the server, the dashboard preview
+(`node tools/check_template_port.js telemetry/dashboard.html feedback/testdata/template_vectors.json`)
+and the apps must all produce those outputs. A status change posts a status
+message to the thread, so the app learns about it the same way it learns
+about a reply. Blocking a sender makes the server accept their reports and
+drop them silently. Reply templates live in `feedback_templates` and are
+seeded with a few defaults. `GET /api/admin/ai/feedback` gives the open
+tickets in Markdown for an agent.
+
+Every admin `POST`/`PATCH`/`DELETE` is refused when the browser says another
+site sent it (`Sec-Fetch-Site`/`Origin`). Without that check, any page could
+drive the dashboard, because the browser attaches the Basic credentials on
+its own.
+
 Someone else's ticket is a `404`, the same as one that does not exist. Origins
 follow the telemetry rule: the apps send none, and the web player sends one of
 `JAM_ALLOWED_ORIGINS`. Without `DATABASE_URL` tickets are kept in memory, which

@@ -56,4 +56,22 @@ type Repo interface {
 	// PurgeClosedAttachments drops the attachments of tickets closed before cutoff (the text
 	// stays) and returns their SHA-256.
 	PurgeClosedAttachments(ctx context.Context, cutoff time.Time) ([]string, error)
+
+	// ---- the dashboard ----
+
+	AdminList(ctx context.Context, f AdminFilter) (AdminPage, error)
+	AdminSummary(ctx context.Context) (AdminSummary, error)
+	// AdminTicket finds any ticket by its public ID, or ErrNotFound.
+	AdminTicket(ctx context.Context, publicID string) (Ticket, error)
+	AdminDetail(ctx context.Context, publicID string) (AdminDetail, error)
+	// AdminUpdate applies p. A status change also posts a status message to the person's
+	// thread, so their app hears about it like any other reply.
+	AdminUpdate(ctx context.Context, ticketID int64, p AdminPatch) error
+	SetReporterBlocked(ctx context.Context, ticketID int64, blocked bool) error
+	AttachmentByID(ctx context.Context, id int64) (Attachment, error)
+
+	Templates(ctx context.Context) ([]Template, error)
+	// SaveTemplate creates (ID 0) or replaces a template.
+	SaveTemplate(ctx context.Context, t Template) (Template, error)
+	DeleteTemplate(ctx context.Context, id int64) error
 }

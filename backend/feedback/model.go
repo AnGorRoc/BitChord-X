@@ -55,10 +55,12 @@ const (
 
 // What a message is. The first message of a ticket is the person's description.
 const (
-	MsgText   = "message"
-	MsgRating = "rating"
-	MsgThanks = "thanks"
-	MsgStatus = "status"
+	MsgText = "message"
+	// The person's verdict on a closed ticket, with their comment as the body.
+	MsgResolved   = "resolved"
+	MsgUnresolved = "unresolved"
+	MsgThanks     = "thanks"
+	MsgStatus     = "status"
 )
 
 // What an attachment holds.
@@ -192,4 +194,11 @@ func ms(t time.Time) int64 {
 		return 0
 	}
 	return t.UnixMilli()
+}
+
+func ratingKind(resolved bool) string {
+	if resolved {
+		return MsgResolved
+	}
+	return MsgUnresolved
 }

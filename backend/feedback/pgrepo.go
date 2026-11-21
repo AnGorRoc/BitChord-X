@@ -100,7 +100,10 @@ CREATE INDEX IF NOT EXISTS idx_fb_attachments_sha ON feedback_attachments (sha25
 `
 
 func (p *pgRepo) Migrate(ctx context.Context) error {
-	_, err := p.pool.Exec(ctx, ddl)
+	if _, err := p.pool.Exec(ctx, ddl); err != nil {
+		return err
+	}
+	_, err := p.pool.Exec(ctx, adminDDL)
 	return err
 }
 
@@ -349,7 +352,7 @@ func (p *pgRepo) SetRating(ctx context.Context, t Ticket, clientID string, resol
 		return Message{}, false, err
 	}
 	defer tx.Rollback(ctx)
-	m, created, err := addUser(ctx, tx, t, clientID, MsgRating, comment)
+	m, created, err := addUser(ctx, tx, t, clientID, ratingKind(resolved), comment)
 	if err != nil || !created {
 		return m, created, err
 	}

@@ -130,10 +130,13 @@ func main() {
 	mux.HandleFunc("GET /api/stats/live/badge.svg", handleLiveBadge)
 
 	// Bug reports, ideas and the developer's answers
+	var adminRoutes []func(*http.ServeMux)
 	if config.FeedbackEnabled {
-		if err := registerFeedback(mux); err != nil {
+		svc, err := registerFeedback(mux)
+		if err != nil {
 			log.Fatalf("Feedback init failed: %v", err)
 		}
+		adminRoutes = append(adminRoutes, svc.RegisterAdmin)
 	}
 
 	// Web invite endpoint
@@ -145,7 +148,7 @@ func main() {
 	// Private LAN/Tailscale admin dashboard server (never routed to Cloudflare)
 	if config.AdminPort > 0 {
 		adminAddr := fmt.Sprintf("0.0.0.0:%d", config.AdminPort)
-		adminHandler := telemetry.NewAdminHandler(telemetryStore, telemetryHub, config.AdminSecret)
+		adminHandler := telemetry.NewAdminHandler(telemetryStore, telemetryHub, config.AdminSecret, adminRoutes...)
 		if config.AdminTailscaleOnly {
 			adminHandler = tailscaleOnlyMiddleware(adminHandler)
 		}

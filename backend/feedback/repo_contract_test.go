@@ -16,6 +16,7 @@ import (
 
 func TestMemRepoContract(t *testing.T) {
 	runContract(t, func(t *testing.T) Repo { return NewMemRepo() })
+	runAdminContract(t, func(t *testing.T) Repo { return NewMemRepo() })
 }
 
 func TestPGRepoContract(t *testing.T) {
@@ -23,7 +24,7 @@ func TestPGRepoContract(t *testing.T) {
 	if url == "" {
 		t.Skip("FEEDBACK_TEST_DATABASE_URL not set")
 	}
-	runContract(t, func(t *testing.T) Repo {
+	newRepo := func(t *testing.T) Repo {
 		ctx := context.Background()
 		schema := fmt.Sprintf("fbtest_%d", time.Now().UnixNano())
 		admin, err := pgxpool.New(ctx, url)
@@ -48,7 +49,9 @@ func TestPGRepoContract(t *testing.T) {
 			admin.Close()
 		})
 		return NewPGRepo(pool)
-	})
+	}
+	runContract(t, newRepo)
+	runAdminContract(t, newRepo)
 }
 
 func runContract(t *testing.T, newRepo func(*testing.T) Repo) {

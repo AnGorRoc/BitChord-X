@@ -12,7 +12,7 @@ import (
 
 // registerFeedback mounts the feedback API. Tickets go to PostgreSQL when the server has a
 // database; without one (a local test server) they are kept in memory and gone on restart.
-func registerFeedback(mux *http.ServeMux) error {
+func registerFeedback(mux *http.ServeMux) (*feedback.Service, error) {
 	ctx := context.Background()
 	var repo feedback.Repo
 	if pool := telemetryStore.Pool(); pool != nil {
@@ -22,7 +22,7 @@ func registerFeedback(mux *http.ServeMux) error {
 		repo = feedback.NewMemRepo()
 	}
 	if err := repo.Migrate(ctx); err != nil {
-		return err
+		return nil, err
 	}
 	svc, err := feedback.New(repo, feedback.Options{
 		Dir:            config.FeedbackDir,
@@ -37,9 +37,12 @@ func registerFeedback(mux *http.ServeMux) error {
 		OnEvent:        telemetryHub.Notify,
 	})
 	if err != nil {
-		return err
+		return nil, err
+	}
+	if err := svc.SeedTemplates(ctx); err != nil {
+		log.Printf("feedback: default templates not added: %v", err)
 	}
 	svc.Register(mux)
 	go svc.Run(ctx)
-	return nil
+	return svc, nil
 }
