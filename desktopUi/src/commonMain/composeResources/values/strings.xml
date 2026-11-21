@@ -343,4 +343,15 @@
   <string name="connect_in_party_of">In %1$s's party</string>
     <string name="connect_join_with_code">Join with a code</string>
     <string name="connect_sounding_label">Playing on</string>
+    <string name="live_title">Live now</string>
+    <string name="live_subtitle">Round-the-clock stations, on the air right now</string>
+    <string name="live_badge">LIVE</string>
+    <string name="live_station_mix">24/7</string>
+    <string name="live_station_lofi">Lo-fi</string>
+    <string name="live_station_jazz">Jazz</string>
+    <string name="live_station_chill">Chill &amp; House</string>
+    <string name="live_station_phonk">Phonk</string>
+    <string name="live_on_air">On the air</string>
+    <string name="live_broadcast">Live broadcast</string>
+    <string name="live_tune_in">Tune in</string>
 </resources>

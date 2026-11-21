@@ -343,4 +343,15 @@
   <string name="connect_in_party_of">En la party de %1$s</string>
     <string name="connect_join_with_code">Unirme con código</string>
     <string name="connect_sounding_label">Sonando en</string>
+    <string name="live_title">En vivo</string>
+    <string name="live_subtitle">Emisoras 24/7 transmitiendo ahora mismo</string>
+    <string name="live_badge">EN VIVO</string>
+    <string name="live_station_mix">24/7</string>
+    <string name="live_station_lofi">Lo-fi</string>
+    <string name="live_station_jazz">Jazz</string>
+    <string name="live_station_chill">Chill y House</string>
+    <string name="live_station_phonk">Phonk</string>
+    <string name="live_on_air">Al aire</string>
+    <string name="live_broadcast">Transmisión en vivo</string>
+    <string name="live_tune_in">Sintonizar</string>
 </resources>

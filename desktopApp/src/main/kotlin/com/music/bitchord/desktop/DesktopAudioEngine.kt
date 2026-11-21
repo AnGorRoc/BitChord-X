@@ -1,5 +1,6 @@
 package com.music.bitchord.desktop
 
+import com.music.bitchord.data.innertube.StreamResolver
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.settings.AutomixPerformanceMode
 import com.music.bitchord.data.settings.MixBlend
@@ -261,7 +262,21 @@ class DesktopPlaybackEngine(
             // sitting right there.
             val localUrl = DesktopDownloadManager.savedFile(song)?.toAbsolutePath()?.toString()
             val resolved = localUrl?.let { Result.success(DesktopLiveResolution(DesktopStream(it))) }
-                ?: DesktopMusicSources.resolveLive(song, audioQuality, excludedSourceId)
+                ?: if (song.isLive || song.durationText == "LIVE") {
+                    runCatching {
+                        val manifestUrl = StreamResolver.liveManifestUrl(song.videoId)
+                            ?: error("Broadcast is not on the air")
+                        DesktopLiveResolution(
+                            DesktopStream(
+                                url = manifestUrl,
+                                format = DesktopStreamFormat(codec = "aac"),
+                                transport = DesktopAddonStream.HLS,
+                            ),
+                        )
+                    }
+                } else {
+                    DesktopMusicSources.resolveLive(song, audioQuality, excludedSourceId)
+                }
             resolved.fold(
                 onSuccess = { live ->
                     val opened = openTrack(song, live.stream, startAtMs)
@@ -537,6 +552,7 @@ class DesktopPlaybackEngine(
         nextResolveJob?.cancel()
         clearUpcoming()
         if (song == null || transitionSecondsFor(song) == 0) return
+        if (current?.song?.isLive == true || current?.song?.durationText == "LIVE") return
         nextSong = song
         // A download plays from its file, here as in [loadInternal] — never from whichever source
         // would have answered for it.
