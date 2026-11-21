@@ -1207,6 +1207,7 @@ private fun OutputPartyPill(
             onClick = onOpenMembers,
             highlighted = badge.inParty,
             trailingLabel = badge.members.takeIf { badge.inParty }?.toString(),
+            vibrant = true,
         )
     }
 }
@@ -1278,7 +1279,7 @@ private fun PillSegment(
 ) {
     val haptics = rememberHaptics()
     val lastTap = remember { mutableLongStateOf(-tapWindowMs) }
-    val chrome = LocalPlayerChrome.current
+    val chrome = LocalPlayerChrome.current && !highlighted
     Box(
         modifier = Modifier
             .width(width)
