@@ -218,6 +218,8 @@ class BitChordApplication : Application(), SingletonImageLoader.Factory {
         initLastfm()
         // The public "apps open right now" count; see Presence.
         com.music.bitchord.data.presence.AndroidPresence.install(this)
+        // Bug reports and ideas, and the developer's answers; see FeedbackCenter.
+        com.music.bitchord.data.feedback.AndroidFeedback.install(this)
         backgroundInit.join()
     }
 

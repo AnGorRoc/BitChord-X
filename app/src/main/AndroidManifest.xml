@@ -744,6 +744,20 @@
             android:foregroundServiceType="dataSync" />
 
         <!--
+          Feedback: sends queued reports once there is a network and checks for the
+          developer's answers while one may still come. Only JobScheduler binds it.
+        -->
+        <service
+            android:name=".data.feedback.FeedbackSyncJob"
+            android:exported="false"
+            android:permission="android.permission.BIND_JOB_SERVICE" />
+
+        <!-- The feedback notification's reply and "solved" actions. Only this app's own PendingIntents reach it. -->
+        <receiver
+            android:name=".data.feedback.FeedbackActionReceiver"
+            android:exported="false" />
+
+        <!--
           Home-screen widgets. Two providers so the picker lists a 2×2 and a 4×2,
           both of which are the same widget resized — see MediaWidget.
 

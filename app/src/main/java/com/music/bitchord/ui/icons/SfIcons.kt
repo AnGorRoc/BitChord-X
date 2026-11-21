@@ -59,6 +59,12 @@ import com.composables.sfsymbols.monochrome.SFInfoCircle
 import com.composables.sfsymbols.monochrome.SFInternaldrive
 import com.composables.sfsymbols.monochrome.SFKey
 import com.composables.sfsymbols.monochrome.SFLadybug
+import com.composables.sfsymbols.monochrome.SFBubbleLeftAndBubbleRight
+import com.composables.sfsymbols.monochrome.SFPaperplaneFill
+import com.composables.sfsymbols.monochrome.SFLightbulb
+import com.composables.sfsymbols.monochrome.SFQuestionmarkCircle
+import com.composables.sfsymbols.monochrome.SFHandThumbsup
+import com.composables.sfsymbols.monochrome.SFHandThumbsdown
 import com.composables.sfsymbols.monochrome.SFLine3Horizontal
 import com.composables.sfsymbols.monochrome.SFLine3HorizontalDecreaseCircle
 import com.composables.sfsymbols.monochrome.SFLivephotoSlash
@@ -231,6 +237,15 @@ object SfIcons {
     val Album: ImageVector by lazy { bold(SfSymbols.Monochrome.SFSquareStack) }
     val Artist: ImageVector by lazy { bold(SfSymbols.Monochrome.SFMusicMicrophone) }
     val Bug: ImageVector by lazy { bold(SfSymbols.Monochrome.SFLadybug) }
+
+    // ---- Feedback ----
+    val Feedback: ImageVector by lazy { bold(SfSymbols.Monochrome.SFBubbleLeftAndBubbleRight) }
+    val Send: ImageVector by lazy { bold(SfSymbols.Monochrome.SFPaperplaneFill) }
+    val Idea: ImageVector by lazy { bold(SfSymbols.Monochrome.SFLightbulb) }
+    val Question: ImageVector by lazy { bold(SfSymbols.Monochrome.SFQuestionmarkCircle) }
+    val ThumbsUp: ImageVector by lazy { bold(SfSymbols.Monochrome.SFHandThumbsup) }
+    val ThumbsDown: ImageVector by lazy { bold(SfSymbols.Monochrome.SFHandThumbsdown) }
+
     val Close: ImageVector by lazy { bold(SfSymbols.Monochrome.SFXmark) }
     val Downloaded: ImageVector by lazy { bold(SfSymbols.Monochrome.SFCheckmarkCircle) }
     val Heart: ImageVector by lazy { bold(SfSymbols.Monochrome.SFHeart) }

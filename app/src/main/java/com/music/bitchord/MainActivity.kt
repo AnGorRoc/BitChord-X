@@ -518,6 +518,8 @@ class MainActivity : AppCompatActivity() {
         JamInviteLink.consume(intent)
         // Likewise for a link tapped or shared from another app — see [MusicLink].
         MusicLink.consume(intent)
+        // And for a feedback notification, which opens its report.
+        com.music.bitchord.data.feedback.AndroidFeedback.consume(intent)
         setContent {
             val theme by AppSettings.themeMode.collectAsStateWithLifecycle()
             val appFont by AppSettings.appFont.collectAsStateWithLifecycle()
@@ -630,6 +632,7 @@ class MainActivity : AppCompatActivity() {
         PlayerDeepLink.consume(intent)
         JamInviteLink.consume(intent)
         MusicLink.consume(intent)
+        com.music.bitchord.data.feedback.AndroidFeedback.consume(intent)
     }
 }
 
@@ -944,6 +947,14 @@ private fun BitChordApp(
     // (the gesture or the bar's button alike) undoes exactly that.
     val navigator = viewModel.navigator
     val detailStack by viewModel.detailStack.collectAsStateWithLifecycle()
+    // A tapped feedback notification opens its report, over whatever is on screen.
+    val feedbackTicketRequested by com.music.bitchord.data.feedback.AndroidFeedback.openTicket.collectAsStateWithLifecycle()
+    LaunchedEffect(feedbackTicketRequested) {
+        feedbackTicketRequested?.let {
+            navigator.push(AppRoute.FeedbackThread(it))
+            com.music.bitchord.data.feedback.AndroidFeedback.openTicketHandled()
+        }
+    }
     val topEntry = navigator.visibleEntry(detailStack.size)
     // An artist's open shelf is drawn by the artist page itself, so it is not a
     // route the page area switches to — only the shelf the page is showing.
@@ -3550,6 +3561,25 @@ private fun BitChordApp(
                                 onChosen = { navigator.pop() },
                                 contentPadding = listPadding,
                             )
+                        } else if (pageRoute == AppRoute.Feedback) {
+                            com.music.bitchord.ui.screens.FeedbackScreen(
+                                accountName = account?.name,
+                                contentPadding = listPadding,
+                                onNew = { navigator.push(AppRoute.FeedbackNew) },
+                                onOpenTicket = { navigator.push(AppRoute.FeedbackThread(it)) },
+                            )
+                        } else if (pageRoute == AppRoute.FeedbackNew) {
+                            com.music.bitchord.ui.screens.FeedbackComposeScreen(
+                                accountName = account?.name,
+                                contentPadding = listPadding,
+                                onDone = { navigator.pop() },
+                            )
+                        } else if (pageRoute is AppRoute.FeedbackThread) {
+                            com.music.bitchord.ui.screens.FeedbackThreadScreen(
+                                ticketId = pageRoute.ticketId,
+                                contentPadding = listPadding,
+                                onDeleted = { navigator.pop() },
+                            )
                         } else if (pageRoute is AppRoute.SettingsChoice) {
                             SettingsChoicePage(
                                 choice = pageRoute.choice,
@@ -3588,6 +3618,7 @@ private fun BitChordApp(
                                 onEditSignatureApi = { editingSignatureApi = true },
                                 onConfirmBitPerfect = { confirmBitPerfect = it },
                                 onConfirmFixedVolume = { confirmFixedVolume = true },
+                                onFeedback = { navigator.push(AppRoute.Feedback) },
                                 contentPadding = listPadding,
                             )
                         } else if (page != null) {
@@ -4638,6 +4669,8 @@ private fun BitChordApp(
                             is AppRoute.SettingsSection -> stringResource(route.category.title)
                             is AppRoute.SettingsChoice -> stringResource(route.choice.title)
                             AppRoute.EqualizerPresets -> stringResource(R.string.equalizer_preset)
+                            AppRoute.Feedback, is AppRoute.FeedbackThread -> stringResource(R.string.feedback_page_title)
+                            AppRoute.FeedbackNew -> stringResource(R.string.feedback_new)
                             AppRoute.Replay -> stringResource(R.string.replay)
                             null -> when {
                                 detail != null && detailActiveShelf != null -> detailActiveShelf.title.orEmpty()

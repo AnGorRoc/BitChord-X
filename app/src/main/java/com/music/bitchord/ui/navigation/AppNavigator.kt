@@ -49,6 +49,15 @@ sealed interface AppRoute {
 
     /** The Equalizer's list of preset curves. */
     data object EqualizerPresets : AppRoute
+
+    /** Settings → Feedback: the person's reports, and a way to send a new one. */
+    data object Feedback : AppRoute
+
+    /** A new bug report, idea or question. */
+    data object FeedbackNew : AppRoute
+
+    /** One report's conversation with the developer. */
+    data class FeedbackThread(val ticketId: String) : AppRoute
 }
 
 /**

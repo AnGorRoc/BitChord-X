@@ -83,6 +83,8 @@ fun SettingsScreen(
     onOpenSection: (SettingsCategory) -> Unit = {},
     /** Opens a choice with more options than its row can show, as a page. */
     onOpenChoice: (SettingsChoiceKind) -> Unit = {},
+    /** Opens the person's feedback: their reports and the developer's answers. */
+    onFeedback: () -> Unit = {},
 ) {
     val context = LocalContext.current
     var searchQuery by rememberSaveable { mutableStateOf("") }
@@ -236,6 +238,7 @@ fun SettingsScreen(
         }
 
         if (section == null && searchQuery.isBlank()) {
+            FeedbackSettingsGroup(accountName = account?.name, onClick = onFeedback)
             Text(
                 text = buildAnnotatedString {
                     append("bitchord $version  ")
