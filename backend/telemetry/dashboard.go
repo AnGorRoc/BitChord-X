@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"sync"
@@ -302,7 +303,35 @@ func NewAdminHandler(store *Store, liveHub *LiveHub, adminSecret string) http.Ha
 		writeJSON(w, http.StatusOK, map[string]bool{"ok": true})
 	})
 
-	return adminSecurityHeadersMiddleware(authMiddleware(adminSecret, mux))
+	return adminSecurityHeadersMiddleware(authMiddleware(adminSecret, csrfMiddleware(mux)))
+}
+
+// csrfMiddleware refuses state-changing requests that a browser made on behalf of another site.
+// The dashboard authenticates with HTTP Basic, which the browser attaches by itself to any
+// request to this host, so without this a page elsewhere could post a form to
+// /api/admin/database/reset while the developer has the dashboard open. Browsers say where a
+// request comes from in Sec-Fetch-Site (and Origin); scripts and curl send neither and are not
+// a CSRF vector, so they pass.
+func csrfMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet, http.MethodHead, http.MethodOptions:
+			next.ServeHTTP(w, r)
+			return
+		}
+		if site := r.Header.Get("Sec-Fetch-Site"); site != "" && site != "same-origin" && site != "none" {
+			http.Error(w, "cross-site request refused", http.StatusForbidden)
+			return
+		}
+		if origin := r.Header.Get("Origin"); origin != "" {
+			u, err := url.Parse(origin)
+			if err != nil || !strings.EqualFold(u.Host, r.Host) {
+				http.Error(w, "cross-site request refused", http.StatusForbidden)
+				return
+			}
+		}
+		next.ServeHTTP(w, r)
+	})
 }
 
 func parseErrorFilter(r *http.Request) ErrorFilter {
