@@ -80,6 +80,7 @@ import com.music.bitchord.data.settings.SongSwipeAction
 import com.music.bitchord.download.DownloadState
 import com.music.bitchord.download.DownloadedCollection
 import com.music.bitchord.download.Downloads
+import com.music.bitchord.ui.components.ArtworkGrid
 import com.music.bitchord.ui.components.CoverPlaceholder
 import com.music.bitchord.ui.components.ExplicitSongTitle
 import com.music.bitchord.ui.components.LIBRARY_GRID_SPACING
@@ -691,6 +692,19 @@ private fun AlbumGridCard(
     onClick: (LocalGroup) -> Unit,
     onLongPress: () -> Unit,
 ) {
+    val isPlaylist = group.type == BrowseType.PLAYLIST && !OfflinePlaylists.isLikedPage(group.browseId)
+    val gridTiles = remember(group.songs, isPlaylist) {
+        if (isPlaylist) {
+            val distinct = group.songs.mapNotNull { it.thumbnailUrl?.takeIf(String::isNotBlank) }.distinct().take(4)
+            if (distinct.isNotEmpty()) {
+                List(4) { distinct[it % distinct.size] }
+            } else {
+                emptyList()
+            }
+        } else {
+            emptyList()
+        }
+    }
     val art = group.coverArt()
     Column(
         modifier = Modifier
@@ -707,7 +721,9 @@ private fun AlbumGridCard(
                 .thumbnailBorder(CARD_SHAPE),
         ) {
             CoverPlaceholder(group.placeholderIcon(), Modifier.fillMaxSize())
-            if (art != null) {
+            if (gridTiles.isNotEmpty()) {
+                ArtworkGrid(tiles = gridTiles, modifier = Modifier.fillMaxSize(), artPx = CARD_ART_PX / 2)
+            } else if (art != null) {
                 AsyncImage(
                     model = art.artworkAt(CARD_ART_PX),
                     contentDescription = null,
@@ -743,6 +759,19 @@ private fun AlbumRow(
     onClick: (LocalGroup) -> Unit,
     onLongPress: () -> Unit,
 ) {
+    val isPlaylist = group.type == BrowseType.PLAYLIST && !OfflinePlaylists.isLikedPage(group.browseId)
+    val gridTiles = remember(group.songs, isPlaylist) {
+        if (isPlaylist) {
+            val distinct = group.songs.mapNotNull { it.thumbnailUrl?.takeIf(String::isNotBlank) }.distinct().take(4)
+            if (distinct.isNotEmpty()) {
+                List(4) { distinct[it % distinct.size] }
+            } else {
+                emptyList()
+            }
+        } else {
+            emptyList()
+        }
+    }
     val art = group.coverArt()
     val shape = RoundedCornerShape(8.dp)
     Row(
@@ -759,7 +788,9 @@ private fun AlbumRow(
     ) {
         Box(Modifier.size(52.dp).clip(shape).thumbnailBorder(shape)) {
             CoverPlaceholder(group.placeholderIcon(), Modifier.fillMaxSize(), iconFraction = 0.46f)
-            if (art != null) {
+            if (gridTiles.isNotEmpty()) {
+                ArtworkGrid(tiles = gridTiles, modifier = Modifier.fillMaxSize(), artPx = ROW_ART_PX / 2)
+            } else if (art != null) {
                 AsyncImage(
                     model = art.artworkAt(ROW_ART_PX),
                     contentDescription = null,

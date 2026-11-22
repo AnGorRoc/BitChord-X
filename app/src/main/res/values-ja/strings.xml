@@ -1913,4 +1913,6 @@
     <string name="replay_year_summary_minutes">Minutes listened</string>
     <string name="replay_year_mute">Mute the story</string>
     <string name="replay_year_unmute">Unmute the story</string>
+    <string name="automix_model_downloading">Downloading the Automix model: %1$d%%</string>
+    <string name="automix_model_failed">The Automix model could not be downloaded. Turn Automix off and on to try again.</string>
 </resources>

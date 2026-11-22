@@ -1018,7 +1018,10 @@ private fun ReleaseHeader(
     val isLocalStorePlaylist = remember(page.browseId) {
         com.music.bitchord.data.spotify.LocalPlaylistStore.getPlaylist(page.browseId) != null
     }
-    val padsCollage = isOfflineMusicPage || isLocalStorePlaylist
+    val isOfflinePlaylist = remember(page.browseId) {
+        OfflinePlaylists.isOfflinePlaylist(page.browseId) && !OfflinePlaylists.isLikedPage(page.browseId)
+    }
+    val padsCollage = isOfflineMusicPage || isLocalStorePlaylist || isOfflinePlaylist
     val top4Artworks = remember(page.songs, padsCollage) {
         val list = (page.songs as? UiState.Success)?.data.orEmpty()
         val distinct = list.mapNotNull { it.thumbnailUrl?.takeIf(String::isNotBlank) }.distinct().take(4)

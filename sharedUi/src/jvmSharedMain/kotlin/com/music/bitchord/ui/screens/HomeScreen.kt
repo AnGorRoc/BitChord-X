@@ -4,6 +4,7 @@ import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.rounded.CloudOff
+import com.music.bitchord.ui.components.ArtworkGrid
 import com.music.bitchord.ui.components.trackArtSize
 import com.music.bitchord.ui.components.contextClick
 import com.music.bitchord.ui.AppUi
@@ -63,6 +64,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -460,7 +462,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.itemsIndexedShelves(
         }
         item(key = keys[index]) {
             Box(Modifier.animateItem()) {
-            val openItem: (ShelfItem) -> Unit = { item -> onItemClick(item, shelf.title) }
+            val openItem: (ShelfItem) -> Unit = remember(shelf.title, onItemClick) { { item -> onItemClick(item, shelf.title) } }
             // Listen again and Quick picks are lists on the web player, as
             // Recents is here: one pager for all three.
             if (shelf.layout == ShelfLayout.LIST ||
@@ -1374,25 +1376,6 @@ private fun ServiceCard(colors: List<Color>, trackKey: String, icon: ImageVector
     }
 }
 
-/** Four tiles of artwork in a 2x2 grid, as many as the box it fills can hold. */
-@Composable
-private fun ArtworkGrid(tiles: List<String>, modifier: Modifier = Modifier) {
-    Column(modifier) {
-        for (row in 0..1) {
-            Row(Modifier.weight(1f)) {
-                for (col in 0..1) {
-                    AsyncImage(
-                        model = tiles[row * 2 + col].artworkAt(CARD_ART_PX / 2),
-                        contentDescription = null,
-                        contentScale = ContentScale.Crop,
-                        modifier = Modifier.weight(1f).fillMaxHeight(),
-                    )
-                }
-            }
-        }
-    }
-}
-
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun ShelfCard(
@@ -1411,7 +1394,10 @@ internal fun ShelfCard(
         animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
         label = "shelfCardDim",
     )
+    val isArtist = item.browseId?.removePrefix("MPLA")?.startsWith("UC") == true
+    val cardShape = if (isArtist) CircleShape else RoundedCornerShape(12.dp)
     Column(
+        horizontalAlignment = if (isArtist) Alignment.CenterHorizontally else Alignment.Start,
         modifier = modifier
             .then(
                 if (offlineBlocked) {
@@ -1536,15 +1522,15 @@ internal fun ShelfCard(
             else -> {
                 // A playlist kept on this device (an imported one included) has no cover of its own,
                 // so it is drawn as the same 2x2 collage the other playlists show.
-                val gridTiles = item.browseId?.takeIf { it.startsWith("local:playlist:") }
+                val gridTiles = item.browseId?.takeIf { it.startsWith("local:playlist:") || it.startsWith("local:offline:") }
                     ?.let { AppUi.host.localPlaylistCoverArtworks(it) }
                     .orEmpty()
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .aspectRatio(1f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .thumbnailBorder(RoundedCornerShape(12.dp))
+                        .clip(cardShape)
+                        .thumbnailBorder(cardShape)
                         .background(MaterialTheme.colorScheme.surfaceVariant),
                 ) {
                     if (gridTiles.isNotEmpty()) {
@@ -1565,6 +1551,7 @@ internal fun ShelfCard(
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = if (isArtist) Arrangement.Center else Arrangement.Start,
         ) {
             if (isPinned) {
                 Icon(
@@ -1579,6 +1566,7 @@ internal fun ShelfCard(
                 text = item.title,
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onBackground,
+                textAlign = if (isArtist) TextAlign.Center else TextAlign.Start,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f, fill = false),
@@ -1589,8 +1577,10 @@ internal fun ShelfCard(
             text = displaySubtitle,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = if (isArtist) TextAlign.Center else TextAlign.Start,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
+            modifier = if (isArtist) Modifier.fillMaxWidth() else Modifier,
         )
     }
 }
@@ -1614,7 +1604,7 @@ internal fun ShelfListRow(
         animationSpec = tween(durationMillis = 400, easing = FastOutSlowInEasing),
         label = "shelfListRowDim",
     )
-    val shape = if (item.browseId?.startsWith("UC") == true) CircleShape else RoundedCornerShape(LIST_COVER_RADIUS)
+    val shape = if (item.browseId?.removePrefix("MPLA")?.startsWith("UC") == true) CircleShape else RoundedCornerShape(LIST_COVER_RADIUS)
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -1631,16 +1621,31 @@ internal fun ShelfListRow(
             .padding(horizontal = PAGE_GUTTER, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        AsyncImage(
-            model = item.thumbnailUrl.artworkAt(LIST_COVER_ART_PX),
-            contentDescription = null,
-            contentScale = ContentScale.Crop,
+        val gridTiles = item.browseId?.takeIf { it.startsWith("local:playlist:") || it.startsWith("local:offline:") }
+            ?.let { AppUi.host.localPlaylistCoverArtworks(it) }
+            .orEmpty()
+        Box(
             modifier = Modifier
                 .size(LIST_COVER_SIZE)
                 .clip(shape)
                 .thumbnailBorder(shape)
                 .background(MaterialTheme.colorScheme.surfaceVariant),
-        )
+        ) {
+            if (gridTiles.isNotEmpty()) {
+                ArtworkGrid(
+                    tiles = List(4) { gridTiles[it % gridTiles.size] },
+                    modifier = Modifier.fillMaxSize(),
+                    artPx = LIST_COVER_ART_PX / 2,
+                )
+            } else {
+                AsyncImage(
+                    model = item.thumbnailUrl.artworkAt(LIST_COVER_ART_PX),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
         Spacer(Modifier.width(16.dp))
         Column(Modifier.weight(1f)) {
             Row(verticalAlignment = Alignment.CenterVertically) {

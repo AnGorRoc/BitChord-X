@@ -44,6 +44,7 @@ import com.music.bitchord.data.settings.AppSettings
 import com.music.bitchord.data.settings.OutputPcmMode
 import com.music.bitchord.data.settings.SongSwipeAction
 import com.music.bitchord.data.sources.DeviceCodecs
+import com.music.bitchord.playback.smart.AutomixModels
 import com.music.bitchord.playback.AudioOutputStatus
 import com.music.bitchord.playback.audio.bitperfect.BitPerfectOutput
 import com.music.bitchord.data.settings.BitPerfectMode
@@ -330,6 +331,7 @@ internal fun SettingsPlaybackSection(
     val outputStatus by AudioOutputStatus.current.collectAsStateWithLifecycle()
     val bitPerfectReady by BitPerfectOutput.ready.collectAsStateWithLifecycle()
     val smartFade by AppSettings.smartFadeEnabled.collectAsStateWithLifecycle()
+    val automixModels by AutomixModels.state.collectAsStateWithLifecycle()
     val crossfade by AppSettings.crossfadeSeconds.collectAsStateWithLifecycle()
     val automixPerformance by AppSettings.automixPerformanceMode.collectAsStateWithLifecycle()
     val skipSilence by AppSettings.skipSilence.collectAsStateWithLifecycle()
@@ -396,10 +398,15 @@ internal fun SettingsPlaybackSection(
                 SettingsRow(
                     icon = SfIcons.AutoAwesome,
                     title = automixTitle,
-                    subtitle = if (smartFade) {
-                        stringResource(R.string.automix_enabled_subtitle)
-                    } else {
-                        stringResource(R.string.automix_disabled_subtitle)
+                    subtitle = when {
+                        !smartFade -> stringResource(R.string.automix_disabled_subtitle)
+                        automixModels is AutomixModels.State.Downloading -> {
+                            val percent = ((automixModels as AutomixModels.State.Downloading).fraction * 100).roundToInt()
+                            stringResource(R.string.automix_model_downloading, percent)
+                        }
+                        automixModels == AutomixModels.State.Failed ->
+                            stringResource(R.string.automix_model_failed)
+                        else -> stringResource(R.string.automix_enabled_subtitle)
                     },
                     trailing = {
                         IosSwitch(

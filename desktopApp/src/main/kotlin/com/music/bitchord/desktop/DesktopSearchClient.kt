@@ -221,9 +221,12 @@ data class DesktopCollection(
     val playlistId: String get() = browseId.removePrefix("VL")
 }
 
-internal fun browseTypeOf(browseId: String): BrowseType = when {
-    browseId.startsWith("MPREb_") || browseId.startsWith("OLAK5uy_") -> BrowseType.ALBUM
-    browseId.startsWith("VL") -> BrowseType.PLAYLIST
-    browseId.startsWith("UC") -> BrowseType.ARTIST
-    else -> BrowseType.OTHER
+internal fun browseTypeOf(browseId: String): BrowseType {
+    val cleanId = if (browseId.startsWith("MPLA")) browseId.removePrefix("MPLA") else browseId
+    return when {
+        cleanId.startsWith("MPREb_") || cleanId.startsWith("OLAK5uy_") -> BrowseType.ALBUM
+        cleanId.startsWith("VL") -> BrowseType.PLAYLIST
+        cleanId.startsWith("UC") -> BrowseType.ARTIST
+        else -> BrowseType.OTHER
+    }
 }

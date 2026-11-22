@@ -193,11 +193,14 @@ internal object DesktopPlayerHost : PlayerHost {
     /** Where a tap on a device goes — set by the window, which owns the engine. */
     var onPickDevice: (String, com.music.bitchord.data.listentogether.account.HandoffForce?) -> Unit = { _, _ -> }
     var onComeBack: () -> Unit = {}
+    var onSetDeviceVolume: (String, Float) -> Unit = { _, _ -> }
 
     override fun pickDevice(deviceId: String, force: com.music.bitchord.data.listentogether.account.HandoffForce?) =
         onPickDevice(deviceId, force)
 
     override fun comeBackToThisDevice() = onComeBack()
+
+    override fun setDeviceVolume(deviceId: String, volume: Float) = onSetDeviceVolume(deviceId, volume)
 
     override suspend fun translateLyrics(
         trackId: String,

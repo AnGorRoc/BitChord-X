@@ -132,6 +132,8 @@ class BitChordApplication : Application(), SingletonImageLoader.Factory, Configu
             // all — it is the fix for canvas clips re-fetching the same few
             // seconds of video from the network on every loop.
             CanvasCache.init(this)
+        }
+        CoroutineScope(Dispatchers.IO).launch {
             runCatching {
                 val cutoff = System.currentTimeMillis() - 24L * 3600_000L
                 cacheDir.listFiles()?.forEach { file ->
@@ -167,6 +169,8 @@ class BitChordApplication : Application(), SingletonImageLoader.Factory, Configu
             CoroutineScope(Dispatchers.IO).launch { Innertube.ensureSessionScope() }
         }
         com.music.bitchord.playback.SourceResolutionTracker.init(this)
+        // Before AppSettings: its init may start a model download, which needs a directory.
+        com.music.bitchord.playback.smart.AutomixModels.init(this)
         AppSettings.init(this, authStore)
         // Before anything resolves a track: an addon with `checkValidLossless`
         // is gated on this, and the gate reads "no" until it has looked.
@@ -176,6 +180,14 @@ class BitChordApplication : Application(), SingletonImageLoader.Factory, Configu
         // and the clock offset are not restored — both are re-established on
         // the next connect, which is the only way to be sure they are current.
         ListenTogether.init(this)
+        androidx.lifecycle.ProcessLifecycleOwner.get().lifecycle.addObserver(object : androidx.lifecycle.DefaultLifecycleObserver {
+            override fun onStart(owner: androidx.lifecycle.LifecycleOwner) {
+                com.music.bitchord.playback.DeviceLink.setAppInForeground(true)
+            }
+            override fun onStop(owner: androidx.lifecycle.LifecycleOwner) {
+                com.music.bitchord.playback.DeviceLink.setAppInForeground(false)
+            }
+        })
         // This device joins its owner's other devices, so each can see and pick the others.
         ListenTogether.account.start()
         ListenTogether.mirrorPartyToAccount()
@@ -296,14 +308,12 @@ class BitChordApplication : Application(), SingletonImageLoader.Factory, Configu
                 add(OkHttpNetworkFetcherFactory(callFactory = { coilHttpClient }))
             }
             .memoryCache {
-                if (AppSettings.audioCacheLimitBytes.value == AppSettings.DISABLED_CACHE_LIMIT_BYTES) null
-                else MemoryCache.Builder()
+                MemoryCache.Builder()
                     .maxSizePercent(context, 0.20)
                     .build()
             }
             .diskCache {
-                if (AppSettings.audioCacheLimitBytes.value == AppSettings.DISABLED_CACHE_LIMIT_BYTES) null
-                else DiskCache.Builder()
+                DiskCache.Builder()
                     .directory(cacheDir.resolve("image_cache"))
                     .maxSizeBytes(150L * 1024 * 1024)
                     .build()
@@ -357,6 +367,9 @@ class BitChordApplication : Application(), SingletonImageLoader.Factory, Configu
             runCatching {
                 SingletonImageLoader.get(this).memoryCache?.clear()
             }
+            runCatching { com.music.bitchord.data.BrowseCache.clearMemory() }
+            runCatching { com.music.bitchord.data.FeedCache.clearMemory() }
+            runCatching { com.music.bitchord.data.lyrics.LyricsCache.clearMemory() }
         }
     }
 
@@ -365,6 +378,9 @@ class BitChordApplication : Application(), SingletonImageLoader.Factory, Configu
         runCatching {
             SingletonImageLoader.get(this).memoryCache?.clear()
         }
+        runCatching { com.music.bitchord.data.BrowseCache.clearMemory() }
+        runCatching { com.music.bitchord.data.FeedCache.clearMemory() }
+        runCatching { com.music.bitchord.data.lyrics.LyricsCache.clearMemory() }
     }
 
     companion object {

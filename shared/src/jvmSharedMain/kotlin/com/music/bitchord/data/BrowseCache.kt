@@ -148,7 +148,7 @@ object BrowseCache {
     }
 
     /** Forgets what is in memory, as a restart would — tests read the disk copy back with it. */
-    internal fun clearMemory() {
+    fun clearMemory() {
         synchronized(artists) { artists.clear() }
         synchronized(collections) { collections.clear() }
     }

@@ -134,6 +134,9 @@ interface PlayerHost {
     /** The person tapped "This device" while another one is the speaker: bring the sound back. */
     fun comeBackToThisDevice() {}
 
+    /** Sets the internal software playback volume for a specific device (local or remote). */
+    fun setDeviceVolume(deviceId: String, volume: Float) {}
+
     /** "Start a party" or "Join" in the Connect sheet; the caller then opens the party page. */
     fun requestPartyAction(action: PartyAction) {}
 

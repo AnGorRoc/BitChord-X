@@ -3403,21 +3403,24 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
          * opening it.
          */
 
-        fun browseTypeOf(browseId: String, fallback: BrowseType = BrowseType.OTHER): BrowseType = when {
-            // Built for playlists, but an album downloaded whole opens through
-            // the same prefix, and its page should read as the album it is.
-            browseId.startsWith(Downloads.PLAYLIST_PREFIX) ->
-                Downloads.recordIdOf(browseId)
-                    ?.let { Downloads.collections.value[it] }
-                    ?.takeIf { !it.playlist }
-                    ?.let { BrowseType.ALBUM }
-                    ?: BrowseType.PLAYLIST
-            browseId.startsWith(LocalGroups.PREFIX) -> LocalGroups.typeOf(browseId) ?: fallback
-            browseId.startsWith(OfflinePlaylists.PREFIX) -> BrowseType.PLAYLIST
-            browseId.startsWith("UC") -> BrowseType.ARTIST
-            browseId.startsWith("MPREb") || browseId.startsWith("VLOLAK") || browseId.startsWith("OLAK") -> BrowseType.ALBUM
-            browseId.startsWith("VL") || browseId.startsWith("PL") -> BrowseType.PLAYLIST
-            else -> fallback
+        fun browseTypeOf(browseId: String, fallback: BrowseType = BrowseType.OTHER): BrowseType {
+            val cleanId = if (browseId.startsWith("MPLA")) browseId.removePrefix("MPLA") else browseId
+            return when {
+                // Built for playlists, but an album downloaded whole opens through
+                // the same prefix, and its page should read as the album it is.
+                cleanId.startsWith(Downloads.PLAYLIST_PREFIX) ->
+                    Downloads.recordIdOf(cleanId)
+                        ?.let { Downloads.collections.value[it] }
+                        ?.takeIf { !it.playlist }
+                        ?.let { BrowseType.ALBUM }
+                        ?: BrowseType.PLAYLIST
+                cleanId.startsWith(LocalGroups.PREFIX) -> LocalGroups.typeOf(cleanId) ?: fallback
+                cleanId.startsWith(OfflinePlaylists.PREFIX) -> BrowseType.PLAYLIST
+                cleanId.startsWith("UC") -> BrowseType.ARTIST
+                cleanId.startsWith("MPREb") || cleanId.startsWith("VLOLAK") || cleanId.startsWith("OLAK") -> BrowseType.ALBUM
+                cleanId.startsWith("VL") || cleanId.startsWith("PL") -> BrowseType.PLAYLIST
+                else -> fallback
+            }
         }
     }
 
@@ -3466,21 +3469,22 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         thumbnailUrl: String? = null,
         type: BrowseType = BrowseType.OTHER,
     ) {
+        val cleanBrowseId = if (browseId.startsWith("MPLA")) browseId.removePrefix("MPLA") else browseId
         // A fast double tap used to push two identical loading pages and launch
         // two identical browse requests. Besides wasting the connection, both
         // completions then raced to update every matching browse id in the
         // stack. The page is pushed synchronously, so this closes that window
         // without suppressing a deliberate revisit after the first page loads.
         if (_detailStack.value.lastOrNull()?.let {
-                it.browseId == browseId && it.songs is UiState.Loading
+                it.browseId == cleanBrowseId && it.songs is UiState.Loading
             } == true
         ) return
-        if (browseId.startsWith(SPOTIFY_PAGE_PREFIX)) {
-            openSpotifyPage(browseId, title, subtitle, thumbnailUrl)
+        if (cleanBrowseId.startsWith(SPOTIFY_PAGE_PREFIX)) {
+            openSpotifyPage(cleanBrowseId, title, subtitle, thumbnailUrl)
             return
         }
-        if (browseId.startsWith("radio:")) {
-            val videoId = browseId.removePrefix("radio:")
+        if (cleanBrowseId.startsWith("radio:")) {
+            val videoId = cleanBrowseId.removePrefix("radio:")
             openRadioDetail(
                 seedVideoId = videoId,
                 title = title,
@@ -3490,14 +3494,14 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             )
             return
         }
-        val resolved = browseTypeOf(browseId, type)
-        if (resolved == BrowseType.ARTIST && browseId.startsWith("UC")) {
-            openArtistDetail(browseId, title, subtitle, thumbnailUrl)
+        val resolved = browseTypeOf(cleanBrowseId, type)
+        if (resolved == BrowseType.ARTIST && cleanBrowseId.startsWith("UC")) {
+            openArtistDetail(cleanBrowseId, title, subtitle, thumbnailUrl)
             return
         }
-        if (openKeptCollection(browseId, title, subtitle, thumbnailUrl, resolved)) return
+        if (openKeptCollection(cleanBrowseId, title, subtitle, thumbnailUrl, resolved)) return
         _detailStack.value += DetailPage(
-            browseId = browseId,
+            browseId = cleanBrowseId,
             title = title,
             subtitle = subtitle,
             thumbnailUrl = thumbnailUrl,
@@ -3533,21 +3537,21 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             var monthlyListenerCount: String? = null
             /** Whether this artist is subscribed to — see [DetailPage.subscription]. */
             var subscription: SubscriptionState? = null
-            val localPlaylist = com.music.bitchord.data.spotify.LocalPlaylistStore.getPlaylist(browseId)
-            val remote = remoteLibrary(browseId)
+            val localPlaylist = com.music.bitchord.data.spotify.LocalPlaylistStore.getPlaylist(cleanBrowseId)
+            val remote = remoteLibrary(cleanBrowseId)
             // A release downloaded whole and opened by its YouTube id — the
             // Playlists shelf, a search hit — used to wait on the network for
             // tracks already on the device, and showed an error with no
             // connection at all. Its downloaded copy goes up first; the
             // online listing replaces it if and when that arrives.
-            val onDevice = if (localPlaylist == null && remote == null && !browseId.startsWith("local:")) {
-                downloadedCopyOf(browseId)
+            val onDevice = if (localPlaylist == null && remote == null && !cleanBrowseId.startsWith("local:")) {
+                downloadedCopyOf(cleanBrowseId)
             } else {
                 emptyList()
             }
             if (onDevice.isNotEmpty()) {
                 _detailStack.value = _detailStack.value.map {
-                    if (it.browseId == browseId && it.songs is UiState.Loading) it.copy(songs = UiState.Success(onDevice)) else it
+                    if (it.browseId == cleanBrowseId && it.songs is UiState.Loading) it.copy(songs = UiState.Success(onDevice)) else it
                 }
             }
             if (localPlaylist != null) {
@@ -3557,22 +3561,22 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             }
             // Named by the store rather than by whatever opened it, which
             // may be a "Playing from" label from before a rename.
-            OfflinePlaylists.get(browseId)?.let { name = it.title }
-            val local = localPageState(browseId)
+            OfflinePlaylists.get(cleanBrowseId)?.let { name = it.title }
+            val local = localPageState(cleanBrowseId)
             // Reopened by id alone — the player's "Playing from" — a page off
             // the device arrives with only its title, and offline nothing from
             // YouTube or Apple ever lends it a cover. It takes the cover and
             // credit its own card had instead.
             if (local is UiState.Success) {
-                val record = Downloads.recordIdOf(browseId)?.let { Downloads.collections.value[it] }
-                val group = LocalGroups.groupOf(browseId, local.data)
+                val record = Downloads.recordIdOf(cleanBrowseId)?.let { Downloads.collections.value[it] }
+                val group = LocalGroups.groupOf(cleanBrowseId, local.data)
                 if (thumbnailUrl == null) artwork = record?.thumbnailUrl ?: group?.thumbnailUrl
                 if (subtitle.isBlank()) credit = (record?.subtitle ?: group?.subtitle)?.ifBlank { null }
             }
             val state = when {
                 local != null -> local
                 resolved == BrowseType.ARTIST -> {
-                    YtMusicRepository.artistPage(browseId).fold(
+                    YtMusicRepository.artistPage(cleanBrowseId).fold(
                         onSuccess = { page ->
                             sections = page.sections
                             artwork = page.thumbnailUrl
@@ -3592,13 +3596,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     )
                 }
                 else -> {
-                    YtMusicRepository.browseSongs(browseId).fold(
+                    YtMusicRepository.browseSongs(cleanBrowseId).fold(
                         onSuccess = { page ->
                             // Free here — the page that returned these rows is
                             // the one thing that states who made the playlist,
                             // so its own menu never has to go and ask. Recorded
                             // even when the listing came back empty.
-                            page.owned?.let { setPlaylistOwned(browseId, it) }
+                            page.owned?.let { setPlaylistOwned(cleanBrowseId, it) }
                             // Only for the caller that had nothing: a card's own
                             // title is what the user just tapped, and must not
                             // be swapped for the header's wording underneath them.
@@ -3617,7 +3621,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                             }
                             description = page.description
                             if (resolved == BrowseType.ALBUM) {
-                                sections = page.sections.withoutRelease(browseId)
+                                sections = page.sections.withoutRelease(cleanBrowseId)
                             }
                             if (page.songs.isEmpty()) {
                                 UiState.Error(text(R.string.no_tracks_here))
@@ -3636,7 +3640,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             // A page showing its downloaded copy takes only a real listing: a
             // failed or empty fetch leaves the downloaded tracks up.
             _detailStack.value = _detailStack.value.map {
-                if (it.browseId == browseId &&
+                if (it.browseId == cleanBrowseId &&
                     (it.songs is UiState.Loading || (onDevice.isNotEmpty() && state is UiState.Success))
                 ) {
                     it.copy(

@@ -240,11 +240,14 @@ internal fun ShelfItem.toSong(): Song? = videoId?.let {
     Song(videoId = it, title = title, artist = subtitle, thumbnailUrl = thumbnailUrl)
 }
 
-internal fun browseTypeOf(browseId: String): BrowseType = when {
-    browseId.startsWith("UC") || browseId.startsWith("FEmusic_artist") -> BrowseType.ARTIST
-    browseId.startsWith("MPRE") || browseId.startsWith("FEmusic_album") -> BrowseType.ALBUM
-    browseId.startsWith("VL") || browseId.startsWith("PL") || browseId.startsWith("RD") || browseId == "LM" -> BrowseType.PLAYLIST
-    else -> BrowseType.OTHER
+internal fun browseTypeOf(browseId: String): BrowseType {
+    val cleanId = if (browseId.startsWith("MPLA")) browseId.removePrefix("MPLA") else browseId
+    return when {
+        cleanId.startsWith("UC") || cleanId.startsWith("FEmusic_artist") -> BrowseType.ARTIST
+        cleanId.startsWith("MPRE") || cleanId.startsWith("FEmusic_album") -> BrowseType.ALBUM
+        cleanId.startsWith("VL") || cleanId.startsWith("PL") || cleanId.startsWith("RD") || cleanId == "LM" -> BrowseType.PLAYLIST
+        else -> BrowseType.OTHER
+    }
 }
 
 internal fun openShelfItem(

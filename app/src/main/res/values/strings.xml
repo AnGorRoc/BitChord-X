@@ -891,6 +891,8 @@
     <string name="running">Running</string>
     <string name="automix_enabled_subtitle">Times and blends every transition from the tracks themselves. Turn it off if the phone gets hot or playback stutters.</string>
     <string name="automix_disabled_subtitle">Times and blends transitions automatically, without a slider. Performance may vary on slower devices.</string>
+    <string name="automix_model_downloading">Downloading the Automix model: %1$d%%</string>
+    <string name="automix_model_failed">The Automix model could not be downloaded. Turn Automix off and on to try again.</string>
     <string name="no_lyrics_sources_enabled">None. Lyrics will not be fetched.</string>
     <string name="song_cache_large_subtitle">Keeps up to %1$s of downloaded audio on disk. This can take a noticeable share of your free space.</string>
     <string name="song_cache_limit_subtitle">Keeps downloaded audio on disk for instant seeking and replays</string>

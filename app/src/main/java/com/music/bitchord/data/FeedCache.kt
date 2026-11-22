@@ -297,6 +297,12 @@ object FeedCache {
         return true
     }
 
+    fun clearMemory() {
+        homeMemoryCache.clear()
+        exploreMemoryCache = null
+        moodGenreMemoryCache.clear()
+    }
+
     fun clear() {
         homeMemoryCache.clear()
         exploreMemoryCache = null

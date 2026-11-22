@@ -22,6 +22,7 @@ class BrowseTypeTest {
     @Test
     fun `resolves UC artist IDs as BrowseType ARTIST`() {
         assertEquals(BrowseType.ARTIST, MainViewModel.browseTypeOf("UC1234567890abcdef"))
+        assertEquals(BrowseType.ARTIST, MainViewModel.browseTypeOf("MPLAUC1234567890abcdef"))
     }
 
     @Test

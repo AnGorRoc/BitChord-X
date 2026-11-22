@@ -22,6 +22,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.automirrored.rounded.VolumeDown
+import androidx.compose.material.icons.automirrored.rounded.VolumeOff
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.material.icons.rounded.Computer
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.MusicNote
@@ -39,6 +42,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -120,7 +124,14 @@ internal fun ConnectSheet(
         modifier = modifier,
     ) {
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            account.soundingDevice?.let { SoundingCard(it, isSelf = it.deviceId == account.selfId) }
+            val sounding = account.soundingDevice ?: account.self
+            sounding?.let {
+                SoundingCard(
+                    device = it,
+                    isSelf = it.deviceId == account.selfId || it.deviceId == account.self?.deviceId,
+                    onVolumeChange = { vol -> host.setDeviceVolume(it.deviceId, vol) },
+                )
+            }
 
             Spacer(Modifier.height(6.dp))
             SectionLabel(stringResource(Res.string.connect_your_devices))
@@ -218,9 +229,16 @@ internal fun ConnectSheet(
 
 /** The device the sound is coming out of, lit, with what it is playing. */
 @Composable
-private fun SoundingCard(device: AccountDevice, isSelf: Boolean) {
+private fun SoundingCard(
+    device: AccountDevice,
+    isSelf: Boolean,
+    onVolumeChange: (Float) -> Unit,
+) {
     val accent = MaterialTheme.colorScheme.primary
     val np = device.nowPlaying
+    val initialVol = np?.volume?.toFloat() ?: 1.0f
+    var localVol by remember(device.deviceId, np?.volume) { mutableFloatStateOf(initialVol) }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -292,6 +310,56 @@ private fun SoundingCard(device: AccountDevice, isSelf: Boolean) {
                 }
             }
         }
+        Spacer(Modifier.height(14.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Icon(
+                imageVector = if (localVol <= 0.01f) Icons.AutoMirrored.Rounded.VolumeOff else Icons.AutoMirrored.Rounded.VolumeDown,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.65f),
+                modifier = Modifier
+                    .size(18.dp)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                    ) {
+                        val newVol = if (localVol > 0.01f) 0f else 0.5f
+                        localVol = newVol
+                        onVolumeChange(newVol)
+                    },
+            )
+            Spacer(Modifier.width(8.dp))
+            ThinSlider(
+                value = localVol,
+                onValueChange = {
+                    localVol = it
+                    onVolumeChange(it)
+                },
+                onValueChangeFinished = {
+                    onVolumeChange(localVol)
+                },
+                idleHeight = 4.dp,
+                activeHeight = 8.dp,
+                modifier = Modifier.weight(1f),
+            )
+            Spacer(Modifier.width(8.dp))
+            Icon(
+                imageVector = Icons.AutoMirrored.Rounded.VolumeUp,
+                contentDescription = null,
+                tint = Color.White.copy(alpha = 0.65f),
+                modifier = Modifier
+                    .size(18.dp)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                    ) {
+                        localVol = 1f
+                        onVolumeChange(1f)
+                    },
+            )
+        }
     }
 }
 
@@ -314,9 +382,11 @@ private fun DeviceRow(
         // When it was last seen, so a device that went to sleep a minute ago and one forgotten
         // for hours do not look the same.
         !device.connected && !isSelf -> when {
+            device.lastSeenMs <= 0L -> stringResource(Res.string.connect_away)
             minutesAway < 1 -> stringResource(Res.string.connect_away_now)
             minutesAway < 60 -> stringResource(Res.string.connect_away_minutes, minutesAway)
-            else -> stringResource(Res.string.connect_away_hours, minutesAway / 60)
+            minutesAway < 24 * 60 -> stringResource(Res.string.connect_away_hours, minutesAway / 60)
+            else -> stringResource(Res.string.connect_away)
         }
         // Who, not just that: with three devices "controlling this device" says nothing.
         device.controlledBy != null -> stringResource(Res.string.connect_controlled_by, nameOf(device.controlledBy!!))
@@ -499,7 +569,7 @@ private fun Hint(text: String) {
 }
 
 /** A device that has been away longer than this is left out of the list, however long the server remembers it. */
-private const val FORGET_AWAY_MS = 6L * 60 * 60 * 1000
+private const val FORGET_AWAY_MS = 30L * 24 * 60 * 60 * 1000
 private val CARD_SHAPE = RoundedCornerShape(20.dp)
 
 private fun iconFor(type: String): ImageVector = when (type) {

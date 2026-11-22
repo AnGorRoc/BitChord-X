@@ -1183,6 +1183,8 @@ object AppSettings {
         offlineModeFlow.value =
             runCatching { prefs.getBoolean(KEY_OFFLINE_MODE, false) }.getOrDefault(false)
         readAll()
+        // Automix was on when the app last closed, so its models may never have arrived.
+        if (smartFadeEnabled.value) com.music.bitchord.playback.smart.AutomixModels.ensureDownloaded()
         watchConnection(context)
     }
 
@@ -1734,6 +1736,8 @@ object AppSettings {
     fun setSmartFadeEnabled(value: Boolean) {
         smartFadeEnabled.value = value
         prefs.edit().putBoolean(KEY_SMART_FADE, value).apply()
+        // The models are not in the APK: the first time Automix is on, fetch them.
+        if (value) com.music.bitchord.playback.smart.AutomixModels.ensureDownloaded()
     }
 
     fun setAutomixPerformanceMode(value: AutomixPerformanceMode) {

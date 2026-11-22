@@ -649,6 +649,8 @@
     <string name="running">Activo</string>
     <string name="automix_enabled_subtitle">Calcula y mezcla cada transición a partir de las propias canciones. Desactívalo si el teléfono se calienta o la reproducción se entrecorta.</string>
     <string name="automix_disabled_subtitle">Calcula y mezcla las transiciones automáticamente, sin usar un control manual. El rendimiento puede variar en dispositivos lentos.</string>
+    <string name="automix_model_downloading">Descargando el modelo de Automix: %1$d%%</string>
+    <string name="automix_model_failed">No se pudo descargar el modelo de Automix. Desactiva Automix y vuelve a activarlo para reintentarlo.</string>
     <string name="no_lyrics_sources_enabled">Ninguna. No se buscarán letras.</string>
     <string name="song_cache_large_subtitle">Conserva hasta %1$s de audio descargado en el dispositivo. Puede ocupar una parte importante del espacio libre.</string>
     <string name="song_cache_limit_subtitle">Conserva el audio descargado para búsquedas instantáneas y nuevas reproducciones</string>

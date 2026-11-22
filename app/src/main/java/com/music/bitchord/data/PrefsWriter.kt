@@ -31,7 +31,9 @@ internal class PrefsWriter(
     fun write(change: SharedPreferences.Editor.() -> Unit) {
         scope.launch {
             try {
-                prefs.edit().apply(change).commit()
+                val editor = prefs.edit()
+                editor.change()
+                editor.apply()
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

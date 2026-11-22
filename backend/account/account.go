@@ -387,6 +387,8 @@ func (a *Account) Route(from *Device, to, action string, itemCount int) (*Device
 	case linked:
 	case action == "release" && from.ControlledBy == target.DeviceID && target.Controlling == from.DeviceID:
 		// The device being controlled asks its remote to hand the sound back.
+	case action == "setVolume":
+		// Remote software volume control between devices of the same account.
 	case action == "playQueue" || action == "enqueue" || action == "joinParty" || action == "partyListen":
 		// A device may hand its own music to another without being linked first: that is how
 		// "play on this other device" starts. The caller links them right after.

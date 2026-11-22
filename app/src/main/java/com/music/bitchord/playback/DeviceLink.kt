@@ -22,6 +22,9 @@ object DeviceLink {
 
         /** The person tapped "This phone" while another device is the speaker. */
         data object ComeBack : Request
+
+        /** The person adjusted internal playback volume for this device. */
+        data class SetLocalVolume(val volume: Float) : Request
     }
 
     private val _requests = MutableSharedFlow<Request>(extraBufferCapacity = 8)
@@ -41,8 +44,17 @@ object DeviceLink {
      */
     val serviceRunning: StateFlow<Boolean> = _serviceRunning.asStateFlow()
 
+    private val _appInForeground = MutableStateFlow(true)
+
+    /** Whether the app's UI is active in the foreground on this device. */
+    val appInForeground: StateFlow<Boolean> = _appInForeground.asStateFlow()
+
     fun setServiceRunning(running: Boolean) {
         _serviceRunning.value = running
+    }
+
+    fun setAppInForeground(inForeground: Boolean) {
+        _appInForeground.value = inForeground
     }
 
     fun setConnecting(deviceId: String?) {
@@ -55,5 +67,9 @@ object DeviceLink {
 
     fun comeBack() {
         _requests.tryEmit(Request.ComeBack)
+    }
+
+    fun setLocalVolume(volume: Float) {
+        _requests.tryEmit(Request.SetLocalVolume(volume))
     }
 }

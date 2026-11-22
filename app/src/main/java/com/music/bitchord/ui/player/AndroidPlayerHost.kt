@@ -198,6 +198,22 @@ class AndroidPlayerHost(context: Context) : PlayerHost {
 
     override fun comeBackToThisDevice() = com.music.bitchord.playback.DeviceLink.comeBack()
 
+    override fun setDeviceVolume(deviceId: String, volume: Float) {
+        val clamped = volume.coerceIn(0f, 1f)
+        val selfId = ListenTogether.account.state.value.selfId
+        if (deviceId == selfId || ListenTogether.account.state.value.self?.deviceId == deviceId) {
+            com.music.bitchord.playback.DeviceLink.setLocalVolume(clamped)
+        } else {
+            ListenTogether.account.command(
+                to = deviceId,
+                action = com.music.bitchord.data.listentogether.account.DeviceActions.SET_VOLUME,
+                payload = kotlinx.serialization.json.buildJsonObject {
+                    put("volume", kotlinx.serialization.json.JsonPrimitive(clamped.toDouble()))
+                },
+            )
+        }
+    }
+
     override fun requestPartyAction(action: PartyAction) {
         com.music.bitchord.ui.screens.PartyLaunch.pending.value = when (action) {
             PartyAction.START -> com.music.bitchord.ui.screens.PartyLaunch.Action.START

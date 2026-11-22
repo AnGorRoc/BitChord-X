@@ -54,6 +54,7 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.material.icons.Icons
@@ -1185,7 +1186,10 @@ internal fun ShelfCard(
     isCurrent: Boolean = false,
     isPlaying: Boolean = false,
 ) {
+    val isArtist = item.browseId?.removePrefix("MPLA")?.startsWith("UC") == true
+    val cardShape = if (isArtist) CircleShape else RoundedCornerShape(12.dp)
     Column(
+        horizontalAlignment = if (isArtist) Alignment.CenterHorizontally else Alignment.Start,
         modifier = modifier
             .longPressMenuClickable(onClick = onClick, onLongClick = onLongPress)
             .contextClick(onLongPress),
@@ -1239,8 +1243,8 @@ internal fun ShelfCard(
                     modifier = Modifier
                         .fillMaxWidth()
                         .aspectRatio(1f)
-                        .clip(RoundedCornerShape(12.dp))
-                        .thumbnailBorder(RoundedCornerShape(12.dp))
+                        .clip(cardShape)
+                        .thumbnailBorder(cardShape)
                         .background(MaterialTheme.colorScheme.surfaceVariant),
                 ) {
                     AsyncImage(
@@ -1257,6 +1261,7 @@ internal fun ShelfCard(
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = if (isArtist) Arrangement.Center else Arrangement.Start,
         ) {
             if (isPinned) {
                 Icon(
@@ -1271,6 +1276,7 @@ internal fun ShelfCard(
                 text = item.title,
                 style = MaterialTheme.typography.titleMedium,
                 color = MaterialTheme.colorScheme.onBackground,
+                textAlign = if (isArtist) TextAlign.Center else TextAlign.Start,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f, fill = false),
@@ -1281,8 +1287,10 @@ internal fun ShelfCard(
             text = displaySubtitle,
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = if (isArtist) TextAlign.Center else TextAlign.Start,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
+            modifier = if (isArtist) Modifier.fillMaxWidth() else Modifier,
         )
     }
 }
@@ -1300,7 +1308,7 @@ internal fun ShelfListRow(
     modifier: Modifier = Modifier,
     isPinned: Boolean = false,
 ) {
-    val shape = if (item.browseId?.startsWith("UC") == true) CircleShape else RoundedCornerShape(LIST_COVER_RADIUS)
+    val shape = if (item.browseId?.removePrefix("MPLA")?.startsWith("UC") == true) CircleShape else RoundedCornerShape(LIST_COVER_RADIUS)
     Row(
         modifier = modifier
             .fillMaxWidth()

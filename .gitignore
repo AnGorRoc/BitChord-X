@@ -50,6 +50,7 @@ AGENTS.md
 # Built packages — release APKs/bundles are handed out, never committed
 *.apk
 *.aab
+automix-models/
 
 # Claude Code session files (launch configs, worktrees)
 .claude/

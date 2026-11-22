@@ -1811,6 +1811,8 @@ object ListenTogether {
      *
      * @see AccountDevices
      */
+    private const val KEY_SAVED_DEVICES = "account_saved_devices_v1"
+
     val account: AccountDevices by lazy {
         AccountDevices(
             http = http,
@@ -1818,6 +1820,10 @@ object ListenTogether {
             serverBase = { effectiveIdleServerBase().takeIf { it.isNotBlank() }?.let(::resolveHttpBase) },
             proof = { base -> accountProof(DeviceGroup.ProofUse.ACCOUNT, base) },
             self = { DeviceSelf(deviceId(), deviceName(), deviceType()) },
+            savedStore = com.music.bitchord.data.listentogether.account.SavedDevicesStore(
+                loadRaw = { prefs.getString(KEY_SAVED_DEVICES, null) },
+                saveRaw = { raw -> prefs.edit().putString(KEY_SAVED_DEVICES, raw).apply() },
+            ),
         )
     }
 
@@ -1825,14 +1831,20 @@ object ListenTogether {
     fun mirrorPartyToAccount() {
         scope.launch { _state.collect { account.setParty(it.code) } }
         // How this device asks to be treated by the others: the person's two settings, and whether
-        // the playback service that would carry out a command is up.
+        // the playback service that would carry out a command is up or the app is in foreground.
         scope.launch {
             kotlinx.coroutines.flow.combine(
                 com.music.bitchord.data.settings.AppSettings.deviceVisible,
                 com.music.bitchord.data.settings.AppSettings.deviceAcceptsControl,
                 com.music.bitchord.playback.DeviceLink.serviceRunning,
-            ) { visible, accepts, running -> DevicePrefs(hidden = !visible, noControl = !accepts, unreachable = !running) }
-                .collect { account.setPrefs(it) }
+                com.music.bitchord.playback.DeviceLink.appInForeground,
+            ) { visible, accepts, running, foreground ->
+                DevicePrefs(
+                    hidden = !visible,
+                    noControl = !accepts,
+                    unreachable = !(running || foreground),
+                )
+            }.collect { account.setPrefs(it) }
         }
     }
 

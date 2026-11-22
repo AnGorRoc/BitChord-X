@@ -83,7 +83,18 @@ object AndroidAppUiHost : AppUiHost {
     @Composable
     override fun localPlaylistCoverArtworks(browseId: String): List<String> {
         val playlists by com.music.bitchord.data.spotify.LocalPlaylistStore.playlists.collectAsStateWithLifecycle()
-        return remember(playlists, browseId) {
+        val offlinePlaylists by OfflinePlaylists.playlists.collectAsStateWithLifecycle()
+        return remember(playlists, offlinePlaylists, browseId) {
+            if (OfflinePlaylists.isLikedPage(browseId)) {
+                return@remember emptyList()
+            }
+            val offline = offlinePlaylists.firstOrNull { it.browseId == browseId }
+            if (offline != null) {
+                return@remember offline.songs
+                    .mapNotNull { it.thumbnailUrl?.takeIf(String::isNotBlank) }
+                    .distinct()
+                    .take(4)
+            }
             playlists.firstOrNull { it.browseId == browseId }
                 ?.songs
                 ?.mapNotNull { it.thumbnailUrl?.takeIf(String::isNotBlank) }

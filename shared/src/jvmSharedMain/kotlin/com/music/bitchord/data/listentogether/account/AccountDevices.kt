@@ -78,10 +78,30 @@ class AccountDevices(
     /** The account proof for that server (see DeviceGroup.proofFor), or null when it cannot be had. */
     private val proof: suspend (serverBase: String) -> String?,
     private val self: () -> DeviceSelf,
+    private val savedStore: SavedDevicesStore? = null,
 ) {
     private val json = Json { ignoreUnknownKeys = true; coerceInputValues = true; isLenient = true }
 
-    private val _state = MutableStateFlow(AccountState())
+    private var savedDevices: List<AccountDevice> = savedStore?.load().orEmpty()
+
+    private fun buildLocalSelf(np: AccountNowPlaying? = lastPublished): AccountDevice {
+        val me = self()
+        return AccountDevice(
+            deviceId = me.deviceId,
+            name = me.name,
+            type = me.type,
+            connected = true,
+            nowPlaying = np,
+        )
+    }
+
+    private val _state = MutableStateFlow(
+        AccountState(
+            selfId = runCatching { self().deviceId }.getOrNull(),
+            devices = savedDevices.map { it.copy(connected = false) },
+            localSelf = runCatching { buildLocalSelf() }.getOrNull(),
+        )
+    )
     val state: StateFlow<AccountState> = _state.asStateFlow()
 
     private val _commands = MutableSharedFlow<DeviceCommand>(extraBufferCapacity = 32)
@@ -128,8 +148,12 @@ class AccountDevices(
         job = null
         outbox?.close()
         outbox = null
-        lastPublished = null
-        _state.value = AccountState()
+        _state.update { current ->
+            current.copy(
+                connection = AccountConnection.IDLE,
+                devices = current.devices.map { if (it.deviceId == current.selfId) it else it.copy(connected = false) },
+            )
+        }
     }
 
     /** Called when the server address, the account or this device's name may have changed. */
@@ -146,6 +170,19 @@ class AccountDevices(
      * viewers extrapolate it from [AccountNowPlaying.anchorMs].
      */
     fun publish(np: AccountNowPlaying?) {
+        val local = runCatching { buildLocalSelf(np) }.getOrNull()
+        if (local != null) {
+            _state.update { current ->
+                val updatedDevices = current.devices.map {
+                    if (it.deviceId == local.deviceId) it.copy(nowPlaying = np) else it
+                }
+                current.copy(
+                    selfId = local.deviceId,
+                    localSelf = local,
+                    devices = updatedDevices,
+                )
+            }
+        }
         val previous = lastPublished
         if (np == previous) return
         val now = System.nanoTime()
@@ -231,16 +268,30 @@ class AccountDevices(
 
     // ---- the socket -------------------------------------------------------------------------
 
+    private fun mergeDevices(live: List<AccountDevice>, saved: List<AccountDevice>): List<AccountDevice> {
+        val liveIds = live.map { it.deviceId }.toSet()
+        val key = { d: AccountDevice -> d.name.trim().lowercase() to d.type }
+        val liveKeys = live.map(key).toSet()
+        val retainedSaved = saved
+            .filter { it.deviceId !in liveIds && key(it) !in liveKeys }
+            .distinctBy(key)
+            .map { it.copy(connected = false, controlledBy = null, controlling = null, partyCode = null) }
+        return live + retainedSaved
+    }
+
     private suspend fun run() {
         var backoffMs = 1_000L
+        var idleDelayMs = 1_000L
         while (scope.isActive) {
             val base = serverBase()?.trimEnd('/')
             val account = if (base.isNullOrBlank()) null else proof(base)
             if (base.isNullOrBlank() || account == null) {
                 _state.update { it.copy(connection = AccountConnection.IDLE) }
-                delay(IDLE_RETRY_MS)
+                delay(idleDelayMs)
+                idleDelayMs = (idleDelayMs * 2).coerceAtMost(IDLE_RETRY_MS)
                 continue
             }
+            idleDelayMs = 1_000L
             val me = self()
             try {
                 _state.update { it.copy(connection = AccountConnection.CONNECTING, selfId = me.deviceId) }
@@ -271,7 +322,7 @@ class AccountDevices(
                     }
                     backoffMs = 1_000L
                     if (partyCode != null) sendParty()
-                    if (prefs != DevicePrefs()) sendPrefs()
+                    sendPrefs()
                     // What this device is playing is not known to the server on a new socket.
                     lastPublished?.let { last ->
                         lastPublished = null
@@ -323,7 +374,21 @@ class AccountDevices(
     private suspend fun onFrame(text: String) {
         val frame = AccountFrames.parse(text) ?: return
         AccountFrames.devices(frame)?.let { list ->
-            _state.update { it.copy(connection = AccountConnection.LIVE, devices = list, failure = null) }
+            val merged = mergeDevices(list, savedDevices)
+            savedDevices = merged
+            savedStore?.save(merged)
+            val me = self()
+            val selfInList = merged.firstOrNull { it.deviceId == me.deviceId }
+            val local = selfInList ?: buildLocalSelf(lastPublished)
+            _state.update {
+                it.copy(
+                    connection = AccountConnection.LIVE,
+                    selfId = me.deviceId,
+                    devices = merged,
+                    localSelf = local,
+                    failure = null,
+                )
+            }
             return
         }
         AccountFrames.command(frame)?.let { _commands.emit(it); return }

@@ -45,6 +45,7 @@ import com.music.bitchord.data.model.artworkAt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import java.util.Collections
 import kotlin.math.floor
 import kotlin.math.roundToInt
 import kotlin.random.Random
@@ -435,9 +436,11 @@ private const val FULL_BLUR_SOURCE_PX = 128
 private const val FULL_BLUR_PASSES = 3
 
 /** A handful of recent covers; each entry is only 64 KiB at 128x128 ARGB. */
-private val fullBlurCache = object : LinkedHashMap<String, ImageBitmap>(0, 0.75f, true) {
-    override fun removeEldestEntry(eldest: Map.Entry<String, ImageBitmap>) = size > 8
-}
+private val fullBlurCache: MutableMap<String, ImageBitmap> = Collections.synchronizedMap(
+    object : LinkedHashMap<String, ImageBitmap>(0, 0.75f, true) {
+        override fun removeEldestEntry(eldest: Map.Entry<String, ImageBitmap>) = size > 8
+    }
+)
 
 /** Three small box passes approximate a broad Gaussian blur at thumbnail scale. */
 private fun ImageBitmap.boxBlurred(passes: Int): ImageBitmap {
@@ -506,9 +509,11 @@ private fun boxBlurPass(
  * Clip frames never land here: the next one for the same URL is a different
  * picture, and there would be a new entry several times a second.
  */
-private val meshCache = object : LinkedHashMap<String, ArtworkMesh>(0, 0.75f, true) {
-    override fun removeEldestEntry(eldest: Map.Entry<String, ArtworkMesh>) = size > MESH_CACHE_ENTRIES
-}
+private val meshCache: MutableMap<String, ArtworkMesh> = Collections.synchronizedMap(
+    object : LinkedHashMap<String, ArtworkMesh>(0, 0.75f, true) {
+        override fun removeEldestEntry(eldest: Map.Entry<String, ArtworkMesh>) = size > MESH_CACHE_ENTRIES
+    }
+)
 
 /** The mesh of the clip last on screen, kept for when the player comes back to it. */
 private class ClipMesh(val imageUrl: String, val mesh: ArtworkMesh)

@@ -2129,12 +2129,28 @@ fun BitChordDesktopApp() {
         val connectingWatch = scope.launch { deviceLink.connecting.collect { DesktopPlayerHost.setConnectingDevice(it) } }
         DesktopPlayerHost.onPickDevice = { id, force -> deviceLink.pick(id, force) }
         DesktopPlayerHost.onComeBack = { deviceLink.comeBack() }
+        DesktopPlayerHost.onSetDeviceVolume = { id, vol ->
+            val clamped = vol.coerceIn(0f, 1f)
+            val selfId = DesktopListenTogether.account.state.value.selfId
+            if (id == selfId || DesktopListenTogether.account.state.value.self?.deviceId == id) {
+                playbackEngine.setVolume(clamped)
+            } else {
+                DesktopListenTogether.account.command(
+                    to = id,
+                    action = com.music.bitchord.data.listentogether.account.DeviceActions.SET_VOLUME,
+                    payload = kotlinx.serialization.json.buildJsonObject {
+                        put("volume", kotlinx.serialization.json.JsonPrimitive(clamped.toDouble()))
+                    },
+                )
+            }
+        }
         onDispose {
             if (deviceLinkHolder[0] === deviceLink) deviceLinkHolder[0] = null
             connectingWatch.cancel()
             DesktopPlayerHost.setConnectingDevice(null)
             DesktopPlayerHost.onPickDevice = { _, _ -> }
             DesktopPlayerHost.onComeBack = {}
+            DesktopPlayerHost.onSetDeviceVolume = { _, _ -> }
         }
     }
     DisposableEffect(partySync) {
@@ -2761,7 +2777,7 @@ fun BitChordDesktopApp() {
             }
             // An artist is a page of its own, not a list of tracks with a photograph on top.
             browseTypeOf(browseId.orEmpty()) == BrowseType.ARTIST ->
-                openArtist(browseId!!, item.title)
+                openArtist(browseId!!.removePrefix("MPLA"), item.title)
             browseId != null -> openCollection(
                 browseId = browseId,
                 fallback = BrowseItem(
@@ -3390,6 +3406,7 @@ fun BitChordDesktopApp() {
     LaunchedEffect(youtubeSignedIn, activeAccountId) {
         val identity = "${DesktopYouTubeAuth.isSignedIn}/${DesktopAccounts.activeAccountId()}"
         if (homeIdentity != null && identity != homeIdentity) loadHome()
+        DesktopListenTogether.account.restart()
     }
 
     // The mark on a downloaded row, for the shared pages.
@@ -10080,7 +10097,8 @@ internal fun BoxScope.DesktopShelfArrow(
 @Composable
 private fun DesktopShelfCard(item: ShelfItem, onClick: (ShelfItem) -> Unit) {
     val width = 158.dp
-    val shape = RoundedCornerShape(10.dp)
+    val isArtist = item.browseId?.removePrefix("MPLA")?.startsWith("UC") == true
+    val shape = if (isArtist) CircleShape else RoundedCornerShape(10.dp)
     Column(
         Modifier
             .width(width)
@@ -10088,6 +10106,7 @@ private fun DesktopShelfCard(item: ShelfItem, onClick: (ShelfItem) -> Unit) {
             // move independently of each other.
             .desktopHoverLift(shape)
             .clickable { onClick(item) },
+        horizontalAlignment = if (isArtist) Alignment.CenterHorizontally else Alignment.Start,
     ) {
         Box(
             Modifier
@@ -10099,8 +10118,23 @@ private fun DesktopShelfCard(item: ShelfItem, onClick: (ShelfItem) -> Unit) {
             DesktopArtwork(item.thumbnailUrl, Modifier.fillMaxSize())
         }
         Spacer(Modifier.height(8.dp))
-        Text(item.title, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(item.subtitle, color = DesktopSecondary, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(
+            item.title,
+            fontWeight = FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = if (isArtist) TextAlign.Center else TextAlign.Start,
+            modifier = if (isArtist) Modifier.fillMaxWidth() else Modifier,
+        )
+        Text(
+            item.subtitle,
+            color = DesktopSecondary,
+            style = MaterialTheme.typography.bodySmall,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            textAlign = if (isArtist) TextAlign.Center else TextAlign.Start,
+            modifier = if (isArtist) Modifier.fillMaxWidth() else Modifier,
+        )
     }
 }
 

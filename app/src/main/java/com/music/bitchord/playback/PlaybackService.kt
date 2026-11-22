@@ -131,6 +131,8 @@ import com.music.bitchord.data.sources.MonochromeGate
 import com.music.bitchord.data.sources.SkipPace
 import com.music.bitchord.data.sources.SourceRegistry
 import com.music.bitchord.download.Downloads
+import android.content.ComponentCallbacks2
+import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.CopyOnWriteArraySet
 import java.util.concurrent.atomic.AtomicLong
@@ -356,9 +358,21 @@ private fun Song.canStartStation(): Boolean =
 class PlaybackService : MediaLibraryService() {
 
     private var mediaSession: MediaLibrarySession? = null
-    private val searchResults = ConcurrentHashMap<String, List<Song>>()
-    private val searchBrowseResults = ConcurrentHashMap<String, List<BrowseItem>>()
-    private val songCache = ConcurrentHashMap<String, Song>()
+    private val searchResults: MutableMap<String, List<Song>> = Collections.synchronizedMap(
+        object : LinkedHashMap<String, List<Song>>(32, 0.75f, true) {
+            override fun removeEldestEntry(eldest: Map.Entry<String, List<Song>>) = size > 50
+        }
+    )
+    private val searchBrowseResults: MutableMap<String, List<BrowseItem>> = Collections.synchronizedMap(
+        object : LinkedHashMap<String, List<BrowseItem>>(32, 0.75f, true) {
+            override fun removeEldestEntry(eldest: Map.Entry<String, List<BrowseItem>>) = size > 50
+        }
+    )
+    private val songCache: MutableMap<String, Song> = Collections.synchronizedMap(
+        object : LinkedHashMap<String, Song>(128, 0.75f, true) {
+            override fun removeEldestEntry(eldest: Map.Entry<String, Song>) = size > 1000
+        }
+    )
 
     /**
      * [YtMusicRepository.home] cached briefly for Android Auto's browse tree.
@@ -2037,6 +2051,9 @@ class PlaybackService : MediaLibraryService() {
                         }
                     }
                     DeviceLink.Request.ComeBack -> deviceSpeaker.comeBack()
+                    is DeviceLink.Request.SetLocalVolume -> {
+                        eachPlayer { it.volume = request.volume.coerceIn(0f, 1f) }
+                    }
                 }
             }
         }
@@ -10216,6 +10233,22 @@ class PlaybackService : MediaLibraryService() {
         }
     }
 
+
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW || level >= ComponentCallbacks2.TRIM_MEMORY_BACKGROUND) {
+            searchResults.clear()
+            searchBrowseResults.clear()
+            trackAnalyzer.clearMemory()
+        }
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+        searchResults.clear()
+        searchBrowseResults.clear()
+        trackAnalyzer.clearMemory()
+    }
 
     override fun onDestroy() {
         renditionSwapHarness?.let { runCatching { unregisterReceiver(it) } }

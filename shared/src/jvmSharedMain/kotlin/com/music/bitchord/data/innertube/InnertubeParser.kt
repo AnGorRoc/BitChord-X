@@ -76,12 +76,12 @@ object InnertubeParser {
         // for the top result, then one shelf per category). Its promoted top
         // result lives on the card itself, not in a responsive row, so read it
         // first before walking the ordinary result rows.
+        val cardShelves = if (includeVideos) emptyList() else collectRenderers(response, "musicCardShelfRenderer")
         val topResults: List<SearchResult> = if (includeVideos) emptyList() else {
-            collectRenderers(response, "musicCardShelfRenderer")
-                .mapNotNull { card ->
-                    parseCardShelfSong(card)?.let(SearchResult::TopTrack)
-                        ?: parseCardShelfBrowse(card)?.let(SearchResult::Browse)
-                }
+            cardShelves.mapNotNull { card ->
+                parseCardShelfSong(card)?.let(SearchResult::TopTrack)
+                    ?: parseCardShelfBrowse(card)?.let(SearchResult::Browse)
+            }
         }
         val rows = collectRenderers(response, "musicResponsiveListItemRenderer")
 
@@ -90,7 +90,7 @@ object InnertubeParser {
         // identity below, because these are the same renderer objects the walk
         // above already found; a card row is just a row that also sits here.
         val cardCredits: List<Pair<JsonObject, Credits>> = if (includeVideos) emptyList() else {
-            collectRenderers(response, "musicCardShelfRenderer").flatMap { card ->
+            cardShelves.flatMap { card ->
                 val credit = cardShelfCredit(card) ?: return@flatMap emptyList()
                 collectRenderers(card, "musicResponsiveListItemRenderer").map { it to credit }
             }
@@ -186,9 +186,14 @@ object InnertubeParser {
         return out
     }
 
+    private fun cleanBrowseId(raw: String?): String? {
+        if (raw == null) return null
+        return if (raw.startsWith("MPLA")) raw.removePrefix("MPLA") else raw
+    }
+
     private fun parseBrowseItem(renderer: JsonObject): BrowseItem? {
         val endpoint = renderer.o("navigationEndpoint").o("browseEndpoint") ?: return null
-        val browseId = endpoint.s("browseId") ?: return null
+        val browseId = cleanBrowseId(endpoint.s("browseId")) ?: return null
         val pageType = endpoint.o("browseEndpointContextSupportedConfigs")
             .o("browseEndpointContextMusicConfig").s("pageType").orEmpty()
 
@@ -216,6 +221,7 @@ object InnertubeParser {
                 "ALBUM" in pageType -> BrowseType.ALBUM
                 "ARTIST" in pageType -> BrowseType.ARTIST
                 "PLAYLIST" in pageType -> BrowseType.PLAYLIST
+                browseId.startsWith("UC") -> BrowseType.ARTIST
                 else -> BrowseType.OTHER
             },
         )
@@ -990,13 +996,13 @@ object InnertubeParser {
         // Deliberately no album: the card says who the song is by and nothing
         // about which release it came off, and a guess there would show up as a
         // wrong "go to album" in the row's own long-press menu.
-        return Credits(artistId = endpoint.s("browseId"), artistName = name)
+        return Credits(artistId = cleanBrowseId(endpoint.s("browseId")), artistName = name)
     }
 
     /** Artist, album and playlist cards use the same promoted-search container as a song. */
     private fun parseCardShelfBrowse(renderer: JsonObject): BrowseItem? {
         val endpoint = renderer.o("onTap").o("browseEndpoint") ?: return null
-        val browseId = endpoint.s("browseId") ?: return null
+        val browseId = cleanBrowseId(endpoint.s("browseId")) ?: return null
         val pageType = endpoint.o("browseEndpointContextSupportedConfigs")
             .o("browseEndpointContextMusicConfig").s("pageType").orEmpty()
         // An upload YouTube never matched to the catalogue, billed as an
@@ -1020,6 +1026,7 @@ object InnertubeParser {
                 "ALBUM" in pageType -> BrowseType.ALBUM
                 "ARTIST" in pageType -> BrowseType.ARTIST
                 "PLAYLIST" in pageType -> BrowseType.PLAYLIST
+                browseId.startsWith("UC") -> BrowseType.ARTIST
                 else -> BrowseType.OTHER
             },
         )
@@ -1039,7 +1046,7 @@ object InnertubeParser {
         val pageType = endpoint.o("browseEndpointContextSupportedConfigs")
             .o("browseEndpointContextMusicConfig").s("pageType").orEmpty()
         if ("ARTIST" !in pageType) return null
-        val browseId = endpoint.s("browseId") ?: return null
+        val browseId = cleanBrowseId(endpoint.s("browseId")) ?: return null
 
         val columns = renderer.a("flexColumns").orEmpty()
         val title = columns.getOrNull(0)
@@ -1091,7 +1098,7 @@ object InnertubeParser {
         val artists = mutableListOf<ArtistRef>()
         runs.forEach { run ->
             val browse = run.o("navigationEndpoint").o("browseEndpoint")
-            val id = browse.s("browseId") ?: return@forEach
+            val id = cleanBrowseId(browse.s("browseId")) ?: return@forEach
             val pageType = browse.o("browseEndpointContextSupportedConfigs")
                 .o("browseEndpointContextMusicConfig").s("pageType").orEmpty()
             if ("ARTIST" !in pageType && "ALBUM" !in pageType) return@forEach
@@ -1760,7 +1767,7 @@ object InnertubeParser {
         val title = renderer.o("title").runs()
         if (title.isBlank()) return null
         val endpoint = renderer.o("navigationEndpoint")
-        val browseId = endpoint.o("browseEndpoint").s("browseId")
+        val browseId = cleanBrowseId(endpoint.o("browseEndpoint").s("browseId"))
         // History/"Listen again" cards for tracks YouTube never catalogued
         // as a proper Song carry no watchEndpoint at all — just a browseId
         // to a "non-music audio track page" prefixed MPED<videoId>. That's

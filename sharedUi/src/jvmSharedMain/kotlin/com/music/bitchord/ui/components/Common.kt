@@ -86,6 +86,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -1319,5 +1320,32 @@ fun PillTextField(
             keyboardActions = keyboardActions,
             modifier = Modifier.fillMaxWidth(),
         )
+    }
+}
+
+/** Four tiles of artwork in a 2x2 grid, as many as the box it fills can hold. */
+@Composable
+fun ArtworkGrid(
+    tiles: List<String>,
+    modifier: Modifier = Modifier,
+    artPx: Int = com.music.bitchord.data.model.CARD_ART_PX / 2,
+) {
+    Column(modifier) {
+        for (row in 0..1) {
+            Row(Modifier.weight(1f)) {
+                for (col in 0..1) {
+                    val index = row * 2 + col
+                    val tile = tiles.getOrNull(index) ?: tiles.firstOrNull()
+                    if (tile != null) {
+                        AsyncImage(
+                            model = tile.artworkAt(artPx),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier.weight(1f).fillMaxHeight(),
+                        )
+                    }
+                }
+            }
+        }
     }
 }

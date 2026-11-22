@@ -126,8 +126,10 @@ data class AccountState(
     val devices: List<AccountDevice> = emptyList(),
     /** Why the last attempt failed, for diagnostics; cleared once connected. */
     val failure: String? = null,
+    /** Local fallback device representation when offline or not connected to the server. */
+    val localSelf: AccountDevice? = null,
 ) {
-    val self: AccountDevice? get() = devices.firstOrNull { it.deviceId == selfId }
+    val self: AccountDevice? get() = devices.firstOrNull { it.deviceId == selfId } ?: localSelf
     val others: List<AccountDevice> get() = devices.filter { it.deviceId != selfId }
 
     /** The device this one is acting as the remote of, if any. */

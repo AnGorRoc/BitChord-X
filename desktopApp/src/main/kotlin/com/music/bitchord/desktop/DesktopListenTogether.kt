@@ -541,6 +541,8 @@ internal object DesktopListenTogether {
         scope.launch { _state.collect { account.setParty(it.code) } }
     }
 
+    private const val KEY_SAVED_DEVICES = "account_saved_devices_v1"
+
     val account: AccountDevices by lazy {
         AccountDevices(
             http = http,
@@ -548,6 +550,10 @@ internal object DesktopListenTogether {
             serverBase = { resolveIdleServer().takeIf { it.isNotBlank() }?.let(::httpBaseOf) },
             proof = { base -> accountProof(DeviceGroup.ProofUse.ACCOUNT, base) },
             self = { DeviceSelf(deviceId(), deviceName(), "computer") },
+            savedStore = com.music.bitchord.data.listentogether.account.SavedDevicesStore(
+                loadRaw = { persistence.string(KEY_SAVED_DEVICES).takeIf { it.isNotBlank() } },
+                saveRaw = { raw -> persistence.saveString(KEY_SAVED_DEVICES, raw) },
+            ),
         )
     }
 
@@ -1018,8 +1024,9 @@ internal object DesktopListenTogether {
             return custom
         }
 
-        effectiveIdleServerBase = DEFAULT_SERVER
-        if (DEFAULT_SERVER.isBlank()) {
+        val targetServer = DEFAULT_SERVER.ifBlank { FALLBACK_SERVER }
+        effectiveIdleServerBase = targetServer
+        if (targetServer.isBlank()) {
             _serverStatus.value = ServerStatus(Health.OFFLINE)
             return ""
         }
@@ -1038,10 +1045,13 @@ internal object DesktopListenTogether {
      * both are simply "the built-in server", and neither address is shown.
      */
     private suspend fun probeBuiltIn(): Pair<String, Pair<Boolean, Long>> {
-        val primary = probeHealth(DEFAULT_SERVER, DEFAULT_SERVER_TIMEOUT_MS)
-        if (primary.first || FALLBACK_SERVER.isBlank()) return DEFAULT_SERVER to primary
+        if (DEFAULT_SERVER.isNotBlank()) {
+            val primary = probeHealth(DEFAULT_SERVER, DEFAULT_SERVER_TIMEOUT_MS)
+            if (primary.first || FALLBACK_SERVER.isBlank()) return DEFAULT_SERVER to primary
+        }
         val secondary = probeHealth(FALLBACK_SERVER, DEFAULT_SERVER_TIMEOUT_MS)
-        return if (secondary.first) FALLBACK_SERVER to secondary else DEFAULT_SERVER to primary
+        val defaultOrFallback = DEFAULT_SERVER.ifBlank { FALLBACK_SERVER }
+        return if (secondary.first) FALLBACK_SERVER to secondary else defaultOrFallback to (false to 0L)
     }
 
     private suspend fun probeHealth(server: String, timeoutMs: Long): Pair<Boolean, Long> {
@@ -1159,8 +1169,8 @@ internal object DesktopListenTogether {
     private const val UNREACHABLE = "Couldn't reach the party server."
     private const val PING_INTERVAL_MS = 15_000L
     private const val REPORT_INTERVAL_MS = 10_000L
-    private const val CUSTOM_SERVER_TIMEOUT_MS = 6_000L
-    private const val DEFAULT_SERVER_TIMEOUT_MS = 15_000L
+    private const val CUSTOM_SERVER_TIMEOUT_MS = 4_000L
+    private const val DEFAULT_SERVER_TIMEOUT_MS = 3_500L
     private const val KICK_BLOCK_MS = 24L * 60 * 60 * 1000
     private const val HEALTH_OK = "\"ok\":true"
     const val CODE_LENGTH = 6

@@ -46,6 +46,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import java.util.Collections
 import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.Executors
 import kotlin.math.abs
@@ -68,12 +69,12 @@ class TrackAnalyzer(private val context: Context, private val cache: AudioCache)
     private val tracker = BeatTracker(
         modelPath = {
             java.io.File(context.filesDir, BeatTracker.RETIRED_MODEL_ASSET).delete()
-            unpackedAsset(BeatTracker.MODEL_ASSET)
+            AutomixModels.pathOf(BeatTracker.MODEL_ASSET)
         },
         inferenceThreads = { AppSettings.automixPerformanceMode.value.inferenceThreads },
     )
     private val vocals = VocalTracker(
-        modelPath = { unpackedAsset(VocalTracker.MODEL_ASSET) },
+        modelPath = { AutomixModels.pathOf(VocalTracker.MODEL_ASSET) },
         inferenceThreads = { AppSettings.automixPerformanceMode.value.inferenceThreads },
     )
 
@@ -82,24 +83,6 @@ class TrackAnalyzer(private val context: Context, private val cache: AudioCache)
         // this; with no sink they went nowhere on the phone, which is how a
         // beat model that found nothing went unnoticed.
         AnalysisLog.install { message, error -> Log.w(TAG, message, error) }
-    }
-
-    /**
-     * A model's weights on disk, unpacked from assets the first time they are
-     * asked for.
-     *
-     * ONNX Runtime wants a file it can memory-map, and an asset inside the APK
-     * is not one. This used to live inside each tracker; it moved out when they
-     * became shared with the desktop build, which unpacks from the jar instead.
-     */
-    private fun unpackedAsset(name: String): String {
-        val file = java.io.File(context.filesDir, name)
-        if (!file.exists() || file.length() == 0L) {
-            context.assets.open(name).use { input ->
-                file.outputStream().use { output -> input.copyTo(output) }
-            }
-        }
-        return file.absolutePath
     }
 
     /**
@@ -158,7 +141,19 @@ class TrackAnalyzer(private val context: Context, private val cache: AudioCache)
      */
     private val resolver by lazy { context.contentResolver }
 
-    private val results = ConcurrentHashMap<String, TrackAnalysis>()
+    private val results: MutableMap<String, TrackAnalysis> = Collections.synchronizedMap(
+        object : LinkedHashMap<String, TrackAnalysis>(32, 0.75f, true) {
+            override fun removeEldestEntry(eldest: Map.Entry<String, TrackAnalysis>) = size > 64
+        }
+    )
+
+    fun clearMemory() {
+        results.clear()
+        provisional.clear()
+        headAttempts.clear()
+        headSkipLogged.clear()
+        shortDecodes.clear()
+    }
     private val running = ConcurrentHashMap.newKeySet<String>()
     private val sourceAnalysisUris = ConcurrentHashMap<String, Uri>()
     private val sourceResolutions = ConcurrentHashMap.newKeySet<String>()
