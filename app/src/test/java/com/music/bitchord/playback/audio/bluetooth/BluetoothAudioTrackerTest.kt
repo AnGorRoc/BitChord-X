@@ -207,4 +207,43 @@ class BluetoothAudioTrackerTest {
         assertFalse(nonAuthoritativeHiRes.codecName.contains("LDAC", ignoreCase = true))
         assertEquals("Not exposed by Android", nonAuthoritativeHiRes.bitrateLabel)
     }
+
+    @Test
+    fun vendorLhdcIdentificationAndUnknownCodecFilter() {
+        // Savitech vendor ID 0x053A
+        val lhdcCodecId = 0x053AL
+        assertTrue(BluetoothAudioTracker.isSavitechLhdc(lhdcCodecId))
+        assertTrue(BluetoothAudioTracker.isSavitechLhdc(lhdcCodecId or (0x4c33L shl 16)))
+
+        // Resolves LHDC from vendor ID even if raw name is UNKNOWN CODEC(...)
+        val resolvedFromId = BluetoothAudioTracker.resolveEffectiveCodecName(
+            rawName = "UNKNOWN CODEC(1000000)",
+            extName = null,
+            extId = lhdcCodecId,
+            codecType = 7,
+        )
+        assertEquals("LHDC", resolvedFromId)
+
+        // Resolves LHDC from name string
+        val resolvedFromName = BluetoothAudioTracker.resolveVendorCodecName("LHDC V5")
+        assertEquals("LHDC", resolvedFromName)
+
+        // Unknown codec string is never treated as a named codec
+        val unknownTelemetry = BluetoothTelemetry(
+            isConnected = true,
+            deviceName = "Headphones",
+            codecName = "UNKNOWN CODEC(1000000)",
+            isAuthoritative = true,
+        )
+        assertFalse(unknownTelemetry.hasNamedCodec)
+
+        // Resolved LHDC is treated as a named codec
+        val lhdcTelemetry = BluetoothTelemetry(
+            isConnected = true,
+            deviceName = "Headphones",
+            codecName = "LHDC",
+            isAuthoritative = true,
+        )
+        assertTrue(lhdcTelemetry.hasNamedCodec)
+    }
 }

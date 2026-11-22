@@ -3856,6 +3856,12 @@ private fun BitChordApp(
                                     continuationToken = latestPage?.continuation ?: page.continuation,
                                 )
                             }
+                            val ownedPlaylists by viewModel.playlistOwned.collectAsStateWithLifecycle()
+                            LaunchedEffect(page.browseId) {
+                                if (page.browseId !in ownedPlaylists && (page.browseId.startsWith("VL") || page.browseId.startsWith("PL"))) {
+                                    viewModel.resolvePlaylistOwnership(page.browseId)
+                                }
+                            }
                             val localTarget = remember(page.browseId) {
                                 com.music.bitchord.data.spotify.LocalPlaylistStore.getPlaylist(page.browseId)
                             }
@@ -3865,6 +3871,8 @@ private fun BitChordApp(
                             val downloadTargetId = remember(page.browseId, savedCollections) {
                                 downloadIdFor(page.browseId)
                             }
+                            val isOwnedYouTube = signedIn && (page.browseId.startsWith("VL") || page.browseId.startsWith("PL")) &&
+                                ownedPlaylists[page.browseId] == true
                             val onDeleteDetail: (() -> Unit)? = when {
                                 localTarget != null -> {
                                     {
@@ -3883,6 +3891,19 @@ private fun BitChordApp(
                                     {
                                         viewModel.closeDetail(page.browseId)
                                         scope.launch { Downloads.deleteCollection(context, downloadTargetId) }
+                                    }
+                                }
+                                isOwnedYouTube -> {
+                                    {
+                                        val playlistId = page.browseId.removePrefix("VL")
+                                        viewModel.deletePlaylist(
+                                            UserPlaylist(
+                                                playlistId = playlistId,
+                                                title = page.title,
+                                                subtitle = page.subtitle,
+                                                thumbnailUrl = page.thumbnailUrl,
+                                            )
+                                        )
                                     }
                                 }
                                 else -> null
@@ -5901,8 +5922,17 @@ private fun BitChordApp(
             // recomposes when the answer arrives.
             val ownedPlaylists by viewModel.playlistOwned.collectAsStateWithLifecycle()
             val playlist = target.browseId
-                ?.takeIf { signedIn && ownedPlaylists[it] == true }
-                ?.let { id -> playlists.firstOrNull { it.browseId == id } }
+                ?.takeIf { signedIn && (target.playlist != null || ownedPlaylists[it] == true) }
+                ?.let { id ->
+                    playlists.firstOrNull { it.browseId == id }
+                        ?: target.playlist?.takeIf { it.browseId == id }
+                        ?: UserPlaylist(
+                            playlistId = id.removePrefix("VL"),
+                            title = target.title,
+                            subtitle = target.subtitle,
+                            thumbnailUrl = target.thumbnailUrl,
+                        )
+                }
             val remote = target.browseId?.startsWith("local:") == false
             // Spotify playlists saved on this device ("local:playlist:sp_local_…")
             // carry real YouTube video ids, so they download like a remote

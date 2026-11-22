@@ -336,14 +336,34 @@ internal object DesktopAccounts {
 /** Reads the account renderers out of YouTube Music's own account endpoints. */
 internal object DesktopAccountParser {
 
+    private val INVISIBLE_CHARS = setOf(
+        '\u200B', // zero-width space
+        '\u200C', // zero-width non-joiner
+        '\u200D', // zero-width joiner
+        '\u200E', // LTR mark
+        '\u200F', // RTL mark
+        '\uFEFF', // byte order mark / zero-width no-break space
+        '\u3164', // hangul filler
+        '\uFFA0', // halfwidth hangul filler
+        '\u2800', // braille pattern blank
+    )
+
+    private fun String.isBlankOrInvisible(): Boolean =
+        isBlank() || all { it.isWhitespace() || it in INVISIBLE_CHARS || Character.isISOControl(it) }
+
     /** Name, email and photo, from the header the account menu opens with. */
     fun account(root: JsonElement): Account? {
         val header = DesktopSearchClient.renderers(root, "activeAccountHeaderRenderer").firstOrNull() ?: return null
-        val name = header.text("accountName")
-        if (name.isBlank()) return null
+        val rawName = header.text("accountName")
+        val handle = header.text("channelHandle")
+        val email = header.text("email").ifBlank { handle }
+        val name = rawName.takeUnless { it.isBlankOrInvisible() }
+            ?: handle.takeUnless { it.isBlankOrInvisible() }
+            ?: email.takeUnless { it.isBlankOrInvisible() }
+            ?: "Account"
         return Account(
             name = name,
-            email = header.text("email").ifBlank { header.text("channelHandle") },
+            email = email,
             thumbnailUrl = header.photo(),
         )
     }
@@ -351,8 +371,13 @@ internal object DesktopAccountParser {
     /** The channels a switcher response offers, in the order YouTube lists them. */
     fun channels(root: JsonElement): List<AccountChannel> =
         DesktopSearchClient.renderers(root, "accountItem").mapNotNull { item ->
-            val name = item.text("accountName")
-            if (name.isBlank()) return@mapNotNull null
+            val rawName = item.text("accountName")
+            val handle = item.text("channelHandle")
+            val byline = item.text("accountByline")
+            val name = rawName.takeUnless { it.isBlankOrInvisible() }
+                ?: handle.takeUnless { it.isBlankOrInvisible() }
+                ?: byline.takeUnless { it.isBlankOrInvisible() }
+                ?: "Channel"
             val pageId = item.findString("pageId")
             // `<accountSyncId>||<sessionSyncId>`; only the first half names the account, exactly as
             // in the shell's own DATASYNC_ID.
@@ -360,7 +385,7 @@ internal object DesktopAccountParser {
             if (pageId == null && dataSyncId == null) return@mapNotNull null
             AccountChannel(
                 name = name,
-                subtitle = item.text("channelHandle").ifBlank { item.text("accountByline") },
+                subtitle = handle.ifBlank { byline },
                 thumbnailUrl = item.photo(),
                 pageId = pageId,
                 dataSyncId = dataSyncId,

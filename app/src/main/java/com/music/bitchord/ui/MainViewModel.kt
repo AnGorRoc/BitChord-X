@@ -1582,7 +1582,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     fun resolvePlaylistOwnership(browseId: String?) {
         if (!_signedIn.value || browseId == null) return
         if (browseId in _playlistOwned.value || browseId in ownershipInFlight) return
-        if (_playlists.value.none { it.browseId == browseId }) return
+        val isPlaylist = browseId.startsWith("VL") || browseId.startsWith("PL") || _playlists.value.any { it.browseId == browseId }
+        if (!isPlaylist) return
         ownershipInFlight += browseId
         viewModelScope.launch {
             YtMusicRepository.playlistOwned(browseId).onSuccess { owned ->

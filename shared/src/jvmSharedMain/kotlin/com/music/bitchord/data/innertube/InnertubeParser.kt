@@ -1285,6 +1285,21 @@ object InnertubeParser {
         return onHeader
     }
 
+    private val INVISIBLE_CHARS = setOf(
+        '\u200B', // zero-width space
+        '\u200C', // zero-width non-joiner
+        '\u200D', // zero-width joiner
+        '\u200E', // LTR mark
+        '\u200F', // RTL mark
+        '\uFEFF', // byte order mark / zero-width no-break space
+        '\u3164', // hangul filler
+        '\uFFA0', // halfwidth hangul filler
+        '\u2800', // braille pattern blank
+    )
+
+    private fun String.isBlankOrInvisible(): Boolean =
+        isBlank() || all { it.isWhitespace() || it in INVISIBLE_CHARS || Character.isISOControl(it) }
+
     /**
      * The account header buried in the `account_menu` popup. Not every client
      * gets an `email` back — some return only the @handle — so whichever is
@@ -1293,11 +1308,17 @@ object InnertubeParser {
     fun parseAccount(response: JsonElement): Account? {
         val header = collectRenderers(response, "activeAccountHeaderRenderer").firstOrNull()
             ?: return null
-        val name = header.o("accountName").runs()
-        if (name.isBlank()) return null
+        val rawName = header.o("accountName").runs()
+            .ifBlank { header.o("accountName").s("simpleText").orEmpty() }
+        val handle = header.o("channelHandle").runs()
+            .ifBlank { header.o("channelHandle").s("simpleText").orEmpty() }
         val email = header.o("email").runs()
             .ifBlank { header.o("email").s("simpleText").orEmpty() }
-            .ifBlank { header.o("channelHandle").runs() }
+            .ifBlank { handle }
+        val name = rawName.takeUnless { it.isBlankOrInvisible() }
+            ?: handle.takeUnless { it.isBlankOrInvisible() }
+            ?: email.takeUnless { it.isBlankOrInvisible() }
+            ?: "Account"
         return Account(
             name = name,
             email = email,
@@ -1325,18 +1346,22 @@ object InnertubeParser {
      */
     fun parseAccountChannels(root: JsonElement): List<AccountChannel> =
         collectRenderers(root, "accountItem").mapNotNull { item ->
-            val name = item.o("accountName").runs()
+            val rawName = item.o("accountName").runs()
                 .ifBlank { item.o("accountName").s("simpleText").orEmpty() }
-            if (name.isBlank()) return@mapNotNull null
+            val handle = item.o("channelHandle").runs()
+                .ifBlank { item.o("channelHandle").s("simpleText").orEmpty() }
+            val byline = item.o("accountByline").runs()
+                .ifBlank { item.o("accountByline").s("simpleText").orEmpty() }
+            val name = rawName.takeUnless { it.isBlankOrInvisible() }
+                ?: handle.takeUnless { it.isBlankOrInvisible() }
+                ?: byline.takeUnless { it.isBlankOrInvisible() }
+                ?: "Channel"
             val pageId = item.findString("pageId")
             val dataSyncId = normalizeDataSyncId(item.findString("datasyncIdToken"))
             if (pageId == null && dataSyncId == null) return@mapNotNull null
             AccountChannel(
                 name = name,
-                subtitle = item.o("channelHandle").runs()
-                    .ifBlank { item.o("channelHandle").s("simpleText").orEmpty() }
-                    .ifBlank { item.o("accountByline").runs() }
-                    .ifBlank { item.o("accountByline").s("simpleText").orEmpty() },
+                subtitle = handle.ifBlank { byline },
                 thumbnailUrl = item.o("accountPhoto").a("thumbnails").best().artworkAt(AVATAR_ART_PX),
                 pageId = pageId,
                 dataSyncId = dataSyncId,

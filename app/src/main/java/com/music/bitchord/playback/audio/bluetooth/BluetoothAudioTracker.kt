@@ -47,11 +47,11 @@ data class BluetoothTelemetry(
 
     /**
      * Whether [codecName] names a codec Android actually reported. False for every
-     * placeholder ("System Managed", "Unknown"), so callers never render a stand-in
-     * string as if it were a negotiated codec.
+     * placeholder ("System Managed", "Unknown", "UNKNOWN CODEC(...)"), so callers never
+     * render a stand-in string as if it were a negotiated codec.
      */
     val hasNamedCodec: Boolean
-        get() = isAuthoritative && codecName.isNotBlank() && codecName != "Unknown"
+        get() = isAuthoritative && codecName.isNotBlank() && codecName != "Unknown" && !codecName.contains("UNKNOWN", ignoreCase = true)
 
     fun formattedSummary(): String = buildString {
         if (!isConnected) {
@@ -343,25 +343,32 @@ class BluetoothAudioTracker(private val context: Context) {
         val bitsMask = codecConfig.bitsPerSample
         val codecSpecific1 = codecConfig.codecSpecific1
 
-        // API 35's extended type is the only public place a vendor codec —
-        // LHDC, aptX Adaptive/Lossless — is named; the classic codecType has
-        // no constant for any of them.
-        val extendedName = if (Build.VERSION.SDK_INT >= 35) {
-            runCatching { codecConfig.extendedCodecType?.codecName }.getOrNull()?.takeIf { it.isNotBlank() }
+        val extObj = if (Build.VERSION.SDK_INT >= 35) {
+            runCatching { codecConfig.extendedCodecType }.getOrNull()
         } else {
-            null
+            runCatching {
+                codecConfig.javaClass.getMethod("getExtendedCodecType").invoke(codecConfig)
+            }.getOrNull()
         }
-        val codecName: String = extendedName ?: try {
+
+        val extName = runCatching {
+            extObj?.javaClass?.getMethod("getCodecName")?.invoke(extObj) as? String
+        }.getOrNull()?.takeIf { it.isNotBlank() }
+
+        val extId = runCatching {
+            (extObj?.javaClass?.getMethod("getCodecId")?.invoke(extObj) as? Number)?.toLong()
+        }.getOrNull()
+
+        val rawName = runCatching {
             val nameMethod = codecConfig.javaClass.getMethod("getCodecName")
             (nameMethod.invoke(codecConfig) as? String)?.takeIf { it.isNotBlank() }
-        } catch (_: Throwable) {
-            null
-        } ?: mapCodecType(codecType)
+        }.getOrNull()
 
+        val codecName = resolveEffectiveCodecName(rawName = rawName, extName = extName, extId = extId, codecType = codecType)
         val sampleRateHz = mapSampleRate(sampleRateMask)
         val bitDepth = mapBitDepth(bitsMask)
-        val mode = when (codecType) {
-            SOURCE_CODEC_TYPE_LDAC -> parseLdacQualityMode(codecSpecific1)
+        val mode = when {
+            codecType == SOURCE_CODEC_TYPE_LDAC || codecName == "LDAC" -> parseLdacQualityMode(codecSpecific1)
             else -> null
         }
 
@@ -409,17 +416,36 @@ class BluetoothAudioTracker(private val context: Context) {
             0L
         }
 
-        val codecName = try {
+        val extObj = try {
+            clazz.getMethod("getExtendedCodecType").invoke(codecConfig)
+        } catch (_: Throwable) {
+            null
+        }
+
+        val extName = try {
+            extObj?.javaClass?.getMethod("getCodecName")?.invoke(extObj) as? String
+        } catch (_: Throwable) {
+            null
+        }?.takeIf { it.isNotBlank() }
+
+        val extId = try {
+            (extObj?.javaClass?.getMethod("getCodecId")?.invoke(extObj) as? Number)?.toLong()
+        } catch (_: Throwable) {
+            null
+        }
+
+        val rawName = try {
             val nameMethod = clazz.getMethod("getCodecName")
             (nameMethod.invoke(codecConfig) as? String)?.takeIf { it.isNotBlank() }
         } catch (_: Throwable) {
             null
-        } ?: mapCodecType(codecType)
+        }
 
+        val codecName = resolveEffectiveCodecName(rawName = rawName, extName = extName, extId = extId, codecType = codecType)
         val sampleRateHz = mapSampleRate(sampleRateMask)
         val bitDepth = mapBitDepth(bitsMask)
-        val mode = when (codecType) {
-            SOURCE_CODEC_TYPE_LDAC -> parseLdacQualityMode(codecSpecific1)
+        val mode = when {
+            codecType == SOURCE_CODEC_TYPE_LDAC || codecName == "LDAC" -> parseLdacQualityMode(codecSpecific1)
             else -> null
         }
 
@@ -450,6 +476,66 @@ class BluetoothAudioTracker(private val context: Context) {
         const val SOURCE_CODEC_TYPE_LDAC = 4
         const val SOURCE_CODEC_TYPE_LC3 = 5
         const val SOURCE_CODEC_TYPE_OPUS = 6
+
+        const val VENDOR_ID_SAVITECH: Long = 0x053AL
+        const val VENDOR_ID_SONY: Long = 0x012DL
+        const val VENDOR_ID_QUALCOMM: Long = 0x00D7L
+        const val VENDOR_ID_QUALCOMM_ALT: Long = 0x000AL
+        const val VENDOR_ID_SAMSUNG: Long = 0x0075L
+
+        fun isSavitechLhdc(codecId: Long): Boolean {
+            val v1 = codecId and 0xFFFFL
+            val v2 = (codecId ushr 16) and 0xFFFFL
+            val v3 = (codecId ushr 32) and 0xFFFFL
+            return v1 == VENDOR_ID_SAVITECH || v2 == VENDOR_ID_SAVITECH || v3 == VENDOR_ID_SAVITECH
+        }
+
+        fun resolveVendorCodecName(name: String?, codecId: Long? = null): String? {
+            if (name != null) {
+                val upper = name.uppercase()
+                if ("LHDC" in upper || "LLAC" in upper || "SAVITECH" in upper) return "LHDC"
+                if ("LDAC" in upper) return "LDAC"
+                if ("APTX" in upper) {
+                    return when {
+                        "LOSSLESS" in upper -> "aptX Lossless"
+                        "ADAPTIVE" in upper -> "aptX Adaptive"
+                        "HD" in upper -> "aptX HD"
+                        else -> "aptX"
+                    }
+                }
+                if ("LC3" in upper) return "LC3"
+                if ("OPUS" in upper) return "Opus"
+                if ("AAC" in upper) return "AAC"
+                if ("SBC" in upper) return "SBC"
+                if ("SSC" in upper || "SEAMLESS" in upper || "SCALABLE" in upper) return "Samsung Seamless Codec"
+            }
+            if (codecId != null && codecId > 0L) {
+                if (isSavitechLhdc(codecId)) return "LHDC"
+                val vendor = codecId and 0xFFFFL
+                if (vendor == VENDOR_ID_SONY) return "LDAC"
+                if (vendor == VENDOR_ID_QUALCOMM || vendor == VENDOR_ID_QUALCOMM_ALT) return "aptX"
+                if (vendor == VENDOR_ID_SAMSUNG) return "Samsung Seamless Codec"
+            }
+            return null
+        }
+
+        fun resolveEffectiveCodecName(
+            rawName: String?,
+            extName: String?,
+            extId: Long?,
+            codecType: Int,
+        ): String {
+            // First check if any name or ID explicitly identifies a vendor codec
+            resolveVendorCodecName(extName, extId)?.let { return it }
+            resolveVendorCodecName(rawName, extId)?.let { return it }
+
+            // Accept clean names that are not "UNKNOWN" or "CUSTOM"
+            extName?.takeUnless { it.contains("UNKNOWN", ignoreCase = true) || it.contains("CUSTOM", ignoreCase = true) }?.let { return it }
+            rawName?.takeUnless { it.contains("UNKNOWN", ignoreCase = true) || it.contains("CUSTOM", ignoreCase = true) }?.let { return it }
+
+            // Fallback to standard codec types
+            return mapCodecType(codecType)
+        }
 
         fun mapCodecType(type: Int): String = when (type) {
             SOURCE_CODEC_TYPE_SBC -> "SBC"
