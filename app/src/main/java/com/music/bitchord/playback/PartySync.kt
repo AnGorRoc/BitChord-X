@@ -960,20 +960,36 @@ class PartySync(
      * With Play here off the player loads nothing, so without this it keeps showing whatever this
      * device had before the party — its own queue and track — while the party plays elsewhere. The
      * party's current track goes in paused: the item is set but never prepared, so nothing streams.
+     *
+     * The party's queue goes in with it — what was played before and what comes next, AutoPlay's
+     * suggestions included — because the queue screen and the next and previous buttons read this
+     * player. Without it a listener sees an empty AutoPlay and cannot skip.
      */
     private fun showPartyTrackSilenced(party: ListenTogether.State) {
         val track = party.playback.track ?: return
         val exo = player() ?: return
         val position = (ListenTogether.partyPositionMs() ?: 0L).coerceAtLeast(0L)
-        if (exo.currentMediaItem?.mediaId == track.videoId && exo.mediaItemCount == 1) {
+        if (exo.currentMediaItem?.mediaId == track.videoId) {
             // Same track: only the position has to follow the party. Nothing is prepared here, so
             // the seek only moves the paused position and never starts a stream.
             if (abs(exo.currentPosition - position) > DRIFT_LIMIT_MS) {
                 exo.seekTo(position)
             }
-            return
+        } else {
+            val queue = party.queue.items
+            val index = partyQueueIndexOf(party.queue, party.playback, track.videoId)
+            if (index >= 0) {
+                val from = (index - SILENCED_HISTORY).coerceAtLeast(0)
+                exo.setMediaItems(
+                    queue.subList(from, index + 1).map { it.toSong().toMediaItem() },
+                    index - from,
+                    position,
+                )
+            } else {
+                exo.setMediaItem(track.toSong().toMediaItem(), position)
+            }
         }
-        exo.setMediaItem(track.toSong().toMediaItem(), position)
+        reconcileQueue(party, exo)
     }
 
     private fun onEnteredParty() {
@@ -1097,6 +1113,9 @@ class PartySync(
          * actually hear.
          */
         const val DRIFT_LIMIT_MS = 1_200L
+
+        /** Tracks played before the current one that a device only following the party keeps in its queue. */
+        const val SILENCED_HISTORY = 20
 
         /** Readings in a row above the limit before a correction is made. */
         const val DRIFT_STRIKES = 2
