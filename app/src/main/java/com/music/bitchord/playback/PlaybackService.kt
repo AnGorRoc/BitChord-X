@@ -10595,13 +10595,43 @@ class PlaybackService : MediaLibraryService() {
         }
 
         override fun addListener(listener: Player.Listener) {
+            val first = listeners.isEmpty()
             listeners += listener
             super.addListener(listener)
+            if (first) wrappedPlayer.addListener(commandsWatch)
         }
 
         override fun removeListener(listener: Player.Listener) {
             listeners -= listener
             super.removeListener(listener)
+            // Only while someone listens here: this wrapper is replaced at every crossfade, and the
+            // players underneath are reused, so a watch left behind would pile up on them.
+            if (listeners.isEmpty()) wrappedPlayer.removeListener(commandsWatch)
+        }
+
+        private val reannounce = android.os.Handler(android.os.Looper.getMainLooper())
+
+        /**
+         * Which commands are open is always this wrapper's answer, never the player's underneath.
+         *
+         * While another device is the speaker the phone's player is stopped, and a stopped player
+         * announces that its song cannot be sought. That announcement goes straight through to the
+         * session, which then took seeking away from every controller: a tap on the bar was refused
+         * in the app itself ("Controller isn't allowed to call command= 5") and never reached the
+         * other device. So whenever the player underneath announces its commands while a speaker is
+         * active, this wrapper announces its own right after, once every listener has heard the first.
+         */
+        private val commandsWatch = object : Player.Listener {
+            override fun onAvailableCommandsChanged(availableCommands: Player.Commands) {
+                if (cast.active) reannounce.post { announceCommands() }
+            }
+        }
+
+        private fun announceCommands() {
+            val commands = getAvailableCommands()
+            listeners.forEach { it.onAvailableCommandsChanged(commands) }
+            val events = Player.Events(FlagSet.Builder().add(Player.EVENT_AVAILABLE_COMMANDS_CHANGED).build())
+            listeners.forEach { it.onEvents(this, events) }
         }
 
         // While a receiver is the speaker the phone's player is paused and its

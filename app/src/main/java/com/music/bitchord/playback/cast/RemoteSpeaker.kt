@@ -91,6 +91,10 @@ class Speakers(private val all: List<RemoteSpeaker>) : RemoteSpeaker {
     override fun pause() = current.pause()
     override fun seekTo(positionMs: Long) = current.seekTo(positionMs)
     override fun jumpToPrevious(): Boolean = current.jumpToPrevious()
+
+    // Left to the default (false) this answered for every speaker that it could not skip, so a
+    // device speaker's own skip ([DeviceSpeaker.next]) never ran and the phone's mirror moved instead.
+    override fun next(): Boolean = current.next()
     override fun setVolume(fraction: Float) = current.setVolume(fraction)
 
     override fun onLocalTransition(item: MediaItem?, reason: Int) = all.forEach { it.onLocalTransition(item, reason) }
