@@ -262,6 +262,9 @@ object ListenTogether {
     private val _state = MutableStateFlow(State())
     val state: StateFlow<State> = _state.asStateFlow()
 
+    /** @see playbackControl */
+    private val intents = PartyIntents<JsonObject>(SystemClock::elapsedRealtime)
+
     private val _activity = MutableStateFlow<List<PartyActivity>>(emptyList())
     /** Last 100 actions for this app session only. */
     val activity: StateFlow<List<PartyActivity>> = _activity.asStateFlow()
@@ -1121,6 +1124,7 @@ object ListenTogether {
             _listenHere.value = true
             prefs.edit().remove(KEY_CODE).remove(KEY_TOKEN).remove(KEY_ACTIVE_SERVER).apply()
             _state.value = State()
+            synchronized(intents) { intents.clear() }
             if (code != null && held != null) {
                 releaseStaleSlotOnServer(currentServer, code, held)
             }
@@ -1134,18 +1138,46 @@ object ListenTogether {
     // server enforces that independently of anything the app does, so a control
     // sent anyway comes back refused rather than quietly obeyed.
 
-    fun play(positionMs: Long? = null) = control("play") { positionMs?.let { put("positionMs", it) } }
+    fun play(positionMs: Long? = null) {
+        synchronized(intents) { intents.expectPress(true) }
+        playbackControl(controlFrame("play") { positionMs?.let { put("positionMs", it) } })
+    }
 
-    fun pause(positionMs: Long? = null) = control("pause") { positionMs?.let { put("positionMs", it) } }
+    fun pause(positionMs: Long? = null) {
+        synchronized(intents) { intents.expectPress(false) }
+        playbackControl(controlFrame("pause") { positionMs?.let { put("positionMs", it) } })
+    }
 
-    fun seek(positionMs: Long) = control("seek") { put("positionMs", positionMs) }
+    fun seek(positionMs: Long) {
+        synchronized(intents) { intents.expectSeek(positionMs, _state.value.playback.track?.videoId) }
+        playbackControl(controlFrame("seek") { put("positionMs", positionMs) })
+    }
 
-    fun next() = control("next") {}
+    fun next() = step(1, "next")
 
-    fun previous() = control("previous") {}
+    fun previous() = step(-1, "previous")
 
-    fun setTrack(track: PartyTrack, positionMs: Long = 0, isPlaying: Boolean = true) =
-        control("setTrack") {
+    /**
+     * Sent as the step it is, so the server resolves it against the queue it holds; repeated, if it
+     * ever has to be, as the track it leads to — a second "next" for one the party did apply after
+     * all would skip twice. Two quick presses lead on from where the first is heading.
+     */
+    private fun step(delta: Int, action: String) {
+        val party = _state.value
+        val target = synchronized(intents) {
+            partyStepTarget(party.queue, party.playback, intents.skippingTo, delta)
+                .also { intents.expectTrack(it?.videoId) }
+        }
+        playbackControl(controlFrame(action) {}, resendAs = target?.let { setTrackFrame(it, 0L, true) })
+    }
+
+    fun setTrack(track: PartyTrack, positionMs: Long = 0, isPlaying: Boolean = true) {
+        synchronized(intents) { intents.expectTrack(track.videoId, positionMs, isPlaying) }
+        playbackControl(setTrackFrame(track, positionMs, isPlaying))
+    }
+
+    private fun setTrackFrame(track: PartyTrack, positionMs: Long, isPlaying: Boolean) =
+        controlFrame("setTrack") {
             put("track", json.encodeToJsonElement(PartyTrack.serializer(), track))
             put("positionMs", positionMs)
             put("isPlaying", isPlaying)
@@ -1292,12 +1324,81 @@ object ListenTogether {
     }
 
     private fun control(action: String, body: kotlinx.serialization.json.JsonObjectBuilder.() -> Unit) {
-        val frame = buildJsonObject {
+        send(controlFrame(action, body))
+    }
+
+    private fun controlFrame(action: String, body: kotlinx.serialization.json.JsonObjectBuilder.() -> Unit) =
+        buildJsonObject {
             put("type", "control")
             put("action", action)
             body()
         }
+
+    // ------------------------------------------------- what was asked, held --
+
+    /**
+     * The playback controls this device sent and the party has not yet applied, and what they ask
+     * for. Kept until the echo; sent again once if it never comes, or when a dropped socket is back;
+     * shown on a device that only follows the party until then. See [PartyIntents].
+     */
+    private var recheckJob: Job? = null
+
+    /** A playback control: held until the party applies it. See [intents]. */
+    private fun playbackControl(frame: JsonObject, resendAs: JsonObject? = frame) {
+        synchronized(intents) { intents.sent(resendAs, _state.value.playback.seq) }
         send(frame)
+        recheckJob?.cancel()
+        recheckJob = scope.launch {
+            delay(com.music.bitchord.data.listentogether.account.SeekIntent.RESEND_MS + 50L)
+            sendAgain(synchronized(intents) { intents.dueAgain() })
+        }
+    }
+
+    /**
+     * Sends held controls once more. A seek in a playing party goes to where it has got to since,
+     * so a repeat does not throw everybody back to the moment of the press.
+     */
+    private fun sendAgain(controls: List<Pair<JsonObject, Long>>) {
+        if (controls.isEmpty()) return
+        val playing = shownPlaying()
+        Log.i(TAG, "party has not applied ${controls.size} control(s); sending again")
+        for ((frame, ageMs) in controls) {
+            val position = frame["positionMs"]?.jsonPrimitive?.content?.toLongOrNull()
+            val again = if (frame["action"]?.jsonPrimitive?.content == "seek" && playing && position != null) {
+                JsonObject(frame + ("positionMs" to kotlinx.serialization.json.JsonPrimitive(position + ageMs)))
+            } else {
+                frame
+            }
+            send(again)
+        }
+    }
+
+    /** The party's state arrived: let go of what it shows applied, and of what it agrees with. */
+    private fun noteApplied(playback: PartyPlayback) {
+        synchronized(intents) {
+            intents.answeredUpTo(playback.seq)
+            intents.onPlayback(playback.track?.videoId, partyPositionMs(), playback.isPlaying)
+        }
+    }
+
+    /**
+     * Whether the party is playing, as a device that only follows it should show it: what this
+     * device asked for until the party has done it, then the party's own state.
+     */
+    fun shownPlaying(): Boolean =
+        synchronized(intents) { intents.shownPlaying(_state.value.playback.isPlaying) }
+
+    /** The party's playhead as such a device should show it; see [shownPlaying]. */
+    fun shownPositionMs(): Long? = synchronized(intents) {
+        intents.shownPositionMs(partyPositionMs(), _state.value.playback.isPlaying)
+    }
+
+    /** The party's track as such a device should show it, the one a skip is heading to included. */
+    fun shownTrack(): PartyTrack? {
+        val party = _state.value
+        val id = synchronized(intents) { intents.shownTrackId(party.playback.track?.videoId) }
+        if (id == null || id == party.playback.track?.videoId) return party.playback.track
+        return party.queue.items.firstOrNull { it.videoId == id } ?: party.playback.track
     }
 
     private fun send(frame: JsonObject) {
@@ -1520,6 +1621,10 @@ object ListenTogether {
                     connection = Connection.LIVE,
                     error = null,
                 ) }
+                // Controls sent while the socket was down, or into the one that died, never
+                // reached the party. Still wanted if they are recent, so they go now.
+                sendAgain(synchronized(intents) { intents.dueAfterReconnect(party.playback.seq) })
+                noteApplied(party.playback)
                 // A reconnect forgets nothing on the server, but a first arrival has not yet said
                 // how it listens.
                 if (!_listenHere.value) announceListening()
@@ -1544,6 +1649,7 @@ object ListenTogether {
                 // sending each other backwards.
                 if (playback.seq < _state.value.playback.seq) return
                 _state.update { it.copy(playback = playback) }
+                noteApplied(playback)
                 // The queue does not ride along with the state — only its
                 // sequence number does. Disagreeing with the copy held here
                 // means a queue frame was missed, which the heartbeat therefore
@@ -1609,6 +1715,9 @@ object ListenTogether {
                 val message = frame["message"]?.jsonPrimitive?.content
                 Log.w(TAG, "party server refused a frame: $reason ${redact(message)}")
                 _state.update { it.copy(error = message) }
+                // Whatever was held is not going to happen; sending it again would only be
+                // refused again, and showing it would be a lie.
+                synchronized(intents) { intents.refused() }
                 // These two are terminal, and the reconnect loop cannot learn
                 // that on its own — it would keep dialling a party that no
                 // longer knows this device for as long as the app is open. The

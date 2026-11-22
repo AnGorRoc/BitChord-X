@@ -2164,8 +2164,10 @@ fun BitChordDesktopApp() {
     fun togglePlayPauseFromUser() {
         if (deviceTransport { if (it.overlay.value?.isPlaying == true) it.pause() else it.play() }) return
         if (remoteTransport {
-                val at = DesktopListenTogether.partyPositionMs()
-                if (DesktopListenTogether.state.value.playback.isPlaying) DesktopListenTogether.pause(at)
+                // What was last asked, not the last echo: a second press before the echo would
+                // otherwise send the first one again.
+                val at = DesktopListenTogether.shownPositionMs()
+                if (DesktopListenTogether.shownPlaying()) DesktopListenTogether.pause(at)
                 else DesktopListenTogether.play(at)
             }
         ) return
@@ -2175,7 +2177,7 @@ fun BitChordDesktopApp() {
     }
     fun playFromUser() {
         if (deviceTransport { it.play() }) return
-        if (remoteTransport { DesktopListenTogether.play(DesktopListenTogether.partyPositionMs()) }) return
+        if (remoteTransport { DesktopListenTogether.play(DesktopListenTogether.shownPositionMs()) }) return
         if (DesktopListenTogether.state.value.controlsLocked) {
             if (!playbackEngine.state.value.isPlaying) partySync.handleLockedPlayPause()
             return
@@ -2185,7 +2187,7 @@ fun BitChordDesktopApp() {
     }
     fun pauseFromUser() {
         if (deviceTransport { it.pause() }) return
-        if (remoteTransport { DesktopListenTogether.pause(DesktopListenTogether.partyPositionMs()) }) return
+        if (remoteTransport { DesktopListenTogether.pause(DesktopListenTogether.shownPositionMs()) }) return
         if (DesktopListenTogether.state.value.controlsLocked) {
             if (playbackEngine.state.value.isPlaying) partySync.handleLockedPlayPause()
             return

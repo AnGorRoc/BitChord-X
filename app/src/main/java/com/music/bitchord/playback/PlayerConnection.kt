@@ -489,19 +489,21 @@ fun rememberPlayerState(controller: MediaController?): State<PlayerState> {
                 while (active) {
                     // With Play here off the party plays elsewhere, and this player is only loaded and paused:
                     // the controller does not move its position for that, so the party's position is shown.
-                    val party = ListenTogether.state.value
                     val followingParty = followingParty()
-                    val partyPosition = if (followingParty) ListenTogether.partyPositionMs() else null
+                    // What this device asked of the party until the party has done it, so a press
+                    // is not drawn back to the state before it while the echo is on its way.
+                    val partyPosition = if (followingParty) ListenTogether.shownPositionMs() else null
                     // The play button follows the party's playing state, not this paused player.
-                    if (followingParty && state.isPlaying != party.playback.isPlaying) {
-                        state = state.copy(isPlaying = party.playback.isPlaying)
+                    val partyPlaying = ListenTogether.shownPlaying()
+                    if (followingParty && state.isPlaying != partyPlaying) {
+                        state = state.copy(isPlaying = partyPlaying)
                     }
                     position.report(
                         partyPosition ?: controller.currentPosition.coerceAtLeast(0L),
                         isPlaying = controller.isPlaying,
                     )
                     // An unprepared item has no duration of its own, so the party's track length is used there.
-                    val duration = (if (followingParty) party.playback.track?.durationMs else null)
+                    val duration = (if (followingParty) ListenTogether.shownTrack()?.durationMs else null)
                         ?: controller.duration.coerceAtLeast(0L)
                     if (duration != state.durationMs) state = state.copy(durationMs = duration)
                     delay(500)

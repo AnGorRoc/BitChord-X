@@ -404,7 +404,9 @@ class PartySync(
         val party = ListenTogether.state.value
         if (!party.inParty || ListenTogether.listenHere.value) return false
         if (party.controlsLocked) return true
-        val position = ListenTogether.partyPositionMs() ?: party.playback.positionMs
+        // Where the party is heading, not where its last echo left it: two quick presses of
+        // "forward" both read the echo before either had come back, and moved it only once.
+        val position = ListenTogether.shownPositionMs() ?: party.playback.positionMs
         when (action) {
             PartyTransport.Play -> ListenTogether.play(position)
             PartyTransport.Pause -> ListenTogether.pause(position)
@@ -966,9 +968,11 @@ class PartySync(
      * player. Without it a listener sees an empty AutoPlay and cannot skip.
      */
     private fun showPartyTrackSilenced(party: ListenTogether.State) {
-        val track = party.playback.track ?: return
+        // What this device asked for until the party has done it: the party's own state lags the
+        // press by a round trip, and following it put the song and the bar back where they were.
+        val track = ListenTogether.shownTrack() ?: return
         val exo = player() ?: return
-        val position = (ListenTogether.partyPositionMs() ?: 0L).coerceAtLeast(0L)
+        val position = (ListenTogether.shownPositionMs() ?: 0L).coerceAtLeast(0L)
         if (exo.currentMediaItem?.mediaId == track.videoId) {
             // Same track: only the position has to follow the party. Nothing is prepared here, so
             // the seek only moves the paused position and never starts a stream.
