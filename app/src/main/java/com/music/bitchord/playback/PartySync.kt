@@ -503,6 +503,7 @@ class PartySync(
                 silencedForParty = true
                 player()?.let { if (it.playWhenReady) it.pause() }
             }
+            showPartyTrackSilenced(party)
             return
         }
         silencedForParty = false
@@ -928,6 +929,18 @@ class PartySync(
             }
         }
         publish()
+    }
+
+    /**
+     * With Play here off the player loads nothing, so without this it keeps showing whatever this
+     * device had before the party — its own queue and track — while the party plays elsewhere. The
+     * party's current track goes in paused: the item is set but never prepared, so nothing streams.
+     */
+    private fun showPartyTrackSilenced(party: ListenTogether.State) {
+        val track = party.playback.track ?: return
+        val exo = player() ?: return
+        if (exo.currentMediaItem?.mediaId == track.videoId && exo.mediaItemCount == 1) return
+        exo.setMediaItem(track.toSong().toMediaItem())
     }
 
     private fun onEnteredParty() {
