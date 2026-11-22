@@ -116,6 +116,11 @@ fun ThinSlider(
     vibrant: Boolean = false,
 ) {
     val haptics = rememberHaptics()
+    // The gesture loop below is keyed on Unit, so it lives as long as the slider does. Read the
+    // callbacks through state, or a drag keeps calling the lambdas of the first composition (a
+    // volume slider would then keep sending to the device it was first shown for).
+    val currentOnValueChange by rememberUpdatedState(onValueChange)
+    val currentOnValueChangeFinished by rememberUpdatedState(onValueChangeFinished)
     var dragging by remember { mutableStateOf(false) }
     val infiniteTransition = rememberInfiniteTransition(label = "bestPartPulse")
     val bestPartPulse by infiniteTransition.animateFloat(
@@ -189,7 +194,7 @@ fun ThinSlider(
                     dragging = true
                     val initialVal = (down.position.x / size.width).coerceIn(0f, 1f)
                     haptics.play(Haptic.Tick)
-                    onValueChange(initialVal)
+                    currentOnValueChange(initialVal)
 
                     var lastHapticFraction = initialVal
                     while (true) {
@@ -205,14 +210,14 @@ fun ThinSlider(
                                 haptics.play(Haptic.Tick)
                                 lastHapticFraction = newVal
                             }
-                            onValueChange(newVal)
+                            currentOnValueChange(newVal)
                             pointer.consume()
                         }
                     }
 
                     dragging = false
                     haptics.play(Haptic.Select)
-                    onValueChangeFinished?.invoke()
+                    currentOnValueChangeFinished?.invoke()
                 }
             },
         contentAlignment = Alignment.Center,
