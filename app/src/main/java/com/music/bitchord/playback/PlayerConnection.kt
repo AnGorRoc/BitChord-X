@@ -486,8 +486,18 @@ fun rememberPlayerState(controller: MediaController?): State<PlayerState> {
         snapshotFlow { state.isPlaying || (state.song != null && state.durationMs <= 0L) }
             .collectLatest { active ->
                 while (active) {
-                    position.report(controller.currentPosition.coerceAtLeast(0L), isPlaying = controller.isPlaying)
-                    val duration = controller.duration.coerceAtLeast(0L)
+                    // With Play here off the party plays elsewhere, and this player is only loaded and paused:
+                    // the controller does not move its position for that, so the party's position is shown.
+                    val party = ListenTogether.state.value
+                    val followingParty = party.inParty && !ListenTogether.listenHere.value
+                    val partyPosition = if (followingParty) ListenTogether.partyPositionMs() else null
+                    position.report(
+                        partyPosition ?: controller.currentPosition.coerceAtLeast(0L),
+                        isPlaying = controller.isPlaying,
+                    )
+                    // An unprepared item has no duration of its own, so the party's track length is used there.
+                    val duration = (if (followingParty) party.playback.track?.durationMs else null)
+                        ?: controller.duration.coerceAtLeast(0L)
                     if (duration != state.durationMs) state = state.copy(durationMs = duration)
                     delay(500)
                 }

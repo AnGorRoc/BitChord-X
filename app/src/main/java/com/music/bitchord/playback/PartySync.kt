@@ -939,8 +939,16 @@ class PartySync(
     private fun showPartyTrackSilenced(party: ListenTogether.State) {
         val track = party.playback.track ?: return
         val exo = player() ?: return
-        if (exo.currentMediaItem?.mediaId == track.videoId && exo.mediaItemCount == 1) return
-        exo.setMediaItem(track.toSong().toMediaItem())
+        val position = (ListenTogether.partyPositionMs() ?: 0L).coerceAtLeast(0L)
+        if (exo.currentMediaItem?.mediaId == track.videoId && exo.mediaItemCount == 1) {
+            // Same track: only the position has to follow the party. Nothing is prepared here, so
+            // the seek only moves the paused position and never starts a stream.
+            if (abs(exo.currentPosition - position) > DRIFT_LIMIT_MS) {
+                exo.seekTo(position)
+            }
+            return
+        }
+        exo.setMediaItem(track.toSong().toMediaItem(), position)
     }
 
     private fun onEnteredParty() {
