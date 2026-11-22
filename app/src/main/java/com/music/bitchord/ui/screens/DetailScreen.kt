@@ -1247,21 +1247,22 @@ private fun ReleaseHeader(
             ) {
                 if (page.browseId.startsWith("local:") || page.browseId.startsWith("radio:")) {
                     // Already on this device or dynamic radio — so there is no library
-                    // to add it to. Apple Music's own pair for that case: Play and Shuffle, side by side.
+                    // to add it to. The leading pair is the same as on every other playlist,
+                    // Shuffle then Play, so the page reads the same wherever it comes from; only
+                    // what follows differs.
                     if (songs.isNotEmpty()) {
+                        CircleIconButton(
+                            icon = BitChordIcons.Shuffle,
+                            contentDescription = stringResource(R.string.shuffle),
+                            onClick = onShuffle,
+                            haptic = Haptic.Resume,
+                            size = RELEASE_SIDE_BUTTON,
+                        )
                         ActionPill(
                             icon = BitChordIcons.Play,
                             label = stringResource(R.string.play),
                             onClick = onPlay,
                             filled = true,
-                            size = RELEASE_SIDE_BUTTON,
-                            modifier = Modifier.weight(1f),
-                        )
-                        ActionPill(
-                            icon = BitChordIcons.Shuffle,
-                            label = stringResource(R.string.shuffle),
-                            onClick = onShuffle,
-                            filled = false,
                             size = RELEASE_SIDE_BUTTON,
                             modifier = Modifier.weight(1f),
                         )
