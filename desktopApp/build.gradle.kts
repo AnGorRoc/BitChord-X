@@ -340,11 +340,6 @@ tasks.named<ProcessResources>("processResources") {
         include("*.dll")
         into("native")
     }
-    // The Automix models. The Android app downloads them from a release; the desktop still bundles them.
-    from(rootProject.file("automix-models")) {
-        include("*.onnx")
-        into("models")
-    }
 }
 
 // Kotlin 2.4 no longer contributes this JVM target's compiler output to Gradle's plain `jar`

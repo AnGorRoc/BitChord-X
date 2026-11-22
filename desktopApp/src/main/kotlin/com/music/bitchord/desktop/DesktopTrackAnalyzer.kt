@@ -60,7 +60,7 @@ internal class DesktopTrackAnalyzer(
 
     private val beats by lazy {
         BeatTracker(
-            modelPath = { DesktopAnalysisRuntime.modelPath(BeatTracker.MODEL_ASSET) },
+            modelPath = { DesktopAutomixModels.pathOf(BeatTracker.MODEL_ASSET) },
             inferenceThreads = { performance().inferenceThreads },
         )
     }

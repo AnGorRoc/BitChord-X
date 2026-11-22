@@ -69,9 +69,6 @@ internal object DesktopAnalysisRuntime {
         System.load(unpack("/native/$fileName", fileName).toString())
     }
 
-    /** The absolute path of a model, unpacked on first use. */
-    fun modelPath(asset: String): String = unpack("/models/$asset", asset).toString()
-
     /**
      * Copies a classpath resource to [name] under [home], skipping the copy when the file already
      * there is the same size and no older than the resource.

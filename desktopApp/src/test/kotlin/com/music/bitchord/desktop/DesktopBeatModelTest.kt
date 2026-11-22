@@ -17,8 +17,12 @@ class DesktopBeatModelTest {
             println("analysis library unavailable — skipping")
             return
         }
-        val model = File(DesktopAnalysisRuntime.modelPath(BeatTracker.MODEL_ASSET))
-        assertTrue(model.isFile && model.length() > 0, "the model was not unpacked")
+        if (!DesktopAutomixModels.downloadBlocking()) {
+            println("Automix models could not be downloaded — skipping")
+            return
+        }
+        val model = File(DesktopAutomixModels.pathOf(BeatTracker.MODEL_ASSET))
+        assertTrue(model.isFile && model.length() > 0, "the model was not downloaded")
 
         val outcome = runCatching {
             val options = OrtSession.SessionOptions().apply {

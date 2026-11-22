@@ -19,9 +19,13 @@ class DesktopBeatStressTest {
             println("analysis library unavailable — skipping")
             return
         }
+        if (!DesktopAutomixModels.downloadBlocking()) {
+            println("Automix models could not be downloaded — skipping")
+            return
+        }
 
         val tracker = BeatTracker(
-            modelPath = { DesktopAnalysisRuntime.modelPath(BeatTracker.MODEL_ASSET) },
+            modelPath = { DesktopAutomixModels.pathOf(BeatTracker.MODEL_ASSET) },
             inferenceThreads = { AutomixPerformanceMode.BALANCED.inferenceThreads },
         )
         // 153 seconds: the length of the track the application crashed on.
@@ -38,7 +42,7 @@ class DesktopBeatStressTest {
         if (!DesktopAnalysisRuntime.available) return
 
         val tracker = BeatTracker(
-            modelPath = { DesktopAnalysisRuntime.modelPath(BeatTracker.MODEL_ASSET) },
+            modelPath = { DesktopAutomixModels.pathOf(BeatTracker.MODEL_ASSET) },
             inferenceThreads = { AutomixPerformanceMode.BALANCED.inferenceThreads },
         )
         // Back-to-back, the way the queue analyses a track and then the next.

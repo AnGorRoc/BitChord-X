@@ -2297,6 +2297,10 @@ fun BitChordDesktopApp() {
     // the next song at a different moment and be dragged back by a correcting seek. The transition a
     // party shares is the plain one. The settings themselves are left alone and come back after.
     val inParty = partyState.inParty
+    // The Automix models are downloaded on first use, both when it is switched on and at launch.
+    LaunchedEffect(automix) {
+        if (automix) DesktopAutomixModels.ensureDownloaded()
+    }
     LaunchedEffect(automix, automixOnSkip, automixPhraseBars, crossfadeSeconds, inParty, audioQuality, selectedSong?.videoId, queue, liveQueue.index, shuffle, repeatMode) {
         playbackEngine.setAutomixEnabled(automix && !inParty)
         playbackEngine.setAutomixPhraseBars(if (automix && !inParty) automixPhraseBars else 0)

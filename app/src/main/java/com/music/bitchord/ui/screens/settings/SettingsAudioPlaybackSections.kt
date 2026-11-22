@@ -44,6 +44,7 @@ import com.music.bitchord.data.settings.AppSettings
 import com.music.bitchord.data.settings.OutputPcmMode
 import com.music.bitchord.data.settings.SongSwipeAction
 import com.music.bitchord.data.sources.DeviceCodecs
+import com.music.bitchord.playback.smart.AutomixModelState
 import com.music.bitchord.playback.smart.AutomixModels
 import com.music.bitchord.playback.AudioOutputStatus
 import com.music.bitchord.playback.audio.bitperfect.BitPerfectOutput
@@ -400,11 +401,11 @@ internal fun SettingsPlaybackSection(
                     title = automixTitle,
                     subtitle = when {
                         !smartFade -> stringResource(R.string.automix_disabled_subtitle)
-                        automixModels is AutomixModels.State.Downloading -> {
-                            val percent = ((automixModels as AutomixModels.State.Downloading).fraction * 100).roundToInt()
+                        automixModels is AutomixModelState.Downloading -> {
+                            val percent = ((automixModels as AutomixModelState.Downloading).fraction * 100).roundToInt()
                             stringResource(R.string.automix_model_downloading, percent)
                         }
-                        automixModels == AutomixModels.State.Failed ->
+                        automixModels == AutomixModelState.Failed ->
                             stringResource(R.string.automix_model_failed)
                         else -> stringResource(R.string.automix_enabled_subtitle)
                     },
