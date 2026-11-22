@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"io"
 	"log"
 	"net/http"
 	"time"
@@ -192,7 +193,12 @@ func handleAccountSocket(w http.ResponseWriter, r *http.Request) {
 	for {
 		var frame map[string]interface{}
 		if err := conn.ReadJSON(&frame); err != nil {
-			if !websocket.IsCloseError(err, websocket.CloseNormalClosure, websocket.CloseGoingAway) {
+			if !websocket.IsCloseError(err,
+				websocket.CloseNormalClosure,
+				websocket.CloseGoingAway,
+				websocket.CloseNoStatusReceived,
+				websocket.CloseAbnormalClosure,
+			) && !errors.Is(err, io.EOF) && !errors.Is(err, io.ErrUnexpectedEOF) {
 				log.Printf("account socket of %s ended: %v", d.DeviceID, err)
 			}
 			return
