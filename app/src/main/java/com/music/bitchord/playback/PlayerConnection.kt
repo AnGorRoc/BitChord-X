@@ -396,7 +396,8 @@ fun rememberPlayerState(controller: MediaController?): State<PlayerState> {
             }
             // Synced here too, so seeking while paused or buffering still moves
             // the scrubber (the poll loop only runs on play).
-            val playing = player.isPlaying
+            // While following a party the local player stays paused, so the party's state is what shows.
+            val playing = if (followingParty()) ListenTogether.state.value.playback.isPlaying else player.isPlaying
             position.report(player.currentPosition.coerceAtLeast(0L), isPlaying = playing)
             state = state.copy(
                 song = item?.toSong(),
@@ -483,14 +484,18 @@ fun rememberPlayerState(controller: MediaController?): State<PlayerState> {
     // in composition, so asking it does not read the player here.
     LaunchedEffect(controller, foreground) {
         if (controller == null || !foreground) return@LaunchedEffect
-        snapshotFlow { state.isPlaying || (state.song != null && state.durationMs <= 0L) }
+        snapshotFlow { state.isPlaying || (state.song != null && state.durationMs <= 0L) || (state.song != null && followingParty()) }
             .collectLatest { active ->
                 while (active) {
                     // With Play here off the party plays elsewhere, and this player is only loaded and paused:
                     // the controller does not move its position for that, so the party's position is shown.
                     val party = ListenTogether.state.value
-                    val followingParty = party.inParty && !ListenTogether.listenHere.value
+                    val followingParty = followingParty()
                     val partyPosition = if (followingParty) ListenTogether.partyPositionMs() else null
+                    // The play button follows the party's playing state, not this paused player.
+                    if (followingParty && state.isPlaying != party.playback.isPlaying) {
+                        state = state.copy(isPlaying = party.playback.isPlaying)
+                    }
                     position.report(
                         partyPosition ?: controller.currentPosition.coerceAtLeast(0L),
                         isPlaying = controller.isPlaying,
@@ -505,6 +510,10 @@ fun rememberPlayerState(controller: MediaController?): State<PlayerState> {
     }
     return stateHolder
 }
+
+/** In a party whose sound comes from another of the person's devices: this player only shows it. */
+private fun followingParty(): Boolean =
+    ListenTogether.state.value.inParty && !ListenTogether.listenHere.value
 
 /**
  * The inverse of [toMediaItem], as far as a MediaItem can carry a [Song].
