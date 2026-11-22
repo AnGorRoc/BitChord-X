@@ -36,6 +36,7 @@ import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -44,6 +45,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.positionChanged
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.music.bitchord.data.settings.MixBlend
 import com.music.bitchord.ui.haptics.Haptic
 import com.music.bitchord.ui.haptics.rememberHaptics
@@ -96,6 +98,11 @@ fun ThinSlider(
      * unplayed bar so the mix is visible before it arrives.
      */
     transitionWindow: ClosedFloatingPointRange<Float>? = null,
+    /**
+     * Where the track's most replayed / best part begins, as a fraction (0..1) of its duration.
+     * Rendered as a subtle, feathered glowing marker that breathes with a slow, gentle pulse.
+     */
+    bestPartFraction: Float? = null,
     idleHeight: Dp = 7.dp,
     activeHeight: Dp = 12.dp,
     activeColor: Color = Color.White.copy(alpha = 0.92f),
@@ -105,6 +112,17 @@ fun ThinSlider(
 ) {
     val haptics = rememberHaptics()
     var dragging by remember { mutableStateOf(false) }
+    val infiniteTransition = rememberInfiniteTransition(label = "bestPartPulse")
+    val bestPartPulse by infiniteTransition.animateFloat(
+        initialValue = 0.30f,
+        targetValue = 0.85f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 2600, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse,
+        ),
+        label = "bestPartPulseAlpha",
+    )
+    val reduceAnimation by PlayerSettings.reduceAnimation.collectAsStateWithLifecycle()
     val height by animateDpAsState(
         targetValue = if (dragging) activeHeight else idleHeight,
         animationSpec = spring(
@@ -237,6 +255,51 @@ fun ThinSlider(
                         ),
                         size = size,
                         cornerRadius = radius,
+                    )
+                }
+            }
+            // Best Part highlight: subtle feathered glowing mark with a slow, calm breathing pulse
+            // showing where the track's peak or chorus is located along the progress bar.
+            bestPartFraction?.let { fraction ->
+                val pulseAlpha = if (reduceAnimation) 0.55f else bestPartPulse
+                val centerX = size.width * fraction.coerceIn(0f, 1f)
+                val markWidth = BEST_PART_MARK_WIDTH.toPx()
+                val halfWidth = markWidth / 2f
+                val from = (centerX - halfWidth).coerceAtLeast(0f)
+                val to = (centerX + halfWidth).coerceAtMost(size.width)
+                val span = to - from
+                if (span > 0f) {
+                    val fullAlpha = pulseAlpha * BEST_PART_PEAK_ALPHA
+                    val c = Color.White
+                    // Symmetrical feathered gradient: smooth diffusion on both ends
+                    val stops = arrayOf(
+                        0.0f to Color.Transparent,
+                        0.18f to c.copy(alpha = fullAlpha * 0.12f),
+                        0.35f to c.copy(alpha = fullAlpha * 0.45f),
+                        0.46f to c.copy(alpha = fullAlpha * 0.82f),
+                        0.50f to c.copy(alpha = fullAlpha),
+                        0.54f to c.copy(alpha = fullAlpha * 0.82f),
+                        0.65f to c.copy(alpha = fullAlpha * 0.45f),
+                        0.82f to c.copy(alpha = fullAlpha * 0.12f),
+                        1.0f to Color.Transparent,
+                    )
+                    drawRoundRect(
+                        brush = Brush.horizontalGradient(
+                            colorStops = stops,
+                            startX = from,
+                            endX = to,
+                        ),
+                        size = size,
+                        cornerRadius = radius,
+                    )
+                    // Delicate central tick anchored inside the glowing halo
+                    val coreWidth = 2.dp.toPx()
+                    val coreLeft = (centerX - coreWidth / 2f).coerceIn(0f, (size.width - coreWidth).coerceAtLeast(0f))
+                    drawRoundRect(
+                        color = c.copy(alpha = fullAlpha * 0.88f),
+                        topLeft = Offset(coreLeft, 0f),
+                        size = Size(coreWidth, size.height),
+                        cornerRadius = CornerRadius(coreWidth / 2f),
                     )
                 }
             }
@@ -522,3 +585,9 @@ private fun MixSheen(height: Dp, color: Color) {
         )
     }
 }
+
+/** Width of the diffuse halo for the best part highlight on the seekbar. */
+private val BEST_PART_MARK_WIDTH = 22.dp
+
+/** Peak opacity of the best part highlight, keeping it subtle and non-intrusive. */
+private const val BEST_PART_PEAK_ALPHA = 0.72f

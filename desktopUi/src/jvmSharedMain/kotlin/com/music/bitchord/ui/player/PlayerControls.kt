@@ -249,6 +249,7 @@ internal fun PlayerScrubber(
      * desktop turns it off and runs a slow, gentle pulse instead, which reads calmer than a strobe.
      */
     slowMixPulse: Boolean = false,
+    bestPartFraction: Float? = null,
     onScrub: (Float) -> Unit,
     onScrubFinished: () -> Unit,
     centerLabel: @Composable BoxScope.() -> Unit = {},
@@ -276,6 +277,7 @@ internal fun PlayerScrubber(
             mixing = mixing,
             mixPulse = mixPulse,
             transitionWindow = transitionWindow,
+            bestPartFraction = bestPartFraction,
         )
         Box(
             modifier = Modifier

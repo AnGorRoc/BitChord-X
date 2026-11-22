@@ -20,6 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
@@ -646,6 +647,22 @@ internal fun IsolatedPlayerScrubber(
         LiveScrubber()
         return
     }
+    val showBestPart by PlayerSettings.showBestPart.collectAsStateWithLifecycle()
+    val bestPartMs by produceState<Long?>(null, song.videoId, showBestPart) {
+        value = if (showBestPart) {
+            runCatching { PlayerPlatform.host.bestPartMs(song) }.getOrNull()
+        } else {
+            null
+        }
+    }
+    val bestPartFraction = remember(bestPartMs, durationMs) {
+        val ms = bestPartMs
+        if (ms != null && durationMs > 0L) {
+            (ms.toFloat() / durationMs.toFloat()).coerceIn(0f, 1f)
+        } else {
+            null
+        }
+    }
     val versionAligning by PlayerSettings.versionAlignmentInProgress.collectAsStateWithLifecycle()
     val transitionWindow by PlayerSettings.smartTransitionWindow.collectAsStateWithLifecycle()
     PlayerScrubber(
@@ -660,6 +677,7 @@ internal fun IsolatedPlayerScrubber(
         transitionWindow = transitionWindow
             ?.takeIf { !scrubbing && it.end > it.start }
             ?.let { it.start..it.end },
+        bestPartFraction = bestPartFraction,
         onScrub = onScrub,
         onScrubFinished = onScrubFinished,
     ) {

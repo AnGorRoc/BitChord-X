@@ -1664,15 +1664,6 @@ fun NowPlayingScreen(
                             // they leave it along with the rest of the player.
                             SleeveNerdStats(
                                 song = song,
-                                bestPart = {
-                                    BestPartPill(
-                                        song = song,
-                                        position = position,
-                                        hazeState = playerHaze,
-                                        onSeek = onSeek,
-                                        overlayOpen = { overlayOpen.value },
-                                    )
-                                },
                                 modifier = Modifier
                                     .align(Alignment.BottomCenter)
                                     .padding(horizontal = 10.dp, vertical = 8.dp)
@@ -3071,15 +3062,6 @@ fun NowPlayingScreen(
                             WhileShown({ !collapsePastHalf }) {
                                 SleeveNerdStats(
                                     song = song,
-                                    bestPart = {
-                                        BestPartPill(
-                                            song = song,
-                                            position = position,
-                                            hazeState = playerHaze,
-                                            onSeek = onSeek,
-                                            overlayOpen = { overlayOpen.value },
-                                        )
-                                    },
                                     modifier = Modifier
                                         .align(Alignment.BottomCenter)
                                         .padding(horizontal = 10.dp, vertical = 8.dp)

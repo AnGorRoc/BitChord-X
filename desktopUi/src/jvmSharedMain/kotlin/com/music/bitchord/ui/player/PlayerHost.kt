@@ -274,7 +274,7 @@ interface PlayerSettingsSource {
     val reduceAnimation: StateFlow<Boolean>
     val reduceDynamicBlur: StateFlow<Boolean>
     val showNerdStats: StateFlow<Boolean>
-    /** Whether the "Best Part" button is offered on the artwork. */
+    /** Whether the "Best Part" highlight is shown on the progress bar. */
     val showBestPart: StateFlow<Boolean>
     /** Whether the output / Listen Together pill sits under the transport. */
     val showListenTogetherButton: StateFlow<Boolean>

@@ -189,8 +189,8 @@
     <string name="skip_silence_float_subtitle">No disponible con salida float de 32 bits</string>
     <string name="equalizer">Ecualizador</string>
     <string name="equalizer_subtitle">El panel de audio del sistema</string>
-    <string name="show_best_part">Botón Mejor Parte</string>
-    <string name="show_best_part_subtitle">Un botón en la carátula que salta a la parte más reproducida de la canción</string>
+    <string name="show_best_part">Marca de Mejor Parte</string>
+    <string name="show_best_part_subtitle">Una marca sutil en la barra de progreso indicando la mejor parte de la canción</string>
     <string name="show_nerd_stats">Mostrar datos técnicos</string>
     <string name="show_nerd_stats_subtitle">Códec, tasa de bits y frecuencia de muestreo en el reproductor</string>
     <string name="theme">Tema</string>

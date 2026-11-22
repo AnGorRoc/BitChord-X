@@ -723,7 +723,7 @@ object AppSettings {
         effectivePrioritizeSpotifyCanvas.value = prioritizeSpotifyCanvas.value && !disableSpotifyCanvas.value
     }
 
-    /** "Best Part" pill on the player's artwork, and the Replay Year Best Parts slide. */
+    /** "Best Part" highlight on the player's progress bar, and the Replay Year Best Parts slide. */
     val showBestPart = MutableStateFlow(true)
 
     /** Whether the shared lyrics card/video includes the BitChord logo. */

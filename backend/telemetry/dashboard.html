@@ -782,7 +782,7 @@
         </div>
       </div>
       <div class="modal-foot">
-        <button class="btn" id="mCopyAI">Copiar para IA (MD)</button>
+        <button class="btn" id="mCopyAI">Copiar</button>
         <button class="btn" id="mDelete" style="color:var(--red)">Eliminar</button>
         <button class="btn primary" id="mResolve">Marcar resuelto</button>
       </div>
@@ -882,6 +882,86 @@
       el.classList.add('show');
       clearTimeout(el._t);
       el._t = setTimeout(() => el.classList.remove('show'), 4000);
+    }
+
+    async function copyText(text) {
+      if (!text) return false;
+      if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        try {
+          await navigator.clipboard.writeText(text);
+          return true;
+        } catch (_) {}
+      }
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.top = '-9999px';
+        ta.style.left = '-9999px';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        ta.setSelectionRange(0, text.length);
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        if (ok) return true;
+      } catch (_) {}
+      return false;
+    }
+
+    function formatErrorMarkdown(r) {
+      if (!r) return '';
+      const status = r.resolved ? 'RESOLVED' : 'OPEN';
+      let created = '';
+      try {
+        created = r.createdAt ? new Date(r.createdAt).toISOString() : '';
+      } catch (_) {
+        created = String(r.createdAt || '');
+      }
+      let md = `# Error #${r.id} [${status}] ${r.errorType || ''}\n`;
+      md += `- Created: ${created}\n`;
+      md += `- Version: ${r.appVersion || '-'} | Platform: ${r.platform || '-'}\n`;
+      md += `- Device: ${r.deviceModel || '-'} | OS: ${r.osVersion || '-'} | ABI: ${r.abi || '-'}\n`;
+      md += `- Install ID: ${r.installId || '-'}\n\n`;
+      md += `## Message\n\`\`\`\n${r.errorMessage || ''}\n\`\`\`\n`;
+      if (r.stacktrace) {
+        md += `\n## Stacktrace\n\`\`\`\n${r.stacktrace}\n\`\`\`\n`;
+      }
+      return md;
+    }
+
+    function formatTicketMarkdown(d) {
+      if (!d) return '';
+      let md = `# ${d.id || ''} — ${d.title || ''}\n\n`;
+      md += `- kind: ${d.kind || ''} · status: ${d.status || ''} · priority: ${d.priority ?? 0}\n`;
+      md += `- app: ${d.platform || ''} ${d.appVersion || ''} · locale: ${d.locale || ''}\n`;
+      const dg = d.diagnostics || {};
+      if (dg.deviceModel || dg.osVersion) {
+        md += `- device: ${dg.deviceModel || ''} · OS ${dg.osVersion || ''} · ${dg.abi || ''} · screen ${dg.screen || ''}\n`;
+      }
+      if (d.tags && d.tags.length > 0) {
+        md += `- tags: ${d.tags.join(', ')}\n`;
+      }
+      md += '\n## Thread\n\n';
+      for (const m of d.thread || []) {
+        let when = '';
+        if (m.createdAtMs) {
+          when = new Date(m.createdAtMs).toISOString().replace('T', ' ').substring(0, 16);
+        }
+        md += `**${m.author || ''}** (${m.kind || ''}, ${when})\n\n${m.body || ''}\n\n`;
+        for (const a of m.attachments || []) {
+          md += `- attachment ${a.id}: ${a.mime || ''} ${a.width || 0}x${a.height || 0}, ${a.bytes || 0} bytes\n`;
+        }
+      }
+      if (d.errors && d.errors.length > 0) {
+        md += '## Error reports from the same install\n\n';
+        for (const e of d.errors) {
+          md += `- #${e.id} ${e.errorType || ''} (${e.appVersion || ''}): ${e.errorMessage || e.message || ''}\n`;
+        }
+      }
+      return md;
     }
 
     function pageFromPath() {
@@ -1380,11 +1460,16 @@
     $('errModal').addEventListener('click', (e) => { if (e.target === $('errModal')) closeModal(); });
     $('mCopyAI').addEventListener('click', async () => {
       if (!state.selectedError) return;
-      const res = await fetch(`/api/admin/errors/${state.selectedError.id}?format=md`);
-      if (res.ok) {
-        await navigator.clipboard.writeText(await res.text());
-        showToast('Error copiado en Markdown para IA');
+      let text = formatErrorMarkdown(state.selectedError);
+      if (!text) {
+        try {
+          const res = await fetch(`/api/admin/errors/${state.selectedError.id}?format=md`);
+          if (res.ok) text = await res.text();
+        } catch (_) {}
       }
+      const ok = await copyText(text);
+      if (ok) showToast('Copiado al portapapeles');
+      else showToast('No se pudo copiar');
     });
     $('mResolve').addEventListener('click', async () => {
       if (!state.selectedError) return;
@@ -1402,8 +1487,9 @@
       loadCurrentPage();
     });
     $('copyBriefBtn').addEventListener('click', async () => {
-      await navigator.clipboard.writeText($('aiBriefPreview').textContent);
-      showToast('Resumen Markdown copiado al portapapeles');
+      const ok = await copyText($('aiBriefPreview').textContent);
+      if (ok) showToast('Copiado al portapapeles');
+      else showToast('No se pudo copiar');
     });
 
     function closeResetModal() {
@@ -1708,7 +1794,7 @@
             <input type="text" id="fbTags" value="${esc((d.tags || []).join(', '))}" placeholder="etiquetas, separadas por coma" aria-label="Etiquetas" />
             <span class="grow"></span>
             <button class="btn sm" id="fbUnread" type="button">Marcar no leído</button>
-            <button class="btn sm" id="fbCopyMd" type="button">Copiar para IA</button>
+            <button class="btn sm" id="fbCopyMd" type="button">Copiar</button>
             <button class="btn sm" id="fbDup" type="button">Duplicado…</button>
             <button class="btn sm" id="fbBlock" type="button" style="color:var(--amber)">${rep.blocked ? 'Desbloquear' : 'Bloquear'}</button>
             <button class="btn sm" id="fbDelete" type="button" style="color:var(--red)">Eliminar</button>
@@ -1736,8 +1822,16 @@
       $('fbUnread').addEventListener('click', () => patch({ unreadAdmin: true }, 'Marcado como no leído'));
       $('fbMeta').addEventListener('toggle', (e) => { fb.metaOpen = e.target.open; });
       $('fbCopyMd').addEventListener('click', async () => {
-        const res = await fetch(fbTicketUrl(d.id) + '?format=md');
-        if (res.ok) { await navigator.clipboard.writeText(await res.text()); showToast('Ticket copiado en Markdown'); }
+        let text = formatTicketMarkdown(d);
+        if (!text) {
+          try {
+            const res = await fetch(fbTicketUrl(d.id) + '?format=md');
+            if (res.ok) text = await res.text();
+          } catch (_) {}
+        }
+        const ok = await copyText(text);
+        if (ok) showToast('Copiado al portapapeles');
+        else showToast('No se pudo copiar');
       });
       $('fbDup').addEventListener('click', () => {
         const orig = (prompt('ID del ticket original (fb_…). Vacío para quitar la marca:', d.duplicateOf || '') ?? null);
