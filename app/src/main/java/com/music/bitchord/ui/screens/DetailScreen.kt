@@ -1013,10 +1013,16 @@ private fun ReleaseHeader(
     // own long-press "Open artist" already reads from.
     val artist = songs.firstOrNull()
     val isOfflineMusicPage = page.browseId == OFFLINE_MUSIC_BROWSE_ID
-    val top4Artworks = remember(page.songs, isOfflineMusicPage) {
+    // A playlist kept on this device, an imported one included, has no cover of its own: it gets
+    // the same collage as the generated ones, and repeats what it has when it has fewer than four.
+    val isLocalStorePlaylist = remember(page.browseId) {
+        com.music.bitchord.data.spotify.LocalPlaylistStore.getPlaylist(page.browseId) != null
+    }
+    val padsCollage = isOfflineMusicPage || isLocalStorePlaylist
+    val top4Artworks = remember(page.songs, padsCollage) {
         val list = (page.songs as? UiState.Success)?.data.orEmpty()
         val distinct = list.mapNotNull { it.thumbnailUrl?.takeIf(String::isNotBlank) }.distinct().take(4)
-        if (isOfflineMusicPage && distinct.isNotEmpty() && distinct.size < 4) {
+        if (padsCollage && distinct.isNotEmpty() && distinct.size < 4) {
             val all = list.mapNotNull { it.thumbnailUrl?.takeIf(String::isNotBlank) }.take(4)
             if (all.size >= 4) all else List(4) { distinct[it % distinct.size] }
         } else {
@@ -1024,7 +1030,7 @@ private fun ReleaseHeader(
         }
     }
     val isGridCover = (
-        isOfflineMusicPage ||
+        padsCollage ||
             page.browseId.startsWith("charts:trending") ||
             (page.browseId.startsWith("topic:") && page.thumbnailUrl == null)
         ) && top4Artworks.size >= 4

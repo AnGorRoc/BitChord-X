@@ -5,6 +5,7 @@ import com.music.bitchord.data.model.Song
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.music.bitchord.data.AppleCatalogue
@@ -77,6 +78,19 @@ object AndroidAppUiHost : AppUiHost {
             }
         }
         return artworks
+    }
+
+    @Composable
+    override fun localPlaylistCoverArtworks(browseId: String): List<String> {
+        val playlists by com.music.bitchord.data.spotify.LocalPlaylistStore.playlists.collectAsStateWithLifecycle()
+        return remember(playlists, browseId) {
+            playlists.firstOrNull { it.browseId == browseId }
+                ?.songs
+                ?.mapNotNull { it.thumbnailUrl?.takeIf(String::isNotBlank) }
+                ?.distinct()
+                ?.take(4)
+                .orEmpty()
+        }
     }
 
     override suspend fun releaseMotion(album: String, artist: String): CanvasArtwork? {

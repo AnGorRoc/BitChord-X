@@ -1374,6 +1374,25 @@ private fun ServiceCard(colors: List<Color>, trackKey: String, icon: ImageVector
     }
 }
 
+/** Four tiles of artwork in a 2x2 grid, as many as the box it fills can hold. */
+@Composable
+private fun ArtworkGrid(tiles: List<String>, modifier: Modifier = Modifier) {
+    Column(modifier) {
+        for (row in 0..1) {
+            Row(Modifier.weight(1f)) {
+                for (col in 0..1) {
+                    AsyncImage(
+                        model = tiles[row * 2 + col].artworkAt(CARD_ART_PX / 2),
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.weight(1f).fillMaxHeight(),
+                    )
+                }
+            }
+        }
+    }
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun ShelfCard(
@@ -1515,6 +1534,11 @@ internal fun ShelfCard(
                 icon = Icons.Rounded.Storage,
             )
             else -> {
+                // A playlist kept on this device (an imported one included) has no cover of its own,
+                // so it is drawn as the same 2x2 collage the other playlists show.
+                val gridTiles = item.browseId?.takeIf { it.startsWith("local:playlist:") }
+                    ?.let { AppUi.host.localPlaylistCoverArtworks(it) }
+                    .orEmpty()
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1523,12 +1547,16 @@ internal fun ShelfCard(
                         .thumbnailBorder(RoundedCornerShape(12.dp))
                         .background(MaterialTheme.colorScheme.surfaceVariant),
                 ) {
-                    AsyncImage(
-                        model = item.thumbnailUrl.artworkAt(CARD_ART_PX),
-                        contentDescription = null,
-                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                        modifier = Modifier.fillMaxSize(),
-                    )
+                    if (gridTiles.isNotEmpty()) {
+                        ArtworkGrid(List(4) { gridTiles[it % gridTiles.size] }, Modifier.fillMaxSize())
+                    } else {
+                        AsyncImage(
+                            model = item.thumbnailUrl.artworkAt(CARD_ART_PX),
+                            contentDescription = null,
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    }
                     if (isCurrent && isPlaying) SearchPlayingBars(Modifier.align(Alignment.Center))
                 }
             }

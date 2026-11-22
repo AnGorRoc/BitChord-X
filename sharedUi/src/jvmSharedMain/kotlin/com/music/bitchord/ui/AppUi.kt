@@ -70,6 +70,13 @@ interface AppUiHost {
     fun offlineCoverArtworks(): List<String> = emptyList()
 
     /**
+     * Up to 4 artwork URLs from the songs of the playlist kept on this device under [browseId] (an
+     * imported one included), for the same 2x2 collage cover; empty when there is none to draw.
+     */
+    @Composable
+    fun localPlaylistCoverArtworks(browseId: String): List<String> = emptyList()
+
+    /**
      * A release's motion cover, for Home's Top Picks — the same lookup the
      * album page makes. Null is the normal answer, and the only one where the
      * user has animated artwork off or the platform has no lookup.
