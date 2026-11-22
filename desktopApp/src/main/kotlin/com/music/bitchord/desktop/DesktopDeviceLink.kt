@@ -14,6 +14,9 @@ import com.music.bitchord.data.listentogether.account.Handoff
 import com.music.bitchord.data.listentogether.account.HandoffForce
 import com.music.bitchord.data.listentogether.account.HandoffRules
 import com.music.bitchord.data.listentogether.account.HandoffWindow
+import com.music.bitchord.data.listentogether.account.PlayIntent
+import com.music.bitchord.data.listentogether.account.SeekIntent
+import com.music.bitchord.data.listentogether.account.SkipIntent
 import com.music.bitchord.data.model.Song
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -84,8 +87,12 @@ internal class DesktopDeviceLink(
 
     private var status: Status? = null
     private var wantsPlay = false
-    private var requestedPositionMs = 0L
-    private var requestedAtNanos = 0L
+
+    // What the person asked of the target, each held until a report shows it done; see [SeekIntent].
+    private val clockMs = { System.nanoTime() / 1_000_000L }
+    private val seek = SeekIntent(clockMs)
+    private val press = PlayIntent(clockMs)
+    private val skip = SkipIntent(clockMs)
     private var awaitingConfirm: String? = null
         set(value) {
             field = value
@@ -95,16 +102,12 @@ internal class DesktopDeviceLink(
 
     /** Waiting to see whether the target that dropped off comes back. See [onAccountState]. */
     private var awayJob: Job? = null
-    /** When the person last pressed play or pause here: what they asked wins over a report for a moment. */
-    private var intentAtNanos = NEVER
-
     /** The target is between songs (it reported the new one not playing yet): loading, not pausing. */
     private var holdPlayingUntilNanos = NEVER
 
-    private fun recentIntent() = System.nanoTime() - intentAtNanos < INTENT_GRACE_NANOS
-
+    /** The person's own press wins over the target's reports until one agrees with it. */
     private fun effectivePlaying(): Boolean = when {
-        recentIntent() -> wantsPlay
+        press.pending -> press.wantsPlay
         status?.isPlaying == true -> true
         else -> System.nanoTime() < holdPlayingUntilNanos
     }
@@ -247,6 +250,61 @@ internal class DesktopDeviceLink(
         answer(controller.deviceId, pullIt = false)
     }
 
+    /** The song that was playing when the last skip arrived, and when; see [seekAfterSkip]. */
+    private var skipFromId: String? = null
+    private var skipAtNanos = 0L
+    private var pendingSeekJob: Job? = null
+
+    private fun noteSkip() {
+        skipFromId = engine.state.value.song?.videoId
+        skipAtNanos = System.nanoTime()
+        // A seek held for the song before this skip would land on the wrong one.
+        pendingSeekJob?.cancel()
+        pendingSeekJob = null
+    }
+
+    /**
+     * A remote that skips and at once picks a place on the bar sends both within milliseconds, but the
+     * new song takes a moment to open: a seek applied at once lands on the song being left, and the
+     * new one then starts from the top. So a seek that follows a skip waits for the engine to have
+     * moved on and finished loading (or for it to be plain that the skip changed nothing).
+     */
+    private fun seekAfterSkip(positionMs: Long, apply: (Long) -> Unit) {
+        pendingSeekJob?.cancel()
+        pendingSeekJob = null
+        val from = skipFromId
+        if (from == null || System.nanoTime() - skipAtNanos > SKIP_SEEK_WINDOW_NANOS) {
+            apply(positionMs)
+            return
+        }
+        pendingSeekJob = scope.launch {
+            val deadline = System.nanoTime() + SKIP_SEEK_WAIT_NANOS
+            while (System.nanoTime() < deadline) {
+                val now = engine.state.value
+                val moved = now.song?.videoId != from
+                val unchanged = System.nanoTime() - skipAtNanos > SKIP_NOOP_NANOS
+                if (!now.isLoading && (moved || unchanged)) break
+                delay(40)
+            }
+            // The skip has landed: seeks from here on are in the new song and need no waiting.
+            skipFromId = null
+            apply(positionMs)
+            publishSettled()
+        }
+    }
+
+    /**
+     * Reports again once the engine has done what was asked. Its commands run on the audio thread, so
+     * a report made the moment one is handed over still has the old place; the remote holds its bar
+     * against that one ([SeekIntent]) and is released by this.
+     */
+    private fun publishSettled() {
+        scope.launch {
+            delay(TARGET_SETTLE_MS)
+            publish()
+        }
+    }
+
     private fun handle(command: DeviceCommand) {
         val payload = command.payload
         // Moving a party between the person's own devices needs no link and says nothing about the
@@ -264,21 +322,22 @@ internal class DesktopDeviceLink(
             when (command.action) {
                 DeviceActions.PLAY -> userPlay()
                 DeviceActions.PAUSE -> userPause()
-                DeviceActions.SEEK -> long(payload, "positionMs")?.let(userSeek)
-                DeviceActions.NEXT -> next()
-                DeviceActions.PREVIOUS -> previous()
+                DeviceActions.SEEK -> long(payload, "positionMs")?.let { seekAfterSkip(it, userSeek) }
+                DeviceActions.NEXT -> { noteSkip(); next() }
+                DeviceActions.PREVIOUS -> { noteSkip(); previous() }
                 DeviceActions.SET_VOLUME -> double(payload, "volume")?.let { engine.setVolume(it.toFloat().coerceIn(0f, 1f)) }
                 DeviceActions.SNAPSHOT -> answer(command.from, pullIt = false)
             }
             publish()
+            publishSettled()
             return
         }
         when (command.action) {
             DeviceActions.PLAY -> engine.play()
             DeviceActions.PAUSE -> engine.pause()
-            DeviceActions.SEEK -> long(payload, "positionMs")?.let(engine::seekTo)
-            DeviceActions.NEXT -> next()
-            DeviceActions.PREVIOUS -> previous()
+            DeviceActions.SEEK -> long(payload, "positionMs")?.let { seekAfterSkip(it, engine::seekTo) }
+            DeviceActions.NEXT -> { noteSkip(); next() }
+            DeviceActions.PREVIOUS -> { noteSkip(); previous() }
             DeviceActions.SET_VOLUME -> double(payload, "volume")?.let { engine.setVolume(it.toFloat().coerceIn(0f, 1f)) }
             DeviceActions.PLAY_QUEUE -> playQueue(payload)
             DeviceActions.ENQUEUE -> {
@@ -290,6 +349,7 @@ internal class DesktopDeviceLink(
         }
         if (command.action == DeviceActions.PLAY_QUEUE || command.action == DeviceActions.ENQUEUE) queueSig = signature()
         publish()
+        publishSettled()
     }
 
     /** Another of the person's devices has a party and asked this computer to take it. */
@@ -448,9 +508,8 @@ internal class DesktopDeviceLink(
         gaveMusic = true
         val state = engine.state.value
         wantsPlay = state.isPlaying
-        requestedPositionMs = state.positionMs
-        requestedAtNanos = System.nanoTime()
-        sendQueue(local.songs, local.index.coerceAtLeast(0), wantsPlay, requestedPositionMs)
+        seek.expect(state.positionMs, current.videoId, resendable = false)
+        sendQueue(local.songs, local.index.coerceAtLeast(0), wantsPlay, state.positionMs)
         awaitingConfirm = current.videoId
         armConfirmation(current.videoId, wantsPlay)
     }
@@ -480,7 +539,7 @@ internal class DesktopDeviceLink(
         targetId = deviceId
         active = true
         holdPlayingUntilNanos = NEVER
-        intentAtNanos = NEVER
+        clearIntents()
         status = account.state.value.devices.firstOrNull { it.deviceId == deviceId }?.playhead()?.let(::statusOf)
         // A computer that connects to a device that is playing shows playing, not a stale "paused".
         wantsPlay = status?.isPlaying == true
@@ -532,6 +591,7 @@ internal class DesktopDeviceLink(
         status = null
         wantsPlay = false
         holdPlayingUntilNanos = NEVER
+        clearIntents()
         gaveMusic = false
         account.detach()
         val kept = stash
@@ -559,6 +619,7 @@ internal class DesktopDeviceLink(
         // The other device's music is what the person asked for here; nothing is given back.
         stash = null
         holdPlayingUntilNanos = NEVER
+        clearIntents()
         gaveMusic = false
         active = false
         targetId = null
@@ -574,24 +635,84 @@ internal class DesktopDeviceLink(
 
     fun play() {
         wantsPlay = true
-        intentAtNanos = System.nanoTime()
+        press.expect(true)
         command(DeviceActions.PLAY)
+        followUp()
+        refreshOverlay()
     }
 
     fun pause() {
         wantsPlay = false
-        intentAtNanos = System.nanoTime()
+        press.expect(false)
         command(DeviceActions.PAUSE)
+        followUp()
+        refreshOverlay()
     }
 
     fun seekTo(positionMs: Long) {
-        requestedPositionMs = positionMs.coerceAtLeast(0L)
-        requestedAtNanos = System.nanoTime()
-        command(DeviceActions.SEEK, buildJsonObject { put("positionMs", requestedPositionMs) })
+        val at = positionMs.coerceAtLeast(0L)
+        // In the song a skip made here is heading for, if one is under way; else the one playing.
+        seek.expect(at, skip.expectedId ?: status?.mediaId, resendable = true)
+        command(DeviceActions.SEEK, buildJsonObject { put("positionMs", at) })
+        followUp()
+        refreshOverlay()
     }
 
-    fun skipNext() = command(DeviceActions.NEXT)
-    fun skipPrevious() = command(DeviceActions.PREVIOUS)
+    fun skipNext() = skipBy(+1, DeviceActions.NEXT)
+    fun skipPrevious() = skipBy(-1, DeviceActions.PREVIOUS)
+
+    /**
+     * Shows the song the skip leads to at once, from its start, and sends the skip. Reports of the
+     * song being left are held off until the target gets there (see [SkipIntent]); while the link is
+     * still being made the queue shown is not the target's yet, so only the skip is sent.
+     */
+    private fun skipBy(delta: Int, action: String) {
+        val local = queue()
+        val to = local.index + delta
+        if (awaitingConfirm == null && to in local.songs.indices) {
+            val id = local.songs[to].videoId
+            skip.expect(id)
+            seek.expect(0L, id, resendable = false)
+            setQueue(DesktopQueue(local.songs, to))
+            // A report held back meanwhile is looked at again once the skip is given up.
+            scope.launch {
+                delay(SkipIntent.WINDOW_MS + 50)
+                if (active) onAccountState(account.state.value.devices.firstOrNull { it.deviceId == targetId })
+            }
+        } else {
+            seek.clear()
+        }
+        command(action)
+        refreshOverlay()
+    }
+
+    /**
+     * Looks again once the target has had time to answer: what it has not done yet is sent once more
+     * (a command can be lost on a flaky network), and once an intent is given up the bar is drawn
+     * from what the target says.
+     */
+    private fun followUp() {
+        scope.launch {
+            delay(SeekIntent.RESEND_MS + 50)
+            if (!active) return@launch
+            seek.resendPositionMs(effectivePlaying())?.let { at ->
+                DesktopTrackLog.log("remote: seek unanswered, sending again: ${at}ms")
+                command(DeviceActions.SEEK, buildJsonObject { put("positionMs", at) })
+            }
+            if (press.shouldResend()) {
+                DesktopTrackLog.log("remote: press unanswered, sending again: play=${press.wantsPlay}")
+                command(if (press.wantsPlay) DeviceActions.PLAY else DeviceActions.PAUSE)
+            }
+            delay(SeekIntent.GIVE_UP_MS - SeekIntent.RESEND_MS)
+            if (active) refreshOverlay()
+        }
+    }
+
+    private fun clearIntents() {
+        seek.clear()
+        press.clear()
+        skip.clear()
+    }
 
     fun setVolume(fraction: Float) =
         command(DeviceActions.SET_VOLUME, buildJsonObject { put("volume", fraction.coerceIn(0f, 1f).toDouble()) })
@@ -601,8 +722,8 @@ internal class DesktopDeviceLink(
         if (songs.isEmpty()) return
         setQueue(DesktopQueue(songs, 0))
         wantsPlay = true
-        requestedPositionMs = 0L
-        requestedAtNanos = System.nanoTime()
+        skip.expect(songs[0].videoId)
+        seek.expect(0L, songs[0].videoId, resendable = false)
         sendQueue(songs, 0, true, 0L)
     }
 
@@ -678,17 +799,30 @@ internal class DesktopDeviceLink(
         }
         val np = target.nowPlaying
         if (np != null && np.updatedAtMs != status?.stamp) {
+            // The song being left, or one passed through, while a skip made here is under way.
+            if (!skip.accepts(np.videoId)) {
+                refreshOverlay()
+                return
+            }
             val before = status
-            status = statusOf(target.playhead() ?: np)
-            requestedAtNanos = 0L
+            val playhead = target.playhead() ?: np
+            // A report from before a seek made here still has the old place; it does not move the bar.
+            val shownPlaying = effectivePlaying()
+            seek.accepts(np.videoId, playhead.positionMs, shownPlaying, settled = np.isPlaying == shownPlaying)
+            status = statusOf(playhead)
             // A song change that comes with "not playing" is the target loading it, not pausing.
             val changedSong = before != null && before.mediaId != np.videoId
-            holdPlayingUntilNanos = if (changedSong && !np.isPlaying && (before?.isPlaying == true || wantsPlay)) {
-                System.nanoTime() + HOLD_PLAYING_NANOS
-            } else {
-                NEVER
+            val opening = changedSong && !np.isPlaying && (before?.isPlaying == true || wantsPlay)
+            holdPlayingUntilNanos = when {
+                opening -> System.nanoTime() + HOLD_PLAYING_NANOS
+                np.isPlaying || changedSong -> NEVER
+                // The same song, still not playing: still opening, so the hold runs on (see the phone's twin).
+                else -> holdPlayingUntilNanos
             }
-            if (awaitingConfirm == null && !recentIntent()) wantsPlay = np.isPlaying || holdPlayingUntilNanos != NEVER
+            // A report that still plays after a pause pressed here (or the other way) predates it.
+            if (awaitingConfirm == null && press.accepts(np.isPlaying)) {
+                wantsPlay = np.isPlaying || System.nanoTime() < holdPlayingUntilNanos
+            }
             // The other device moved on by itself: the queue shown follows it.
             val local = queue()
             val at = local.songs.indexOfFirst { it.videoId == np.videoId }
@@ -709,7 +843,8 @@ internal class DesktopDeviceLink(
 
     private fun positionNow(): Long {
         val s = status
-        if (s == null || System.nanoTime() - requestedAtNanos < SEEK_GRACE_NANOS) return requestedPositionMs
+        if (seek.pending) return seek.positionMs(effectivePlaying())
+        if (s == null) return seek.targetPositionMs
         if (!effectivePlaying()) return s.positionMs
         val ran = (System.nanoTime() - s.atNanos) / 1_000_000L
         return (s.positionMs + ran).let { if (s.durationMs > 0) it.coerceAtMost(s.durationMs) else it }
@@ -759,8 +894,17 @@ internal class DesktopDeviceLink(
         const val AWAY_GRACE_MS = 15_000L
         const val HANDOVER_TIMEOUT_MS = 20_000L
         const val CONFIRM_POLL_MS = 250L
-        const val SEEK_GRACE_NANOS = 1_500_000_000L
-        const val INTENT_GRACE_NANOS = 2_500_000_000L
+        /** Long enough for the audio thread to have run a command handed to it. */
+        const val TARGET_SETTLE_MS = 250L
+
+        /** A seek this soon after a skip is held for the new song; later ones are the person's own. */
+        const val SKIP_SEEK_WINDOW_NANOS = 6_000_000_000L
+
+        /** The longest a held seek waits for the new song to open. */
+        const val SKIP_SEEK_WAIT_NANOS = 8_000_000_000L
+
+        /** After this a skip that never started loading anything (end of queue) is not waited for. */
+        const val SKIP_NOOP_NANOS = 900_000_000L
 
         /** "Not set": far enough back that no grace window around it can be open, whatever nanoTime reads. */
         const val NEVER = Long.MIN_VALUE / 2
