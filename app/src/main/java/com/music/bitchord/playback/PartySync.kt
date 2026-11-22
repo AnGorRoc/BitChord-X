@@ -392,6 +392,31 @@ class PartySync(
     }
 
     /**
+     * What the listener pressed on a device that is only a remote for the party: Play here is off,
+     * so this player is loaded and paused and the music comes out of another device.
+     *
+     * Those presses have to reach the party — acting on this player would start it aloud on a
+     * device that was asked to stay quiet, and nobody else would hear of it. Returns true when it
+     * has handled the press, which it has whenever this device is such a remote, locked or not: a
+     * lock only means the host refuses it, and the press still must not play here.
+     */
+    fun routeTransport(action: PartyTransport): Boolean {
+        val party = ListenTogether.state.value
+        if (!party.inParty || ListenTogether.listenHere.value) return false
+        if (party.controlsLocked) return true
+        val position = ListenTogether.partyPositionMs() ?: party.playback.positionMs
+        when (action) {
+            PartyTransport.Play -> ListenTogether.play(position)
+            PartyTransport.Pause -> ListenTogether.pause(position)
+            is PartyTransport.SeekTo -> ListenTogether.seek(action.positionMs.coerceAtLeast(0L))
+            is PartyTransport.SeekBy -> ListenTogether.seek((position + action.deltaMs).coerceAtLeast(0L))
+            PartyTransport.Next -> ListenTogether.next()
+            PartyTransport.Previous -> ListenTogether.previous()
+        }
+        return true
+    }
+
+    /**
      * Drops a local pause that has stopped meaning anything.
      *
      * Only the lock going away does that: the host handing control back, this
@@ -1176,6 +1201,16 @@ internal fun Song.toPartyTrack(playerDurationMs: Long): PartyTrack = PartyTrack(
         ?: TrackMatcher.secondsOf(durationText)?.let { it * 1000L },
     fromAutoplay = fromAutoplay,
 )
+
+/** A transport press that [PartySync.routeTransport] sends to the party instead of the local player. */
+sealed interface PartyTransport {
+    data object Play : PartyTransport
+    data object Pause : PartyTransport
+    data class SeekTo(val positionMs: Long) : PartyTransport
+    data class SeekBy(val deltaMs: Long) : PartyTransport
+    data object Next : PartyTransport
+    data object Previous : PartyTransport
+}
 
 internal fun PartyTrack.toSong(): Song = Song(
     videoId = videoId,

@@ -2147,6 +2147,7 @@ class PlaybackService : MediaLibraryService() {
         onUserIntent = { partySync?.onLocalIntent() },
         deferPlayToParty = { partySync?.shouldDeferPlay() == true },
         lockedTransport = { playing -> partySync?.onLockedTransport(playing) == true },
+        routeToParty = { action -> partySync?.routeTransport(action) == true },
         onShuffleRequest = ::toggleShuffleFromSession,
         cast = speakers,
     ) { lastPublishedSubtitle }
@@ -10448,6 +10449,11 @@ class PlaybackService : MediaLibraryService() {
         private val deferPlayToParty: () -> Boolean,
         /** @see PartySync.onLockedTransport */
         private val lockedTransport: (Boolean) -> Boolean,
+        /**
+         * A press on a device that only follows the party (Play here off) goes to the party, never to
+         * this paused player. @see PartySync.routeTransport
+         */
+        private val routeToParty: (PartyTransport) -> Boolean,
         private val onShuffleRequest: () -> Unit,
         /** Cast or the watch, whichever is the speaker — its clock is what this reports. */
         private val cast: RemoteSpeaker,
@@ -10791,6 +10797,7 @@ class PlaybackService : MediaLibraryService() {
             // Locked, this plays only here — the party carries on untouched and
             // this device rejoins it wherever it has got to. See
             // [PartySync.onLockedTransport], which owns that catch-up.
+            if (routeToParty(PartyTransport.Play)) return
             if (lockedTransport(true)) return
             onUserIntent()
             // Held back only when a party will schedule the start for everyone
@@ -10806,6 +10813,7 @@ class PlaybackService : MediaLibraryService() {
         }
 
         override fun pause() {
+            if (routeToParty(PartyTransport.Pause)) return
             if (lockedTransport(false)) return
             onUserIntent()
             if (cast.active) {
@@ -10850,6 +10858,7 @@ class PlaybackService : MediaLibraryService() {
         }
 
         override fun setPlayWhenReady(playWhenReady: Boolean) {
+            if (routeToParty(if (playWhenReady) PartyTransport.Play else PartyTransport.Pause)) return
             if (lockedTransport(playWhenReady)) return
             onUserIntent()
             if (playWhenReady && deferPlayToParty()) return
@@ -10864,6 +10873,7 @@ class PlaybackService : MediaLibraryService() {
         // host puts it, and a local seek would only be dragged back by the next
         // reconcile anyway.
         override fun seekTo(positionMs: Long) {
+            if (routeToParty(PartyTransport.SeekTo(positionMs))) return
             if (locked()) return
             onUserIntent()
             if (cast.active) {
@@ -10874,6 +10884,7 @@ class PlaybackService : MediaLibraryService() {
         }
 
         override fun seekBack() {
+            if (routeToParty(PartyTransport.SeekBy(-seekBackIncrement))) return
             if (locked()) return
             onUserIntent()
             if (cast.active) {
@@ -10884,6 +10895,7 @@ class PlaybackService : MediaLibraryService() {
         }
 
         override fun seekForward() {
+            if (routeToParty(PartyTransport.SeekBy(seekForwardIncrement))) return
             if (locked()) return
             onUserIntent()
             if (cast.active) {
@@ -10894,6 +10906,7 @@ class PlaybackService : MediaLibraryService() {
         }
 
         override fun seekToPrevious() {
+            if (routeToParty(PartyTransport.Previous)) return
             if (locked()) return
             onUserIntent()
             if (cast.active) {
@@ -10904,6 +10917,7 @@ class PlaybackService : MediaLibraryService() {
         }
 
         override fun seekToDefaultPosition() {
+            if (routeToParty(PartyTransport.SeekTo(0L))) return
             if (locked()) return
             onUserIntent()
             if (cast.active) {
@@ -11005,6 +11019,13 @@ class PlaybackService : MediaLibraryService() {
         }
 
         override fun seekTo(mediaItemIndex: Int, positionMs: Long) {
+            // A position inside the track the party is on; a different row means nothing on a device
+            // that only holds that one track.
+            if (mediaItemIndex == wrappedPlayer.currentMediaItemIndex &&
+                routeToParty(PartyTransport.SeekTo(positionMs))
+            ) {
+                return
+            }
             if (locked()) return
             onUserIntent()
             crossfade.onSkipRequested()
@@ -11050,6 +11071,7 @@ class PlaybackService : MediaLibraryService() {
         }
 
         override fun seekToPreviousMediaItem() {
+            if (routeToParty(PartyTransport.Previous)) return
             if (locked()) return
             onUserIntent()
             crossfade.onSkipRequested()
@@ -11061,6 +11083,7 @@ class PlaybackService : MediaLibraryService() {
         }
 
         override fun seekToNextMediaItem() {
+            if (routeToParty(PartyTransport.Next)) return
             if (locked()) return
             onUserIntent()
             crossfade.onSkipRequested()
@@ -11069,6 +11092,7 @@ class PlaybackService : MediaLibraryService() {
         }
 
         override fun seekToNext() {
+            if (routeToParty(PartyTransport.Next)) return
             if (locked()) return
             onUserIntent()
             crossfade.onSkipRequested()

@@ -1330,9 +1330,13 @@ private fun BitChordApp(
     val togglePlayPause: () -> Unit = {
         controller?.let { c ->
             val party = ListenTogether.state.value
-            if (party.controlsLocked && !party.playback.isPlaying && !c.isPlaying) {
+            // A device that only follows the party keeps its own player paused, so what the button
+            // shows and has to toggle is the party's state; the press itself is routed to the party.
+            val following = party.inParty && !ListenTogether.listenHere.value
+            val playing = if (following) party.playback.isPlaying else c.isPlaying
+            if (party.controlsLocked && !party.playback.isPlaying && !playing) {
                 showHostOnlyNotice()
-            } else if (c.isPlaying) {
+            } else if (playing) {
                 c.pause()
             } else {
                 c.play()
