@@ -25,6 +25,9 @@ object DeviceLink {
 
         /** The person adjusted internal playback volume for this device. */
         data class SetLocalVolume(val volume: Float) : Request
+
+        /** The person adjusted volume for another device that may be the speaker. */
+        data class SetRemoteVolume(val deviceId: String, val volume: Float) : Request
     }
 
     private val _requests = MutableSharedFlow<Request>(extraBufferCapacity = 8)
@@ -71,5 +74,9 @@ object DeviceLink {
 
     fun setLocalVolume(volume: Float) {
         _requests.tryEmit(Request.SetLocalVolume(volume))
+    }
+
+    fun setRemoteVolume(deviceId: String, volume: Float) {
+        _requests.tryEmit(Request.SetRemoteVolume(deviceId, volume))
     }
 }

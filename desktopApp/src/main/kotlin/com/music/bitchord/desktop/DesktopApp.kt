@@ -2129,19 +2129,38 @@ fun BitChordDesktopApp() {
         val connectingWatch = scope.launch { deviceLink.connecting.collect { DesktopPlayerHost.setConnectingDevice(it) } }
         DesktopPlayerHost.onPickDevice = { id, force -> deviceLink.pick(id, force) }
         DesktopPlayerHost.onComeBack = { deviceLink.comeBack() }
+        var lastDesktopVolumeSendMs = 0L
+        var lastDesktopSentVolume = -1f
+        var desktopVolumeJob: kotlinx.coroutines.Job? = null
         DesktopPlayerHost.onSetDeviceVolume = { id, vol ->
             val clamped = vol.coerceIn(0f, 1f)
             val selfId = DesktopListenTogether.account.state.value.selfId
+            DesktopListenTogether.account.updateDeviceVolume(id, clamped)
             if (id == selfId || DesktopListenTogether.account.state.value.self?.deviceId == id) {
                 playbackEngine.setVolume(clamped)
             } else {
-                DesktopListenTogether.account.command(
-                    to = id,
-                    action = com.music.bitchord.data.listentogether.account.DeviceActions.SET_VOLUME,
-                    payload = kotlinx.serialization.json.buildJsonObject {
-                        put("volume", kotlinx.serialization.json.JsonPrimitive(clamped.toDouble()))
-                    },
-                )
+                desktopVolumeJob?.cancel()
+                val now = System.currentTimeMillis()
+                val elapsed = now - lastDesktopVolumeSendMs
+                fun send() {
+                    lastDesktopVolumeSendMs = System.currentTimeMillis()
+                    lastDesktopSentVolume = clamped
+                    DesktopListenTogether.account.command(
+                        to = id,
+                        action = com.music.bitchord.data.listentogether.account.DeviceActions.SET_VOLUME,
+                        payload = kotlinx.serialization.json.buildJsonObject {
+                            put("volume", kotlinx.serialization.json.JsonPrimitive(clamped.toDouble()))
+                        },
+                    )
+                }
+                if (elapsed >= 50L || clamped == 0f || clamped == 1f) {
+                    send()
+                } else {
+                    desktopVolumeJob = scope.launch {
+                        kotlinx.coroutines.delay(50L - elapsed)
+                        send()
+                    }
+                }
             }
         }
         onDispose {

@@ -2054,6 +2054,19 @@ class PlaybackService : MediaLibraryService() {
                     is DeviceLink.Request.SetLocalVolume -> {
                         eachPlayer { it.volume = request.volume.coerceIn(0f, 1f) }
                     }
+                    is DeviceLink.Request.SetRemoteVolume -> {
+                        if (deviceSpeaker.active && deviceSpeaker.targetId == request.deviceId) {
+                            deviceSpeaker.setVolume(request.volume)
+                        } else {
+                            ListenTogether.account.command(
+                                to = request.deviceId,
+                                action = com.music.bitchord.data.listentogether.account.DeviceActions.SET_VOLUME,
+                                payload = kotlinx.serialization.json.buildJsonObject {
+                                    put("volume", kotlinx.serialization.json.JsonPrimitive(request.volume.coerceIn(0f, 1f).toDouble()))
+                                },
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -10519,13 +10532,15 @@ class PlaybackService : MediaLibraryService() {
         }
 
         private companion object {
+            const val REMOTE_VOLUME_STEPS = 20
+
             val CAST_DEVICE: DeviceInfo = DeviceInfo.Builder(DeviceInfo.PLAYBACK_TYPE_REMOTE)
                 .setMinVolume(0)
-                .setMaxVolume(100)
+                .setMaxVolume(REMOTE_VOLUME_STEPS)
                 .build()
 
-            /** A hardware key press, as a share of the receiver's range. */
-            const val VOLUME_STEP = 0.05f
+            /** A hardware key press, as a share of the receiver's range (5% per step). */
+            const val VOLUME_STEP = 1f / REMOTE_VOLUME_STEPS
 
             /**
              * A DAC on direct USB output, whose volume is its own hardware
@@ -10564,16 +10579,17 @@ class PlaybackService : MediaLibraryService() {
          * notification did nothing while another device was the speaker.
          */
         private val remoteSeek: Boolean get() = cast.active
+        private val remoteVolume: Boolean get() = dac || cast.active
 
         override fun getAvailableCommands(): Player.Commands {
             var commands = super.getAvailableCommands()
-            if (dac) commands = commands.buildUpon().addAll(*DEVICE_VOLUME_COMMANDS).build()
+            if (remoteVolume) commands = commands.buildUpon().addAll(*DEVICE_VOLUME_COMMANDS).build()
             if (remoteSeek) commands = commands.buildUpon().addAll(*REMOTE_SEEK_COMMANDS).build()
             return commands
         }
 
         override fun isCommandAvailable(command: Int): Boolean =
-            (dac && command in DEVICE_VOLUME_COMMANDS) ||
+            (remoteVolume && command in DEVICE_VOLUME_COMMANDS) ||
                 (remoteSeek && command in REMOTE_SEEK_COMMANDS) ||
                 super.isCommandAvailable(command)
 
@@ -10712,7 +10728,7 @@ class PlaybackService : MediaLibraryService() {
 
         override fun setDeviceVolume(volume: Int, flags: Int) {
             when {
-                cast.active -> cast.setVolume(volume / 100f)
+                cast.active -> cast.setVolume(volume.toFloat() / REMOTE_VOLUME_STEPS)
                 dac -> DacVolume.set(volume / 100f)
                 else -> super.setDeviceVolume(volume, flags)
             }
@@ -10721,7 +10737,7 @@ class PlaybackService : MediaLibraryService() {
         @Suppress("DEPRECATION")
         override fun setDeviceVolume(volume: Int) {
             when {
-                cast.active -> cast.setVolume(volume / 100f)
+                cast.active -> cast.setVolume(volume.toFloat() / REMOTE_VOLUME_STEPS)
                 dac -> DacVolume.set(volume / 100f)
                 else -> super.setDeviceVolume(volume)
             }
@@ -10729,7 +10745,7 @@ class PlaybackService : MediaLibraryService() {
 
         override fun increaseDeviceVolume(flags: Int) {
             when {
-                cast.active -> nudgeReceiverVolume(+VOLUME_STEP)
+                cast.active -> nudgeReceiverVolume(+1)
                 dac -> DacVolume.step(+1)
                 else -> super.increaseDeviceVolume(flags)
             }
@@ -10738,7 +10754,7 @@ class PlaybackService : MediaLibraryService() {
         @Suppress("DEPRECATION")
         override fun increaseDeviceVolume() {
             when {
-                cast.active -> nudgeReceiverVolume(+VOLUME_STEP)
+                cast.active -> nudgeReceiverVolume(+1)
                 dac -> DacVolume.step(+1)
                 else -> super.increaseDeviceVolume()
             }
@@ -10746,7 +10762,7 @@ class PlaybackService : MediaLibraryService() {
 
         override fun decreaseDeviceVolume(flags: Int) {
             when {
-                cast.active -> nudgeReceiverVolume(-VOLUME_STEP)
+                cast.active -> nudgeReceiverVolume(-1)
                 dac -> DacVolume.step(-1)
                 else -> super.decreaseDeviceVolume(flags)
             }
@@ -10755,7 +10771,7 @@ class PlaybackService : MediaLibraryService() {
         @Suppress("DEPRECATION")
         override fun decreaseDeviceVolume() {
             when {
-                cast.active -> nudgeReceiverVolume(-VOLUME_STEP)
+                cast.active -> nudgeReceiverVolume(-1)
                 dac -> DacVolume.step(-1)
                 else -> super.decreaseDeviceVolume()
             }
@@ -10770,8 +10786,10 @@ class PlaybackService : MediaLibraryService() {
             if (!cast.active && !dac) super.setDeviceMuted(muted)
         }
 
-        private fun nudgeReceiverVolume(delta: Float) =
-            cast.setVolume(cast.deviceVolume / 100f + delta)
+        private fun nudgeReceiverVolume(stepDelta: Int) {
+            val nextStep = (cast.deviceVolume + stepDelta).coerceIn(0, REMOTE_VOLUME_STEPS)
+            cast.setVolume(nextStep.toFloat() / REMOTE_VOLUME_STEPS)
+        }
 
         override fun onRemotePlaybackChanged() {
             val flags = FlagSet.Builder()

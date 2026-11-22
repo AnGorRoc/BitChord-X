@@ -162,6 +162,23 @@ class AccountDevices(
         start()
     }
 
+    fun updateDeviceVolume(deviceId: String, volume: Float) {
+        val clamped = volume.coerceIn(0f, 1f).toDouble()
+        _state.update { current ->
+            val updatedDevices = current.devices.map { d ->
+                if (d.deviceId == deviceId) {
+                    val np = d.nowPlaying ?: AccountNowPlaying(videoId = "")
+                    d.copy(nowPlaying = np.copy(volume = clamped))
+                } else d
+            }
+            val updatedLocal = if (current.localSelf?.deviceId == deviceId || current.selfId == deviceId) {
+                val np = current.localSelf?.nowPlaying ?: AccountNowPlaying(videoId = "")
+                current.localSelf?.copy(nowPlaying = np.copy(volume = clamped))
+            } else current.localSelf
+            current.copy(devices = updatedDevices, localSelf = updatedLocal)
+        }
+    }
+
     // ---- what this device says and does -----------------------------------------------------
 
     /**

@@ -531,6 +531,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        volumeControlStream = android.media.AudioManager.STREAM_MUSIC
         com.music.bitchord.playback.DeviceLink.setAppInForeground(true)
         runCatching {
             val serviceIntent = Intent(this, com.music.bitchord.playback.PlaybackService::class.java)

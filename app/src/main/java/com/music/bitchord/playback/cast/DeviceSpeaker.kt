@@ -20,6 +20,9 @@ import com.music.bitchord.data.listentogether.account.Handoff
 import com.music.bitchord.data.listentogether.account.HandoffForce
 import com.music.bitchord.data.listentogether.account.HandoffRules
 import com.music.bitchord.data.listentogether.account.HandoffWindow
+import com.music.bitchord.data.listentogether.account.PlayIntent
+import com.music.bitchord.data.listentogether.account.SeekIntent
+import com.music.bitchord.data.listentogether.account.SkipIntent
 import com.music.bitchord.playback.DeviceLink
 import com.music.bitchord.playback.toMediaItem
 import com.music.bitchord.playback.toPartyTrack
@@ -40,6 +43,7 @@ import kotlinx.serialization.json.intOrNull
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
+import kotlin.math.roundToInt
 
 /**
  * Another of the person's own devices as the speaker, the way Cast or the watch can be.
@@ -70,7 +74,7 @@ internal class DeviceSpeaker(
     var targetId: String? = null
         private set
 
-    private class Status(
+    private data class Status(
         val mediaId: String,
         val isPlaying: Boolean,
         val positionMs: Long,
@@ -84,8 +88,11 @@ internal class DeviceSpeaker(
 
     private var status: Status? = null
     private var wantsPlay = false
-    private var requestedPositionMs = 0L
-    private var requestedAt = 0L
+
+    // What the person asked of the target, each held until a report shows it done; see [SeekIntent].
+    private val seek = SeekIntent(SystemClock::elapsedRealtime)
+    private val press = PlayIntent(SystemClock::elapsedRealtime)
+    private val skip = SkipIntent(SystemClock::elapsedRealtime)
 
     /** A hand-over is on its way; this device stays audible until the target confirms it. */
     private var awaitingConfirm: String? = null
@@ -175,8 +182,13 @@ internal class DeviceSpeaker(
         }
     }
 
-    /** When the person last pressed play or pause here: what they asked wins over a report for a moment. */
-    private var intentAt = NEVER
+    /** When the person last changed volume locally: local volume wins over reports for a moment. */
+    private var volumeIntentAt = NEVER
+    private var lastLocalVolume: Double? = null
+    private var volumeCommandJob: Job? = null
+    private var lastVolumeSentRealtime = 0L
+
+    private fun recentVolumeIntent() = SystemClock.elapsedRealtime() - volumeIntentAt < VOLUME_INTENT_GRACE_MS
 
     /**
      * The target is between songs: it reported the new one not playing yet, which is it loading and
@@ -184,11 +196,30 @@ internal class DeviceSpeaker(
      */
     private var holdPlayingUntil = NEVER
 
-    /** The person pressed play or pause: shown at once, and re-read against the target once it has had time to answer. */
+    /** The person pressed play or pause: shown at once, held until the target agrees. */
     private fun noteIntent() {
-        intentAt = SystemClock.elapsedRealtime()
+        press.expect(wantsPlay)
+        followUp()
+    }
+
+    /**
+     * Looks again once the target has had time to answer: what it has not done yet is sent once more
+     * (a command can be lost on a flaky network), and once an intent is given up the bar is
+     * re-anchored on what the target says.
+     */
+    private fun followUp() {
         scope.launch {
-            delay(INTENT_GRACE_MS + 50)
+            delay(SeekIntent.RESEND_MS + 50)
+            if (!active) return@launch
+            seek.resendPositionMs(effectivePlaying())?.let { at ->
+                android.util.Log.i("DeviceSpeaker", "seek unanswered, sending again: $at")
+                command(DeviceActions.SEEK, buildJsonObject { put("positionMs", at) })
+            }
+            if (press.shouldResend()) {
+                android.util.Log.i("DeviceSpeaker", "press unanswered, sending again: play=${press.wantsPlay}")
+                command(if (press.wantsPlay) DeviceActions.PLAY else DeviceActions.PAUSE)
+            }
+            delay(SeekIntent.GIVE_UP_MS - SeekIntent.RESEND_MS)
             if (active) reanchor()
         }
     }
@@ -203,14 +234,13 @@ internal class DeviceSpeaker(
         onChanged()
     }
 
-    private fun recentIntent() = SystemClock.elapsedRealtime() - intentAt < INTENT_GRACE_MS
-
     /**
-     * What the player shows as playing. The person's own press wins for a moment over what the
-     * target last reported, which was true before it heard them; a change of song is not a pause.
+     * What the player shows as playing. The person's own press wins over what the target last
+     * reported, which was true before it heard them, until a report agrees; a change of song is not
+     * a pause.
      */
     private fun effectivePlaying(): Boolean = when {
-        recentIntent() -> wantsPlay
+        press.pending -> press.wantsPlay
         status?.isPlaying == true -> true
         else -> SystemClock.elapsedRealtime() < holdPlayingUntil
     }
@@ -228,7 +258,8 @@ internal class DeviceSpeaker(
     override val positionMs: Long
         get() {
             val s = status
-            if (s == null || SystemClock.elapsedRealtime() - requestedAt < SEEK_GRACE_MS) return requestedPositionMs
+            if (seek.pending) return seek.positionMs(effectivePlaying())
+            if (s == null) return seek.targetPositionMs
             if (!effectivePlaying()) return s.positionMs
             val ran = SystemClock.elapsedRealtime() - s.at
             return (s.positionMs + ran).let { if (s.durationMs > 0) it.coerceAtMost(s.durationMs) else it }
@@ -236,7 +267,7 @@ internal class DeviceSpeaker(
 
     override val durationMs: Long get() = status?.durationMs?.takeIf { it > 0 } ?: C.TIME_UNSET
 
-    override val deviceVolume: Int get() = ((status?.volume ?: 0.0) * 100).toInt().coerceIn(0, 100)
+    override val deviceVolume: Int get() = ((status?.volume ?: 0.0) * 20).roundToInt().coerceIn(0, 20)
 
     // ---- picking a device -------------------------------------------------------------------
 
@@ -343,9 +374,9 @@ internal class DeviceSpeaker(
         beginAs(target.deviceId)
         gaveMusic = true
         wantsPlay = player.playWhenReady && player.playbackState != Player.STATE_ENDED
-        requestedPositionMs = player.currentPosition.coerceAtLeast(0L)
-        requestedAt = SystemClock.elapsedRealtime()
-        sendQueue(player, wantsPlay, requestedPositionMs)
+        val startAt = player.currentPosition.coerceAtLeast(0L)
+        seek.expect(startAt, item.mediaId, resendable = false)
+        sendQueue(player, wantsPlay, startAt)
         awaitingConfirm = item.mediaId
         armConfirmation(handedVideoId = item.mediaId, handedPlaying = wantsPlay)
     }
@@ -392,7 +423,9 @@ internal class DeviceSpeaker(
         active = true
         android.util.Log.i("DeviceSpeaker", "beginAs $deviceId stash=${stash?.positionMs} items=${stash?.items?.size}")
         holdPlayingUntil = NEVER
-        intentAt = NEVER
+        seek.clear()
+        press.clear()
+        skip.clear()
         // What the target is already playing is known; starting from it is what keeps this phone's
         // own mirror from looking like a change.
         status = account.state.value.devices.firstOrNull { it.deviceId == deviceId }?.playhead()?.let(::statusOf)
@@ -464,7 +497,13 @@ internal class DeviceSpeaker(
         status = null
         wantsPlay = false
         holdPlayingUntil = NEVER
-        navExpected = null
+        volumeIntentAt = NEVER
+        lastLocalVolume = null
+        volumeCommandJob?.cancel()
+        volumeCommandJob = null
+        seek.clear()
+        press.clear()
+        skip.clear()
         gaveMusic = false
         if (old != null) account.detach()
         val kept = stash
@@ -497,7 +536,9 @@ internal class DeviceSpeaker(
         val from = account.state.value.devices.firstOrNull { it.deviceId == targetId }?.name
         // The other device's music is what the person asked for here; nothing is given back.
         stash = null
-        navExpected = null
+        seek.clear()
+        press.clear()
+        skip.clear()
         holdPlayingUntil = NEVER
         active = false
         targetId = null
@@ -531,30 +572,42 @@ internal class DeviceSpeaker(
 
     override fun seekTo(positionMs: Long) {
         if (!active) return
-        requestedPositionMs = positionMs.coerceAtLeast(0L)
-        requestedAt = SystemClock.elapsedRealtime()
-        command(DeviceActions.SEEK, buildJsonObject { put("positionMs", requestedPositionMs) })
+        val at = positionMs.coerceAtLeast(0L)
+        // In the song a skip made here is heading for, if one is under way; else the one playing.
+        seek.expect(at, skip.expectedId ?: status?.mediaId, resendable = true)
+        command(DeviceActions.SEEK, buildJsonObject { put("positionMs", at) })
         reanchor()
+        followUp()
     }
-
-    /**
-     * The song the phone's mirror was just moved to by a skip made here, and until when the target's
-     * reports of the songs it passed through on the way there are not news. Without it two quick
-     * skips pulled the bar back to the first, then forward again.
-     */
-    private var navExpected: String? = null
-    private var navUntil = 0L
 
     /** Skips on the target. It moves through its own queue, so no queue travels and none can arrive late. */
     override fun next(): Boolean {
-        if (!active || pulling || awaitingConfirm != null) return false
+        if (!active || pulling) return false
+        if (awaitingConfirm != null) return skipWhileConnecting(DeviceActions.NEXT)
         navigate(+1)
         command(DeviceActions.NEXT)
         return true
     }
 
+    /**
+     * A skip made while the link is still being confirmed. Refused (false), it fell through to this
+     * phone's own player: the mirror moved, nothing was sent, and the remote showed a song the target
+     * never changed to. A control-only link has nothing to wait for, so the skip goes to the target,
+     * whose report then moves the mirror. A handed-over queue is not on the target yet: still refused.
+     */
+    private fun skipWhileConnecting(action: String): Boolean {
+        if (gaveMusic) return false
+        // Where the skip lands is not known here (the mirror has not arrived), so nothing is
+        // expected of the song: the next report is the truth, from its start.
+        seek.clear()
+        command(action)
+        reanchor()
+        return true
+    }
+
     override fun jumpToPrevious(): Boolean {
-        if (!active || pulling || awaitingConfirm != null) return false
+        if (!active || pulling) return false
+        if (awaitingConfirm != null) return skipWhileConnecting(DeviceActions.PREVIOUS)
         navigate(-1)
         command(DeviceActions.PREVIOUS)
         return true
@@ -565,24 +618,65 @@ internal class DeviceSpeaker(
         val player = localPlayer() ?: return
         val to = player.currentMediaItemIndex + delta
         if (to !in 0 until player.mediaItemCount) return
-        navExpected = player.getMediaItemAt(to).mediaId
-        navUntil = SystemClock.elapsedRealtime() + NAV_WINDOW_MS
+        val expected = player.getMediaItemAt(to).mediaId
+        skip.expect(expected)
         ignoreLocalUntil = SystemClock.elapsedRealtime() + NAV_SETTLE_MS
         applyingMirror = true
         try { player.seekTo(to, 0L) } finally { applyingMirror = false }
-        requestedPositionMs = 0L
-        requestedAt = SystemClock.elapsedRealtime()
+        seek.expect(0L, expected, resendable = false)
         reanchor()
         // A report held back meanwhile is looked at again when the window closes.
         scope.launch {
-            delay(NAV_WINDOW_MS + 50)
+            delay(SkipIntent.WINDOW_MS + 50)
             if (active) onAccountState(account.state.value.devices.firstOrNull { it.deviceId == targetId })
         }
     }
 
     override fun setVolume(fraction: Float) {
         if (!active) return
-        command(DeviceActions.SET_VOLUME, buildJsonObject { put("volume", fraction.coerceIn(0f, 1f).toDouble()) })
+        val clamped = fraction.coerceIn(0f, 1f).toDouble()
+        lastLocalVolume = clamped
+        volumeIntentAt = SystemClock.elapsedRealtime()
+        val current = status
+        if (current != null) {
+            status = Status(
+                mediaId = current.mediaId,
+                isPlaying = current.isPlaying,
+                positionMs = current.positionMs,
+                durationMs = current.durationMs,
+                volume = clamped,
+                at = current.at,
+                stamp = current.stamp,
+            )
+        }
+        targetId?.let { account.updateDeviceVolume(it, clamped.toFloat()) }
+        sink?.onRemoteVolumeChanged()
+
+        volumeCommandJob?.cancel()
+        val now = SystemClock.elapsedRealtime()
+        val elapsed = now - lastVolumeSentRealtime
+        if (elapsed >= VOLUME_THROTTLE_MS || clamped == 0.0 || clamped == 1.0) {
+            lastVolumeSentRealtime = now
+            command(DeviceActions.SET_VOLUME, buildJsonObject { put("volume", clamped) })
+        } else {
+            volumeCommandJob = scope.launch {
+                delay(VOLUME_THROTTLE_MS - elapsed)
+                lastVolumeSentRealtime = SystemClock.elapsedRealtime()
+                command(DeviceActions.SET_VOLUME, buildJsonObject { put("volume", clamped) })
+            }
+        }
+
+        scope.launch {
+            delay(VOLUME_INTENT_GRACE_MS + 50)
+            if (active && !recentVolumeIntent()) {
+                val latestNp = account.state.value.devices.firstOrNull { it.deviceId == targetId }?.nowPlaying
+                if (latestNp != null && status != null && status?.volume != latestNp.volume) {
+                    status = status?.copy(volume = latestNp.volume)
+                    sink?.onRemoteVolumeChanged()
+                    onChanged()
+                }
+            }
+        }
     }
 
     private fun command(action: String, payload: JsonObject = JsonObject(emptyMap())) {
@@ -594,11 +688,14 @@ internal class DeviceSpeaker(
     override fun onLocalTransition(item: MediaItem?, reason: Int) {
         if (!active || settling() || item == null || awaitingConfirm != null) return
         // Already there: the other device moved first and this is the phone catching up.
-        if (item.mediaId == status?.mediaId || item.mediaId == navExpected) return
+        if (item.mediaId == status?.mediaId || item.mediaId == skip.expectedId) return
         val player = localPlayer() ?: return
         wantsPlay = wantsPlay || reason == Player.MEDIA_ITEM_TRANSITION_REASON_AUTO
-        requestedPositionMs = 0L
-        requestedAt = SystemClock.elapsedRealtime()
+        // The phone moved to this song and sends it over: until the target reports it, reports of the
+        // song it is leaving are stale, and taking one would move the mirror back, which this phone
+        // would then send back over too: the two devices bouncing a song between them.
+        skip.expect(item.mediaId)
+        seek.expect(0L, item.mediaId, resendable = false)
         sendQueue(player, wantsPlay, 0L)
         onChanged()
     }
@@ -659,30 +756,44 @@ internal class DeviceSpeaker(
         }
         val np = target.nowPlaying
         if (np != null && np.updatedAtMs != status?.stamp) {
-            // A song the target is passing through while the person skips ahead: the phone already
-            // shows where the skips end, and is not sent back to where they began.
-            val expected = navExpected
-            if (expected != null && SystemClock.elapsedRealtime() < navUntil && np.videoId != expected) return
-            if (expected != null && np.videoId == expected) navExpected = null
+            // A song the target is passing through while the person skips ahead (or the one it is
+            // leaving): the phone already shows where the skips end, and is not sent back.
+            if (!skip.accepts(np.videoId)) return
             val before = status
-            status = statusOf(target.playhead() ?: np)
-            android.util.Log.i("DeviceSpeaker", "status <- ${np.videoId} pos=${status?.positionMs} dur=${status?.durationMs} playing=${np.isPlaying}")
-            requestedAt = 0L
+            val playhead = target.playhead() ?: np
+            val isRecentVol = recentVolumeIntent()
+            val effectiveVol = if (isRecentVol && lastLocalVolume != null) lastLocalVolume!! else playhead.volume
+            // A report from before a seek made here still has the old place; it does not move the bar.
+            val shownPlaying = effectivePlaying()
+            val placeBelieved = seek.accepts(np.videoId, playhead.positionMs, shownPlaying, settled = np.isPlaying == shownPlaying)
+            status = statusOf(playhead).copy(volume = effectiveVol)
+            android.util.Log.i(
+                "DeviceSpeaker",
+                "status <- ${np.videoId} pos=${status?.positionMs} dur=${status?.durationMs} playing=${np.isPlaying}" +
+                    if (placeBelieved) "" else " (before the seek; held at ${seek.positionMs(effectivePlaying())})",
+            )
             // A song change that comes with "not playing" is the target loading it, not pausing.
             val changedSong = before != null && before.mediaId != np.videoId
-            holdPlayingUntil = if (changedSong && !np.isPlaying && (before?.isPlaying == true || wantsPlay)) {
-                SystemClock.elapsedRealtime() + HOLD_PLAYING_MS
-            } else {
-                NEVER
+            val opening = changedSong && !np.isPlaying && (before?.isPlaying == true || wantsPlay)
+            holdPlayingUntil = when {
+                opening -> SystemClock.elapsedRealtime() + HOLD_PLAYING_MS
+                np.isPlaying || changedSong -> NEVER
+                // The same song, still not playing: it is still opening, and the hold runs on. Ended
+                // here, the second "not playing" report of one load read as a pause, and a seek made
+                // during the load was taken as done before the song's start threw it away.
+                else -> holdPlayingUntil
             }
-            if (holdPlayingUntil != NEVER) {
+            if (opening) {
                 scope.launch {
                     delay(HOLD_PLAYING_MS + 50)
                     sink?.onRemotePlaybackChanged()
                     onChanged()
                 }
             }
-            if (awaitingConfirm == null && !recentIntent()) wantsPlay = np.isPlaying || holdPlayingUntil != NEVER
+            // A report that still plays after a pause pressed here (or the other way) predates it.
+            if (awaitingConfirm == null && press.accepts(np.isPlaying)) {
+                wantsPlay = np.isPlaying || SystemClock.elapsedRealtime() < holdPlayingUntil
+            }
             // The other device moved on by itself: this phone's queue follows.
             val player = localPlayer()
             if (player != null && np.videoId.isNotEmpty() && player.currentMediaItem?.mediaId != np.videoId) {
@@ -692,7 +803,7 @@ internal class DeviceSpeaker(
                 }
             }
             sink?.onRemotePlaybackChanged()
-            if (before?.volume != np.volume) sink?.onRemoteVolumeChanged()
+            if (!isRecentVol && before?.volume != np.volume) sink?.onRemoteVolumeChanged()
             onChanged()
         }
     }
@@ -731,19 +842,16 @@ internal class DeviceSpeaker(
     }
 
     private companion object {
-        const val SEEK_GRACE_MS = 1_500L
-
         /** "Not set", far enough back that no grace window around it can be open. */
         const val NEVER = Long.MIN_VALUE / 2
 
-        /** What the person pressed wins over the target's last report for this long. */
-        const val INTENT_GRACE_MS = 2_500L
+        const val VOLUME_INTENT_GRACE_MS = 1_000L
+        const val VOLUME_THROTTLE_MS = 60L
 
         /** A new song reported "not playing" is it loading; the bar keeps saying playing this long. */
         const val HOLD_PLAYING_MS = 3_000L
 
-        /** After a skip made here, reports of the songs passed on the way are not news for this long. */
-        const val NAV_WINDOW_MS = 2_500L
+        /** After a skip made here, the mirror's own move is not the person's for this long. */
         const val NAV_SETTLE_MS = 800L
         const val CONFIRM_TIMEOUT_MS = 8_000L
 

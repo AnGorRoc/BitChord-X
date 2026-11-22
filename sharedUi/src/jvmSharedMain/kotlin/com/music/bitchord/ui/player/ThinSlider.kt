@@ -136,7 +136,7 @@ fun ThinSlider(
     val height by animateDpAsState(
         targetValue = if (dragging) activeHeight else idleHeight,
         animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
+            dampingRatio = Spring.DampingRatioNoBouncy,
             stiffness = Spring.StiffnessMediumLow,
         ),
         label = "sliderHeight",
@@ -191,6 +191,7 @@ fun ThinSlider(
             .pointerInput(Unit) {
                 awaitEachGesture {
                     val down = awaitFirstDown(requireUnconsumed = false)
+                    down.consume()
                     dragging = true
                     val initialVal = (down.position.x / size.width).coerceIn(0f, 1f)
                     haptics.play(Haptic.Tick)

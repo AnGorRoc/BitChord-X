@@ -1,5 +1,8 @@
 package com.music.bitchord.ui.player
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -50,8 +53,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -318,8 +323,17 @@ private fun SoundingCard(
 ) {
     val accent = MaterialTheme.colorScheme.primary
     val np = device.nowPlaying
-    val initialVol = np?.volume?.toFloat() ?: 1.0f
-    var localVol by remember(device.deviceId, np?.volume) { mutableFloatStateOf(initialVol) }
+    val remoteVol = np?.volume?.toFloat() ?: 1.0f
+    val volumeAnim = remember(device.deviceId) { Animatable(remoteVol) }
+    var dragging by remember { mutableStateOf(false) }
+    var lastUserChangeMs by remember { mutableStateOf(0L) }
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(remoteVol) {
+        if (!dragging && System.currentTimeMillis() - lastUserChangeMs > 600L) {
+            volumeAnim.animateTo(remoteVol, tween(durationMillis = 120, easing = LinearEasing))
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -329,118 +343,149 @@ private fun SoundingCard(
             .border(1.dp, accent.copy(alpha = 0.35f), CARD_SHAPE)
             .padding(14.dp),
     ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Icon(iconFor(device.type), null, tint = accent, modifier = Modifier.size(16.dp))
-            Spacer(Modifier.width(6.dp))
-            Text(
-                text = stringResource(Res.string.connect_sounding_label).uppercase(),
-                style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.2.sp),
-                color = accent,
-            )
-        }
-        Spacer(Modifier.height(6.dp))
-        Text(
-            text = if (isSelf) stringResource(Res.string.connect_this_device) else device.name,
-            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-            color = Color.White,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        if (isSelf) {
-            Text(
-                text = device.name,
-                style = MaterialTheme.typography.labelMedium,
-                color = Color.White.copy(alpha = 0.55f),
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
-        }
-        Spacer(Modifier.height(10.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                modifier = Modifier.size(48.dp).clip(RoundedCornerShape(10.dp)).background(Color.White.copy(alpha = 0.08f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (np?.thumbnailUrl != null) {
-                    AsyncImage(
-                        model = np.thumbnailUrl,
-                        contentDescription = null,
-                        contentScale = androidx.compose.ui.layout.ContentScale.Crop,
-                        modifier = Modifier.size(48.dp),
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // Device Information (Left - compact against the left)
+            Column(modifier = Modifier.weight(1f, fill = false)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(iconFor(device.type), null, tint = accent, modifier = Modifier.size(15.dp))
+                    Spacer(Modifier.width(6.dp))
+                    Text(
+                        text = stringResource(Res.string.connect_sounding_label).uppercase(),
+                        style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.1.sp),
+                        color = accent,
                     )
-                } else {
-                    Icon(Icons.Rounded.MusicNote, null, tint = Color.White.copy(alpha = 0.5f), modifier = Modifier.size(22.dp))
                 }
-            }
-            Spacer(Modifier.width(12.dp))
-            Column(Modifier.weight(1f)) {
+                Spacer(Modifier.height(4.dp))
                 Text(
-                    text = np?.title ?: stringResource(Res.string.connect_nothing_playing),
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = Color.White.copy(alpha = if (np != null) 0.95f else 0.55f),
+                    text = if (isSelf) stringResource(Res.string.connect_this_device) else device.name,
+                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    color = Color.White,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                if (np != null && np.artist.isNotBlank()) {
+                if (isSelf) {
                     Text(
-                        text = np.artist,
-                        style = MaterialTheme.typography.bodySmall,
-                        color = Color.White.copy(alpha = 0.6f),
+                        text = device.name,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = Color.White.copy(alpha = 0.55f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
             }
-        }
-        Spacer(Modifier.height(14.dp))
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Icon(
-                imageVector = if (localVol <= 0.01f) Icons.AutoMirrored.Rounded.VolumeOff else Icons.AutoMirrored.Rounded.VolumeDown,
-                contentDescription = null,
-                tint = Color.White.copy(alpha = 0.65f),
-                modifier = Modifier
-                    .size(18.dp)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                    ) {
-                        val newVol = if (localVol > 0.01f) 0f else 0.5f
-                        localVol = newVol
-                        onVolumeChange(newVol)
-                    },
-            )
-            Spacer(Modifier.width(8.dp))
-            ThinSlider(
-                value = localVol,
-                onValueChange = {
-                    localVol = it
-                    onVolumeChange(it)
-                },
-                onValueChangeFinished = {
-                    onVolumeChange(localVol)
-                },
-                idleHeight = 4.dp,
-                activeHeight = 8.dp,
+
+            Spacer(Modifier.width(20.dp))
+
+            // Song Information (Fills all remaining width, stretches to the right)
+            Row(
                 modifier = Modifier.weight(1f),
-            )
-            Spacer(Modifier.width(8.dp))
-            Icon(
-                imageVector = Icons.AutoMirrored.Rounded.VolumeUp,
-                contentDescription = null,
-                tint = Color.White.copy(alpha = 0.65f),
-                modifier = Modifier
-                    .size(18.dp)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                    ) {
-                        localVol = 1f
-                        onVolumeChange(1f)
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color.White.copy(alpha = 0.08f)),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    if (np?.thumbnailUrl != null) {
+                        AsyncImage(
+                            model = np.thumbnailUrl,
+                            contentDescription = null,
+                            contentScale = androidx.compose.ui.layout.ContentScale.Crop,
+                            modifier = Modifier.fillMaxSize(),
+                        )
+                    } else {
+                        Icon(
+                            Icons.Rounded.MusicNote,
+                            null,
+                            tint = Color.White.copy(alpha = 0.5f),
+                            modifier = Modifier.size(20.dp),
+                        )
+                    }
+                }
+                Spacer(Modifier.width(8.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        text = np?.title ?: stringResource(Res.string.connect_nothing_playing),
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                        color = Color.White.copy(alpha = if (np != null) 0.95f else 0.55f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    if (np != null && np.artist.isNotBlank()) {
+                        Text(
+                            text = np.artist,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = Color.White.copy(alpha = 0.6f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+            }
+        }
+        if (!isSelf) {
+            Spacer(Modifier.height(14.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                val currentVol = volumeAnim.value
+                Icon(
+                    imageVector = if (currentVol <= 0.01f) Icons.AutoMirrored.Rounded.VolumeOff else Icons.AutoMirrored.Rounded.VolumeDown,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.65f),
+                    modifier = Modifier
+                        .size(18.dp)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                        ) {
+                            val newVol = if (currentVol > 0.01f) 0f else 0.5f
+                            lastUserChangeMs = System.currentTimeMillis()
+                            scope.launch { volumeAnim.animateTo(newVol, tween(120, easing = LinearEasing)) }
+                            onVolumeChange(newVol)
+                        },
+                )
+                Spacer(Modifier.width(8.dp))
+                ThinSlider(
+                    value = currentVol,
+                    onValueChange = { newFraction ->
+                        dragging = true
+                        lastUserChangeMs = System.currentTimeMillis()
+                        scope.launch { volumeAnim.snapTo(newFraction) }
+                        onVolumeChange(newFraction)
                     },
-            )
+                    onValueChangeFinished = {
+                        dragging = false
+                        lastUserChangeMs = System.currentTimeMillis()
+                        onVolumeChange(volumeAnim.value)
+                    },
+                    idleHeight = 4.dp,
+                    activeHeight = 8.dp,
+                    modifier = Modifier.weight(1f),
+                )
+                Spacer(Modifier.width(8.dp))
+                Icon(
+                    imageVector = Icons.AutoMirrored.Rounded.VolumeUp,
+                    contentDescription = null,
+                    tint = Color.White.copy(alpha = 0.65f),
+                    modifier = Modifier
+                        .size(18.dp)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                        ) {
+                            lastUserChangeMs = System.currentTimeMillis()
+                            scope.launch { volumeAnim.animateTo(1f, tween(120, easing = LinearEasing)) }
+                            onVolumeChange(1f)
+                        },
+                )
+            }
         }
     }
 }
