@@ -1,6 +1,7 @@
 package com.music.bitchord
 
 import android.app.Application
+import android.content.ComponentCallbacks2
 import androidx.annotation.OptIn
 import androidx.compose.ui.ComposeUiFlags
 import androidx.compose.ui.ExperimentalComposeUiApi
@@ -347,6 +348,23 @@ class BitChordApplication : Application(), SingletonImageLoader.Factory, Configu
             secret = secret,
             sessionKey = sessionKey,
         )
+    }
+
+    @Suppress("DEPRECATION")
+    override fun onTrimMemory(level: Int) {
+        super.onTrimMemory(level)
+        if (level >= ComponentCallbacks2.TRIM_MEMORY_RUNNING_LOW || level >= ComponentCallbacks2.TRIM_MEMORY_BACKGROUND) {
+            runCatching {
+                SingletonImageLoader.get(this).memoryCache?.clear()
+            }
+        }
+    }
+
+    override fun onLowMemory() {
+        super.onLowMemory()
+        runCatching {
+            SingletonImageLoader.get(this).memoryCache?.clear()
+        }
     }
 
     companion object {

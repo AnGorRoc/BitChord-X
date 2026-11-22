@@ -89,7 +89,11 @@ internal class TappingAudioSink(
                 landPending = false
                 tap.shiftLandsAtUs = passTimeUs - tap.offsetUs
             }
-            tap.write(buffer, passTimeUs)
+            try {
+                tap.write(buffer, passTimeUs)
+            } catch (oom: OutOfMemoryError) {
+                tap.clear()
+            }
         }
         silence?.let { pending ->
             val taken = super.handleBuffer(pending, silenceTimeUs, 0)
@@ -119,12 +123,19 @@ internal class TappingAudioSink(
         } else if (requested < 0 && tap.encoding != C.ENCODING_PCM_8BIT) {
             val frames = (-requested * rate / 1_000_000L).toInt()
             if (frames > 0) {
-                val bytes = ByteBuffer.allocateDirect(frames * frameBytes).order(ByteOrder.nativeOrder())
-                silence = bytes // zeroed: silence for every signed encoding
-                silenceTimeUs = timeUs - frames * 1_000_000L / rate
-                landPending = true
-                super.handleDiscontinuity()
-                tap.moving = true
+                val boundedFrames = minOf(frames, rate * 2)
+                val bytes = try {
+                    ByteBuffer.allocateDirect(boundedFrames * frameBytes).order(ByteOrder.nativeOrder())
+                } catch (oom: OutOfMemoryError) {
+                    null
+                }
+                if (bytes != null) {
+                    silence = bytes // zeroed: silence for every signed encoding
+                    silenceTimeUs = timeUs - boundedFrames * 1_000_000L / rate
+                    landPending = true
+                    super.handleDiscontinuity()
+                    tap.moving = true
+                }
             }
         }
         // A skip is taken a slice at a time with a little audio passed between

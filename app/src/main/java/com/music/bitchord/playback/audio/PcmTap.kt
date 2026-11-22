@@ -201,6 +201,9 @@ class PcmTap(private val capacityUs: Long = DEFAULT_CAPACITY_US) {
 
     /** The renderer's stream offset, subtracted to turn buffer timestamps into track time. */
     fun streamOffset(outputStreamOffsetUs: Long) {
+        if (offsetUs != outputStreamOffsetUs) {
+            clear()
+        }
         offsetUs = outputStreamOffsetUs
     }
 
@@ -221,34 +224,40 @@ class PcmTap(private val capacityUs: Long = DEFAULT_CAPACITY_US) {
         val frames = buffer.remaining() / frameBytes
         val outCount = frames / factor
         if (outCount <= 0) return
-        val view = buffer.duplicate().order(ByteOrder.LITTLE_ENDIAN)
-        val base = view.position()
-        val out = FloatArray(outCount)
-        val norm = 1f / (channels * factor)
-        for (o in 0 until outCount) {
-            var sum = 0f
-            for (f in 0 until factor) {
-                val frameAt = base + (o * factor + f) * frameBytes
-                for (c in 0 until channels) {
-                    sum += sampleAt(view, frameAt + c * bytesPerSample, encoding)
+        try {
+            val view = buffer.duplicate().order(ByteOrder.LITTLE_ENDIAN)
+            val base = view.position()
+            val out = FloatArray(outCount)
+            val norm = 1f / (channels * factor)
+            for (o in 0 until outCount) {
+                var sum = 0f
+                for (f in 0 until factor) {
+                    val frameAt = base + (o * factor + f) * frameBytes
+                    for (c in 0 until channels) {
+                        sum += sampleAt(view, frameAt + c * bytesPerSample, encoding)
+                    }
+                }
+                out[o] = sum * norm
+            }
+            val chunk = Chunk(
+                startUs = presentationTimeUs - offsetUs,
+                rateHz = sampleRate.toDouble() / factor,
+                samples = out,
+            )
+            synchronized(lock) {
+                // A timestamp that steps backwards is a seek the flush has not
+                // reached yet; what came before it no longer continues.
+                val last = chunks.lastOrNull()
+                if (last != null && (chunk.startUs < last.startUs || chunk.startUs - last.endUs > GAP_TOLERANCE_US)) {
+                    chunks.clear()
+                }
+                chunks.addLast(chunk)
+                while (chunks.size > 1 && (chunks.size > MAX_CHUNKS || chunk.endUs - chunks.first().startUs > capacityUs || chunk.endUs < chunks.first().startUs)) {
+                    chunks.removeFirst()
                 }
             }
-            out[o] = sum * norm
-        }
-        val chunk = Chunk(
-            startUs = presentationTimeUs - offsetUs,
-            rateHz = sampleRate.toDouble() / factor,
-            samples = out,
-        )
-        synchronized(lock) {
-            // A timestamp that steps backwards is a seek the flush has not
-            // reached yet; what came before it no longer continues.
-            val last = chunks.lastOrNull()
-            if (last != null && (chunk.startUs < last.startUs || chunk.startUs - last.endUs > GAP_TOLERANCE_US)) {
-                chunks.clear()
-            }
-            chunks.addLast(chunk)
-            while (chunks.size > 1 && chunk.endUs - chunks.first().startUs > capacityUs) chunks.removeFirst()
+        } catch (oom: OutOfMemoryError) {
+            clear()
         }
     }
 
@@ -258,6 +267,7 @@ class PcmTap(private val capacityUs: Long = DEFAULT_CAPACITY_US) {
     companion object {
         const val DEFAULT_CAPACITY_US = 12_000_000L
         const val TARGET_RATE_HZ = 12_000
+        private const val MAX_CHUNKS = 800
         private const val POSITION_SAMPLES = 512
 
         /** A hole in the timestamps wider than this ends the stretch held. */
