@@ -88,8 +88,19 @@ object AudioRouting {
     /** The device the listener chose, or null for "wherever Android would send it". */
     val selectedId: StateFlow<Int?> = _selectedId.asStateFlow()
 
+    /**
+     * Called, before the choice takes effect, when the listener picks a different output than the
+     * one in use. [PlaybackService] pauses there: moving the music to another device while it plays
+     * would blast it out of one the listener may not be ready for, and the re-route that follows
+     * carries the play state across, so it has to be paused first. Not called by [forget], which is
+     * the device going away rather than a choice.
+     */
+    @Volatile
+    var onUserSwitch: (() -> Unit)? = null
+
     /** Send the music to this device. [PlaybackService] does the rest. */
     fun select(id: Int?) {
+        if (id != _selectedId.value) onUserSwitch?.invoke()
         _selectedId.value = id
     }
 

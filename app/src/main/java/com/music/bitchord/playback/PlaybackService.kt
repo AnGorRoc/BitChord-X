@@ -9396,6 +9396,17 @@ class PlaybackService : MediaLibraryService() {
         return negotiation.output.encoding
     }
 
+    /**
+     * The listener picked another playback device: the music pauses where it is and waits for them
+     * to press play on the new one. Left alone in a party — its playhead is everybody's, and one
+     * member changing their speaker is not a reason to stop it for the rest.
+     */
+    private fun pauseForOutputChange() {
+        if (ListenTogether.state.value.inParty) return
+        val live = mediaSession?.player ?: return
+        if (live.playWhenReady) live.pause()
+    }
+
     private fun requestOutputReconfiguration(rebuild: Boolean = false) {
         outputReconfigureJob?.cancel()
         outputReconfigureJob = scope.launch {
@@ -9570,6 +9581,7 @@ class PlaybackService : MediaLibraryService() {
         scope.launch {
             AudioRouting.selectedId.drop(1).collect { requestOutputReconfiguration() }
         }
+        AudioRouting.onUserSwitch = ::pauseForOutputChange
         scope.launch {
             AppSettings.outputPcmMode.drop(1).collect { requestOutputReconfiguration() }
         }
