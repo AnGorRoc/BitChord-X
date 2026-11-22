@@ -1270,6 +1270,18 @@ private fun ReleaseHeader(
                     if (page.browseId.startsWith("radio:")) {
                         return@Row
                     }
+                    if (songs.isNotEmpty()) {
+                        // The slot a normal playlist keeps for add-to-library, so the row
+                        // has the same shape here; it is already on this device, hence
+                        // shown as the ticked, inactive state.
+                        CircleIconButton(
+                            icon = BitChordIcons.Check,
+                            contentDescription = stringResource(R.string.add_to_library),
+                            onClick = {},
+                            size = RELEASE_SIDE_BUTTON,
+                            enabled = false,
+                        )
+                    }
                     // The song cache's copies, saved to Downloads in one go —
                     // from disk, so it works offline. See [LocalFolder.onDownload].
                     onDownloadAll?.let {
