@@ -26,6 +26,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -74,7 +75,9 @@ internal fun DesktopConnectButton(modifier: Modifier = Modifier) {
                 .height(32.dp)
                 .clip(RoundedCornerShape(50))
                 .background(if (lit) Color.White.copy(alpha = 0.14f) else Color.Transparent)
-                .desktopHoverWash()
+                .desktopHoverWash(covered = open)
+                // The panel hands focus back on closing; a focused button would stay greyed.
+                .focusProperties { canFocus = false }
                 .clickable { open = !open }
                 .padding(horizontal = if (label != null) 10.dp else 7.dp),
             verticalAlignment = Alignment.CenterVertically,

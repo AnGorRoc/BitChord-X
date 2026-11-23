@@ -3,9 +3,12 @@ package com.music.bitchord.desktop
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.hoverable
+import androidx.compose.foundation.interaction.HoverInteraction
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -70,9 +73,26 @@ private const val HOVER_MS = 140
 internal fun Modifier.desktopHoverWash(
     restAlpha: Float = 0f,
     hoverAlpha: Float = WASH_ALPHA,
+    /**
+     * True while the button has opened a focusable pop-up. The pop-up takes the pointer, so the
+     * button never hears it leave and would keep the wash after the pop-up closes; this drops it.
+     */
+    covered: Boolean = false,
 ): Modifier = composed {
     val interaction = remember { MutableInteractionSource() }
-    val hovered by interaction.collectIsHoveredAsState()
+    val enters = remember { mutableStateListOf<HoverInteraction.Enter>() }
+    LaunchedEffect(interaction) {
+        interaction.interactions.collect {
+            when (it) {
+                is HoverInteraction.Enter -> enters.add(it)
+                is HoverInteraction.Exit -> enters.remove(it.enter)
+            }
+        }
+    }
+    LaunchedEffect(covered) {
+        if (covered) enters.toList().forEach { interaction.emit(HoverInteraction.Exit(it)) }
+    }
+    val hovered = enters.isNotEmpty() && !covered
     val wash by animateFloatAsState(
         targetValue = if (hovered) 1f else 0f,
         animationSpec = tween(WASH_MS),
