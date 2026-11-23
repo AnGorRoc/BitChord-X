@@ -424,6 +424,8 @@ internal fun LandscapeCredits(
     /** Null browse id for anyone but the lead credit — see [NowPlayingScreen]. */
     onOpenArtist: (browseId: String?, name: String) -> Unit,
     modifier: Modifier = Modifier,
+    /** A hold on the star: save the song to a playlist. */
+    onHoldLike: (() -> Unit)? = null,
 ) {
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         Crossfade(
@@ -477,6 +479,7 @@ internal fun LandscapeCredits(
                 onClick = onToggleLike,
                 active = liked,
                 haptic = if (liked) Haptic.ToggleOff else Haptic.ToggleOn,
+                onLongClick = onHoldLike,
             )
             Spacer(Modifier.width(8.dp))
         }

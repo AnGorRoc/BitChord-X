@@ -257,6 +257,8 @@ fun NowPlayingScreen(
     accountName: String?,
     likeStatus: LikeStatus,
     onToggleLike: () -> Unit,
+    /** A hold on the star: save the song to a playlist, in the app's playlist sheet. */
+    onHoldLike: (() -> Unit)? = null,
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     onPrevious: () -> Unit,
@@ -1689,6 +1691,7 @@ fun NowPlayingScreen(
                                     onOpenMenu = onOpenMenu,
                                     onOpenAlbum = onOpenAlbum,
                                     onOpenArtist = onOpenArtist,
+                                    onHoldLike = onHoldLike,
                                 )
                             },
                             lyricStrip = if (lyricStripEnabled) {
@@ -3379,6 +3382,9 @@ fun NowPlayingScreen(
                                     onClick = onToggleLike,
                                     active = liked,
                                     haptic = if (liked) Haptic.ToggleOff else Haptic.ToggleOn,
+                                    // A hold saves it to a playlist instead, in the
+                                    // same sheet the rest of the app uses.
+                                    onLongClick = onHoldLike,
                                 )
                                 Spacer(Modifier.width(8.dp))
                             }
