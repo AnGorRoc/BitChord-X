@@ -437,6 +437,22 @@
             <div class="chart-box" id="hourlyChart"></div>
           </div>
         </div>
+        <div class="grid-2">
+          <div class="card">
+            <div class="card-head">
+              <h3 class="card-title">Sesiones reales (duracion medida)</h3>
+              <span class="card-hint">Heartbeats ya no cuentan como sesiones</span>
+            </div>
+            <div class="mini-list" id="sessionBox"></div>
+          </div>
+          <div class="card">
+            <div class="card-head">
+              <h3 class="card-title">Rotacion: mismos dispositivos o recurrentes</h3>
+              <span class="card-hint">Horas activas por instalacion</span>
+            </div>
+            <div class="mini-list" id="rotationBox"></div>
+          </div>
+        </div>
         <div class="grid-3">
           <div class="card">
             <div class="card-head">
@@ -1000,6 +1016,7 @@
       badge.classList.toggle('show', unres > 0);
 
       renderKPIs(d);
+      renderSessions(d);
       renderConcurrencyChart(d.concurrencySeries || []);
       renderHourlyChart(d.hourlyConnections || []);
       renderVersions(d.versions || [], d);
@@ -1032,7 +1049,7 @@
         {
           label: `Nuevos vs Recurrentes (${d.range})`,
           val: fmtNum(s.returningInPeriod),
-          sub: `<span class="pill green">+${fmtNum(s.newInPeriod)} nuevos</span><span class="pill">${fmtNum(s.totalSessions)} sesiones</span>`
+          sub: `<span class="pill green">+${fmtNum(s.newInPeriod)} nuevos</span><span class="pill">${fmtNum(d.sessions?.sessionsInPeriod)} sesiones reales</span>`
         },
         {
           label: 'Perdidos (>14d) / Retencion',
@@ -1054,6 +1071,36 @@
           <div class="kpi-sub">${c.sub}</div>
         </div>
       `).join('');
+    }
+
+    function renderSessions(d) {
+      const s = d.sessions || {}, r = d.rotation || {};
+      const dur = (sec) => {
+        sec = Number(sec) || 0;
+        if (sec >= 3600) return `${Math.floor(sec / 3600)}h ${Math.floor((sec % 3600) / 60)}m`;
+        if (sec >= 60) return `${Math.floor(sec / 60)}m ${sec % 60}s`;
+        return `${sec}s`;
+      };
+      const since = d.dataSince ? new Date(d.dataSince).toLocaleDateString('es-AR') : null;
+      $('sessionBox').innerHTML = `
+        <div class="mini-item"><span>Sesiones iniciadas (${esc(d.range)})</span><span class="pill green">${fmtNum(s.sessionsInPeriod)}</span></div>
+        <div class="mini-item"><span>Abiertas ahora</span><span class="pill">${fmtNum(s.activeSessions)}</span></div>
+        <div class="mini-item"><span>Duracion mediana / p90</span><span class="mono">${dur(s.medianDurationSec)} / ${dur(s.p90DurationSec)}</span></div>
+        <div class="mini-item"><span>Duracion promedio / maximo</span><span class="mono">${dur(s.avgDurationSec)} / ${dur(s.maxDurationSec)}</span></div>
+        <div class="mini-item"><span>Sesiones >= 1h / >= 4h</span><span class="pill">${fmtNum(s.sessionsOver1h)} / ${fmtNum(s.sessionsOver4h)}</span></div>
+        <div class="mini-item"><span>Instalaciones con sesion >= 4h</span><span class="pill amber">${fmtNum(s.installsWithLongSession)}</span></div>
+        <div class="mini-item"><span>Cierres confirmados</span><span class="pill">${(s.gracefulClosePct || 0).toFixed(1)}%</span></div>
+        ${since ? `<div class="card-hint" style="margin-top:6px">Mediciones exactas desde ${esc(since)}. El historico anterior no tenia duraciones.</div>` : ''}
+      `;
+      const buckets = (r.buckets || []).map(b => `
+        <div class="mini-item"><span>Activo ${esc(b.label)} ${b.label === '1' ? 'hora' : 'horas'}</span><span class="pill">${fmtNum(b.installs)} instalaciones</span></div>
+      `).join('') || '<div class="card-hint">Sin sesiones medidas todavia.</div>';
+      $('rotationBox').innerHTML = `
+        <div class="mini-item"><span>Instalaciones activas en el rango</span><span class="pill green">${fmtNum(r.activeInstalls)}</span></div>
+        <div class="mini-item"><span>Horas activas medianas por instalacion</span><span class="mono">${(r.medianActiveHours || 0).toFixed(1)} h</span></div>
+        <div class="mini-item"><span>Que sigue activa la hora siguiente</span><span class="pill amber">${(r.keptInNextHourPct || 0).toFixed(1)}%</span></div>
+        <div style="margin-top:8px;padding-top:8px;border-top:1px solid var(--border)">${buckets}</div>
+      `;
     }
 
     function renderConcurrencyChart(series) {
@@ -1113,7 +1160,7 @@
         const bh = (b.connections / maxC) * (H - padT - padB);
         const bx = padL + i * bw + 2, by = H - padB - bh;
         const lbl = (i % 4 === 0) ? `<text x="${bx + (bw - 4) / 2}" y="${H - 6}" fill="#8b95ab" font-size="10" text-anchor="middle">${String(i).padStart(2, '0')}h</text>` : '';
-        return `<rect x="${bx.toFixed(1)}" y="${by.toFixed(1)}" width="${Math.max(2, bw - 4).toFixed(1)}" height="${bh.toFixed(1)}" rx="3" fill="#60a5fa" opacity="0.88"><title>${String(i).padStart(2,'0')}:00 - ${b.connections} conexiones (${b.uniqueUsers} unicos)</title></rect>${lbl}`;
+        return `<rect x="${bx.toFixed(1)}" y="${by.toFixed(1)}" width="${Math.max(2, bw - 4).toFixed(1)}" height="${bh.toFixed(1)}" rx="3" fill="#60a5fa" opacity="0.88"><title>${String(i).padStart(2,'0')}:00 - ${b.connections} conexiones (${b.uniqueUsers} unicos) | ${b.activeUsers || 0} con sesion activa</title></rect>${lbl}`;
       }).join('')}</svg>`;
     }
 
@@ -1181,7 +1228,7 @@
     function renderInstallKPIs(d) {
       const s = d.summary || {};
       $('installKpis').innerHTML = [
-        ['Instalaciones totales', fmtNum(s.totalInstalls), `${fmtNum(s.totalSessions)} sesiones acumuladas`],
+        ['Instalaciones totales', fmtNum(s.totalInstalls), `${fmtNum(s.totalSessions)} sesiones (contador historico)`],
         ['Activos 24h / 7d / 30d', `${fmtNum(s.dau)} / ${fmtNum(s.wau)} / ${fmtNum(s.mau)}`, 'DAU / WAU / MAU'],
         ['Recurrentes en rango', fmtNum(s.returningInPeriod), `+${fmtNum(s.newInPeriod)} nuevos`],
         ['Perdidos (>14d)', fmtNum(s.lostInstalls), `Retencion ${(s.retentionRatePct || 0).toFixed(1)}%`]

@@ -648,6 +648,11 @@ func handlePresenceWS(w http.ResponseWriter, r *http.Request) {
 	_ = conn.SetReadDeadline(time.Now().Add(35 * time.Second))
 	conn.SetPongHandler(func(string) error {
 		presenceTracker.TouchToken(id, tok, clock.NowMs())
+		// WebSocket mode sends the open ping only once at hello; pongs are what
+		// keep the recorded session alive afterwards.
+		if telemetryStore != nil && !isDeb && !minimal {
+			telemetryStore.TouchSession(hello.ID)
+		}
 		return conn.SetReadDeadline(time.Now().Add(35 * time.Second))
 	})
 	for {

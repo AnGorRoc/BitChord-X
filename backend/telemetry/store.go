@@ -107,6 +107,9 @@ type HourlyBucket struct {
 	Hour        int `json:"hour"`
 	Connections int `json:"connections"`
 	UniqueUsers int `json:"uniqueUsers"`
+	// ActiveUsers counts installs whose session covered this hour. Unlike
+	// Connections it does not grow with heartbeats or reconnects.
+	ActiveUsers int `json:"activeUsers"`
 }
 
 type VersionStat struct {
@@ -162,6 +165,11 @@ type OverviewData struct {
 	TopErrors         []ErrorGroupStat `json:"topErrors"`
 	ErrorDevices      []DeviceStat     `json:"errorDevices"`
 	Minimal           MinimalStats     `json:"minimal"`
+	// Precise, session-based metrics. Only rows written after this schema was
+	// introduced are counted; older history has no session lengths.
+	Sessions  SessionStats  `json:"sessions"`
+	Rotation  RotationStats `json:"rotation"`
+	DataSince time.Time     `json:"dataSince"`
 }
 
 // MinimalStats is what the minimal level adds up to: device-days and errors by
@@ -292,6 +300,28 @@ ALTER TABLE connection_events ADD COLUMN IF NOT EXISTS package_format TEXT NOT N
 CREATE INDEX IF NOT EXISTS idx_conn_events_created ON connection_events (created_at DESC);
 CREATE INDEX IF NOT EXISTS idx_conn_events_format ON connection_events (package_format);
 
+-- One row per continuous open period. Heartbeats renew last_seen_at, an
+-- explicit close sets close_requested_at, and the reaper fills ended_at.
+-- The partial unique index guarantees a single open session per install even
+-- if an old heartbeat races a reconnect.
+CREATE TABLE IF NOT EXISTS app_sessions (
+	id                BIGSERIAL PRIMARY KEY,
+	install_id        TEXT NOT NULL,
+	platform          TEXT NOT NULL,
+	app_version       TEXT NOT NULL DEFAULT '',
+	package_format    TEXT NOT NULL DEFAULT '',
+	started_at        TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	last_seen_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+	close_requested_at TIMESTAMPTZ,
+	ended_at          TIMESTAMPTZ,
+	end_reason        TEXT NOT NULL DEFAULT ''
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_app_sessions_one_open
+	ON app_sessions (install_id) WHERE ended_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_app_sessions_started ON app_sessions (started_at DESC);
+CREATE INDEX IF NOT EXISTS idx_app_sessions_open ON app_sessions (ended_at) WHERE ended_at IS NULL;
+
 CREATE TABLE IF NOT EXISTS concurrency_snapshots (
 	id             BIGSERIAL PRIMARY KEY,
 	recorded_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -363,16 +393,31 @@ func (s *Store) worker() {
 
 func (s *Store) maintenanceLoop() {
 	defer s.wg.Done()
-	ticker := time.NewTicker(6 * time.Hour)
-	defer ticker.Stop()
+	reap := time.NewTicker(sessionReapInterval)
+	prune := time.NewTicker(6 * time.Hour)
+	defer reap.Stop()
+	defer prune.Stop()
+
+	// Close sessions left open by a restart before serving any metrics.
+	{
+		startupCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		s.reapStaleSessions(startupCtx)
+		cancel()
+	}
+
 	for {
 		select {
 		case <-s.closed:
 			return
-		case <-ticker.C:
+		case <-reap.C:
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			s.reapStaleSessions(ctx)
+			cancel()
+		case <-prune.C:
 			ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 			_, _ = s.pool.Exec(ctx, `DELETE FROM concurrency_snapshots WHERE recorded_at < NOW() - INTERVAL '90 days'`)
 			_, _ = s.pool.Exec(ctx, `DELETE FROM connection_events WHERE created_at < NOW() - INTERVAL '90 days'`)
+			_, _ = s.pool.Exec(ctx, `DELETE FROM app_sessions WHERE started_at < NOW() - INTERVAL '90 days'`)
 			cancel()
 		}
 	}
@@ -451,6 +496,10 @@ VALUES ($1, $2, $3, $4, $5);`
 // RecordPresence records an install heartbeat or close event asynchronously.
 // Installs identified as deb (or with deb in their version) are routed to RecordConnectionEvent
 // so they are never counted as users or installs.
+//
+// Heartbeats renew the current session; they no longer create new ones. A
+// session starts on the first open after a close or a missed-heartbeat gap, and
+// ends either on a confirmed close or when the pings stop. See sessions.go.
 func (s *Store) RecordPresence(installID, platform, appVersion string, open bool, packageFormat ...string) {
 	if s.pool == nil {
 		return
@@ -472,61 +521,9 @@ func (s *Store) RecordPresence(installID, platform, appVersion string, open bool
 
 	s.enqueue(func(ctx context.Context) {
 		if open {
-			// A new session is counted when the previous open was more than 10 minutes ago
-			// (a heartbeat is every ~5 minutes).
-			const upsertOpen = `
-INSERT INTO installs (install_id, platform, app_version, first_version, first_seen_at, last_seen_at, session_count, last_open_at, package_format)
-VALUES ($1, $2, $3, $3, NOW(), NOW(), 1, NOW(), $4)
-ON CONFLICT (install_id) DO UPDATE SET
-	platform = EXCLUDED.platform,
-	first_version = CASE WHEN installs.first_version = '' THEN EXCLUDED.app_version ELSE installs.first_version END,
-	previous_version = CASE
-		WHEN EXCLUDED.app_version <> '' AND installs.app_version <> '' AND EXCLUDED.app_version <> installs.app_version
-		THEN installs.app_version
-		ELSE installs.previous_version
-	END,
-	upgraded_at = CASE
-		WHEN EXCLUDED.app_version <> '' AND installs.app_version <> '' AND EXCLUDED.app_version <> installs.app_version
-		THEN NOW()
-		ELSE installs.upgraded_at
-	END,
-	app_version = CASE WHEN EXCLUDED.app_version <> '' THEN EXCLUDED.app_version ELSE installs.app_version END,
-	package_format = CASE WHEN EXCLUDED.package_format <> '' THEN EXCLUDED.package_format ELSE installs.package_format END,
-	last_seen_at = NOW(),
-	session_count = CASE
-		WHEN installs.last_open_at IS NULL OR NOW() - installs.last_open_at > INTERVAL '10 minutes'
-		THEN installs.session_count + 1
-		ELSE installs.session_count
-	END,
-	last_open_at = NOW();`
-			if _, err := s.pool.Exec(ctx, upsertOpen, installID, platform, appVersion, pkgFormat); err != nil {
-				log.Printf("telemetry: upsert install failed: %v", err)
-			}
-
-			// Log connection event only when starting a session (or once per 10m window)
-			// to keep connection_events compact and meaningful for hourly connection charts.
-			const insertEvent = `
-INSERT INTO connection_events (install_id, platform, app_version, event_type, package_format)
-SELECT $1, $2, $3, 'open', $4
-WHERE NOT EXISTS (
-	SELECT 1 FROM connection_events
-	WHERE install_id = $1 AND event_type = 'open' AND created_at > NOW() - INTERVAL '10 minutes'
-);`
-			if _, err := s.pool.Exec(ctx, insertEvent, installID, platform, appVersion, pkgFormat); err != nil {
-				log.Printf("telemetry: insert open event failed: %v", err)
-			}
+			s.recordAppOpen(ctx, installID, platform, appVersion, pkgFormat)
 		} else {
-			const upsertClose = `
-UPDATE installs SET
-	last_seen_at = NOW(),
-	app_version = CASE WHEN $2 <> '' THEN $2 ELSE app_version END,
-	package_format = CASE WHEN $3 <> '' THEN $3 ELSE package_format END
-WHERE install_id = $1;`
-			_, _ = s.pool.Exec(ctx, upsertClose, installID, appVersion, pkgFormat)
-			_, _ = s.pool.Exec(ctx,
-				`INSERT INTO connection_events (install_id, platform, app_version, event_type, package_format) VALUES ($1, $2, $3, $4, $5)`,
-				installID, platform, appVersion, eventType, pkgFormat,
-			)
+			s.recordAppClose(ctx, installID, platform, appVersion, pkgFormat)
 		}
 	})
 }
@@ -665,6 +662,8 @@ func (s *Store) Overview(ctx context.Context, rangeStr string) (OverviewData, er
 		TopErrors:         []ErrorGroupStat{},
 		ErrorDevices:      []DeviceStat{},
 		Minimal:           MinimalStats{Errors: []MinimalErrorStat{}},
+		Sessions:          SessionStats{},
+		Rotation:          RotationStats{Buckets: []PresenceBucket{}},
 	}
 	for h := 0; h < 24; h++ {
 		out.HourlyConnections[h].Hour = h
@@ -763,6 +762,21 @@ ORDER BY hr ASC;`
 			}
 		}
 	}
+
+	// 3b. Real session durations and rotation. connection_events only marks
+	// starts; app_sessions carries the full lifetime of each open period.
+	if ss, rot, err := s.loadSessionMetrics(ctx, since); err == nil {
+		out.Sessions = ss
+		out.Rotation = rot
+	} else {
+		log.Printf("telemetry: session metrics failed: %v", err)
+	}
+	for hr, active := range s.loadHourlyActiveUsers(ctx, since) {
+		if hr >= 0 && hr < 24 {
+			out.HourlyConnections[hr].ActiveUsers = active
+		}
+	}
+	_ = s.pool.QueryRow(ctx, `SELECT MIN(started_at) FROM app_sessions`).Scan(&out.DataSince)
 
 	// 4. Version adoption & errors per version
 	const versionsQ = `
@@ -1216,7 +1230,27 @@ func (s *Store) FormatOverviewMarkdown(ctx context.Context, rangeStr string) (st
 	b.WriteString("## Users & Retention\n")
 	fmt.Fprintf(&b, "- Total Installs: %d | DAU: %d | WAU: %d | MAU: %d\n", d.Summary.TotalInstalls, d.Summary.DAU, d.Summary.WAU, d.Summary.MAU)
 	fmt.Fprintf(&b, "- New (%s): %d | Returning (%s): %d | Lost (>14d): %d | Retention: %.1f%%\n", d.Range, d.Summary.NewInPeriod, d.Range, d.Summary.ReturningInPeriod, d.Summary.LostInstalls, d.Summary.RetentionRatePct)
-	fmt.Fprintf(&b, "- Peak Online (%s): %d | Total Sessions: %d\n\n", d.Range, d.Summary.PeakOnline, d.Summary.TotalSessions)
+	fmt.Fprintf(&b, "- Peak Online (%s): %d | Total Sessions (legacy counter): %d\n", d.Range, d.Summary.PeakOnline, d.Summary.TotalSessions)
+	if !d.DataSince.IsZero() {
+		fmt.Fprintf(&b, "- Data since: %s (session-based metrics only cover this window)\n", d.DataSince.Format(time.RFC3339))
+	}
+	b.WriteString("\n")
+
+	b.WriteString("## Sessions (precise tracking)\n")
+	fmt.Fprintf(&b, "- Started (%s): %d | currently open: %d | graceful closes: %.1f%%\n", d.Range, d.Sessions.SessionsInPeriod, d.Sessions.ActiveSessions, d.Sessions.GracefulClosePct)
+	fmt.Fprintf(&b, "- Duration: median %s | p90 %s | average %s | max %s\n",
+		formatDuration(d.Sessions.MedianDurationSec), formatDuration(d.Sessions.P90DurationSec),
+		formatDuration(d.Sessions.AvgDurationSec), formatDuration(d.Sessions.MaxDurationSec))
+	fmt.Fprintf(&b, "- Long sessions: >=1h %d | >=4h %d | installs with a >=4h session %d\n\n",
+		d.Sessions.SessionsOver1h, d.Sessions.SessionsOver4h, d.Sessions.InstallsWithLongSession)
+
+	b.WriteString("## Rotation (same devices or new ones)\n")
+	fmt.Fprintf(&b, "- Installs active in range: %d | median active hours per install: %.1f | still active the next hour: %.1f%%\n",
+		d.Rotation.ActiveInstalls, d.Rotation.MedianActiveHours, d.Rotation.KeptInNextHourPct)
+	for _, bucket := range d.Rotation.Buckets {
+		fmt.Fprintf(&b, "- Active %s hours: %d installs\n", bucket.Label, bucket.Installs)
+	}
+	b.WriteString("\n")
 
 	b.WriteString("## Version Adoption & Upgrades\n")
 	if d.LatestVersion != "" {
@@ -1295,6 +1329,7 @@ type DatabaseStats struct {
 	DatabaseSizeBytes     int64 `json:"databaseSizeBytes"`
 	InstallsCount         int64 `json:"installsCount"`
 	ConnectionEventsCount int64 `json:"connectionEventsCount"`
+	SessionsCount         int64 `json:"sessionsCount"`
 	SnapshotsCount        int64 `json:"snapshotsCount"`
 	ErrorsCount           int64 `json:"errorsCount"`
 	ResolvedErrorsCount   int64 `json:"resolvedErrorsCount"`
@@ -1310,6 +1345,7 @@ SELECT
 	pg_database_size(current_database())::BIGINT,
 	(SELECT COUNT(*)::BIGINT FROM installs WHERE package_format <> 'deb' AND app_version NOT LIKE '%deb%'),
 	(SELECT COUNT(*)::BIGINT FROM connection_events),
+	(SELECT COUNT(*)::BIGINT FROM app_sessions),
 	(SELECT COUNT(*)::BIGINT FROM concurrency_snapshots),
 	(SELECT COUNT(*)::BIGINT FROM error_reports),
 	(SELECT COUNT(*)::BIGINT FROM error_reports WHERE resolved);`
@@ -1317,6 +1353,7 @@ SELECT
 		&out.DatabaseSizeBytes,
 		&out.InstallsCount,
 		&out.ConnectionEventsCount,
+		&out.SessionsCount,
 		&out.SnapshotsCount,
 		&out.ErrorsCount,
 		&out.ResolvedErrorsCount,
@@ -1351,18 +1388,22 @@ func (s *Store) PruneOldHistory(ctx context.Context, days int) (int64, error) {
 	if err != nil {
 		return t1.RowsAffected(), err
 	}
+	tSessions, err := s.pool.Exec(ctx, `DELETE FROM app_sessions WHERE started_at < $1`, cutoff)
+	if err != nil {
+		return t1.RowsAffected() + t2.RowsAffected(), err
+	}
 	// The minimal counters carry no identity and are tiny, so they are kept a year.
 	yearAgo := time.Now().UTC().Add(-365 * 24 * time.Hour)
 	t3, _ := s.pool.Exec(ctx, `DELETE FROM minimal_usage WHERE day < $1::date`, yearAgo)
 	t4, _ := s.pool.Exec(ctx, `DELETE FROM minimal_errors WHERE day < $1::date`, yearAgo)
-	return t1.RowsAffected() + t2.RowsAffected() + t3.RowsAffected() + t4.RowsAffected(), nil
+	return t1.RowsAffected() + t2.RowsAffected() + tSessions.RowsAffected() + t3.RowsAffected() + t4.RowsAffected(), nil
 }
 
 func (s *Store) ResetDatabase(ctx context.Context) error {
 	if s.pool == nil {
 		return nil
 	}
-	_, err := s.pool.Exec(ctx, `TRUNCATE TABLE installs, connection_events, concurrency_snapshots, error_reports, minimal_usage, minimal_errors RESTART IDENTITY;`)
+	_, err := s.pool.Exec(ctx, `TRUNCATE TABLE installs, connection_events, app_sessions, concurrency_snapshots, error_reports, minimal_usage, minimal_errors RESTART IDENTITY;`)
 	return err
 }
 

@@ -386,10 +386,10 @@ func serveLLMsTxt(w http.ResponseWriter, r *http.Request) {
 > Add ?format=md or ?format=json on supported endpoints.
 
 ## Quick Endpoints
-- GET /api/admin/ai/brief?range=7d          : Executive Markdown brief (live users, retention, versions, top errors).
+- GET /api/admin/ai/brief?range=7d          : Executive Markdown brief (live users, retention, session durations, rotation, versions, top errors).
 - GET /api/admin/ai/errors?unresolved=true  : Unresolved error reports with stacktraces and device info in Markdown.
 - GET /api/admin/ai/schema                  : Machine-readable JSON schema of all admin endpoints.
-- GET /api/admin/overview?range=24h|7d|30d  : Full JSON dashboard metrics, time-series, and hourly connections.
+- GET /api/admin/overview?range=24h|7d|30d  : Full JSON metrics including sessions (real durations), rotation (hours per install, next-hour overlap) and hourly active users.
 - GET /api/admin/errors/{id}?format=md      : Single error report detail with full stacktrace.
 - GET /api/admin/installs?status=lost|active24h|returning : Anonymized install list and session counts.
 - GET /api/admin/parties                    : Live Listen Together party and socket counts.
@@ -411,9 +411,9 @@ func serveAISchema(w http.ResponseWriter, r *http.Request) {
 		"websocket":   "/ws/admin/live",
 		"endpoints": []map[string]interface{}{
 			{"method": "GET", "path": "/llms.txt", "description": "Plain-text AI discovery index"},
-			{"method": "GET", "path": "/api/admin/ai/brief", "query": []string{"range=24h|7d|30d", "format=md|json"}, "description": "Concise summary of live users, retention, versions, and top errors"},
+			{"method": "GET", "path": "/api/admin/ai/brief", "query": []string{"range=24h|7d|30d", "format=md|json"}, "description": "Concise summary of live users, retention, session durations, rotation, versions, and top errors"},
 			{"method": "GET", "path": "/api/admin/ai/errors", "query": []string{"unresolved=true|false", "version", "platform", "errorType", "limit", "format=md|json"}, "description": "Filtered error reports with device info and stacktraces"},
-			{"method": "GET", "path": "/api/admin/overview", "query": []string{"range=24h|7d|30d", "format=json|md"}, "description": "Full KPIs, concurrency series, hourly connections, versions, platforms, top errors"},
+			{"method": "GET", "path": "/api/admin/overview", "query": []string{"range=24h|7d|30d", "format=json|md"}, "description": "Full KPIs, concurrency series, hourly connections with active users, real session durations, rotation metrics, versions, platforms, top errors"},
 			{"method": "GET", "path": "/api/admin/errors", "query": []string{"version", "platform", "errorType", "unresolved", "search", "limit", "offset", "format=json|md"}, "description": "Paginated error list"},
 			{"method": "GET", "path": "/api/admin/errors/{id}", "query": []string{"format=json|md"}, "description": "Single error detail"},
 			{"method": "POST", "path": "/api/admin/errors/{id}/resolve", "body": map[string]bool{"resolved": true}, "description": "Resolve or reopen an error"},
