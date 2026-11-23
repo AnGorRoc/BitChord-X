@@ -1,5 +1,6 @@
 package com.music.bitchord.data
 
+import com.music.bitchord.data.innertube.Innertube
 import com.music.bitchord.data.model.HomeShelf
 import com.music.bitchord.data.model.ShelfItem
 import kotlinx.coroutines.Dispatchers
@@ -111,10 +112,20 @@ class FeedCachePersistenceTest {
 
     @Test
     fun `explore is read when first asked for, not at start`() {
-        prefs.data["explore_sections"] = "[]"
+        prefs.data["explore_sections_${Innertube.currentLanguage}"] = "[]"
         restart()
 
         assertEquals(emptyList<Any>(), FeedCache.getExplore())
+    }
+
+    @Test
+    fun `explore saved before it was kept per language is dropped`() {
+        prefs.data["explore_sections"] = "[]"
+
+        restart()
+
+        assertFalse(prefs.contains("explore_sections"))
+        assertNull(FeedCache.getExplore())
     }
 
     @Test
