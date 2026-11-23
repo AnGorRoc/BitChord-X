@@ -1951,4 +1951,5 @@
     <string name="about_app_original_role">Projet BitChord original</string>
     <string name="about_app_original_thanks">BitChord X est né du projet BitChord original. Merci de l\'avoir ouvert à tous.</string>
     <string name="about_app_original_repo">Le BitChord original sur GitHub</string>
+    <string name="about_app_made_by">Fait avec ♥ par %1$s</string>
 </resources>

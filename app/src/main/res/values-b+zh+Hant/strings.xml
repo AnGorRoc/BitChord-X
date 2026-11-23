@@ -1929,4 +1929,5 @@
     <string name="about_app_original_role">BitChord 原始專案</string>
     <string name="about_app_original_thanks">BitChord X 源自原始的 BitChord 專案。感謝你將它向所有人開放。</string>
     <string name="about_app_original_repo">GitHub 上的原版 BitChord</string>
+    <string name="about_app_made_by">由 %1$s 用 ♥ 打造</string>
 </resources>

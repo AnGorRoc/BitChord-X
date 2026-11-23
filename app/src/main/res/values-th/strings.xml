@@ -1935,4 +1935,5 @@
     <string name="about_app_original_role">โปรเจกต์ BitChord ต้นฉบับ</string>
     <string name="about_app_original_thanks">BitChord X เกิดจากโปรเจกต์ BitChord ต้นฉบับ ขอบคุณที่เปิดให้ทุกคนใช้</string>
     <string name="about_app_original_repo">BitChord ต้นฉบับบน GitHub</string>
+    <string name="about_app_made_by">สร้างด้วย ♥ โดย %1$s</string>
 </resources>

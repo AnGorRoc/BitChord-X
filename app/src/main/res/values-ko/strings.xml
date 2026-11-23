@@ -1785,4 +1785,5 @@
     <string name="about_app_original_role">원작 BitChord 프로젝트</string>
     <string name="about_app_original_thanks">BitChord X는 원작 BitChord 프로젝트에서 시작됐습니다. 모두에게 공개해 주셔서 감사합니다.</string>
     <string name="about_app_original_repo">GitHub의 원작 BitChord</string>
+    <string name="about_app_made_by">%1$s이(가) ♥을 담아 만들었습니다</string>
 </resources>

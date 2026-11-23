@@ -1950,4 +1950,5 @@
     <string name="about_app_original_role">मूल BitChord प्रोजेक्ट</string>
     <string name="about_app_original_thanks">BitChord X मूल BitChord प्रोजेक्ट से बना है। इसे सबके लिए खोलने के लिए धन्यवाद।</string>
     <string name="about_app_original_repo">GitHub पर मूल BitChord</string>
+    <string name="about_app_made_by">%1$s द्वारा ♥ से बनाया गया</string>
 </resources>

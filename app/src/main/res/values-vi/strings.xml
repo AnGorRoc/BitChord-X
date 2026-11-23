@@ -1869,4 +1869,5 @@
     <string name="about_app_original_role">Dự án BitChord gốc</string>
     <string name="about_app_original_thanks">BitChord X ra đời từ dự án BitChord gốc. Cảm ơn vì đã mở nó cho mọi người.</string>
     <string name="about_app_original_repo">BitChord gốc trên GitHub</string>
+    <string name="about_app_made_by">Làm bằng ♥ bởi %1$s</string>
 </resources>

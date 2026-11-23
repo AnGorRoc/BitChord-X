@@ -1929,4 +1929,5 @@
     <string name="about_app_original_role">Proyek BitChord asli</string>
     <string name="about_app_original_thanks">BitChord X lahir dari proyek BitChord asli. Terima kasih telah membukanya untuk semua orang.</string>
     <string name="about_app_original_repo">BitChord asli di GitHub</string>
+    <string name="about_app_made_by">Dibuat dengan ♥ oleh %1$s</string>
 </resources>

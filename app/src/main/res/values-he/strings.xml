@@ -1956,4 +1956,5 @@
     <string name="about_app_original_role">פרויקט BitChord המקורי</string>
     <string name="about_app_original_thanks">BitChord X צמח מפרויקט BitChord המקורי. תודה על פתיחתו לכולם.</string>
     <string name="about_app_original_repo">BitChord המקורי ב-GitHub</string>
+    <string name="about_app_made_by">נוצר באהבה ♥ על ידי %1$s</string>
 </resources>
