@@ -111,7 +111,10 @@ class FeedCachePersistenceTest {
 
     @Test
     fun `explore is read when first asked for, not at start`() {
-        prefs.data["explore_sections"] = "[]"
+        // Explore is cached per app language (see FeedCache.exploreKey), under
+        // the language the cache itself will look up.
+        val lang = runCatching { com.music.bitchord.data.innertube.Innertube.currentLanguage }.getOrDefault("en")
+        prefs.data["explore_sections_$lang"] = "[]"
         restart()
 
         assertEquals(emptyList<Any>(), FeedCache.getExplore())
