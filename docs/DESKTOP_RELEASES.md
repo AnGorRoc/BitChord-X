@@ -8,7 +8,8 @@ breaks one of the rules below, the update check silently stops working for Linux
 ## 1. One version, stamped from one place
 
 - The version is a plain string such as `1.8` or `1.8-beta1`. No leading `v`.
-- `desktopApp/build.gradle.kts` reads it from `-Pbitchord.version=...` and falls back to a default
+- `desktopApp/build.gradle.kts` reads it from `-PbitchordVersionName=...` (or the older
+  `-Pbitchord.version=...`) and falls back to `bitchordVersionName` in the root `build.gradle.kts`
   (`appVersion`). CI passes the tag with the `v` removed (`v1.8` becomes `1.8`).
 - The app reads the same value at runtime from the `bitchord.version` system property. It is baked
   into every package by `jvmArgs("-Dbitchord.version=$appVersion")` in the `compose.desktop`
@@ -24,9 +25,10 @@ breaks one of the rules below, the update check silently stops working for Linux
 Installer formats reject `-beta1`, so `nativePackageVersion` in `desktopApp/build.gradle.kts`
 builds a separate numeric one: `major.minor.desktopVersionCode`, for example `1.8.26`.
 
-- Bump `desktopVersionCode` for **every** build you publish, betas included. Windows only
-  upgrades in place when the numeric version goes up; the same number is treated as "already
-  installed".
+- `desktopVersionCode` is Android's `bitchordVersionCode` from the root `build.gradle.kts` (it can
+  still be overridden with `-Pbitchord.desktopVersionCode=...`). Bump that one code for **every**
+  build you publish, betas included. Windows only upgrades in place when the numeric version goes
+  up; the same number is treated as "already installed".
 - deb and rpm take the same `nativePackageVersion`, so `apt`/`dnf` upgrade ordering works the same
   way. Do not hand-edit package versions anywhere else.
 - Never change the Windows `upgradeUuid`. For Linux, never rename the package (`packageName =
@@ -77,9 +79,9 @@ What this means for releasing:
 
 - GitHub's "latest" ignores **drafts and pre-releases**. A release only prompts users once it is
   published as a normal release. Mark betas as pre-release so they never prompt anyone.
-- The git tag must be `v<version>` (`v1.8`). The workflow also accepts only `v*.*.*`; for a
-  two-part version like `v1.8` use the manual `workflow_dispatch` with `version` filled in, or
-  tag `v1.8.0` and make sure the tag and the stamped version agree.
+- The git tag must be `v<version>` and match `bitchordVersionName` (plus `bitchordBetaSuffix`):
+  the Android job fails if `BitChord-<tag>.apk` is not what the build produced. A manual
+  `workflow_dispatch` with `version` filled in stamps that version instead of the tag's.
 - Linux and Windows files must be on the **same release**, because there is only one "latest".
   Do not publish a Windows-only release and a separate Linux-only one: whichever is newer becomes
   "latest" and the other platform will see no asset for itself (it falls back to the release page).
@@ -88,9 +90,9 @@ What this means for releasing:
 
 Before publishing, confirm each of these on the built files, not just in the source:
 
-- [ ] Version stamped (`-Pbitchord.version=<v>`). Launch each built file and check Settings shows the
+- [ ] Version stamped (`-PbitchordVersionName=<v>`). Launch each built file and check Settings shows the
       same version.
-- [ ] `desktopVersionCode` is higher than the last published build.
+- [ ] `bitchordVersionCode` is higher than the last published build.
 - [ ] The three files are named exactly as in section 3.
 - [ ] They are attached to the same release as the Windows files.
 - [ ] The release is not a draft or pre-release (for a real release).
