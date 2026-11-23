@@ -75,6 +75,7 @@ import com.music.bitchord.data.model.SearchFilter
 import com.music.bitchord.data.model.SearchResult
 import com.music.bitchord.data.model.ShelfItem
 import com.music.bitchord.data.model.ShelfLayout
+import com.music.bitchord.data.model.selectSpotlightSong
 import com.music.bitchord.data.model.AVATAR_ART_PX
 import com.music.bitchord.data.model.CARD_ART_PX
 import com.music.bitchord.data.model.HEADER_ART_PX
@@ -2588,9 +2589,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private fun prefetchHomeArtwork(shelves: List<HomeShelf>) {
         viewModelScope.launch(Dispatchers.IO) {
             val urls = buildList {
-                // The spotlight billboard at the top: the first card shelf's lead, at header size.
-                shelves.firstOrNull { it.layout == ShelfLayout.CARDS && it.items.isNotEmpty() }
-                    ?.items?.first()?.thumbnailUrl?.artworkAt(HEADER_ART_PX)
+                // The spotlight billboard at the top: high-relevance recommended song, at header size.
+                val spotlight = selectSpotlightSong(shelves, currentSong = null, topPicks = _topPicks.value)
+                    ?: shelves.firstOrNull { it.layout == ShelfLayout.CARDS && !it.title.equals("Recents", ignoreCase = true) }?.items?.firstOrNull()
+                spotlight?.thumbnailUrl?.artworkAt(HEADER_ART_PX)
                     ?.takeIf { prefetchedHomeArt.add(it) }
                     ?.let(::add)
                 shelves.take(5).forEachIndexed { index, shelf ->

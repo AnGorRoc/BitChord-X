@@ -89,6 +89,7 @@ import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.model.TopPick
 import com.music.bitchord.data.model.TopPickMood
 import com.music.bitchord.data.model.UiState
+import com.music.bitchord.data.model.selectSpotlightSong
 import java.util.Locale
 import com.music.bitchord.data.model.artworkAt
 import com.music.bitchord.ui.components.HERO_CARD_RATIO
@@ -214,16 +215,17 @@ fun HomeScreen(
     // it: a revalidated feed whose first card shelf now leads with another
     // would otherwise swap the biggest picture on the page under the reader.
     val heldSpotlight = remember { arrayOfNulls<ShelfItem>(1) }
-    val spotlightItem = remember(state) {
+    val spotlightItem = remember(state, currentSong, topPicks) {
         val shelves = (state as? UiState.Success)?.data ?: return@remember null
         val held = heldSpotlight[0]
         val kept = held?.let { previous ->
-            shelves.firstNotNullOfOrNull { shelf ->
-                shelf.items.firstOrNull { it.videoId == previous.videoId && it.browseId == previous.browseId }
-            }
+            if (currentSong?.videoId != previous.videoId) {
+                shelves.firstNotNullOfOrNull { shelf ->
+                    shelf.items.firstOrNull { it.videoId == previous.videoId && it.browseId == previous.browseId }
+                }
+            } else null
         }
-        (kept ?: shelves.firstOrNull { it.layout == ShelfLayout.CARDS && it.items.isNotEmpty() }
-            ?.items?.firstOrNull())
+        (kept ?: selectSpotlightSong(shelves, currentSong, topPicks))
             .also { heldSpotlight[0] = it }
     }
     // Top Picks' pictures and motion wait for the feed — see LocalArtworkImages.
