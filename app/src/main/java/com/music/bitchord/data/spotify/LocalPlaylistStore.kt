@@ -230,7 +230,7 @@ object LocalPlaylistStore {
                     pObj.put("spotifyTrackIds", JSONArray(playlist.spotifyTrackIds))
                     jsonArray.put(pObj)
                 }
-                prefs.edit().putString(KEY_PLAYLISTS, jsonArray.toString()).commit()
+                prefs.edit().putString(KEY_PLAYLISTS, jsonArray.toString()).apply()
             }.onFailure {
                 TrackLog.w("LocalPlaylistStore", "Failed to persist playlists: ${it.message}")
             }

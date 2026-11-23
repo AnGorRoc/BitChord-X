@@ -269,16 +269,31 @@ fun Song.isSameTrackAs(other: Song?): Boolean {
  */
 fun playingRowMatcher(rows: List<Song>, current: Song?): (Song) -> Boolean {
     current ?: return { false }
-    val sameId = rows.filter { it.videoId == current.videoId }
-    if (sameId.isNotEmpty()) {
-        // A playlist holding the song twice: its slot says which one.
-        val slot = current.setVideoId
-        if (slot != null && sameId.any { it.setVideoId == slot }) {
+    var hasSameId = false
+    var slotMatched = false
+    val slot = current.setVideoId
+    var firstByName: Song? = null
+
+    for (i in 0 until rows.size) {
+        val row = rows[i]
+        if (row.videoId == current.videoId) {
+            hasSameId = true
+            if (slot != null && row.setVideoId == slot) {
+                slotMatched = true
+            }
+        }
+        if (firstByName == null && row.isSameTrackAs(current)) {
+            firstByName = row
+        }
+    }
+
+    if (hasSameId) {
+        if (slot != null && slotMatched) {
             return { it.videoId == current.videoId && it.setVideoId == slot }
         }
         return { it.videoId == current.videoId }
     }
-    val byName = rows.firstOrNull { it.isSameTrackAs(current) } ?: return { false }
+    val byName = firstByName ?: return { false }
     return { it == byName }
 }
 
@@ -300,47 +315,105 @@ fun Song.durationMillis(): Long = durationText.durationMillis()
 
 /** As [Song.durationMillis], for a `M:SS` or `H:MM:SS` string on its own. */
 fun String?.durationMillis(): Long {
-    val parts = this?.trim()?.takeIf { it.isNotEmpty() }?.split(":") ?: return 0L
-    val numbers = parts.map { it.trim().toLongOrNull() ?: return 0L }
-    val seconds = when (numbers.size) {
-        2 -> numbers[0] * 60 + numbers[1]
-        3 -> numbers[0] * 3_600 + numbers[1] * 60 + numbers[2]
+    val s = this ?: return 0L
+    var num0 = 0L
+    var num1 = 0L
+    var num2 = 0L
+    var part = 0
+    var currentNum = 0L
+    var hasDigitInPart = false
+    var i = 0
+    val len = s.length
+
+    while (i < len) {
+        val c = s[i]
+        when {
+            c in '0'..'9' -> {
+                hasDigitInPart = true
+                currentNum = currentNum * 10 + (c - '0')
+                if (currentNum > 1_000_000L) return 0L
+            }
+            c == ':' -> {
+                if (!hasDigitInPart) return 0L
+                when (part) {
+                    0 -> num0 = currentNum
+                    1 -> num1 = currentNum
+                    else -> return 0L
+                }
+                part++
+                currentNum = 0L
+                hasDigitInPart = false
+            }
+            c == ' ' || c == '\t' || c == '\r' || c == '\n' -> {
+                if (hasDigitInPart) {
+                    var j = i + 1
+                    while (j < len && (s[j] == ' ' || s[j] == '\t' || s[j] == '\r' || s[j] == '\n')) {
+                        j++
+                    }
+                    if (j < len && s[j] != ':') return 0L
+                    i = j - 1
+                }
+            }
+            else -> return 0L
+        }
+        i++
+    }
+
+    if (!hasDigitInPart) return 0L
+    when (part) {
+        1 -> {
+            num1 = currentNum
+            return (num0 * 60 + num1) * 1000L
+        }
+        2 -> {
+            num2 = currentNum
+            return (num0 * 3600 + num1 * 60 + num2) * 1000L
+        }
         else -> return 0L
     }
-    return (seconds * 1_000).coerceAtLeast(0L)
 }
 
 /** As [Song.artworkAt], for artwork that isn't a track's. */
 fun String?.artworkAt(px: Int): String? {
     if (this == null) return null
-    val sized = this.replace(SIZE_HINT, "w$px-h$px")
+    val sized = if (this.contains("-h")) this.replace(SIZE_HINT, "w$px-h$px") else this
     return when {
-        isGoogleImageHost(this) -> sized.replace(PARAM_SIZE_HINT, "=s$px")
+        isGoogleImageHost(this) -> if (sized.contains("=s")) sized.replace(PARAM_SIZE_HINT, "=s$px") else sized
         isYouTubeThumbnailHost(this) -> upgradeYouTubeThumbnail(sized, px)
         else -> sized
     }
 }
 
+private fun extractHost(url: String): String {
+    val schemeEnd = url.indexOf("://")
+    val start = if (schemeEnd >= 0) schemeEnd + 3 else {
+        if (url.startsWith("//")) 2 else 0
+    }
+    var end = url.length
+    for (i in start until url.length) {
+        val c = url[i]
+        if (c == '/' || c == ':' || c == '?') {
+            end = i
+            break
+        }
+    }
+    return if (start < end) url.substring(start, end) else ""
+}
+
 private fun isGoogleImageHost(url: String): Boolean {
-    val host = url.substringAfter("://", "")
-        .ifEmpty { url.substringAfter("//", "") }
-        .substringBefore('/')
-        .substringBefore(':')
-        .substringBefore('?')
-        .lowercase()
-    return host == "ggpht.com" || host.endsWith(".ggpht.com") ||
-        host == "googleusercontent.com" || host.endsWith(".googleusercontent.com")
+    val host = extractHost(url)
+    return host.equals("ggpht.com", ignoreCase = true) ||
+        host.endsWith(".ggpht.com", ignoreCase = true) ||
+        host.equals("googleusercontent.com", ignoreCase = true) ||
+        host.endsWith(".googleusercontent.com", ignoreCase = true)
 }
 
 internal fun isYouTubeThumbnailHost(url: String): Boolean {
-    val host = url.substringAfter("://", "")
-        .ifEmpty { url.substringAfter("//", "") }
-        .substringBefore('/')
-        .substringBefore(':')
-        .substringBefore('?')
-        .lowercase()
-    return host == "i.ytimg.com" || host.endsWith(".ytimg.com") ||
-        host == "img.youtube.com" || host.endsWith(".youtube.com")
+    val host = extractHost(url)
+    return host.equals("i.ytimg.com", ignoreCase = true) ||
+        host.endsWith(".ytimg.com", ignoreCase = true) ||
+        host.equals("img.youtube.com", ignoreCase = true) ||
+        host.endsWith(".youtube.com", ignoreCase = true)
 }
 
 private val YT_THUMB_NAME_REGEX = Regex("/(default|mqdefault|hqdefault|sddefault)\\.([a-zA-Z0-9]+)")
@@ -351,6 +424,7 @@ internal fun upgradeYouTubeThumbnail(url: String, px: Int): String {
         px >= 240 -> "sddefault"
         else -> null
     } ?: return url
+    if (!url.contains("default.")) return url
     return url.replace(YT_THUMB_NAME_REGEX, "/$targetRendition.$2")
 }
 

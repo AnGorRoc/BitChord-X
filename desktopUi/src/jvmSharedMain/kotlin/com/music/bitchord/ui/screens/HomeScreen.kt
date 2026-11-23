@@ -350,7 +350,7 @@ private fun androidx.compose.foundation.lazy.LazyListScope.itemsIndexedShelves(
             item(key = "find-your-mood") { FindYourMoodShelf(onMoodClick, onMoodsShowAll) }
         }
         item(key = shelf.title + index) {
-            val openItem: (ShelfItem) -> Unit = { item -> onItemClick(item, shelf.title) }
+            val openItem: (ShelfItem) -> Unit = remember(shelf) { { item -> onItemClick(item, shelf.title) } }
             val isRecents = index == 0 && shelf.title.equals(RECENTS_TITLE, ignoreCase = true)
             // Listen again and Quick picks are lists on the web player, as
             // Recents is here: one pager for all three.

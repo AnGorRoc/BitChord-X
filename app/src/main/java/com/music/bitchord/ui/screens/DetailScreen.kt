@@ -484,9 +484,11 @@ fun DetailScreen(
     // list. When no filter is active, matches contains the full running order
     // and plays the complete release/playlist from the tapped position.
     val queue = remember(matches) { matches.map { it.value } }
+    val isCurrentRow = remember(queue, currentSong) { playingRowMatcher(queue, currentSong) }
     val suggested = remember(page.suggestedSongs, query) {
         page.suggestedSongs.matching(query).map { it.value }
     }
+    val isSuggestedCurrent = remember(suggested, currentSong) { playingRowMatcher(suggested, currentSong) }
 
     // A device folder's tab and Downloads selection. The selection answers
     // Back before the search does: it is registered after it, so it is asked
@@ -776,8 +778,9 @@ fun DetailScreen(
                     // An artist's full song list would bury the album shelves, so
                     // it pages sideways four at a time and stops at twenty.
                     item {
-                        val top = state.data.take(MAX_ARTIST_SONGS)
-                        val isCurrentRow = playingRowMatcher(top, currentSong)
+                        val top = remember(state.data) { state.data.take(MAX_ARTIST_SONGS) }
+                        val isArtistCurrent = remember(top, currentSong) { playingRowMatcher(top, currentSong) }
+                        val chunkedTop = remember(top) { top.chunked(SONGS_PER_COLUMN) }
                         SectionHeading(
                             title = stringResource(R.string.top_songs),
                             palette = palette,
@@ -792,17 +795,22 @@ fun DetailScreen(
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 flingBehavior = rememberSnapFlingBehavior(lazyListState = topSongsState),
                             ) {
-                                items(top.chunked(SONGS_PER_COLUMN)) { column ->
+                                items(
+                                    items = chunkedTop,
+                                    key = { column -> column.firstOrNull()?.videoId ?: "" },
+                                ) { column ->
+                                    val columnIndex = chunkedTop.indexOf(column)
                                     Column(Modifier.width(columnWidth)) {
-                                        column.forEach { song ->
+                                        column.forEachIndexed { rowIndex, song ->
+                                            val songIndex = columnIndex * SONGS_PER_COLUMN + rowIndex
                                             CompactSongRow(
                                                 song = song,
                                                 palette = palette,
-                                                onClick = { onSongClick(top, top.indexOf(song)) },
+                                                onClick = { onSongClick(top, songIndex) },
                                                 onLongPress = { onSongLongPress(song) },
                                                 downloadedTint = downloadedTint,
-                                                isCurrent = isCurrentRow(song),
-                                                isPlaying = isCurrentRow(song) && isPlaying,
+                                                isCurrent = isArtistCurrent(song),
+                                                isPlaying = isArtistCurrent(song) && isPlaying,
                                             )
                                         }
                                     }
@@ -815,7 +823,6 @@ fun DetailScreen(
                     // already the largest thing on the page — Apple Music
                     // numbers those rows instead, and so does this.
                     val numbered = page.type == BrowseType.ALBUM
-                    val isCurrentRow = playingRowMatcher(matches.map { it.value }, currentSong)
                     if (matches.isEmpty() && state.data.isNotEmpty()) {
                         item(key = "no-matches") {
                             MessageState(stringResource(R.string.nothing_matches, query))
@@ -828,10 +835,10 @@ fun DetailScreen(
                         val song = entry.value
                         val isCurrent = isCurrentRow(song)
                         SongRow(
-                            song = if (numbered) {
+                            song = if (numbered || song.thumbnailUrl != null) {
                                 song
                             } else {
-                                song.copy(thumbnailUrl = song.thumbnailUrl ?: page.thumbnailUrl)
+                                song.copy(thumbnailUrl = page.thumbnailUrl)
                             },
                             onClick = {
                                 onSongClick(queue, position)
@@ -874,7 +881,6 @@ fun DetailScreen(
                 item(key = "suggested-heading") {
                     SectionHeading(stringResource(R.string.suggested), palette)
                 }
-                val isSuggestedCurrent = playingRowMatcher(suggested, currentSong)
                 itemsIndexed(
                     suggested,
                     key = { _, song -> "suggested-${song.videoId}" },

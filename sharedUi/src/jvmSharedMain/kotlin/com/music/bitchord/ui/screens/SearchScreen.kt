@@ -288,6 +288,23 @@ fun SearchScreen(
             }
         }
 
+        val successResults = (results as? UiState.Success)?.data
+        val searchTracks = remember(successResults) {
+            successResults?.mapNotNull { row ->
+                when (row) {
+                    is SearchResult.TopTrack -> row.song
+                    is SearchResult.Track -> row.song
+                    is SearchResult.Browse -> null
+                }
+            } ?: emptyList()
+        }
+        val searchTrackIndices = remember(searchTracks) {
+            searchTracks.mapIndexed { idx, s -> s.videoId to idx }.toMap()
+        }
+        val isSearchCurrentRow = remember(searchTracks, currentSong) {
+            playingRowMatcher(searchTracks, currentSong)
+        }
+
         LazyColumn(
             state = listState,
             modifier = Modifier.weight(1f).fillMaxWidth(),
@@ -366,93 +383,69 @@ fun SearchScreen(
                 results is UiState.Loading -> songListSkeleton(circular = filter == SearchFilter.ARTISTS)
                 results is UiState.Error -> item { MessageState(results.message) }
                 results is UiState.Success -> {
-                    val tracks = results.data
-                        .mapNotNull { row -> when (row) {
-                            is SearchResult.TopTrack -> row.song
-                            is SearchResult.Track -> row.song
-                            is SearchResult.Browse -> null
-                        } }
-                    val isCurrentRow = playingRowMatcher(tracks, currentSong)
-                    // YouTube's own answer, as given: its order, its mix of artists, songs and
-                    // albums, no headings. It knows what ranks best for a query.
-                    listOf(SearchSection(null, results.data)).forEach { section ->
-                        section.title?.let { title ->
-                            item(key = "search-section:$title") {
-                                Text(
-                                    text = title,
-                                    modifier = Modifier.padding(
-                                        start = PAGE_GUTTER,
-                                        end = PAGE_GUTTER,
-                                        top = 16.dp,
-                                        bottom = 6.dp,
-                                    ),
-                                    style = MaterialTheme.typography.titleSmall,
-                                    color = MaterialTheme.colorScheme.onSurface,
-                                )
-                            }
-                        }
-                        itemsIndexed(
-                            items = section.rows,
-                            key = { index, row ->
-                                when (row) {
-                                    is SearchResult.TopTrack -> "top_${row.song.videoId}_$index"
-                                    is SearchResult.Track -> "track_${row.song.videoId}_$index"
-                                    is SearchResult.Browse -> "browse_${row.item.browseId}_$index"
-                                }
-                            },
-                        ) { index, row ->
+                    val tracks = searchTracks
+                    val isCurrentRow = isSearchCurrentRow
+                    itemsIndexed(
+                        items = results.data,
+                        key = { index, row ->
                             when (row) {
-                                is SearchResult.TopTrack -> SongRow(
-                                    song = row.song,
-                                    onClick = {
-                                        onSongClick(tracks, tracks.indexOf(row.song).coerceAtLeast(0))
-                                    },
-                                    onLongPress = { onSongLongPress(row.song) },
-                                    onSwipeToQueue = { onSongSwipe(row.song) },
-                                    onSwipeAction = onSongSwipeAction?.let { handler ->
-                                        { action -> handler(row.song, action) }
-                                    },
-                                    onSwipeHoldPlaylist = onSongHoldPlaylist?.let { handler ->
-                                        { handler(row.song) }
-                                    },
-                                    isCurrent = isCurrentRow(row.song),
-                                    isPlaying = isPlaying && isCurrentRow(row.song),
-                                    searchPlayingStyle = true,
-                                )
-                                is SearchResult.Track -> SongRow(
-                                    song = row.song,
-                                    onClick = {
-                                        onSongClick(tracks, tracks.indexOf(row.song).coerceAtLeast(0))
-                                    },
-                                    onLongPress = { onSongLongPress(row.song) },
-                                    onSwipeToQueue = { onSongSwipe(row.song) },
-                                    onSwipeAction = onSongSwipeAction?.let { handler ->
-                                        { action -> handler(row.song, action) }
-                                    },
-                                    onSwipeHoldPlaylist = onSongHoldPlaylist?.let { handler ->
-                                        { handler(row.song) }
-                                    },
-                                    isCurrent = isCurrentRow(row.song),
-                                    isPlaying = isPlaying && isCurrentRow(row.song),
-                                    searchPlayingStyle = true,
-                                )
-                                is SearchResult.Browse -> BrowseRow(
-                                    item = row.item,
-                                    onClick = {
-                                        focusManager.clearFocus()
-                                        keyboardController?.hide()
-                                        onBrowseClick(row.item)
-                                    },
-                                    onLongPress = onBrowseLongPress?.let { { it(row.item) } },
-                                )
+                                is SearchResult.TopTrack -> "top_${row.song.videoId}_$index"
+                                is SearchResult.Track -> "track_${row.song.videoId}_$index"
+                                is SearchResult.Browse -> "browse_${row.item.browseId}_$index"
                             }
-                            if (index < section.rows.lastIndex) {
-                                HorizontalDivider(
-                                    modifier = Modifier.padding(start = ROW_DIVIDER_INSET),
-                                    thickness = 0.5.dp,
-                                    color = MaterialTheme.colorScheme.outline,
-                                )
-                            }
+                        },
+                    ) { index, row ->
+                        when (row) {
+                            is SearchResult.TopTrack -> SongRow(
+                                song = row.song,
+                                onClick = {
+                                    onSongClick(tracks, searchTrackIndices[row.song.videoId] ?: 0)
+                                },
+                                onLongPress = { onSongLongPress(row.song) },
+                                onSwipeToQueue = { onSongSwipe(row.song) },
+                                onSwipeAction = onSongSwipeAction?.let { handler ->
+                                    { action -> handler(row.song, action) }
+                                },
+                                onSwipeHoldPlaylist = onSongHoldPlaylist?.let { handler ->
+                                    { handler(row.song) }
+                                },
+                                isCurrent = isCurrentRow(row.song),
+                                isPlaying = isPlaying && isCurrentRow(row.song),
+                                searchPlayingStyle = true,
+                            )
+                            is SearchResult.Track -> SongRow(
+                                song = row.song,
+                                onClick = {
+                                    onSongClick(tracks, searchTrackIndices[row.song.videoId] ?: 0)
+                                },
+                                onLongPress = { onSongLongPress(row.song) },
+                                onSwipeToQueue = { onSongSwipe(row.song) },
+                                onSwipeAction = onSongSwipeAction?.let { handler ->
+                                    { action -> handler(row.song, action) }
+                                },
+                                onSwipeHoldPlaylist = onSongHoldPlaylist?.let { handler ->
+                                    { handler(row.song) }
+                                },
+                                isCurrent = isCurrentRow(row.song),
+                                isPlaying = isPlaying && isCurrentRow(row.song),
+                                searchPlayingStyle = true,
+                            )
+                            is SearchResult.Browse -> BrowseRow(
+                                item = row.item,
+                                onClick = {
+                                    focusManager.clearFocus()
+                                    keyboardController?.hide()
+                                    onBrowseClick(row.item)
+                                },
+                                onLongPress = onBrowseLongPress?.let { { it(row.item) } },
+                            )
+                        }
+                        if (index < results.data.lastIndex) {
+                            HorizontalDivider(
+                                modifier = Modifier.padding(start = ROW_DIVIDER_INSET),
+                                thickness = 0.5.dp,
+                                color = MaterialTheme.colorScheme.outline,
+                            )
                         }
                     }
                     if (loadingMore) {
@@ -519,6 +512,8 @@ private fun LazyListScope.librarySearchResults(
         } else {
             val tracks = results.data
             val isCurrentRow = playingRowMatcher(tracks, currentSong)
+            val playable = tracks.filterNot(isBlocked)
+            val playableIndices = playable.mapIndexed { idx, s -> s.videoId to idx }.toMap()
             itemsIndexed(tracks, key = { index, song -> "${if (addons) "addon" else "library"}_${song.videoId}_$index" }) { index, song ->
                 val blocked = isBlocked(song)
                 SongRow(
@@ -532,8 +527,7 @@ private fun LazyListScope.librarySearchResults(
                         } else {
                             // The queue skips blocked rows, or playing through
                             // it would stop at the first one with an error.
-                            val playable = tracks.filterNot(isBlocked)
-                            onSongClick(playable, playable.indexOfFirst { it === song })
+                            onSongClick(playable, playableIndices[song.videoId] ?: 0)
                         }
                     },
                     onLongPress = { onSongLongPress(song) },

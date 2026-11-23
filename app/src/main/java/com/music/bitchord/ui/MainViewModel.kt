@@ -1645,7 +1645,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             loadLibrary()
             loadAccount()
             loadPlaylists()
-            loadChannels()
         }
         viewModelScope.launch {
             // drop(1): the current value is just the count so far, not a play.

@@ -45,6 +45,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.Canvas
 import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.Stable
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.geometry.CornerRadius
@@ -434,6 +436,26 @@ private val SwipePlayNextColor = Color(0xFF5856D6)
 private val SwipeAddToQueueColor = Color(0xFFFF9500)
 private val SwipeHoldPlaylistColor = Color(0xFFFF2D55)
 
+@Stable
+data class SwipeSettings(
+    val rightAction: SongSwipeAction,
+    val leftAction: SongSwipeAction,
+    val legacyPlayNext: Boolean,
+)
+
+val LocalSwipeSettings = compositionLocalOf<SwipeSettings?> { null }
+
+@Composable
+fun ProvideSwipeSettings(content: @Composable () -> Unit) {
+    val rightAction by AppUi.host.swipeRightAction.collectAsStateWithLifecycle()
+    val leftAction by AppUi.host.swipeLeftAction.collectAsStateWithLifecycle()
+    val legacyPlayNext by AppUi.host.swipeToPlayNext.collectAsStateWithLifecycle()
+    val settings = remember(rightAction, leftAction, legacyPlayNext) {
+        SwipeSettings(rightAction, leftAction, legacyPlayNext)
+    }
+    CompositionLocalProvider(LocalSwipeSettings provides settings, content = content)
+}
+
 /**
  * Wraps content with an Apple Music-style directional horizontal swipe gesture:
  * - Rubber-band damping past [SWIPE_ARM_FRACTION] (`38%` of row width).
@@ -458,9 +480,22 @@ fun SwipeToQueueBox(
 
     val haptics = rememberHaptics()
     val scope = rememberCoroutineScope()
-    val rightAction by AppUi.host.swipeRightAction.collectAsStateWithLifecycle()
-    val leftAction by AppUi.host.swipeLeftAction.collectAsStateWithLifecycle()
-    val legacyPlayNext by AppUi.host.swipeToPlayNext.collectAsStateWithLifecycle()
+    val localSettings = LocalSwipeSettings.current
+    val rightAction: SongSwipeAction
+    val leftAction: SongSwipeAction
+    val legacyPlayNext: Boolean
+    if (localSettings != null) {
+        rightAction = localSettings.rightAction
+        leftAction = localSettings.leftAction
+        legacyPlayNext = localSettings.legacyPlayNext
+    } else {
+        val r by AppUi.host.swipeRightAction.collectAsStateWithLifecycle()
+        val l by AppUi.host.swipeLeftAction.collectAsStateWithLifecycle()
+        val p by AppUi.host.swipeToPlayNext.collectAsStateWithLifecycle()
+        rightAction = r
+        leftAction = l
+        legacyPlayNext = p
+    }
 
     var boxWidth by remember { mutableFloatStateOf(0f) }
     var rawDragPx by remember { mutableFloatStateOf(0f) }
