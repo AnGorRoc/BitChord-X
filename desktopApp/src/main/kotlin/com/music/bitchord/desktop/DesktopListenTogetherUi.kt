@@ -36,6 +36,15 @@ import androidx.compose.material.icons.rounded.VolumeOff
 import androidx.compose.material.icons.rounded.VolumeUp
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.foundation.text.KeyboardActions
@@ -80,6 +89,7 @@ import com.music.bitchord.data.listentogether.byPerson
 import com.music.bitchord.data.listentogether.PartyActivity
 import com.music.bitchord.data.listentogether.PartyMember
 import com.music.bitchord.data.listentogether.PartyPreview
+import com.music.bitchord.data.listentogether.account.AccountDevice
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -106,6 +116,7 @@ internal fun DesktopListenTogetherDialog(autoplayEnabled: Boolean, onDismiss: ()
     var preview by remember { mutableStateOf<PartyPreview?>(null) }
     var busy by remember { mutableStateOf(false) }
     var localError by remember { mutableStateOf<String?>(null) }
+    var ownDeviceAlert by remember { mutableStateOf<AccountDevice?>(null) }
 
     LaunchedEffect(server) {
         if (serverDraft == server || serverDraft.isBlank()) serverDraft = server
@@ -200,6 +211,13 @@ internal fun DesktopListenTogetherDialog(autoplayEnabled: Boolean, onDismiss: ()
                     error = localError ?: state.error,
                     onBack = { preview = null; localError = null; joinPlayHere = false },
                     onJoin = {
+                        val ownDevice = DesktopListenTogether.ownDeviceInParty(preview!!.code)
+                        if (ownDevice != null) {
+                            preview = null
+                            localError = null
+                            ownDeviceAlert = ownDevice
+                            return@JoinConfirmation
+                        }
                         busy = true
                         localError = null
                         scope.launch {
@@ -211,9 +229,17 @@ internal fun DesktopListenTogetherDialog(autoplayEnabled: Boolean, onDismiss: ()
                                     val host = preview?.hostName?.trim().orEmpty()
                                     DesktopPlayerHost.showMessage(if (host.isEmpty()) tr("d_msg_joined", "You joined the party") else tr("d_msg_joined_host", "You joined %1\$s's party", host))
                                 }
-                                .onFailure {
-                                    localError = it.message
-                                    DesktopListenTogether.setListenHere(true)
+                                .onFailure { problem ->
+                                    val own = (problem as? DesktopListenTogether.AlreadyOnOwnDeviceException)?.device
+                                        ?: DesktopListenTogether.ownDeviceInParty(preview!!.code)
+                                    if (own != null) {
+                                        preview = null
+                                        localError = null
+                                        ownDeviceAlert = own
+                                    } else {
+                                        localError = problem.message
+                                        DesktopListenTogether.setListenHere(true)
+                                    }
                                 }
                             busy = false
                         }
@@ -257,6 +283,12 @@ internal fun DesktopListenTogetherDialog(autoplayEnabled: Boolean, onDismiss: ()
                     onCodeFocusChange = { codeFocused = it },
                     onCreate = startParty,
                     onPreview = {
+                        val ownDevice = DesktopListenTogether.ownDeviceInParty(code)
+                        if (ownDevice != null) {
+                            localError = null
+                            ownDeviceAlert = ownDevice
+                            return@PartyLanding
+                        }
                         busy = true
                         localError = null
                         scope.launch {
@@ -265,13 +297,65 @@ internal fun DesktopListenTogetherDialog(autoplayEnabled: Boolean, onDismiss: ()
                                     preview = it
                                     previewServer = codeServer
                                 }
-                                .onFailure { localError = it.message }
+                                .onFailure { problem ->
+                                    val own = (problem as? DesktopListenTogether.AlreadyOnOwnDeviceException)?.device
+                                        ?: DesktopListenTogether.ownDeviceInParty(code)
+                                    if (own != null) {
+                                        localError = null
+                                        ownDeviceAlert = own
+                                    } else {
+                                        localError = problem.message
+                                    }
+                                }
                             busy = false
                         }
                     },
                 )
             }
         }
+    }
+
+    ownDeviceAlert?.let { device ->
+        DesktopAlertDialog(
+            onDismissRequest = { ownDeviceAlert = null },
+            title = { Text(tr("d_own_device_party_title", "Party on your device")) },
+            text = {
+                Text(
+                    tr(
+                        "d_own_device_party_msg",
+                        "Your device “%1\$s” is already in this party. Connect to it via Connect to control playback or listen together.",
+                        device.name,
+                    )
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        val devId = device.deviceId
+                        ownDeviceAlert = null
+                        if (state.inParty) {
+                            scope.launch {
+                                DesktopListenTogether.leaveParty()
+                                DesktopPlayerHost.pickDevice(devId, null)
+                            }
+                        } else {
+                            DesktopPlayerHost.pickDevice(devId, null)
+                        }
+                    }
+                ) {
+                    Text(
+                        tr("d_connect_action", "Connect"),
+                        color = MaterialTheme.colorScheme.primary,
+                        fontWeight = FontWeight.Bold,
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { ownDeviceAlert = null }) {
+                    Text(tr("d_cancel", "Cancel"))
+                }
+            },
+        )
     }
 }
 
@@ -499,7 +583,7 @@ private fun PartyRoom(state: DesktopListenTogether.State, activity: List<PartyAc
 @Composable
 private fun RoomHero(state: DesktopListenTogether.State) {
     val invite = DesktopListenTogether.inviteUrl(state.code.orEmpty())
-    var showQr by remember { mutableStateOf(false) }
+    var showQr by remember { mutableStateOf(true) }
     Column(
         Modifier
             .fillMaxWidth()
@@ -541,7 +625,29 @@ private fun RoomHero(state: DesktopListenTogether.State) {
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 4.dp),
         )
-        AnimatedVisibility(showQr) {
+        AnimatedVisibility(
+            visible = showQr,
+            enter = fadeIn(tween(200)) +
+                scaleIn(
+                    animationSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                    initialScale = 0.7f,
+                    transformOrigin = TransformOrigin.Center,
+                ) +
+                expandVertically(
+                    animationSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                    expandFrom = Alignment.CenterVertically,
+                ),
+            exit = fadeOut(tween(160)) +
+                scaleOut(
+                    animationSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                    targetScale = 0.7f,
+                    transformOrigin = TransformOrigin.Center,
+                ) +
+                shrinkVertically(
+                    animationSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                    shrinkTowards = Alignment.CenterVertically,
+                ),
+        ) {
             Column(Modifier.padding(top = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                 DesktopQrCode(invite, size = 160.dp, clickableToEnlarge = true, codeText = state.code)
             }

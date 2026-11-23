@@ -1,18 +1,29 @@
 package com.music.bitchord.ui.screens
 
 import com.music.bitchord.ui.components.FrostAlertDialog
+import com.music.bitchord.ui.components.OwnDevicePartyAlert
+import com.music.bitchord.data.listentogether.account.AccountDevice
 import com.music.bitchord.ui.icons.SfIcons
 import android.content.Intent
 import android.text.format.DateFormat
 import android.util.Log
 import android.widget.Toast
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -227,6 +238,7 @@ fun ListenTogetherScreen(
     var deviceName by remember { mutableStateOf(ListenTogether.deviceName()) }
     var sheet by remember { mutableStateOf<PartySheet?>(null) }
     var showQrScanner by remember { mutableStateOf(false) }
+    var ownDeviceAlert by remember { mutableStateOf<AccountDevice?>(null) }
 
     /**
      * Starts a party with what the screen already knows - the name from
@@ -266,6 +278,21 @@ fun ListenTogetherScreen(
     // Always fully open: a half-height drawer hides the choices this sheet
     // exists to show.
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    val dismissModalSheet: (afterDismiss: (() -> Unit)?) -> Unit = remember(sheetState, scope) {
+        { afterDismiss ->
+            scope.launch {
+                sheetState.hide()
+            }.invokeOnCompletion {
+                if (!sheetState.isVisible) {
+                    sheet = null
+                    failure = null
+                    joinPlayHere = false
+                    afterDismiss?.invoke()
+                }
+            }
+        }
+    }
 
     // Picked up from the Connect sheet: start a party straight away, or open
     // the code sheet to join somebody else's.
@@ -336,16 +363,33 @@ fun ListenTogetherScreen(
      * here, so what the listener agrees to is the same picture either way.
      */
     val openPartyPreview: (String, String?) -> Unit = { previewCode, previewServer ->
-        busy = true
-        failure = null
-        scope.launch {
-            ListenTogether.previewParty(previewCode, previewServer)
-                .onSuccess {
-                    joinPlayHere = false
-                    sheet = PartySheet.Confirm(it, previewServer)
-                }
-                .onFailure { failure = it.message }
-            busy = false
+        val ownDevice = ListenTogether.ownDeviceInParty(previewCode)
+        if (ownDevice != null) {
+            sheet = null
+            failure = null
+            ownDeviceAlert = ownDevice
+        } else {
+            busy = true
+            failure = null
+            scope.launch {
+                ListenTogether.previewParty(previewCode, previewServer)
+                    .onSuccess {
+                        joinPlayHere = false
+                        sheet = PartySheet.Confirm(it, previewServer)
+                    }
+                    .onFailure { problem ->
+                        val own = (problem as? ListenTogether.AlreadyOnOwnDeviceException)?.device
+                            ?: ListenTogether.ownDeviceInParty(previewCode)
+                        if (own != null) {
+                            sheet = null
+                            failure = null
+                            ownDeviceAlert = own
+                        } else {
+                            failure = problem.message
+                        }
+                    }
+                busy = false
+            }
         }
     }
 
@@ -402,13 +446,18 @@ fun ListenTogetherScreen(
                     busy = busy,
                     error = failure,
                     onDismiss = {
-                        sheet = null
-                        failure = null
+                        dismissModalSheet(null)
                     },
                     onJoin = {
                         busy = true
                         failure = null
                         scope.launch {
+                            val ownDevice = ListenTogether.ownDeviceInParty(open.preview.code)
+                            if (ownDevice != null) {
+                                busy = false
+                                dismissModalSheet { ownDeviceAlert = ownDevice }
+                                return@launch
+                            }
                             // Set before joining so the welcome that follows already knows how
                             // this device listens; put back if the party turns it away.
                             ListenTogether.setListenHere(joinPlayHere)
@@ -436,21 +485,36 @@ fun ListenTogetherScreen(
                                 }
                             } else {
                                 ListenTogether.joinParty(open.preview.code, nickname)
-                                    .exceptionOrNull()?.message
+                                    .exceptionOrNull()?.let { ex ->
+                                        val own = (ex as? ListenTogether.AlreadyOnOwnDeviceException)?.device
+                                             ?: ListenTogether.ownDeviceInParty(open.preview.code)
+                                        if (own != null) {
+                                            busy = false
+                                            dismissModalSheet { ownDeviceAlert = own }
+                                            return@launch
+                                        }
+                                        ex.message
+                                    }
                             }
-                            failure = problem
-                            if (problem != null) ListenTogether.setListenHere(true)
-                            busy = false
-                            if (problem == null) {
-                                codeInput = ""
-                                sheet = null
-                                val host = open.preview.hostName.trim()
-                                Toast.makeText(
-                                    context,
-                                    if (host.isEmpty()) context.getString(R.string.listen_together_msg_joined)
-                                    else context.getString(R.string.listen_together_msg_joined_host, host),
-                                    Toast.LENGTH_SHORT,
-                                ).show()
+                            val own = ListenTogether.ownDeviceInParty(open.preview.code)
+                            if (own != null) {
+                                busy = false
+                                dismissModalSheet { ownDeviceAlert = own }
+                            } else {
+                                failure = problem
+                                if (problem != null) ListenTogether.setListenHere(true)
+                                busy = false
+                                if (problem == null) {
+                                    codeInput = ""
+                                    dismissModalSheet(null)
+                                    val host = open.preview.hostName.trim()
+                                    Toast.makeText(
+                                        context,
+                                        if (host.isEmpty()) context.getString(R.string.listen_together_msg_joined)
+                                        else context.getString(R.string.listen_together_msg_joined_host, host),
+                                        Toast.LENGTH_SHORT,
+                                    ).show()
+                                }
                             }
                         }
                     },
@@ -496,6 +560,27 @@ fun ListenTogetherScreen(
                     }
                 }
             }
+        )
+    }
+
+    ownDeviceAlert?.let { device ->
+        OwnDevicePartyAlert(
+            device = device,
+            onConnect = {
+                val devId = device.deviceId
+                ownDeviceAlert = null
+                if (state.inParty) {
+                    scope.launch {
+                        ListenTogether.leaveParty()
+                        com.music.bitchord.playback.DeviceLink.pick(devId, null)
+                    }
+                } else {
+                    com.music.bitchord.playback.DeviceLink.pick(devId, null)
+                }
+            },
+            onDismiss = {
+                ownDeviceAlert = null
+            },
         )
     }
 
@@ -967,7 +1052,7 @@ private fun PartyCard(modifier: Modifier = Modifier, content: @Composable androi
             .fillMaxWidth()
             .padding(horizontal = GROUP_INSET, vertical = 6.dp)
             .clip(CARD_SHAPE_LG)
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)),
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f)),
     ) {
         Column(Modifier.fillMaxWidth(), content = content)
     }
@@ -1191,7 +1276,7 @@ private fun PartyHero(
     onCopySpotifyJam: () -> Unit,
 ) {
     var tab by remember { mutableIntStateOf(0) }
-    var showQr by remember { mutableStateOf(false) }
+    var showQr by remember { mutableStateOf(true) }
     val hasJam = spotifySession != null && spotifySession.joinSessionUrl.isNotBlank()
     val onJam = hasJam && tab == 1
     val people = state.members.byPerson()
@@ -1270,7 +1355,29 @@ private fun PartyHero(
                 modifier = Modifier.padding(top = 4.dp),
             )
 
-            androidx.compose.animation.AnimatedVisibility(visible = showQr) {
+            AnimatedVisibility(
+                visible = showQr,
+                enter = fadeIn(tween(200)) +
+                    scaleIn(
+                        animationSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                        initialScale = 0.7f,
+                        transformOrigin = TransformOrigin.Center,
+                    ) +
+                    expandVertically(
+                        animationSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                        expandFrom = Alignment.CenterVertically,
+                    ),
+                exit = fadeOut(tween(160)) +
+                    scaleOut(
+                        animationSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                        targetScale = 0.7f,
+                        transformOrigin = TransformOrigin.Center,
+                    ) +
+                    shrinkVertically(
+                        animationSpec = spring(dampingRatio = 0.82f, stiffness = 380f),
+                        shrinkTowards = Alignment.CenterVertically,
+                    ),
+            ) {
                 Column(Modifier.fillMaxWidth().padding(top = 18.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                     val content = if (onJam) spotifySession?.joinSessionUrl.orEmpty() else inviteLink
                     if (content.isNotBlank()) {
@@ -1280,7 +1387,7 @@ private fun PartyHero(
                             codeText = if (onJam) "Spotify Jam" else state.code,
                             modifier = Modifier.border(
                                 1.dp,
-                                if (onJam) jamGreen.copy(alpha = 0.35f) else Color.Black.copy(alpha = 0.08f),
+                                if (onJam) jamGreen.copy(alpha = 0.35f) else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.12f),
                                 RoundedCornerShape(16.dp),
                             ),
                         )

@@ -1914,4 +1914,7 @@
     <string name="replay_year_unmute">Unmute the story</string>
     <string name="automix_model_downloading">Downloading the Automix model: %1$d%%</string>
     <string name="automix_model_failed">The Automix model could not be downloaded. Turn Automix off and on to try again.</string>
+    <string name="listen_together_own_device_dialog_title">Party on your device</string>
+    <string name="listen_together_own_device_dialog_message">Your device “%1$s” is already in this party. Connect to it via Connect to control playback or listen together.</string>
+    <string name="listen_together_connect_action">Connect</string>
 </resources>

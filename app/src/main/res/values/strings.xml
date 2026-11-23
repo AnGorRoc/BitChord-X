@@ -1020,6 +1020,9 @@
     <string name="listen_together_custom_server_switch_and_join">Switch &amp; Join</string>
     <string name="listen_together_official_server_dialog_title">Switch to official server?</string>
     <string name="listen_together_official_server_dialog_message">This party is hosted on the official BitChord server.\n\nDo you want to switch back to the official server and join party %1$s?</string>
+    <string name="listen_together_own_device_dialog_title">Party on your device</string>
+    <string name="listen_together_own_device_dialog_message">Your device “%1$s” is already in this party. Connect to it via Connect to control playback or listen together.</string>
+    <string name="listen_together_connect_action">Connect</string>
     <string name="listen_together_ping">%1$d ms</string>
     <string name="listen_together_server_offline_dash">—</string>
     <string name="listen_together_invalid_server_url">Invalid server URL. Please enter a valid address (e.g. https://your-server.com)</string>

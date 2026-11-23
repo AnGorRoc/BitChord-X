@@ -30,11 +30,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.platform.LocalDensity
@@ -82,7 +82,14 @@ internal fun DesktopQrCode(
             .padding(quietZone),
         contentAlignment = Alignment.Center,
     ) {
-        image?.let { Image(it, contentDescription = "Party invite QR code", modifier = Modifier.fillMaxSize()) }
+        image?.let {
+            Image(
+                bitmap = it,
+                contentDescription = "Party invite QR code",
+                filterQuality = FilterQuality.None,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
     }
 
     if (enlarged && clickableToEnlarge && content.isNotBlank()) {
@@ -163,8 +170,8 @@ private fun renderDesktopQr(content: String, sidePx: Int, density: Density): Ima
         QRCodeWriter().encode(
             content,
             BarcodeFormat.QR_CODE,
-            256,
-            256,
+            0,
+            0,
             mapOf(
                 EncodeHintType.ERROR_CORRECTION to ErrorCorrectionLevel.M,
                 EncodeHintType.MARGIN to 0,
@@ -172,20 +179,23 @@ private fun renderDesktopQr(content: String, sidePx: Int, density: Density): Ima
             ),
         )
     }.getOrNull() ?: return null
-    val image = ImageBitmap(sidePx, sidePx)
-    val side = sidePx.toFloat()
-    CanvasDrawScope().draw(density, LayoutDirection.Ltr, Canvas(image), Size(side, side)) {
-        val cell = side / matrix.width
-        val dot = cell * 0.86f
-        val inset = (cell - dot) / 2f
-        val radius = CornerRadius(dot * 0.3f, dot * 0.3f)
-        for (y in 0 until matrix.height) for (x in 0 until matrix.width) {
-            if (matrix.get(x, y)) {
-                drawRoundRect(
+
+    val modules = matrix.width
+    if (modules <= 0) return null
+
+    val scale = maxOf(4, sidePx / modules)
+    val actualPx = modules * scale
+    val image = ImageBitmap(actualPx, actualPx)
+    CanvasDrawScope().draw(density, LayoutDirection.Ltr, Canvas(image), Size(actualPx.toFloat(), actualPx.toFloat())) {
+        for (y in 0 until modules) {
+            val top = (y * scale).toFloat()
+            for (x in 0 until modules) {
+                if (!matrix.get(x, y)) continue
+                val left = (x * scale).toFloat()
+                drawRect(
                     color = Color.Black,
-                    topLeft = Offset(x * cell + inset, y * cell + inset),
-                    size = Size(dot, dot),
-                    cornerRadius = radius,
+                    topLeft = Offset(left, top),
+                    size = Size(scale.toFloat(), scale.toFloat()),
                 )
             }
         }

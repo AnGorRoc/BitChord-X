@@ -35,12 +35,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.BlurredEdgeTreatment
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -94,65 +91,19 @@ internal fun GlowingAvatar(
     size: Dp = 104.dp,
     glow: Color = MaterialTheme.colorScheme.primary,
 ) {
-    val breathe = rememberInfiniteTransition(label = "partyGlow")
-    val spread by breathe.animateFloat(
-        initialValue = 0.92f,
-        targetValue = 1.14f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2_600, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "partyGlowSpread",
-    )
-    val intensity by breathe.animateFloat(
-        initialValue = 0.35f,
-        targetValue = 0.6f,
-        animationSpec = infiniteRepeatable(
-            // Deliberately not the spread's period: equal periods make the
-            // brightest frame always the widest one, which reads as one object
-            // throbbing instead of light moving.
-            animation = tween(3_400, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse,
-        ),
-        label = "partyGlowIntensity",
-    )
-
     Box(
-        modifier = modifier.size(size * 2.1f),
+        modifier = modifier.size(size),
         contentAlignment = Alignment.Center,
     ) {
-        Box(
-            modifier = Modifier
-                .size(size * 1.75f)
-                .scale(spread)
-                // Blurred as well as faded to transparent: a radial gradient
-                // alone bands visibly on the dark background at this size.
-                //
-                // Unbounded, which is the whole point: the default edge
-                // treatment clips the blur to the layout rectangle, so a glow
-                // that grows past its own box gets a straight edge sliced
-                // across it — a round light inside a visible square, breathing
-                // in and out of its own corners.
-                .blur(28.dp, BlurredEdgeTreatment.Unbounded)
-                .background(
-                    brush = Brush.radialGradient(
-                        colors = listOf(
-                            glow.copy(alpha = intensity),
-                            glow.copy(alpha = intensity * 0.35f),
-                            Color.Transparent,
-                        ),
-                    ),
-                    shape = CircleShape,
-                ),
-        )
         if (url != null) {
             AsyncImage(
                 model = url,
                 contentDescription = null,
+                contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .size(size)
                     .clip(CircleShape)
-                    .border(2.dp, Color.White.copy(alpha = 0.12f), CircleShape),
+                    .border(2.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f), CircleShape),
             )
         } else {
             Box(
@@ -160,13 +111,13 @@ internal fun GlowingAvatar(
                     .size(size)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .border(2.dp, Color.White.copy(alpha = 0.12f), CircleShape),
+                    .border(2.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f), CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(
                     Icons.Rounded.Person,
                     contentDescription = null,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(size * 0.45f),
                 )
             }
@@ -299,7 +250,7 @@ internal fun PlayHereRow(playHere: Boolean, onChange: (Boolean) -> Unit, enabled
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f), RoundedCornerShape(16.dp))
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -367,9 +318,9 @@ private fun PlayHereOption(
         modifier = Modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(if (selected) scheme.primaryContainer else scheme.surfaceVariant.copy(alpha = 0.5f))
+            .background(if (selected) scheme.primaryContainer else scheme.surfaceVariant.copy(alpha = 0.72f))
             // Same hairline edge the rest of the app's pills and cards use.
-            .border(0.5.dp, Color.White.copy(alpha = 0.10f), shape)
+            .border(0.5.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = 0.10f), shape)
             .clickable(enabled = enabled, onClick = onClick)
             .padding(horizontal = 16.dp, vertical = 14.dp),
     ) {

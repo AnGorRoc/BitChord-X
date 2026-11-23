@@ -3,6 +3,7 @@ package com.music.bitchord.data.listentogether
 import android.content.Context
 import android.os.SystemClock
 import android.content.SharedPreferences
+import com.music.bitchord.data.listentogether.account.AccountDevice
 import com.music.bitchord.data.listentogether.account.AccountDevices
 import com.music.bitchord.data.listentogether.account.DevicePrefs
 import com.music.bitchord.data.listentogether.account.DeviceSelf
@@ -210,7 +211,15 @@ object ListenTogether {
     }
 
     /** A refusal from the server, carrying the machine-readable half. */
-    class PartyException(val code: String, message: String, val statusCode: Int? = null) : Exception(message)
+    open class PartyException(val code: String, message: String, val statusCode: Int? = null) : Exception(message)
+
+    /** Raised when attempting to join a party that is already running on one of the person's own devices. */
+    class AlreadyOnOwnDeviceException(
+        val device: AccountDevice,
+    ) : PartyException(
+        "already_on_your_device",
+        "You’re already in this party on “${device.name}”, one of your own devices.",
+    )
 
     sealed interface SwitchPartyResult {
         data class Success(val partyCode: String) : SwitchPartyResult
@@ -1881,19 +1890,23 @@ object ListenTogether {
         }
     }
 
+    /** Returns another of this person's own devices that is currently in [code], if any. */
+    fun ownDeviceInParty(code: String): AccountDevice? {
+        val cleaned = code.filter { it.isLetterOrDigit() }.uppercase()
+        if (cleaned.length != CODE_LENGTH) return null
+        return account.state.value.others.firstOrNull {
+            it.connected && it.partyCode.equals(cleaned, ignoreCase = true)
+        }
+    }
+
     /**
      * A party that one of the person's own devices is already in is that person's seat: a second
      * device does not join it, whatever way the invite came. The sound moves between their devices
      * with the others, not by sitting twice in the same party.
      */
     private fun refuseIfOnMyOtherDevice(code: String) {
-        val own = account.state.value.others.firstOrNull {
-            it.connected && it.partyCode.equals(code, ignoreCase = true)
-        } ?: return
-        throw PartyException(
-            "already_on_your_device",
-            "You’re already in this party on “${own.name}”, one of your own devices.",
-        )
+        val own = ownDeviceInParty(code) ?: return
+        throw AlreadyOnOwnDeviceException(own)
     }
 
     /**
@@ -2154,6 +2167,7 @@ object ListenTogether {
      * What the listener is told when the transport fails.
      */
     private fun Throwable.displayMessage(): String = when (this) {
+        is AlreadyOnOwnDeviceException -> ""
         is PartyException -> message ?: UNREACHABLE
         else -> UNREACHABLE
     }

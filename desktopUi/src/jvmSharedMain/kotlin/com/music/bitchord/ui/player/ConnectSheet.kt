@@ -1,7 +1,9 @@
 package com.music.bitchord.ui.player
 
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -49,7 +51,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -62,6 +66,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -93,6 +98,11 @@ import org.jetbrains.compose.resources.stringResource
  * business, carried out by the host ([PlayerHost.pickDevice]). This sheet only reads the account
  * state and says what was tapped.
  */
+/**
+ * Allows children inside desktop's [ConnectSheet] to request a graceful animated dismiss.
+ */
+val LocalConnectSheetDismiss = compositionLocalOf<((() -> Unit)?) -> Unit> { { it?.invoke() } }
+
 @Composable
 internal fun ConnectSheet(
     hazeState: HazeState,
@@ -102,27 +112,69 @@ internal fun ConnectSheet(
     onJoinParty: () -> Unit = onOpenParty,
     modifier: Modifier = Modifier,
 ) {
-    // Not the phone's drawer glued to the bottom edge: a floating card in the app's own glass, lifted
-    // off the edge by the same air the mini player keeps, over a light scrim that closes it.
+    var shown by remember { mutableStateOf(false) }
+    var isClosing by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    LaunchedEffect(Unit) { shown = true }
+
+    val close: (afterDismiss: (() -> Unit)?) -> Unit = remember(onDismiss) {
+        { afterDismiss ->
+            if (!isClosing) {
+                isClosing = true
+                shown = false
+                scope.launch {
+                    delay(200)
+                    onDismiss()
+                    afterDismiss?.invoke()
+                }
+            }
+        }
+    }
+
+    PlayerBackHandler(enabled = shown && !isClosing) { close(null) }
+
+    val scrimAlpha by animateFloatAsState(
+        targetValue = if (shown) 1f else 0f,
+        animationSpec = tween(if (shown) 240 else 180, easing = FastOutSlowInEasing),
+        label = "desktopConnectScrimAlpha",
+    )
+    val contentScale by animateFloatAsState(
+        targetValue = if (shown) 1f else 0.94f,
+        animationSpec = tween(if (shown) 240 else 180, easing = FastOutSlowInEasing),
+        label = "desktopConnectContentScale",
+    )
+    val contentAlpha by animateFloatAsState(
+        targetValue = if (shown) 1f else 0f,
+        animationSpec = tween(if (shown) 200 else 160, easing = FastOutSlowInEasing),
+        label = "desktopConnectContentAlpha",
+    )
+
     val none = remember { MutableInteractionSource() }
     Box(
         modifier
             .fillMaxSize()
-            .background(SCRIM_COLOR)
-            .clickable(interactionSource = none, indication = null, onClick = onDismiss),
+            .background(SCRIM_COLOR.copy(alpha = SCRIM_COLOR.alpha * scrimAlpha))
+            .clickable(interactionSource = none, indication = null, onClick = { close(null) }),
         contentAlignment = Alignment.BottomCenter,
     ) {
         Box(
             Modifier
                 .padding(bottom = FLOATING_PANEL_GAP)
+                .graphicsLayer {
+                    scaleX = contentScale
+                    scaleY = contentScale
+                    alpha = contentAlpha
+                }
                 .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = {}),
         ) {
-            ConnectPopover(
-                onDismiss = onDismiss,
-                onOpenParty = onOpenParty,
-                onStartParty = onStartParty,
-                onJoinParty = onJoinParty,
-            )
+            CompositionLocalProvider(LocalConnectSheetDismiss provides close) {
+                ConnectPopover(
+                    onDismiss = { close(null) },
+                    onOpenParty = onOpenParty,
+                    onStartParty = onStartParty,
+                    onJoinParty = onJoinParty,
+                )
+            }
         }
     }
 }
@@ -187,6 +239,7 @@ internal fun ConnectContent(
     val account by host.devices.collectAsStateWithLifecycle()
     val party by host.party.collectAsStateWithLifecycle()
     val connecting by host.connectingDevice.collectAsStateWithLifecycle()
+    val drawerDismiss = LocalConnectSheetDismiss.current
 
     // The device just tapped. The sheet stays up while the hand-over is on its way, so the tap is
     // answered where it was made, and goes when it settles (a failure is told by the notice).
@@ -206,7 +259,7 @@ internal fun ConnectContent(
         } else if (seenConnecting) {
             pending = null
             seenConnecting = false
-            onDismiss()
+            drawerDismiss(null)
         }
     }
 
@@ -234,7 +287,7 @@ internal fun ConnectContent(
                     isSelf = true,
                     nowMs = 0L,
                     nameOf = { id -> account.devices.firstOrNull { it.deviceId == id }?.name.orEmpty() },
-                    onClick = { host.comeBackToThisDevice(); onDismiss() },
+                    onClick = { host.comeBackToThisDevice(); drawerDismiss(null) },
                     onForce = null,
                 )
             }
@@ -288,7 +341,7 @@ internal fun ConnectContent(
                     title = stringResource(Res.string.connect_view_party),
                     subtitle = party.hostName?.let { stringResource(Res.string.connect_in_party_of, it) }
                         ?: party.code?.let { stringResource(Res.string.listen_together_in_party, it) },
-                    onClick = { onDismiss(); onOpenParty() },
+                    onClick = { drawerDismiss { onOpenParty() } },
                 )
             } else {
                 // Starting a party is the way in, so it is the filled one; joining is for somebody who
@@ -302,13 +355,13 @@ internal fun ConnectContent(
                         icon = BitChordIcons.PartyStart,
                         filled = true,
                         modifier = Modifier.weight(1f),
-                    ) { onDismiss(); onStartParty() }
+                    ) { drawerDismiss { onStartParty() } }
                     ActionPill(
                         text = stringResource(Res.string.connect_join_with_code),
                         icon = BitChordIcons.PartyJoin,
                         filled = false,
                         modifier = Modifier.weight(1f),
-                    ) { onDismiss(); onJoinParty() }
+                    ) { drawerDismiss { onJoinParty() } }
                 }
             }
         }
@@ -340,8 +393,8 @@ private fun SoundingCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(CARD_SHAPE)
-            .background(accent.copy(alpha = 0.14f))
-            .border(1.dp, accent.copy(alpha = 0.35f), CARD_SHAPE)
+            .background(accent.copy(alpha = 0.22f))
+            .border(1.dp, accent.copy(alpha = 0.45f), CARD_SHAPE)
             .padding(14.dp),
     ) {
         Row(
@@ -537,7 +590,7 @@ private fun DeviceRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(ROW_SHAPE)
-            .background(Color.White.copy(alpha = 0.07f))
+            .background(Color.White.copy(alpha = if (device.connected) 0.14f else 0.07f))
             .clickable(
                 enabled = enabled,
                 interactionSource = remember { MutableInteractionSource() },
@@ -624,7 +677,7 @@ private fun ActionRow(title: String, subtitle: String?, leading: ImageVector? = 
         modifier = Modifier
             .fillMaxWidth()
             .clip(ROW_SHAPE)
-            .background(Color.White.copy(alpha = 0.05f))
+            .background(Color.White.copy(alpha = 0.14f))
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
                 haptics.play(Haptic.Select)
                 onClick()
@@ -634,16 +687,16 @@ private fun ActionRow(title: String, subtitle: String?, leading: ImageVector? = 
     ) {
         if (leading != null) {
             Box(
-                modifier = Modifier.size(40.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.08f)),
+                modifier = Modifier.size(40.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.10f)),
                 contentAlignment = Alignment.Center,
-            ) { Icon(leading, null, tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(20.dp)) }
+            ) { Icon(leading, null, tint = Color.White.copy(alpha = 0.85f), modifier = Modifier.size(20.dp)) }
             Spacer(Modifier.width(13.dp))
         }
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge, color = Color.White.copy(alpha = 0.85f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(title, style = MaterialTheme.typography.bodyLarge, color = Color.White.copy(alpha = 0.95f), maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (subtitle != null) {
                 Spacer(Modifier.height(2.dp))
-                Text(subtitle, style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.55f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(subtitle, style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.70f), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = Color.White.copy(alpha = 0.35f), modifier = Modifier.size(20.dp))
@@ -659,7 +712,7 @@ private fun ActionPill(text: String, icon: ImageVector, filled: Boolean, modifie
         modifier = modifier
             .height(48.dp)
             .clip(shape)
-            .background(if (filled) Color.White.copy(alpha = 0.92f) else Color.White.copy(alpha = 0.08f))
+            .background(if (filled) Color.White.copy(alpha = 0.92f) else Color.White.copy(alpha = 0.14f))
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
                 haptics.play(Haptic.Select)
                 onClick()
@@ -668,7 +721,7 @@ private fun ActionPill(text: String, icon: ImageVector, filled: Boolean, modifie
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        val ink = if (filled) Color(0xFF111114) else Color.White.copy(alpha = 0.9f)
+        val ink = if (filled) Color(0xFF111114) else Color.White.copy(alpha = 0.95f)
         Icon(icon, null, tint = ink, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(8.dp))
         Text(
@@ -686,7 +739,7 @@ private fun SectionLabel(text: String) {
     Text(
         text = text,
         style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-        color = Color.White.copy(alpha = 0.6f),
+        color = Color.White.copy(alpha = 0.70f),
         modifier = Modifier.padding(start = 4.dp, top = 6.dp),
     )
 }
@@ -696,7 +749,7 @@ private fun Hint(text: String) {
     Text(
         text = text,
         style = MaterialTheme.typography.bodyMedium,
-        color = Color.White.copy(alpha = 0.5f),
+        color = Color.White.copy(alpha = 0.70f),
         modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
     )
 }

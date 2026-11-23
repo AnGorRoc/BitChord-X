@@ -29,6 +29,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Canvas
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.drawscope.CanvasDrawScope
 import androidx.compose.ui.platform.LocalDensity
@@ -107,6 +108,7 @@ fun QrCode(
                 Image(
                     bitmap = it,
                     contentDescription = stringResource(R.string.listen_together_scan_qr),
+                    filterQuality = FilterQuality.None,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -229,24 +231,19 @@ private fun renderQr(
     val modules = matrix.width
     if (modules <= 0) return null
 
-    val image = ImageBitmap(sidePx, sidePx)
-    val side = sidePx.toFloat()
-    CanvasDrawScope().draw(density, LayoutDirection.Ltr, Canvas(image), Size(side, side)) {
-        val cellW = side / modules
-        val cellH = side / modules
+    val scale = maxOf(4, sidePx / modules)
+    val actualPx = modules * scale
+    val image = ImageBitmap(actualPx, actualPx)
+    CanvasDrawScope().draw(density, LayoutDirection.Ltr, Canvas(image), Size(actualPx.toFloat(), actualPx.toFloat())) {
         for (y in 0 until modules) {
-            val top = y * cellH
-            val bottom = (y + 1) * cellH
-            val h = bottom - top + 0.3f
+            val top = (y * scale).toFloat()
             for (x in 0 until modules) {
                 if (!matrix.get(x, y)) continue
-                val left = x * cellW
-                val right = (x + 1) * cellW
-                val w = right - left + 0.3f
+                val left = (x * scale).toFloat()
                 drawRect(
                     color = foreground,
                     topLeft = Offset(left, top),
-                    size = Size(w, h),
+                    size = Size(scale.toFloat(), scale.toFloat()),
                 )
             }
         }

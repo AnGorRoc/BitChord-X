@@ -114,23 +114,25 @@ internal fun ConnectSheet(
             if (!seenConnecting) pending = null
         }
     }
-    LaunchedEffect(connecting) {
-        val waiting = pending ?: return@LaunchedEffect
-        if (connecting == waiting) {
-            seenConnecting = true
-        } else if (seenConnecting) {
-            pending = null
-            seenConnecting = false
-            onDismiss()
-        }
-    }
 
     PlayerDrawer(
         hazeState = hazeState,
         title = stringResource(Res.string.connect_title),
         onDismiss = onDismiss,
         modifier = modifier,
+        blurBackground = false,
     ) {
+        val drawerDismiss = LocalPlayerDrawerDismiss.current
+        LaunchedEffect(connecting) {
+            val waiting = pending ?: return@LaunchedEffect
+            if (connecting == waiting) {
+                seenConnecting = true
+            } else if (seenConnecting) {
+                pending = null
+                seenConnecting = false
+                drawerDismiss(null)
+            }
+        }
         Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             val sounding = account.soundingDevice ?: account.self
             sounding?.let {
@@ -154,7 +156,7 @@ internal fun ConnectSheet(
                     isSelf = true,
                     nowMs = 0L,
                     nameOf = { id -> account.devices.firstOrNull { it.deviceId == id }?.name.orEmpty() },
-                    onClick = { host.comeBackToThisDevice(); onDismiss() },
+                    onClick = { host.comeBackToThisDevice(); drawerDismiss(null) },
                     onForce = null,
                 )
             }
@@ -208,7 +210,7 @@ internal fun ConnectSheet(
                     title = stringResource(Res.string.connect_view_party),
                     subtitle = party.hostName?.let { stringResource(Res.string.connect_in_party_of, it) }
                         ?: party.code?.let { stringResource(Res.string.listen_together_in_party, it) },
-                    onClick = { onDismiss(); onOpenParty() },
+                    onClick = { drawerDismiss { onOpenParty() } },
                 )
             } else {
                 // Starting a party is the way in, so it is the filled one; joining is for somebody who
@@ -222,13 +224,13 @@ internal fun ConnectSheet(
                         icon = BitChordIcons.PartyStart,
                         filled = true,
                         modifier = Modifier.weight(1f),
-                    ) { onDismiss(); onStartParty() }
+                    ) { drawerDismiss { onStartParty() } }
                     ActionPill(
                         text = stringResource(Res.string.connect_join_with_code),
                         icon = BitChordIcons.PartyJoin,
                         filled = false,
                         modifier = Modifier.weight(1f),
-                    ) { onDismiss(); onJoinParty() }
+                    ) { drawerDismiss { onJoinParty() } }
                 }
             }
         }
@@ -260,8 +262,8 @@ private fun SoundingCard(
         modifier = Modifier
             .fillMaxWidth()
             .clip(CARD_SHAPE)
-            .background(accent.copy(alpha = 0.14f))
-            .border(1.dp, accent.copy(alpha = 0.35f), CARD_SHAPE)
+            .background(accent.copy(alpha = 0.22f))
+            .border(1.dp, accent.copy(alpha = 0.45f), CARD_SHAPE)
             .padding(14.dp),
     ) {
         Row(
@@ -457,7 +459,7 @@ private fun DeviceRow(
         modifier = Modifier
             .fillMaxWidth()
             .clip(ROW_SHAPE)
-            .background(Color.White.copy(alpha = 0.07f))
+            .background(Color.White.copy(alpha = if (device.connected) 0.14f else 0.07f))
             .clickable(
                 enabled = enabled,
                 interactionSource = remember { MutableInteractionSource() },
@@ -544,7 +546,7 @@ private fun ActionRow(title: String, subtitle: String?, leading: ImageVector? = 
         modifier = Modifier
             .fillMaxWidth()
             .clip(ROW_SHAPE)
-            .background(Color.White.copy(alpha = 0.05f))
+            .background(Color.White.copy(alpha = 0.14f))
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
                 haptics.play(Haptic.Select)
                 onClick()
@@ -554,16 +556,16 @@ private fun ActionRow(title: String, subtitle: String?, leading: ImageVector? = 
     ) {
         if (leading != null) {
             Box(
-                modifier = Modifier.size(40.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.08f)),
+                modifier = Modifier.size(40.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.10f)),
                 contentAlignment = Alignment.Center,
-            ) { Icon(leading, null, tint = Color.White.copy(alpha = 0.7f), modifier = Modifier.size(20.dp)) }
+            ) { Icon(leading, null, tint = Color.White.copy(alpha = 0.85f), modifier = Modifier.size(20.dp)) }
             Spacer(Modifier.width(13.dp))
         }
         Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge, color = Color.White.copy(alpha = 0.85f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(title, style = MaterialTheme.typography.bodyLarge, color = Color.White.copy(alpha = 0.95f), maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (subtitle != null) {
                 Spacer(Modifier.height(2.dp))
-                Text(subtitle, style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.55f), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(subtitle, style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.70f), maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = Color.White.copy(alpha = 0.35f), modifier = Modifier.size(20.dp))
@@ -579,7 +581,7 @@ private fun ActionPill(text: String, icon: ImageVector, filled: Boolean, modifie
         modifier = modifier
             .height(48.dp)
             .clip(shape)
-            .background(if (filled) Color.White.copy(alpha = 0.92f) else Color.White.copy(alpha = 0.08f))
+            .background(if (filled) Color.White.copy(alpha = 0.92f) else Color.White.copy(alpha = 0.14f))
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
                 haptics.play(Haptic.Select)
                 onClick()
@@ -588,7 +590,7 @@ private fun ActionPill(text: String, icon: ImageVector, filled: Boolean, modifie
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        val ink = if (filled) Color(0xFF111114) else Color.White.copy(alpha = 0.9f)
+        val ink = if (filled) Color(0xFF111114) else Color.White.copy(alpha = 0.95f)
         Icon(icon, null, tint = ink, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(8.dp))
         Text(
@@ -606,7 +608,7 @@ private fun SectionLabel(text: String) {
     Text(
         text = text,
         style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
-        color = Color.White.copy(alpha = 0.6f),
+        color = Color.White.copy(alpha = 0.70f),
         modifier = Modifier.padding(start = 4.dp, top = 6.dp),
     )
 }
@@ -616,7 +618,7 @@ private fun Hint(text: String) {
     Text(
         text = text,
         style = MaterialTheme.typography.bodyMedium,
-        color = Color.White.copy(alpha = 0.5f),
+        color = Color.White.copy(alpha = 0.70f),
         modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
     )
 }

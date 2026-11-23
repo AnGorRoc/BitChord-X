@@ -2,6 +2,7 @@ package com.music.bitchord.desktop
 
 import com.music.bitchord.data.listentogether.ApiError
 import com.music.bitchord.data.listentogether.DeviceGroup
+import com.music.bitchord.data.listentogether.account.AccountDevice
 import com.music.bitchord.data.listentogether.account.AccountDevices
 import com.music.bitchord.data.listentogether.account.DeviceSelf
 import com.music.bitchord.data.listentogether.JoinRequest
@@ -117,11 +118,19 @@ internal object DesktopListenTogether {
     }
 
     /** A refusal from the server, carrying the machine-readable half. */
-    class PartyException(
+    open class PartyException(
         val code: String,
         message: String,
         val statusCode: Int? = null,
     ) : Exception(message)
+
+    /** Raised when attempting to join a party that is already running on one of the person's own devices. */
+    class AlreadyOnOwnDeviceException(
+        val device: AccountDevice,
+    ) : PartyException(
+        "already_on_your_device",
+        "You're already in this party on “${device.name}”, one of your own devices.",
+    )
 
     private val json = Json {
         ignoreUnknownKeys = true
@@ -1223,16 +1232,19 @@ internal object DesktopListenTogether {
         }
     }
 
+    /** Returns another of this person's own devices that is currently in [code], if any. */
+    fun ownDeviceInParty(code: String): AccountDevice? {
+        val clean = cleanCode(code)
+        if (clean.length != CODE_LENGTH) return null
+        return account.state.value.others.firstOrNull {
+            it.connected && it.partyCode.equals(clean, ignoreCase = true)
+        }
+    }
+
     /** See the phone's twin: one of the person's own devices already in the party is their seat. */
     private fun refuseIfOnMyOtherDevice(code: String) {
-        val clean = cleanCode(code)
-        val own = account.state.value.others.firstOrNull {
-            it.connected && it.partyCode.equals(clean, ignoreCase = true)
-        } ?: return
-        throw PartyException(
-            "already_on_your_device",
-            "You're already in this party on “${own.name}”, one of your own devices.",
-        )
+        val own = ownDeviceInParty(code) ?: return
+        throw AlreadyOnOwnDeviceException(own)
     }
 
     /**

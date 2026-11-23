@@ -63,6 +63,7 @@ internal fun ListenTogetherMembersSheet(
         title = stringResource(Res.string.listen_together),
         onDismiss = onDismiss,
         modifier = modifier,
+        blurBackground = false,
     ) {
         Column(
             modifier = Modifier.fillMaxWidth(),
@@ -85,7 +86,7 @@ private fun MemberDrawerRow(member: PartyMember, isYou: Boolean) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(ROW_SHAPE)
-            .background(Color.White.copy(alpha = if (isYou) 0.10f else 0.05f))
+            .background(Color.White.copy(alpha = if (isYou) 0.16f else 0.08f))
             .padding(horizontal = 14.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -136,7 +137,7 @@ private fun MemberDrawerRow(member: PartyMember, isYou: Boolean) {
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.labelMedium,
-                    color = Color.White.copy(alpha = 0.55f),
+                    color = Color.White.copy(alpha = 0.70f),
                 )
             }
         }
@@ -151,7 +152,7 @@ private fun ManageRow(code: String?, onClick: () -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .clip(ROW_SHAPE)
-            .background(Color.White.copy(alpha = 0.05f))
+            .background(Color.White.copy(alpha = 0.08f))
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,

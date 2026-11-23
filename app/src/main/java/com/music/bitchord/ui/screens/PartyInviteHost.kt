@@ -36,7 +36,9 @@ import com.music.bitchord.data.listentogether.JamInviteLink
 import com.music.bitchord.data.listentogether.ListenTogether
 import com.music.bitchord.data.listentogether.PartyPreview
 import com.music.bitchord.data.listentogether.PartyServers
+import com.music.bitchord.data.listentogether.account.AccountDevice
 import com.music.bitchord.data.listentogether.spotify.SpotifyJamBridge
+import com.music.bitchord.ui.components.OwnDevicePartyAlert
 import kotlinx.coroutines.launch
 
 /**
@@ -63,6 +65,7 @@ internal fun PartyInviteHost() {
     var busy by remember { mutableStateOf(false) }
     var failure by remember { mutableStateOf<String?>(null) }
     var playHere by remember { mutableStateOf(false) }
+    var ownDeviceAlert by remember { mutableStateOf<AccountDevice?>(null) }
 
     fun dismiss() {
         inviteCode = null
@@ -98,6 +101,13 @@ internal fun PartyInviteHost() {
             JamInviteLink.handled()
             return@LaunchedEffect
         }
+        val ownDevice = ListenTogether.ownDeviceInParty(invite.code)
+        if (ownDevice != null) {
+            JamInviteLink.handled()
+            dismiss()
+            ownDeviceAlert = ownDevice
+            return@LaunchedEffect
+        }
         // Only a server this build does not already know needs consent to be
         // talked to at all; the built-in ones go straight to the sheet.
         val knownServer = targetServer.isNullOrBlank() ||
@@ -120,11 +130,26 @@ internal fun PartyInviteHost() {
     LaunchedEffect(inviteCode, inviteServer) {
         val code = inviteCode ?: return@LaunchedEffect
         if (preview?.code == code) return@LaunchedEffect
+        val ownDevice = ListenTogether.ownDeviceInParty(code)
+        if (ownDevice != null) {
+            dismiss()
+            ownDeviceAlert = ownDevice
+            return@LaunchedEffect
+        }
         busy = true
         failure = null
         ListenTogether.previewParty(code, inviteServer)
             .onSuccess { preview = it }
-            .onFailure { failure = it.message }
+            .onFailure { problem ->
+                val own = (problem as? ListenTogether.AlreadyOnOwnDeviceException)?.device
+                    ?: ListenTogether.ownDeviceInParty(code)
+                if (own != null) {
+                    dismiss()
+                    ownDeviceAlert = own
+                } else {
+                    failure = problem.message
+                }
+            }
         busy = false
     }
 
@@ -187,11 +212,43 @@ internal fun PartyInviteHost() {
         )
     }
 
+    ownDeviceAlert?.let { device ->
+        OwnDevicePartyAlert(
+            device = device,
+            onConnect = {
+                val devId = device.deviceId
+                ownDeviceAlert = null
+                if (ListenTogether.state.value.inParty) {
+                    scope.launch {
+                        ListenTogether.leaveParty()
+                        com.music.bitchord.playback.DeviceLink.pick(devId, null)
+                    }
+                } else {
+                    com.music.bitchord.playback.DeviceLink.pick(devId, null)
+                }
+            },
+            onDismiss = {
+                ownDeviceAlert = null
+            },
+        )
+    }
+
     if (inviteCode == null) return
+
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+
+    val animatedDismiss: (after: (() -> Unit)?) -> Unit = { after ->
+        scope.launch {
+            sheetState.hide()
+        }.invokeOnCompletion {
+            dismiss()
+            after?.invoke()
+        }
+    }
 
     ModalBottomSheet(
         onDismissRequest = { dismiss() },
-        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        sheetState = sheetState,
         containerColor = MaterialTheme.colorScheme.background,
     ) {
         val current = preview
@@ -202,11 +259,16 @@ internal fun PartyInviteHost() {
                 onPlayHereChange = { playHere = it },
                 busy = busy,
                 error = failure,
-                onDismiss = { dismiss() },
+                onDismiss = { animatedDismiss(null) },
                 onJoin = {
                     busy = true
                     failure = null
                     scope.launch {
+                        val ownDevice = ListenTogether.ownDeviceInParty(current.code)
+                        if (ownDevice != null) {
+                            animatedDismiss { ownDeviceAlert = ownDevice }
+                            return@launch
+                        }
                         // Set before joining so the welcome that follows already
                         // knows how this device listens; put back if the party
                         // turns it away.
@@ -232,19 +294,32 @@ internal fun PartyInviteHost() {
                             }
                         } else {
                             ListenTogether.joinParty(current.code, ListenTogether.nickname())
-                                .exceptionOrNull()?.message
+                                .exceptionOrNull()?.let { ex ->
+                                    val own = (ex as? ListenTogether.AlreadyOnOwnDeviceException)?.device
+                                        ?: ListenTogether.ownDeviceInParty(current.code)
+                                    if (own != null) {
+                                        animatedDismiss { ownDeviceAlert = own }
+                                        return@launch
+                                    }
+                                    ex.message
+                                }
                         }
-                        failure = problem
-                        if (problem != null) ListenTogether.setListenHere(true)
-                        busy = false
-                        if (problem == null) dismiss()
+                        val own = ListenTogether.ownDeviceInParty(current.code)
+                        if (own != null) {
+                            animatedDismiss { ownDeviceAlert = own }
+                        } else {
+                            failure = problem
+                            if (problem != null) ListenTogether.setListenHere(true)
+                            busy = false
+                            if (problem == null) animatedDismiss(null)
+                        }
                     }
                 },
             )
 
             failure != null -> InviteMessageSheet(
                 message = failure.orEmpty(),
-                onDismiss = { dismiss() },
+                onDismiss = { animatedDismiss(null) },
             )
 
             else -> InviteLoadingSheet()

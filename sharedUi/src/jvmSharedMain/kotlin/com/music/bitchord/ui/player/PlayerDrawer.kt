@@ -6,6 +6,8 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
@@ -30,13 +32,18 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -62,6 +69,13 @@ import dev.chrisbanes.haze.HazeState
 import kotlin.math.roundToInt
 
 internal val DRAWER_SHAPE = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp)
+
+/**
+ * Allows children inside a [PlayerDrawer] to request a graceful dismiss that plays the
+ * slide-down and scrim fade-out animation before invoking [PlayerDrawer]'s onDismiss.
+ * An optional callback [afterDismiss] can be run after the drawer has finished animating out.
+ */
+val LocalPlayerDrawerDismiss = compositionLocalOf<((() -> Unit)?) -> Unit> { { it?.invoke() } }
 
 /**
  * The widest the drawer itself gets, however wide the window behind it is.
@@ -111,6 +125,7 @@ fun PlayerDrawer(
      * share — asks for more so they are on screen without a scroll.
      */
     maxHeight: Dp = 640.dp,
+    blurBackground: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val reduceDynamicBlur by PlayerSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
@@ -132,7 +147,41 @@ fun PlayerDrawer(
     // Flipped on the first composition so the drawer travels up from the edge
     // instead of appearing over the player fully formed.
     var shown by remember { mutableStateOf(false) }
+    var isClosing by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
     LaunchedEffect(Unit) { shown = true }
+
+    val requestDismiss: (afterDismiss: (() -> Unit)?) -> Unit = remember(onDismiss) {
+        { afterDismiss ->
+            if (!isClosing) {
+                isClosing = true
+                shown = false
+                scope.launch {
+                    delay(220)
+                    onDismiss()
+                    afterDismiss?.invoke()
+                }
+            }
+        }
+    }
+
+    PlayerBackHandler(enabled = shown && !isClosing) {
+        requestDismiss(null)
+    }
+
+    // Fades with the drawer on open, drag, and exit rather than staying at full strength under a sheet
+    // halfway off the screen, which is what makes the drag and transitions feel connected.
+    val scrimFade by animateFloatAsState(
+        targetValue = if (shown) 1f else 0f,
+        animationSpec = tween(
+            durationMillis = if (shown) 260 else 200,
+            easing = FastOutSlowInEasing,
+        ),
+        label = "playerDrawerScrimFade",
+    )
+    val dragFade = if (height > 0) (1f - offset / height).coerceIn(0f, 1f) else 1f
+    val currentScrimAlpha = (scrimFade * dragFade).coerceIn(0f, 1f)
 
     // The drawer's rows scroll, and that scroll takes the finger before the
     // drag detector below ever sees it. So a pull down past the top of the
@@ -146,7 +195,11 @@ fun PlayerDrawer(
     // answers to its own drag alone, because a scroll leftover means something
     // else there and must not be read as a pull.
     val dismissOnRelease: () -> Unit = {
-        if (height > 0 && drag > height * DISMISS_DRAG_FRACTION) onDismiss() else drag = 0f
+        if (height > 0 && drag > height * DISMISS_DRAG_FRACTION) {
+            requestDismiss(null)
+        } else {
+            drag = 0f
+        }
     }
     val drawerScroll = remember {
         object : NestedScrollConnection {
@@ -188,19 +241,28 @@ fun PlayerDrawer(
         modifier = modifier
             .fillMaxSize()
             .containSheetGestures()
-            .background(SCRIM_COLOR.copy(alpha = SCRIM_COLOR.alpha * scrimAlpha))
+            .background(SCRIM_COLOR.copy(alpha = SCRIM_COLOR.alpha * currentScrimAlpha))
             .clickable(
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() },
-                onClick = onDismiss,
+                onClick = { requestDismiss(null) },
             ),
         contentAlignment = Alignment.BottomCenter,
     ) {
         AnimatedVisibility(
             visible = shown,
-            enter = slideInVertically(tween(260, easing = FastOutSlowInEasing)) { it },
-            exit = slideOutVertically(tween(180)) { it },
+            enter = slideInVertically(
+                animationSpec = tween(durationMillis = 280, easing = FastOutSlowInEasing),
+            ) { it } + fadeIn(
+                animationSpec = tween(durationMillis = 200, easing = FastOutSlowInEasing),
+            ),
+            exit = slideOutVertically(
+                animationSpec = tween(durationMillis = 220, easing = FastOutSlowInEasing),
+            ) { it } + fadeOut(
+                animationSpec = tween(durationMillis = 180, easing = FastOutSlowInEasing),
+            ),
         ) {
+        CompositionLocalProvider(LocalPlayerDrawerDismiss provides requestDismiss) {
         Column(
             modifier = Modifier
                 // Capped so a phone full of rows scrolls inside the drawer
@@ -219,7 +281,7 @@ fun PlayerDrawer(
                     // material over the player — its own where the player is
                     // recorded for it, else the same look through the haze.
                     when {
-                        reduceDynamicBlur -> Modifier.background(MenuFrostDark)
+                        !blurBackground || reduceDynamicBlur -> Modifier.background(MenuFrostDark)
                         frost != null -> with(frost) {
                             Modifier.frostPanel(DRAWER_SHAPE, MenuFrostDark.copy(alpha = MENU_FROST_ALPHA))
                         }
@@ -270,6 +332,7 @@ fun PlayerDrawer(
                     .padding(start = 4.dp, bottom = titleGap),
             )
             content()
+        }
         }
         }
     }

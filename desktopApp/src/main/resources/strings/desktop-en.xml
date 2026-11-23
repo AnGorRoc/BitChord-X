@@ -193,4 +193,8 @@
     <string name="device_notice_party_here_again">The party plays on this device again</string>
     <string name="d_autoplay">Autoplay</string>
     <string name="d_on">On</string>
+    <string name="d_own_device_party_title">Party on your device</string>
+    <string name="d_own_device_party_msg">Your device “%1$s” is already in this party. Connect to it via Connect to control playback or listen together.</string>
+    <string name="d_connect_action">Connect</string>
+    <string name="d_cancel">Cancel</string>
 </resources>

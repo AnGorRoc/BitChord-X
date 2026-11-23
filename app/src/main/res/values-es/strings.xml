@@ -773,6 +773,9 @@
     <string name="listen_together_custom_server_switch_and_join">Cambiar y unirse</string>
     <string name="listen_together_official_server_dialog_title">¿Cambiar al servidor oficial?</string>
     <string name="listen_together_official_server_dialog_message">Esta fiesta está alojada en el servidor oficial de BitChord.\n\n¿Quieres volver al servidor oficial y unirte a la fiesta %1$s?</string>
+    <string name="listen_together_own_device_dialog_title">Fiesta en tu dispositivo</string>
+    <string name="listen_together_own_device_dialog_message">Tu dispositivo «%1$s» ya está en esta fiesta. Conéctate a él a través de Connect para controlarlo o escuchar juntos.</string>
+    <string name="listen_together_connect_action">Conectar</string>
     <string name="listen_together_ping">%1$d ms</string>
     <string name="listen_together_server_offline_dash">—</string>
     <string name="listen_together_invalid_server_url">URL de servidor no válida. Introduce una dirección válida (p. ej. https://your-server.com)</string>
