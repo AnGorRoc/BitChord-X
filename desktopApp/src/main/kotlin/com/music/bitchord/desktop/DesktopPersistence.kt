@@ -24,6 +24,20 @@ class DesktopPersistence {
             write = { saveString("tidal_manual_json", it) },
         )
         syncNetworkAuth()
+        openStoresOnce()
+        try {
+            com.music.bitchord.data.lyrics.PaxSenix.apiKey = paxSenixApiKey()
+        } catch (_: Throwable) {}
+    }
+
+    /**
+     * Opens the on-disk stores once per process. This class is constructed dozens of times
+     * (every settings read), and each store's init used to start its own coroutines and re-scan
+     * its folders every time, so a busy launch was doing the same disk work many times over.
+     */
+    private fun openStoresOnce() = synchronized(storeLock) {
+        if (storesOpened) return
+        storesOpened = true
         try {
             val baseDir = DesktopMediaCache.directory.parent
             com.music.bitchord.data.stats.ListeningStats.init(baseDir.resolve("listening").toFile())
@@ -35,9 +49,6 @@ class DesktopPersistence {
             com.music.bitchord.data.stats.ArtistFacts.replayGenresEnabledProvider = { true }
             com.music.bitchord.data.stats.ArtistFacts.init(baseDir.resolve("artist_facts").toFile())
             com.music.bitchord.data.BrowseCache.init(baseDir.resolve("browse_cache").toFile())
-        } catch (_: Throwable) {}
-        try {
-            com.music.bitchord.data.lyrics.PaxSenix.apiKey = paxSenixApiKey()
         } catch (_: Throwable) {}
     }
 
@@ -536,6 +547,10 @@ class DesktopPersistence {
         runCatching { String(Base64.getUrlDecoder().decode(value), StandardCharsets.UTF_8) }.getOrDefault("")
 
     private companion object {
+        /** Guards [openStoresOnce]; the stores are process-wide, so this is too. */
+        val storeLock = Any()
+        var storesOpened = false
+
         const val KEY_LIKED_IDS = "liked_ids"
         const val KEY_DISLIKED_IDS = "disliked_ids"
         const val KEY_HISTORY = "history"
