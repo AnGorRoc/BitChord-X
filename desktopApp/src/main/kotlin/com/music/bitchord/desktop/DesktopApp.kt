@@ -4441,6 +4441,7 @@ fun BitChordDesktopApp() {
                                 else -> LikeStatus.INDIFFERENT
                             },
                             onToggleLike = { toggleLike(current) },
+                            onHoldLike = { playlistTarget = current },
                             onPlayPause = ::togglePlayPauseFromUser,
                             onNext = ::playNext,
                             onPrevious = ::playPrevious,

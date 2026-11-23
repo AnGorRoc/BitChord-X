@@ -618,6 +618,8 @@ internal fun LandscapeCredits(
     modifier: Modifier = Modifier,
     /** Reports where the "…" button is, in window coordinates; see [NowPlayingScreen]. */
     onMenuAnchor: ((Rect) -> Unit)? = null,
+    /** A hold on the star: save the song to a playlist. */
+    onHoldLike: (() -> Unit)? = null,
 ) {
     Row(modifier = modifier, verticalAlignment = Alignment.CenterVertically) {
         Crossfade(
@@ -669,6 +671,7 @@ internal fun LandscapeCredits(
                 onClick = onToggleLike,
                 active = liked,
                 haptic = if (liked) Haptic.ToggleOff else Haptic.ToggleOn,
+                onLongClick = onHoldLike,
             )
             Spacer(Modifier.width(8.dp))
         }

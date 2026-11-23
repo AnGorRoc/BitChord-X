@@ -679,6 +679,8 @@ fun NowPlayingScreen(
     accountName: String?,
     likeStatus: LikeStatus,
     onToggleLike: () -> Unit,
+    /** A hold on the star: save the song to a playlist, in the app's playlist picker. */
+    onHoldLike: (() -> Unit)? = null,
     onPlayPause: () -> Unit,
     onNext: () -> Unit,
     onPrevious: () -> Unit,
@@ -2014,6 +2016,7 @@ fun NowPlayingScreen(
                                     onOpenAlbum = onOpenAlbum,
                                     onOpenArtist = onOpenArtist,
                                     onMenuAnchor = playerMenuAnchor?.let { anchor -> { anchor.value = it } },
+                                    onHoldLike = onHoldLike,
                                 )
                             },
                             // On a phone-height window the transport is the right
@@ -3457,6 +3460,8 @@ fun NowPlayingScreen(
                                     onClick = onToggleLike,
                                     active = liked,
                                     haptic = if (liked) Haptic.ToggleOff else Haptic.ToggleOn,
+                                    // A hold saves it to a playlist instead.
+                                    onLongClick = onHoldLike,
                                 )
                                 Spacer(Modifier.width(8.dp))
                             }

@@ -42,6 +42,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -927,35 +928,37 @@ private fun PlaybackModesPill(
 }
 
 /**
- * Translucent circular button used for the track menu and the like control.
- *
- * [active] brightens the disc rather than only the glyph: this sits on album
- * artwork of any colour, and a white icon on a white-ish sleeve has no tint
- * change left to make. The filled star carries the state as a shape too — see
- * [BitChordIcons.StarFilled].
+ * The track menu and the like control beside the title: the glyph alone, on a
+ * round target with nothing drawn behind it at rest; a pointer over it still
+ * shows the usual hover disc. The liked state is carried by the star's shape —
+ * see [BitChordIcons.StarFilled]; [active] is kept for callers and no longer
+ * changes the look.
  */
 @Composable
 internal fun CircleGlyph(
     icon: ImageVector,
     contentDescription: String,
     onClick: () -> Unit,
-    active: Boolean = false,
+    @Suppress("UNUSED_PARAMETER") active: Boolean = false,
     haptic: Haptic = Haptic.Tap,
+    /** A hold, when the glyph has a second action — the star's "save to a playlist". */
+    onLongClick: (() -> Unit)? = null,
 ) {
     val haptics = rememberHaptics()
-    val discAlpha by animateFloatAsState(
-        targetValue = if (active) 0.34f else 0.18f,
-        label = "glyphDisc",
-    )
     Box(
         modifier = Modifier
-            .size(34.dp)
+            .size(38.dp)
             .clip(CircleShape)
-            .background(LocalPlayerTint.current.copy(alpha = discAlpha))
             .playerHoverDisc()
-            .clickable(
+            .combinedClickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
+                onLongClick = onLongClick?.let { hold ->
+                    {
+                        haptics.play(Haptic.Expand)
+                        hold()
+                    }
+                },
             ) {
                 haptics.play(haptic)
                 onClick()
@@ -971,7 +974,7 @@ internal fun CircleGlyph(
                 imageVector = glyph,
                 contentDescription = contentDescription,
                 tint = LocalPlayerTint.current,
-                modifier = Modifier.size(19.dp),
+                modifier = Modifier.size(25.dp),
             )
         }
     }

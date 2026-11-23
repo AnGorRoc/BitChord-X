@@ -42,6 +42,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -552,8 +553,11 @@ private const val GLASS_SLAB_ALPHA = 0.38f
 private const val GLASS_FLAT_ALPHA = 0.72f
 
 
-/** The star and ⋯ discs' fill at rest. */
+/** The star and ⋯ discs' fill at rest (they have none now; the other discs here still use it). */
 private const val CIRCLE_DISC_ALPHA = 0.18f
+
+/** How much more of the ink a dodged disc takes than its plain white. */
+private const val CIRCLE_DISC_DODGE_GAIN = 2.5f
 
 private fun discFill(chrome: Boolean, alpha: Float = CIRCLE_DISC_ALPHA): Color =
     if (chrome) {
@@ -859,60 +863,46 @@ internal fun PlayerActionRow(
 }
 
 
-/** How much more of the ink [CircleGlyph]'s disc takes than its plain white — 0.45 at rest, 0.85 lit. */
-private const val CIRCLE_DISC_DODGE_GAIN = 2.5f
+/** [CircleGlyph]'s icon: larger than it was inside its old disc, so it holds its own bare. */
+private val GLYPH_ICON_SIZE = 25.dp
 
 /**
- * Translucent circular button used for the track menu and the like control.
- *
- * [active] brightens the disc rather than only the glyph: this sits on album
- * artwork of any colour, and a white icon on a white-ish sleeve has no tint
- * change left to make. The filled star carries the state as a shape too —
- * see [BitChordIcons.StarFilled].
+ * The track menu and the like control beside the title: the glyph alone, in
+ * white, on a round touch target with nothing drawn behind it. The liked state
+ * is carried by the star's shape — see [BitChordIcons.StarFilled]; [active] is
+ * kept for callers and no longer changes the look.
  */
 @Composable
 internal fun CircleGlyph(
     icon: ImageVector,
     contentDescription: String,
     onClick: () -> Unit,
-    active: Boolean = false,
+    @Suppress("UNUSED_PARAMETER") active: Boolean = false,
     haptic: Haptic = Haptic.Tap,
     modifier: Modifier = Modifier,
+    /** A hold, when the glyph has a second action — the star's "save to a playlist". */
+    onLongClick: (() -> Unit)? = null,
 ) {
     val haptics = rememberHaptics()
-    val discAlpha by animateFloatAsState(
-        targetValue = if (active) 0.34f else 0.18f,
-        label = "glyphDisc",
-    )
-    val chrome = LocalPlayerChrome.current
     Box(
         modifier = modifier
-            .size(34.dp)
+            .size(38.dp)
             .clip(CircleShape)
-            .clickable(
+            .combinedClickable(
                 interactionSource = remember { MutableInteractionSource() },
                 indication = null,
+                onLongClick = onLongClick?.let { hold ->
+                    {
+                        haptics.play(Haptic.Expand)
+                        hold()
+                    }
+                },
             ) {
                 haptics.play(haptic)
                 onClick()
             },
         contentAlignment = Alignment.Center,
     ) {
-        // The disc carries the blend, dodged as the bottom row's glyphs are, and
-        // the glyph sits on it in plain white. The ink is mixed in at a few times
-        // the plain disc's strength: a dodge laid on this thinly is next to nothing.
-        Box(
-            Modifier
-                .matchParentSize()
-                .vibrantChrome(chrome)
-                .background(
-                    if (chrome) {
-                        VibrantChromeInk.copy(alpha = (discAlpha * CIRCLE_DISC_DODGE_GAIN).coerceAtMost(1f))
-                    } else {
-                        Color.White.copy(alpha = discAlpha)
-                    },
-                ),
-        )
         Crossfade(
             targetState = icon,
             animationSpec = tween(durationMillis = 180),
@@ -922,7 +912,7 @@ internal fun CircleGlyph(
                 imageVector = glyph,
                 contentDescription = contentDescription,
                 tint = Color.White,
-                modifier = Modifier.size(19.dp),
+                modifier = Modifier.size(GLYPH_ICON_SIZE),
             )
         }
     }
