@@ -18,6 +18,7 @@
 package com.music.bitchord.playback.smart
 
 import com.music.bitchord.data.Http
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -113,6 +114,11 @@ class AutomixModelStore(private val scope: CoroutineScope = CoroutineScope(Super
             try {
                 runDownloads()
                 _state.value = AutomixModelState.Ready
+            } catch (error: CancellationException) {
+                // The scope is going away: not a download failure, so no warning, but the
+                // state must not stay on Downloading forever.
+                _state.value = AutomixModelState.Failed
+                throw error
             } catch (error: Throwable) {
                 AnalysisLog.warn("Automix model download failed", error)
                 _state.value = AutomixModelState.Failed
