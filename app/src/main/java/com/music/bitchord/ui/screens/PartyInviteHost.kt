@@ -62,7 +62,7 @@ internal fun PartyInviteHost() {
     var preview by remember { mutableStateOf<PartyPreview?>(null) }
     var busy by remember { mutableStateOf(false) }
     var failure by remember { mutableStateOf<String?>(null) }
-    var playHere by remember { mutableStateOf(true) }
+    var playHere by remember { mutableStateOf(false) }
 
     fun dismiss() {
         inviteCode = null
@@ -71,6 +71,7 @@ internal fun PartyInviteHost() {
         preview = null
         failure = null
         busy = false
+        playHere = false
     }
 
     LaunchedEffect(incoming) {
@@ -109,6 +110,7 @@ internal fun PartyInviteHost() {
         if (!knownServer) {
             pendingServerConsent = invite.code to targetServer.orEmpty()
         } else {
+            playHere = false
             inviteCode = invite.code
             inviteServer = targetServer
         }

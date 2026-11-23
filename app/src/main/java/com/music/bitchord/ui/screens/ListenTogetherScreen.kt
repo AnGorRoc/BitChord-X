@@ -219,7 +219,7 @@ fun ListenTogetherScreen(
     // Offered to the host as a setting once the party exists, not asked up front: people almost
     // never want fewer than everyone they invite.
     val maxMembers = DEFAULT_PARTY_SIZE
-    var joinPlayHere by remember { mutableStateOf(true) }
+    var joinPlayHere by remember { mutableStateOf(false) }
     var sharingApk by remember { mutableStateOf(false) }
     // The APK or the release link — see [ShareAppAlert] for why both are offered.
     var choosingShare by remember { mutableStateOf(false) }
@@ -340,7 +340,10 @@ fun ListenTogetherScreen(
         failure = null
         scope.launch {
             ListenTogether.previewParty(previewCode, previewServer)
-                .onSuccess { sheet = PartySheet.Confirm(it, previewServer) }
+                .onSuccess {
+                    joinPlayHere = false
+                    sheet = PartySheet.Confirm(it, previewServer)
+                }
                 .onFailure { failure = it.message }
             busy = false
         }
@@ -365,6 +368,7 @@ fun ListenTogetherScreen(
                 // would surface it on the page underneath, as a line about a
                 // sheet that is no longer there.
                 failure = null
+                joinPlayHere = false
             },
             sheetState = sheetState,
             containerColor = com.music.bitchord.ui.theme.pageBackground(),

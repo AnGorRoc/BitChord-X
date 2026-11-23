@@ -879,6 +879,7 @@ object ListenTogether {
         )
 
         withContext(NonCancellable) {
+            _listenHere.value = true
             activePartyServerBase = serverBase
             token = membership.token
             prefs.edit()

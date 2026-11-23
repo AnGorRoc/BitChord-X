@@ -101,7 +101,7 @@ internal fun DesktopListenTogetherDialog(autoplayEnabled: Boolean, onDismiss: ()
     var nickname by remember { mutableStateOf(DesktopListenTogether.nickname()) }
     // A setting for the host once the party exists, not a decision at the door.
     val maxMembers = DEFAULT_PARTY_SIZE
-    var joinPlayHere by remember { mutableStateOf(true) }
+    var joinPlayHere by remember { mutableStateOf(false) }
     var serverDraft by remember { mutableStateOf(server) }
     var preview by remember { mutableStateOf<PartyPreview?>(null) }
     var busy by remember { mutableStateOf(false) }
@@ -198,7 +198,7 @@ internal fun DesktopListenTogetherDialog(autoplayEnabled: Boolean, onDismiss: ()
                     onPlayHereChange = { joinPlayHere = it },
                     busy = busy,
                     error = localError ?: state.error,
-                    onBack = { preview = null; localError = null },
+                    onBack = { preview = null; localError = null; joinPlayHere = false },
                     onJoin = {
                         busy = true
                         localError = null
@@ -883,8 +883,8 @@ private fun serverStatusLine(status: DesktopListenTogether.ServerStatus): String
 @Composable
 private fun PlayHereChoice(playHere: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     Column(modifier, verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        PlayHereOption(playHere, tr("d_play_here", "Play on this computer"), tr("d_play_here_join_on", "You hear it here and everyone else hears it on theirs."), enabled) { onChange(true) }
         PlayHereOption(!playHere, tr("d_play_other", "Only on the other device"), tr("d_play_here_off", "Sound comes only from the host. You still see and control the party."), enabled) { onChange(false) }
+        PlayHereOption(playHere, tr("d_play_here", "Play on this computer"), tr("d_play_here_join_on", "You hear it here and everyone else hears it on theirs."), enabled) { onChange(true) }
     }
 }
 

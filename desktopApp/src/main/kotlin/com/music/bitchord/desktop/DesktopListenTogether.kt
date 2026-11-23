@@ -299,18 +299,21 @@ internal object DesktopListenTogether {
         nickname: String = nickname(),
         maxMembers: Int = 5,
         autoplayEnabled: Boolean = false,
-    ): Result<String> = enter(nickname) { who, server ->
-        post(
-            "$server/api/parties",
-            JoinRequest(
-                who.userId,
-                who.deviceId,
-                who.name,
-                who.avatar,
-                maxMembers.coerceIn(2, 10),
-                autoplayEnabled,
-            ),
-        )
+    ): Result<String> {
+        _listenHere.value = true
+        return enter(nickname) { who, server ->
+            post(
+                "$server/api/parties",
+                JoinRequest(
+                    who.userId,
+                    who.deviceId,
+                    who.name,
+                    who.avatar,
+                    maxMembers.coerceIn(2, 10),
+                    autoplayEnabled,
+                ),
+            )
+        }
     }
 
     /**

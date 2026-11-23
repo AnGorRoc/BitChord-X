@@ -337,18 +337,18 @@ internal fun PlayHereChoice(
 ) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         PlayHereOption(
-            selected = playHere,
-            title = stringResource(R.string.listen_together_play_here),
-            subtitle = stringResource(R.string.listen_together_play_here_on),
-            enabled = enabled,
-            onClick = { onChange(true) },
-        )
-        PlayHereOption(
             selected = !playHere,
             title = remoteTitle,
             subtitle = stringResource(R.string.listen_together_play_here_off),
             enabled = enabled,
             onClick = { onChange(false) },
+        )
+        PlayHereOption(
+            selected = playHere,
+            title = stringResource(R.string.listen_together_play_here),
+            subtitle = stringResource(R.string.listen_together_play_here_on),
+            enabled = enabled,
+            onClick = { onChange(true) },
         )
     }
 }
