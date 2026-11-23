@@ -85,7 +85,7 @@ object FeedCache {
 
     private val homeMemoryCache = ConcurrentHashMap<String, CachedHomeFeed>()
     @Volatile
-    private var exploreMemoryCache: List<MoodGenreSection>? = null
+    private var exploreMemoryCache: Pair<String, List<MoodGenreSection>>? = null
     private val moodGenreMemoryCache = ConcurrentHashMap<String, List<HomeShelf>>()
 
     /** Remembers where the cache lives; nothing is read until it is first asked for. */
@@ -192,28 +192,37 @@ object FeedCache {
         writer?.put(key, updated.toJsonObject().toString())
     }
 
+    private fun exploreKey(): String {
+        val lang = runCatching { com.music.bitchord.data.innertube.Innertube.currentLanguage }.getOrDefault("en")
+        return "${KEY_EXPLORE}_$lang"
+    }
+
     fun getExplore(): List<MoodGenreSection>? {
-        exploreMemoryCache?.let { return it }
+        val lang = runCatching { com.music.bitchord.data.innertube.Innertube.currentLanguage }.getOrDefault("en")
+        exploreMemoryCache?.let { (cachedLang, data) ->
+            if (cachedLang == lang) return data
+        }
         val sp = ready() ?: return null
-        val raw = sp.getString(KEY_EXPLORE, null) ?: return null
+        val raw = sp.getString(exploreKey(), null) ?: return null
         return runCatching {
             val arr = json.parseToJsonElement(raw).jsonArray
             val list = arr.mapNotNull { el ->
                 el.takeIf { it !is JsonNull }?.let { runCatching { moodGenreSectionFromJson(it.jsonObject) }.getOrNull() }
             }
-            exploreMemoryCache = list
+            exploreMemoryCache = lang to list
             list
         }.getOrNull()
     }
 
     fun saveExplore(sections: List<MoodGenreSection>) {
-        exploreMemoryCache = sections
+        val lang = runCatching { com.music.bitchord.data.innertube.Innertube.currentLanguage }.getOrDefault("en")
+        exploreMemoryCache = lang to sections
         ready()
         val w = writer ?: return
         val array = buildJsonArray {
             sections.forEach { add(it.toJsonObject()) }
         }
-        w.put(KEY_EXPLORE, array.toString())
+        w.put(exploreKey(), array.toString())
     }
 
     fun getMoodGenreShelves(key: String): List<HomeShelf>? {

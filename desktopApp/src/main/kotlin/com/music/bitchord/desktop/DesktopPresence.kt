@@ -69,10 +69,11 @@ internal object DesktopPresence {
             .trim()
             .trimEnd('/')
             .ifEmpty { PartyServers.ORIGINAL_OFFICIAL }
-        val appVersion = System.getProperty("jpackage.app-version")
-            ?.takeIf { it.isNotBlank() }
-            ?: System.getProperty("bitchord.version")?.takeIf { it.isNotBlank() }
-            ?: "desktop"
+        val appVersion = normalizeVersion(
+            System.getProperty("bitchord.version")?.takeIf { it.isNotBlank() }
+                ?: System.getProperty("jpackage.app-version")?.takeIf { it.isNotBlank() }
+                ?: "desktop"
+        )
         val packageFormat = DesktopPackageFormat.current
         val presence = Presence(
             platform = PresencePlatform.Pc,
@@ -114,5 +115,15 @@ internal object DesktopPresence {
         preferences.put(KEY_INSTALL_ID, id)
         runCatching { preferences.flush() }
         return id
+    }
+
+    /** Maps installer/desktop build identifiers (e.g. 1.10.38, 1.10.43) to the shared release version. */
+    internal fun normalizeVersion(raw: String): String {
+        val clean = raw.trim().removePrefix("v")
+        if (clean.startsWith("1.10.") && clean.substringAfterLast('.').toIntOrNull()?.let { it >= 20 } == true) {
+            return "1.10.0"
+        }
+        if (clean == "1.10") return "1.10.0"
+        return clean
     }
 }

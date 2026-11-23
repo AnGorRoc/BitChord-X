@@ -43,9 +43,11 @@ internal object DesktopFeedback {
     val center: FeedbackCenter get() = checkNotNull(instance) { "DesktopFeedback.install was not called" }
 
     private val appVersion: String
-        get() = System.getProperty("jpackage.app-version")?.takeIf { it.isNotBlank() }
-            ?: System.getProperty("bitchord.version")?.takeIf { it.isNotBlank() }
-            ?: "desktop"
+        get() = DesktopPresence.normalizeVersion(
+            System.getProperty("bitchord.version")?.takeIf { it.isNotBlank() }
+                ?: System.getProperty("jpackage.app-version")?.takeIf { it.isNotBlank() }
+                ?: "desktop"
+        )
 
     /** Call once at start, before the window. */
     fun install() {

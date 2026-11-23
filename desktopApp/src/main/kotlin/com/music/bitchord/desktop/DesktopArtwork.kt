@@ -22,6 +22,9 @@ import kotlinx.coroutines.withContext
 import androidx.compose.ui.graphics.decodeToImageBitmap
 import okhttp3.Request
 import java.net.URI
+import java.nio.file.Files
+import java.nio.file.Path
+import java.security.MessageDigest
 
 /**
  * Decoded artwork, kept to a budget.
@@ -48,7 +51,61 @@ internal object DesktopArtworkCache {
     }
 
     /** Everything held, dropped — what the Storage settings' "Clear image cache" does. */
-    fun clear() = images.clear()
+    fun clear() {
+        images.clear()
+        runCatching {
+            Files.list(diskDir).use { stream -> stream.forEach { Files.deleteIfExists(it) } }
+        }
+    }
+
+    /**
+     * Kept on disk beside the media cache, so a cover fetched once is still there after a restart,
+     * as Android's Coil disk cache keeps it. Its own folder, so the media cache's trim never touches it.
+     */
+    private val diskDir: Path by lazy {
+        DesktopMediaCache.directory.resolveSibling("artwork").also { runCatching { Files.createDirectories(it) } }
+    }
+
+    /** Bound on the on-disk covers, the same 150 MB Android's image disk cache allows. */
+    private const val DISK_LIMIT_BYTES = 150L * 1024 * 1024
+
+    private fun diskFileFor(url: String): Path {
+        val digest = MessageDigest.getInstance("SHA-256")
+            .digest(url.toByteArray())
+            .joinToString("") { "%02x".format(it) }
+            .take(32)
+        return diskDir.resolve("$digest.img")
+    }
+
+    /** Reads a cover kept from an earlier run, or null when there is none or it no longer decodes. */
+    private fun readDisk(file: Path): ImageBitmap? {
+        if (!Files.isReadable(file) || runCatching { Files.size(file) }.getOrDefault(0L) <= 0L) return null
+        return runCatching { Files.readAllBytes(file).decodeToImageBitmap() }
+            .getOrNull()
+            ?: run { runCatching { Files.deleteIfExists(file) }; null }
+    }
+
+    private fun writeDisk(file: Path, bytes: ByteArray) {
+        runCatching {
+            Files.write(file, bytes)
+            trimDisk()
+        }
+    }
+
+    /** Drops the least recently written covers once the folder is over its bound. */
+    private fun trimDisk() {
+        val files = runCatching {
+            Files.list(diskDir).use { stream -> stream.filter(Files::isRegularFile).toList() }
+        }.getOrDefault(emptyList())
+        var total = files.sumOf { runCatching { Files.size(it) }.getOrDefault(0L) }
+        if (total <= DISK_LIMIT_BYTES) return
+        files.sortedBy { runCatching { Files.getLastModifiedTime(it).toMillis() }.getOrDefault(0L) }
+            .forEach { path ->
+                if (total <= DISK_LIMIT_BYTES) return
+                val size = runCatching { Files.size(path) }.getOrDefault(0L)
+                if (runCatching { Files.deleteIfExists(path) }.getOrDefault(false)) total -= size
+            }
+    }
 
     suspend fun load(url: String?): ImageBitmap? {
         if (url.isNullOrBlank()) return null
@@ -65,12 +122,17 @@ internal object DesktopArtworkCache {
                         SmbClient.readFully(url).decodeToImageBitmap()
                     }
                     url.startsWith("http://") || url.startsWith("https://") -> {
-                        val request = Request.Builder().url(url).build()
-                        Http.client.newCall(request).execute().use { response ->
-                            if (response.isSuccessful) {
-                                response.body.bytes().decodeToImageBitmap()
-                            } else {
-                                null
+                        val file = diskFileFor(url)
+                        readDisk(file) ?: run {
+                            val request = Request.Builder().url(url).build()
+                            Http.client.newCall(request).execute().use { response ->
+                                if (response.isSuccessful) {
+                                    val bytes = response.body.bytes()
+                                    writeDisk(file, bytes)
+                                    bytes.decodeToImageBitmap()
+                                } else {
+                                    null
+                                }
                             }
                         }
                     }

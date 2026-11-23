@@ -32,7 +32,9 @@ val isArm64 = hostArch == "aarch64" || hostArch == "arm64"
 // Windows installer metadata requires MAJOR.MINOR.BUILD even though the app's public version is
 // intentionally displayed without a patch number (1.7 rather than 1.7.0).
 // The build number is the desktop version code; it also keeps "-beta1" out of the numeric installer version.
-val desktopVersionCode = 38
+// Linked to the root project's bitchordVersionCode so both mobile and desktop build numbers stay synchronized.
+val desktopVersionCode = providers.gradleProperty("bitchord.desktopVersionCode").orNull?.toIntOrNull()
+    ?: (rootProject.extra["bitchordVersionCode"] as? Int ?: 43)
 val nativePackageVersion = appVersion.substringBefore('-').split('.').take(2).joinToString(".") + ".$desktopVersionCode"
 
 // FFmpeg decodes audio; see DesktopAudioDecoder.

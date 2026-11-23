@@ -378,8 +378,34 @@ CREATE TABLE IF NOT EXISTS minimal_errors (
 	PRIMARY KEY (day, platform, app_version, error_type)
 );
 `
-	_, err := pool.Exec(ctx, ddl)
-	return err
+	if _, err := pool.Exec(ctx, ddl); err != nil {
+		return err
+	}
+
+	const normalizeDDL = `
+-- Normalize historical PC desktop build versions (e.g. 1.10.38, 1.10.43, 1.10) to 1.10.0
+UPDATE installs SET app_version = '1.10.0' WHERE app_version IN ('1.10.38', '1.10.43', '1.10') OR app_version ~ '^1\.10\.[2-9][0-9]+';
+UPDATE installs SET first_version = '1.10.0' WHERE first_version IN ('1.10.38', '1.10.43', '1.10') OR first_version ~ '^1\.10\.[2-9][0-9]+';
+UPDATE installs SET previous_version = '1.10.0' WHERE previous_version IN ('1.10.38', '1.10.43', '1.10') OR previous_version ~ '^1\.10\.[2-9][0-9]+';
+UPDATE installs SET previous_version = '', upgraded_at = NULL WHERE app_version = previous_version;
+UPDATE app_sessions SET app_version = '1.10.0' WHERE app_version IN ('1.10.38', '1.10.43', '1.10') OR app_version ~ '^1\.10\.[2-9][0-9]+';
+UPDATE connection_events SET app_version = '1.10.0' WHERE app_version IN ('1.10.38', '1.10.43', '1.10') OR app_version ~ '^1\.10\.[2-9][0-9]+';
+UPDATE error_reports SET app_version = '1.10.0' WHERE app_version IN ('1.10.38', '1.10.43', '1.10') OR app_version ~ '^1\.10\.[2-9][0-9]+';
+
+INSERT INTO minimal_usage (day, platform, app_version, devices)
+SELECT day, platform, '1.10.0', devices
+FROM minimal_usage WHERE app_version IN ('1.10.38', '1.10.43', '1.10') OR app_version ~ '^1\.10\.[2-9][0-9]+'
+ON CONFLICT (day, platform, app_version) DO UPDATE SET devices = minimal_usage.devices + EXCLUDED.devices;
+DELETE FROM minimal_usage WHERE app_version IN ('1.10.38', '1.10.43', '1.10') OR app_version ~ '^1\.10\.[2-9][0-9]+';
+
+INSERT INTO minimal_errors (day, platform, app_version, error_type, count)
+SELECT day, platform, '1.10.0', error_type, count
+FROM minimal_errors WHERE app_version IN ('1.10.38', '1.10.43', '1.10') OR app_version ~ '^1\.10\.[2-9][0-9]+'
+ON CONFLICT (day, platform, app_version, error_type) DO UPDATE SET count = minimal_errors.count + EXCLUDED.count;
+DELETE FROM minimal_errors WHERE app_version IN ('1.10.38', '1.10.43', '1.10') OR app_version ~ '^1\.10\.[2-9][0-9]+';
+`
+	_, _ = pool.Exec(ctx, normalizeDDL)
+	return nil
 }
 
 func (s *Store) worker() {
@@ -468,7 +494,7 @@ func (s *Store) RecordConnectionEvent(installID, platform, appVersion, eventType
 	if s.pool == nil {
 		return
 	}
-	appVersion = truncate(strings.TrimSpace(appVersion), 32)
+	appVersion = NormalizeVersion(truncate(strings.TrimSpace(appVersion), 32))
 	pkgFormat := truncate(strings.TrimSpace(packageFormat), 32)
 	s.enqueue(func(ctx context.Context) {
 		if eventType == "open" {
@@ -504,7 +530,7 @@ func (s *Store) RecordPresence(installID, platform, appVersion string, open bool
 	if s.pool == nil {
 		return
 	}
-	appVersion = truncate(strings.TrimSpace(appVersion), 32)
+	appVersion = NormalizeVersion(truncate(strings.TrimSpace(appVersion), 32))
 	pkgFormat := ""
 	if len(packageFormat) > 0 {
 		pkgFormat = truncate(strings.TrimSpace(packageFormat[0]), 32)
@@ -556,7 +582,7 @@ func (s *Store) RecordMinimalPresence(dailyID, platform, appVersion string) {
 		return
 	}
 	platform = truncate(strings.TrimSpace(platform), 24)
-	appVersion = truncate(strings.TrimSpace(appVersion), 32)
+	appVersion = NormalizeVersion(truncate(strings.TrimSpace(appVersion), 32))
 	s.enqueue(func(ctx context.Context) {
 		const q = `
 INSERT INTO minimal_usage (day, platform, app_version, devices) VALUES ($1::date, $2, $3, 1)
@@ -580,7 +606,7 @@ VALUES (CURRENT_DATE, $1, $2, $3, 1)
 ON CONFLICT (day, platform, app_version, error_type) DO UPDATE SET count = minimal_errors.count + 1;`
 	_, err := s.pool.Exec(ctx, q,
 		truncate(strings.TrimSpace(platform), 24),
-		truncate(strings.TrimSpace(appVersion), 32),
+		NormalizeVersion(truncate(strings.TrimSpace(appVersion), 32)),
 		CleanErrorType(strings.TrimSpace(errorType)),
 	)
 	return err
@@ -617,7 +643,7 @@ RETURNING id;`
 		ctx, q,
 		truncate(strings.TrimSpace(in.InstallID), 64),
 		truncate(strings.TrimSpace(in.Platform), 24),
-		truncate(strings.TrimSpace(in.AppVersion), 32),
+		NormalizeVersion(truncate(strings.TrimSpace(in.AppVersion), 32)),
 		truncate(strings.TrimSpace(in.ErrorType), 64),
 		truncate(strings.TrimSpace(in.ErrorMessage), 1000),
 		truncate(strings.TrimSpace(in.Stacktrace), 8192),
@@ -787,7 +813,11 @@ SELECT
 	COALESCE(err_cnt, 0)::INT AS err_cnt
 FROM (
 	SELECT
-		CASE WHEN app_version = '' THEN 'unknown' ELSE app_version END AS ver,
+		CASE
+			WHEN app_version IN ('1.10.38', '1.10.43', '1.10') OR app_version ~ '^1\.10\.[2-9][0-9]+' THEN '1.10.0'
+			WHEN app_version = '' THEN 'unknown'
+			ELSE app_version
+		END AS ver,
 		COUNT(*)::INT AS cnt,
 		COUNT(*) FILTER (WHERE last_seen_at >= NOW() - INTERVAL '24 hours')::INT AS act24
 	FROM installs
@@ -796,7 +826,11 @@ FROM (
 ) i
 LEFT JOIN (
 	SELECT
-		CASE WHEN app_version = '' THEN 'unknown' ELSE app_version END AS ever,
+		CASE
+			WHEN app_version IN ('1.10.38', '1.10.43', '1.10') OR app_version ~ '^1\.10\.[2-9][0-9]+' THEN '1.10.0'
+			WHEN app_version = '' THEN 'unknown'
+			ELSE app_version
+		END AS ever,
 		COUNT(*)::INT AS err_cnt
 	FROM error_reports
 	WHERE created_at >= $1
@@ -819,11 +853,27 @@ LIMIT 15;`
 
 	// 4b. Version upgrades & outdated active installs
 	const upgradesQ = `
-SELECT previous_version, app_version, COUNT(*)::INT AS cnt
+SELECT
+	CASE
+		WHEN previous_version IN ('1.10.38', '1.10.43', '1.10') OR previous_version ~ '^1\.10\.[2-9][0-9]+' THEN '1.10.0'
+		ELSE previous_version
+	END AS pver,
+	CASE
+		WHEN app_version IN ('1.10.38', '1.10.43', '1.10') OR app_version ~ '^1\.10\.[2-9][0-9]+' THEN '1.10.0'
+		ELSE app_version
+	END AS aver,
+	COUNT(*)::INT AS cnt
 FROM installs
 WHERE previous_version <> '' AND upgraded_at >= $1
   AND package_format <> 'deb' AND app_version NOT LIKE '%deb%'
-GROUP BY previous_version, app_version
+GROUP BY pver, aver
+HAVING CASE
+	WHEN previous_version IN ('1.10.38', '1.10.43', '1.10') OR previous_version ~ '^1\.10\.[2-9][0-9]+' THEN '1.10.0'
+	ELSE previous_version
+END <> CASE
+	WHEN app_version IN ('1.10.38', '1.10.43', '1.10') OR app_version ~ '^1\.10\.[2-9][0-9]+' THEN '1.10.0'
+	ELSE app_version
+END
 ORDER BY cnt DESC
 LIMIT 10;`
 	if rows, err := s.pool.Query(ctx, upgradesQ, since); err == nil {
@@ -838,13 +888,21 @@ LIMIT 10;`
 	}
 	latestVer := s.version
 	if latestVer == "" || latestVer == "dev" {
-		_ = s.pool.QueryRow(ctx, `SELECT app_version FROM installs WHERE app_version <> '' AND package_format <> 'deb' AND app_version NOT LIKE '%deb%' ORDER BY app_version DESC LIMIT 1`).Scan(&latestVer)
+		_ = s.pool.QueryRow(ctx, `SELECT CASE
+			WHEN app_version IN ('1.10.38', '1.10.43', '1.10') OR app_version ~ '^1\.10\.[2-9][0-9]+' THEN '1.10.0'
+			ELSE app_version
+		END AS v FROM installs WHERE app_version <> '' AND package_format <> 'deb' AND app_version NOT LIKE '%deb%' ORDER BY v DESC LIMIT 1`).Scan(&latestVer)
 	}
+	latestVer = NormalizeVersion(latestVer)
 	out.LatestVersion = latestVer
 	if latestVer != "" {
 		_ = s.pool.QueryRow(ctx, `
 SELECT COUNT(*)::INT FROM installs
-WHERE last_seen_at >= NOW() - INTERVAL '7 days' AND app_version <> '' AND app_version <> $1
+WHERE last_seen_at >= NOW() - INTERVAL '7 days' AND app_version <> ''
+  AND CASE
+      WHEN app_version IN ('1.10.38', '1.10.43', '1.10') OR app_version ~ '^1\.10\.[2-9][0-9]+' THEN '1.10.0'
+      ELSE app_version
+  END <> $1
   AND package_format <> 'deb' AND app_version NOT LIKE '%deb%';`, latestVer).Scan(&out.OutdatedActive7d)
 	}
 
@@ -947,7 +1005,12 @@ func (s *Store) ListErrors(ctx context.Context, f ErrorFilter) (ErrorListRespons
 	}
 
 	if f.Version != "" {
-		conds = append(conds, "app_version = "+addArg(f.Version))
+		norm := NormalizeVersion(f.Version)
+		if norm == "1.10.0" {
+			conds = append(conds, "(app_version = '1.10.0' OR app_version IN ('1.10.38', '1.10.43', '1.10') OR app_version ~ '^1\\.10\\.[2-9][0-9]+')")
+		} else {
+			conds = append(conds, "app_version = "+addArg(norm))
+		}
 	}
 	if f.Platform != "" {
 		conds = append(conds, "platform = "+addArg(f.Platform))
@@ -994,11 +1057,15 @@ LIMIT %s OFFSET %s;`, where, limitArg, offsetArg)
 			&r.ErrorType, &r.ErrorMessage, &r.Stacktrace, &r.DeviceModel,
 			&r.OSVersion, &r.ABI, &r.Resolved,
 		); err == nil {
+			r.AppVersion = NormalizeVersion(r.AppVersion)
 			out.Items = append(out.Items, r)
 		}
 	}
 
-	if vRows, err := s.pool.Query(ctx, `SELECT DISTINCT app_version FROM error_reports WHERE app_version <> '' ORDER BY app_version DESC LIMIT 30`); err == nil {
+	if vRows, err := s.pool.Query(ctx, `SELECT DISTINCT CASE
+		WHEN app_version IN ('1.10.38', '1.10.43', '1.10') OR app_version ~ '^1\.10\.[2-9][0-9]+' THEN '1.10.0'
+		ELSE app_version
+	END AS v FROM error_reports WHERE app_version <> '' ORDER BY v DESC LIMIT 30`); err == nil {
 		defer vRows.Close()
 		for vRows.Next() {
 			var v string
@@ -1155,7 +1222,12 @@ func (s *Store) ListInstalls(ctx context.Context, f InstallFilter) (InstallListR
 		conds = append(conds, "platform = "+addArg(f.Platform))
 	}
 	if f.Version != "" {
-		conds = append(conds, "app_version = "+addArg(f.Version))
+		norm := NormalizeVersion(f.Version)
+		if norm == "1.10.0" {
+			conds = append(conds, "(app_version = '1.10.0' OR app_version IN ('1.10.38', '1.10.43', '1.10') OR app_version ~ '^1\\.10\\.[2-9][0-9]+')")
+		} else {
+			conds = append(conds, "app_version = "+addArg(norm))
+		}
 	}
 	switch f.Status {
 	case "active24h":
@@ -1196,11 +1268,17 @@ LIMIT %s OFFSET %s;`, where, limitArg, offsetArg)
 	for rows.Next() {
 		var rec InstallRecord
 		if rows.Scan(&rec.InstallID, &rec.Platform, &rec.AppVersion, &rec.FirstVersion, &rec.PreviousVersion, &rec.FirstSeenAt, &rec.LastSeenAt, &rec.SessionCount, &rec.Status) == nil {
+			rec.AppVersion = NormalizeVersion(rec.AppVersion)
+			rec.FirstVersion = NormalizeVersion(rec.FirstVersion)
+			rec.PreviousVersion = NormalizeVersion(rec.PreviousVersion)
 			out.Items = append(out.Items, rec)
 		}
 	}
 
-	if vRows, err := s.pool.Query(ctx, `SELECT DISTINCT app_version FROM installs WHERE app_version <> '' AND package_format <> 'deb' AND app_version NOT LIKE '%deb%' ORDER BY app_version DESC LIMIT 30`); err == nil {
+	if vRows, err := s.pool.Query(ctx, `SELECT DISTINCT CASE
+		WHEN app_version IN ('1.10.38', '1.10.43', '1.10') OR app_version ~ '^1\.10\.[2-9][0-9]+' THEN '1.10.0'
+		ELSE app_version
+	END AS v FROM installs WHERE app_version <> '' AND package_format <> 'deb' AND app_version NOT LIKE '%deb%' ORDER BY v DESC LIMIT 30`); err == nil {
 		defer vRows.Close()
 		for vRows.Next() {
 			var v string

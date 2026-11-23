@@ -271,16 +271,92 @@ private fun isMainstreamCategory(title: String): Boolean {
         "energía", "energia", "energize",
         "sentirse bien", "feel good",
         "romance", "dormir", "sleep", "gaming",
-        "urbano", "reggaeton", "trap",
-        "pop", "pop latino",
-        "rock", "rock argentino", "rock en español", "rock en espanol",
+        "urbano", "reggaeton", "trap", "latin urban",
+        "pop", "pop latino", "latin pop",
+        "rock", "rock argentino", "rock en español", "rock en espanol", "latin rock",
         "cumbia", "tropical",
-        "dance y electrónica", "dance y electronica", "electrónica", "electronica", "electronic", "dance",
-        "hip-hop", "hip hop", "hiphop en español", "hiphop en espanol",
-        "indie y alternativa", "indie", "alternativa",
-        "metal", "r&b y soul", "r&b", "soul",
+        "dance y electrónica", "dance y electronica", "electrónica", "electronica", "electronic", "dance", "dance & electronic",
+        "hip-hop", "hip hop", "hiphop en español", "hiphop en espanol", "latin hip-hop", "latin hip hop",
+        "indie y alternativa", "indie", "alternativa", "indie & alternative",
+        "metal", "r&b y soul", "r&b", "soul", "r&b & soul",
     )
     return mainstream.any { kw -> t == kw || t.contains(kw) }
+}
+
+internal fun localizeCategoryTitle(title: String, isSpanish: Boolean): String {
+    val clean = title.trim()
+    val lower = clean.lowercase()
+    if (isSpanish) {
+        return when (lower) {
+            "latin rock", "spanish rock" -> "Rock en español"
+            "latin hip-hop", "latin hip hop", "spanish hip-hop", "spanish hip hop" -> "Hip-hop en español"
+            "mexican music" -> "Música mexicana"
+            "latin pop" -> "Pop latino"
+            "latin urban" -> "Urbano"
+            "chill" -> "Calma"
+            "sleep" -> "Dormir"
+            "workout" -> "Ejercicio"
+            "energize" -> "Energía"
+            "party" -> "Fiesta"
+            "feel good" -> "Para sentirse bien"
+            "focus" -> "Concentración"
+            "commute" -> "Desplazamientos cotidianos"
+            "sad" -> "Triste"
+            "dance & electronic", "dance and electronic" -> "Dance y electrónica"
+            "argentinian rock" -> "Rock argentino"
+            "indie & alternative", "indie and alternative" -> "Indie y alternativa"
+            "r&b & soul", "r&b and soul" -> "R&B y soul"
+            "soundtracks & musicals", "soundtracks and musicals" -> "Musicales y bandas sonoras"
+            "folk & acoustic", "folk and acoustic" -> "Folk y acústica"
+            "christian & gospel", "christian and gospel" -> "Cristiana y góspel"
+            "country & americana", "country and americana" -> "Country y americana"
+            "bollywood & indian", "bollywood and indian" -> "Bollywood e india"
+            "arabic" -> "Árabe"
+            "african" -> "Africana"
+            "brazilian" -> "Brasileña"
+            "brazilian funk" -> "Funk brasileño"
+            "decades" -> "Décadas"
+            "family" -> "Familia"
+            "reggae & caribbean", "reggae and caribbean" -> "Reggae y caribe"
+            "j-pop" -> "Pop japonés"
+            else -> clean
+        }
+    } else {
+        return when (lower) {
+            "rock en español", "rock en espanol" -> "Latin Rock"
+            "hip-hop en español", "hip-hop en espanol", "hip hop en español", "hip hop en espanol" -> "Latin Hip-Hop"
+            "música mexicana", "musica mexicana" -> "Mexican Music"
+            "pop latino" -> "Latin Pop"
+            "urbano" -> "Latin Urban"
+            "calma" -> "Chill"
+            "dormir" -> "Sleep"
+            "ejercicio" -> "Workout"
+            "energía", "energia" -> "Energize"
+            "fiesta" -> "Party"
+            "para sentirse bien", "sentirse bien" -> "Feel Good"
+            "concentración", "concentracion" -> "Focus"
+            "desplazamientos cotidianos" -> "Commute"
+            "triste" -> "Sad"
+            "dance y electrónica", "dance y electronica" -> "Dance & Electronic"
+            "rock argentino" -> "Argentinian Rock"
+            "indie y alternativa" -> "Indie & Alternative"
+            "r&b y soul" -> "R&B & Soul"
+            "musicales y bandas sonoras" -> "Soundtracks & Musicals"
+            "folk y tradicional", "folk y acústica", "folk y acustica" -> "Folk & Acoustic"
+            "cristiana y góspel", "cristiana y gospel", "cristiana" -> "Christian & Gospel"
+            "country y americana" -> "Country & Americana"
+            "bollywood e india" -> "Bollywood & Indian"
+            "árabe", "arabe" -> "Arabic"
+            "africana" -> "African"
+            "brasilera", "brasileña", "brasileño" -> "Brazilian"
+            "funk brasileño", "funk brasileno" -> "Brazilian Funk"
+            "décadas", "decadas" -> "Decades"
+            "familia" -> "Family"
+            "reggae y caribe" -> "Reggae & Caribbean"
+            "pop japonés", "pop japones" -> "J-Pop"
+            else -> clean
+        }
+    }
 }
 
 private val WORD_SPLIT = Regex("[\\s,/&+\\-]+")
@@ -301,80 +377,113 @@ private fun matchesAffinity(title: String, userKeywords: Set<String>): Boolean {
     return false
 }
 
-private fun getDailyTheme(): DailyTheme {
-    val dayOfWeek = Calendar.getInstance().get(Calendar.DAY_OF_WEEK)
+@Composable
+private fun rememberDailyTheme(): DailyTheme {
+    val dayOfWeek = remember { Calendar.getInstance().get(Calendar.DAY_OF_WEEK) }
 
-    return when (dayOfWeek) {
-        Calendar.MONDAY -> DailyTheme(
-            title = "Motivación y Energía",
-            subtitle = "Arranca la semana con máxima potencia",
-            topics = listOf(
-                DailyTopicCard("Workout Hits", "workout motivation gym hits", Color(0xFFE11D48)),
-                DailyTopicCard("Running Pace", "running high energy bpm workout", Color(0xFF007A5A)),
-                DailyTopicCard("Beast Mode", "gym trap phonk workout", Color(0xFF2563EB)),
-                DailyTopicCard("Power Anthems", "pop power anthems workout energy", Color(0xFF7928CA)),
-            ),
-        )
-        Calendar.TUESDAY -> DailyTheme(
-            title = "Cápsulas del Tiempo",
-            subtitle = "Un viaje a través de los sonidos de cada época",
-            topics = listOf(
-                DailyTopicCard("80s Synthwave", "best of 80s synthpop disco hits", Color(0xFFD81B60)),
-                DailyTopicCard("90s Golden Era", "best 90s rock grunge pop", Color(0xFFD97706)),
-                DailyTopicCard("2000s Nostalgia", "2000s pop punk rb hits", Color(0xFF0284C7)),
-                DailyTopicCard("2010s Club Era", "2010s edm pop hits festival", Color(0xFF059669)),
-            ),
-        )
-        Calendar.WEDNESDAY -> DailyTheme(
-            title = "Enfoque y Calma",
-            subtitle = "Concentración y serenidad a mitad de semana",
-            topics = listOf(
-                DailyTopicCard("Lo-Fi Beats", "lofi hip hop study beats chill", Color(0xFF6366F1)),
-                DailyTopicCard("Acoustic Coffee", "acoustic coffee chill morning", Color(0xFF0D9488)),
-                DailyTopicCard("Deep Focus", "ambient focus electronic study", Color(0xFF1E3A8A)),
-                DailyTopicCard("Modern Piano", "peaceful modern solo piano", Color(0xFF475569)),
-            ),
-        )
-        Calendar.THURSDAY -> DailyTheme(
-            title = "Frecuencia Urbana",
-            subtitle = "Ritmo callejero, barras y flow",
-            topics = listOf(
-                DailyTopicCard("Trap Latino", "trap latino urbano hits", Color(0xFFDC2626)),
-                DailyTopicCard("Reggaeton Duro", "reggaeton nuevo perreo bailable", Color(0xFFF59E0B)),
-                DailyTopicCard("Hip-Hop Clásico", "golden era 90s hip hop boom bap", Color(0xFF007A5A)),
-                DailyTopicCard("Afrobeats", "afrobeats amapiano groove", Color(0xFF7C2D12)),
-            ),
-        )
-        Calendar.FRIDAY -> DailyTheme(
-            title = "Modo Finde y Fiesta",
-            subtitle = "Los mejores ritmos para empezar la fiesta",
-            topics = listOf(
-                DailyTopicCard("EDM & Club", "electronic dance music edm festival", Color(0xFF9333EA)),
-                DailyTopicCard("Previa Bailable", "cumbia rkt previa fiesta", Color(0xFFE11D48)),
-                DailyTopicCard("Tech House", "tech house underground groove club", Color(0xFF0284C7)),
-                DailyTopicCard("Pop Party", "dance pop hits party weekend", Color(0xFFEA580C)),
-            ),
-        )
-        Calendar.SATURDAY -> DailyTheme(
-            title = "Descubrimiento de Sábado",
-            subtitle = "Vibras frescas para disfrutar el fin de semana",
-            topics = listOf(
-                DailyTopicCard("Indie Spectrum", "indie rock bedroom pop alternative", Color(0xFF059669)),
-                DailyTopicCard("Global Pop", "top global pop hits chart", Color(0xFFD81B60)),
-                DailyTopicCard("Synthwave Neon", "synthwave retrowave neon drive", Color(0xFF4F46E5)),
-                DailyTopicCard("Rock Legends", "classic rock anthems legends", Color(0xFF7F1D1D)),
-            ),
-        )
-        else -> DailyTheme(
-            title = "Relax y Desconexión",
-            subtitle = "Desconecta, descansa y recarga energías",
-            topics = listOf(
-                DailyTopicCard("Sunday Chill", "chillout lazy sunday acoustic", Color(0xFF047857)),
-                DailyTopicCard("Soul & Groove", "neo soul modern rb groove", Color(0xFF92400E)),
-                DailyTopicCard("Atmosphere & Sleep", "ambient sleep soundscape meditation", Color(0xFF1E293B)),
-                DailyTopicCard("Warm Guitars", "fingerstyle acoustic guitar peaceful", Color(0xFF0369A1)),
-            ),
-        )
+    val mondayTitle = stringResource(Res.string.daily_theme_monday_title)
+    val mondaySub = stringResource(Res.string.daily_theme_monday_subtitle)
+    val tuesdayTitle = stringResource(Res.string.daily_theme_tuesday_title)
+    val tuesdaySub = stringResource(Res.string.daily_theme_tuesday_subtitle)
+    val wednesdayTitle = stringResource(Res.string.daily_theme_wednesday_title)
+    val wednesdaySub = stringResource(Res.string.daily_theme_wednesday_subtitle)
+    val thursdayTitle = stringResource(Res.string.daily_theme_thursday_title)
+    val thursdaySub = stringResource(Res.string.daily_theme_thursday_subtitle)
+    val fridayTitle = stringResource(Res.string.daily_theme_friday_title)
+    val fridaySub = stringResource(Res.string.daily_theme_friday_subtitle)
+    val saturdayTitle = stringResource(Res.string.daily_theme_saturday_title)
+    val saturdaySub = stringResource(Res.string.daily_theme_saturday_subtitle)
+    val sundayTitle = stringResource(Res.string.daily_theme_sunday_title)
+    val sundaySub = stringResource(Res.string.daily_theme_sunday_subtitle)
+
+    val latinTrap = stringResource(Res.string.daily_topic_trap_latino)
+    val reggaetonDuro = stringResource(Res.string.daily_topic_reggaeton_duro)
+    val hiphopClasico = stringResource(Res.string.daily_topic_hiphop_clasico)
+    val previaBailable = stringResource(Res.string.daily_topic_previa_bailable)
+
+    return remember(
+        dayOfWeek,
+        mondayTitle, mondaySub,
+        tuesdayTitle, tuesdaySub,
+        wednesdayTitle, wednesdaySub,
+        thursdayTitle, thursdaySub,
+        fridayTitle, fridaySub,
+        saturdayTitle, saturdaySub,
+        sundayTitle, sundaySub,
+        latinTrap, reggaetonDuro, hiphopClasico, previaBailable,
+    ) {
+        when (dayOfWeek) {
+            Calendar.MONDAY -> DailyTheme(
+                title = mondayTitle,
+                subtitle = mondaySub,
+                topics = listOf(
+                    DailyTopicCard("Workout Hits", "workout motivation gym hits", Color(0xFFE11D48)),
+                    DailyTopicCard("Running Pace", "running high energy bpm workout", Color(0xFF007A5A)),
+                    DailyTopicCard("Beast Mode", "gym trap phonk workout", Color(0xFF2563EB)),
+                    DailyTopicCard("Power Anthems", "pop power anthems workout energy", Color(0xFF7928CA)),
+                ),
+            )
+            Calendar.TUESDAY -> DailyTheme(
+                title = tuesdayTitle,
+                subtitle = tuesdaySub,
+                topics = listOf(
+                    DailyTopicCard("80s Synthwave", "best of 80s synthpop disco hits", Color(0xFFD81B60)),
+                    DailyTopicCard("90s Golden Era", "best 90s rock grunge pop", Color(0xFFD97706)),
+                    DailyTopicCard("2000s Nostalgia", "2000s pop punk rb hits", Color(0xFF0284C7)),
+                    DailyTopicCard("2010s Club Era", "2010s edm pop hits festival", Color(0xFF059669)),
+                ),
+            )
+            Calendar.WEDNESDAY -> DailyTheme(
+                title = wednesdayTitle,
+                subtitle = wednesdaySub,
+                topics = listOf(
+                    DailyTopicCard("Lo-Fi Beats", "lofi hip hop study beats chill", Color(0xFF6366F1)),
+                    DailyTopicCard("Acoustic Coffee", "acoustic coffee chill morning", Color(0xFF0D9488)),
+                    DailyTopicCard("Deep Focus", "ambient focus electronic study", Color(0xFF1E3A8A)),
+                    DailyTopicCard("Modern Piano", "peaceful modern solo piano", Color(0xFF475569)),
+                ),
+            )
+            Calendar.THURSDAY -> DailyTheme(
+                title = thursdayTitle,
+                subtitle = thursdaySub,
+                topics = listOf(
+                    DailyTopicCard(latinTrap, "trap latino urbano hits", Color(0xFFDC2626)),
+                    DailyTopicCard(reggaetonDuro, "reggaeton nuevo perreo bailable", Color(0xFFF59E0B)),
+                    DailyTopicCard(hiphopClasico, "golden era 90s hip hop boom bap", Color(0xFF007A5A)),
+                    DailyTopicCard("Afrobeats", "afrobeats amapiano groove", Color(0xFF7C2D12)),
+                ),
+            )
+            Calendar.FRIDAY -> DailyTheme(
+                title = fridayTitle,
+                subtitle = fridaySub,
+                topics = listOf(
+                    DailyTopicCard("EDM & Club", "electronic dance music edm festival", Color(0xFF9333EA)),
+                    DailyTopicCard(previaBailable, "cumbia rkt previa fiesta", Color(0xFFE11D48)),
+                    DailyTopicCard("Tech House", "tech house underground groove club", Color(0xFF0284C7)),
+                    DailyTopicCard("Pop Party", "dance pop hits party weekend", Color(0xFFEA580C)),
+                ),
+            )
+            Calendar.SATURDAY -> DailyTheme(
+                title = saturdayTitle,
+                subtitle = saturdaySub,
+                topics = listOf(
+                    DailyTopicCard("Indie Spectrum", "indie rock bedroom pop alternative", Color(0xFF059669)),
+                    DailyTopicCard("Global Pop", "top global pop hits chart", Color(0xFFD81B60)),
+                    DailyTopicCard("Synthwave Neon", "synthwave retrowave neon drive", Color(0xFF4F46E5)),
+                    DailyTopicCard("Rock Legends", "classic rock anthems legends", Color(0xFF7F1D1D)),
+                ),
+            )
+            else -> DailyTheme(
+                title = sundayTitle,
+                subtitle = sundaySub,
+                topics = listOf(
+                    DailyTopicCard("Sunday Chill", "chillout lazy sunday acoustic", Color(0xFF047857)),
+                    DailyTopicCard("Soul & Groove", "neo soul modern rb groove", Color(0xFF92400E)),
+                    DailyTopicCard("Atmosphere & Sleep", "ambient sleep soundscape meditation", Color(0xFF1E293B)),
+                    DailyTopicCard("Warm Guitars", "fingerstyle acoustic guitar peaceful", Color(0xFF0369A1)),
+                ),
+            )
+        }
     }
 }
 
@@ -641,10 +750,16 @@ fun ExploreScreen(
             }
         }
 
-        val allMoods = remember(successSections, userAffinityKeywords) {
+        val isSpanish = remember { com.music.bitchord.data.innertube.Innertube.currentLocaleTag.startsWith("es") }
+
+        val allMoods = remember(successSections, userAffinityKeywords, isSpanish) {
             val rawList = successSections?.flatMap(MoodGenreSection::items)
                 ?.distinctBy { it.browseId to it.params }
                 .orEmpty()
+                .map { item ->
+                    val localized = localizeCategoryTitle(item.title, isSpanish)
+                    if (localized != item.title) item.copy(title = localized) else item
+                }
             if (rawList.isEmpty()) {
                 emptyList()
             } else {
@@ -697,7 +812,7 @@ fun ExploreScreen(
         }
         val bentoRows = remember(allMoods) { buildBentoRows(allMoods) }
 
-        val dailyTheme = remember { getDailyTheme() }
+        val dailyTheme = rememberDailyTheme()
         val initialDailyArtworks = remember(dailyTheme) {
             dailyTheme.topics.mapNotNull { t -> DailyArtworkCache.get(t.searchQuery)?.let { t.searchQuery to it } }.toMap()
         }
@@ -1395,8 +1510,10 @@ private fun ChartOptionsModalContent(
     onAddToQueue: () -> Unit,
     onRefresh: () -> Unit,
 ) {
+    val autoLabel = stringResource(Res.string.region_auto)
+    val globalLabel = stringResource(Res.string.region_global)
     var searchQuery by remember { mutableStateOf("") }
-    val filteredCountries = remember(searchQuery) {
+    val filteredCountries = remember(searchQuery, autoLabel, globalLabel) {
         if (searchQuery.isBlank()) REAL_CHART_COUNTRIES
         else REAL_CHART_COUNTRIES.filter {
             it.name.contains(searchQuery, ignoreCase = true) ||
@@ -1404,12 +1521,14 @@ private fun ChartOptionsModalContent(
                 (it.code == "GLOBAL" && (
                     "mundial".contains(searchQuery, ignoreCase = true) ||
                     "mundo".contains(searchQuery, ignoreCase = true) ||
-                    "worldwide".contains(searchQuery, ignoreCase = true)
+                    "worldwide".contains(searchQuery, ignoreCase = true) ||
+                    globalLabel.contains(searchQuery, ignoreCase = true)
                 )) ||
                 (it.code == "AUTO" && (
                     "automático".contains(searchQuery, ignoreCase = true) ||
                     "automatic".contains(searchQuery, ignoreCase = true) ||
-                    "ip".contains(searchQuery, ignoreCase = true)
+                    "ip".contains(searchQuery, ignoreCase = true) ||
+                    autoLabel.contains(searchQuery, ignoreCase = true)
                 ))
         }
     }
@@ -1617,8 +1736,13 @@ private fun ChartOptionsModalContent(
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
                             )
                         }
+                        val displayName = when (country.code) {
+                            "AUTO" -> autoLabel
+                            "GLOBAL" -> globalLabel
+                            else -> country.name
+                        }
                         Text(
-                            text = country.name,
+                            text = displayName,
                             style = MaterialTheme.typography.bodyLarge,
                             fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                             color = if (isSelected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
