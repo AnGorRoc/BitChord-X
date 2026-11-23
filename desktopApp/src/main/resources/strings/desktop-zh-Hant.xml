@@ -191,4 +191,8 @@
     <string name="device_notice_party_here_again">派對已重新在此裝置上播放</string>
     <string name="d_autoplay">自動播放</string>
     <string name="d_on">開啟</string>
+    <string name="d_cancel">取消</string>
+    <string name="d_connect_action">連線</string>
+    <string name="d_own_device_party_msg">你的裝置「%1$s」已在此派對中。透過 Connect 連線到它即可控制播放或一起聽。</string>
+    <string name="d_own_device_party_title">你裝置上的派對</string>
 </resources>

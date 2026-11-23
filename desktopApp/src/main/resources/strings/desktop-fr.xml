@@ -191,4 +191,8 @@
     <string name="device_notice_party_here_again">La party joue à nouveau sur cet appareil</string>
     <string name="d_autoplay">Lecture automatique</string>
     <string name="d_on">Activé</string>
+    <string name="d_cancel">Annuler</string>
+    <string name="d_connect_action">Connecter</string>
+    <string name="d_own_device_party_msg">Votre appareil « %1$s » est déjà dans cette fête. Connectez-vous via Connect pour contrôler la lecture ou écouter ensemble.</string>
+    <string name="d_own_device_party_title">Fête sur votre appareil</string>
 </resources>

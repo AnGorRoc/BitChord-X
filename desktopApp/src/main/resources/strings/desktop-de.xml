@@ -191,4 +191,8 @@
     <string name="device_notice_party_here_again">Die Party läuft wieder auf diesem Gerät</string>
     <string name="d_autoplay">Autoplay</string>
     <string name="d_on">Ein</string>
+    <string name="d_cancel">Abbrechen</string>
+    <string name="d_connect_action">Verbinden</string>
+    <string name="d_own_device_party_msg">Dein Gerät „%1$s“ ist schon in dieser Party. Verbinde dich über Connect damit, um die Wiedergabe zu steuern oder gemeinsam zu hören.</string>
+    <string name="d_own_device_party_title">Party auf deinem Gerät</string>
 </resources>

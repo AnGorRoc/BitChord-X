@@ -191,4 +191,8 @@
     <string name="device_notice_party_here_again">המסיבה מתנגנת שוב במכשיר זה</string>
     <string name="d_autoplay">הפעלה אוטומטית</string>
     <string name="d_on">פעיל</string>
+    <string name="d_cancel">ביטול</string>
+    <string name="d_connect_action">התחברות</string>
+    <string name="d_own_device_party_msg">המכשיר שלך „%1$s” כבר נמצא במסיבה הזאת. התחבר אליו דרך Connect כדי לשלוט בהשמעה או להאזין יחד.</string>
+    <string name="d_own_device_party_title">מסיבה במכשיר שלך</string>
 </resources>

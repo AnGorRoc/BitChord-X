@@ -191,4 +191,8 @@
     <string name="device_notice_party_here_again">Il party suona di nuovo su questo dispositivo</string>
     <string name="d_autoplay">Riproduzione automatica</string>
     <string name="d_on">Attivo</string>
+    <string name="d_cancel">Annulla</string>
+    <string name="d_connect_action">Connetti</string>
+    <string name="d_own_device_party_msg">Il tuo dispositivo «%1$s» è già in questa festa. Collegati tramite Connect per controllare la riproduzione o ascoltare insieme.</string>
+    <string name="d_own_device_party_title">Festa sul tuo dispositivo</string>
 </resources>

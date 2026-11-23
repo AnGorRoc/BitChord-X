@@ -191,4 +191,8 @@
     <string name="device_notice_party_here_again">Impreza znów gra na tym urządzeniu</string>
     <string name="d_autoplay">Autoodtwarzanie</string>
     <string name="d_on">Wł.</string>
+    <string name="d_cancel">Anuluj</string>
+    <string name="d_connect_action">Połącz</string>
+    <string name="d_own_device_party_msg">Twoje urządzenie „%1$s” jest już na tej imprezie. Połącz się z nim przez Connect, aby sterować odtwarzaniem lub słuchać razem.</string>
+    <string name="d_own_device_party_title">Impreza na Twoim urządzeniu</string>
 </resources>

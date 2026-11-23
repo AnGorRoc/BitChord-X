@@ -191,4 +191,8 @@
     <string name="device_notice_party_here_again">Пати снова играет на этом устройстве</string>
     <string name="d_autoplay">Автовоспроизведение</string>
     <string name="d_on">Вкл</string>
+    <string name="d_cancel">Отмена</string>
+    <string name="d_connect_action">Подключиться</string>
+    <string name="d_own_device_party_msg">Ваше устройство «%1$s» уже в этой вечеринке. Подключитесь к нему через Connect, чтобы управлять воспроизведением или слушать вместе.</string>
+    <string name="d_own_device_party_title">Вечеринка на вашем устройстве</string>
 </resources>
