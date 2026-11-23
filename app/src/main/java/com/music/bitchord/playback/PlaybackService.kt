@@ -11798,6 +11798,7 @@ class PlaybackService : MediaLibraryService() {
             val resolved = mutableListOf<MediaItem>()
             for (item in mediaItems) {
                 val id = item.mediaId
+                val cachedById = songCache[id]
                 val searchQuery = item.requestMetadata.searchQuery
                 when {
                     // Adding one browsed track to an existing queue must resolve
@@ -11893,8 +11894,10 @@ class PlaybackService : MediaLibraryService() {
                         local.forEach { songCache[it.videoId] = it }
                         resolved.addAll(local.map { it.toMediaItem() })
                     }
-                    songCache.containsKey(id) -> {
-                        resolved.add(songCache[id]!!.toMediaItem())
+                    // Read once: the cache can evict an entry on another thread at any time,
+                    // so a containsKey() check followed by a second get() could find nothing.
+                    cachedById != null -> {
+                        resolved.add(cachedById.toMediaItem())
                     }
                     item.localConfiguration != null -> {
                         resolved.add(item)
