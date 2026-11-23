@@ -350,4 +350,22 @@
     <string name="offline_empty">Offline mode · No connection</string>
     <string name="connect_join_with_code">Join with a code</string>
     <string name="connect_sounding_label">Playing on</string>
+    <string name="daily_theme_monday_title">Motivation &amp; Energy</string>
+    <string name="daily_theme_monday_subtitle">Kick off the week at full power</string>
+    <string name="daily_theme_tuesday_title">Time Capsules</string>
+    <string name="daily_theme_tuesday_subtitle">A journey through the sounds of every era</string>
+    <string name="daily_theme_wednesday_title">Focus &amp; Calm</string>
+    <string name="daily_theme_wednesday_subtitle">Midweek focus and peaceful vibes</string>
+    <string name="daily_theme_thursday_title">Urban Frequency</string>
+    <string name="daily_theme_thursday_subtitle">Street rhythm, bars, and flow</string>
+    <string name="daily_theme_friday_title">Weekend &amp; Party Mode</string>
+    <string name="daily_theme_friday_subtitle">The best beats to kick off the weekend</string>
+    <string name="daily_theme_saturday_title">Saturday Discovery</string>
+    <string name="daily_theme_saturday_subtitle">Fresh vibes to enjoy the weekend</string>
+    <string name="daily_theme_sunday_title">Relax &amp; Unwind</string>
+    <string name="daily_theme_sunday_subtitle">Unwind, recharge, and take it slow</string>
+    <string name="daily_topic_trap_latino">Latin Trap</string>
+    <string name="daily_topic_reggaeton_duro">Heavy Reggaeton</string>
+    <string name="daily_topic_hiphop_clasico">Classic Hip-Hop</string>
+    <string name="daily_topic_previa_bailable">Pre-Party Beats</string>
 </resources>
