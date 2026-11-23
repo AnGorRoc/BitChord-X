@@ -59,3 +59,27 @@ func TestFirstSightingCountsAnIDOncePerDay(t *testing.T) {
 		t.Fatalf("yesterday's IDs should not be kept, have %d", len(s.minimalSeen))
 	}
 }
+
+func TestNormalizeVersion(t *testing.T) {
+	cases := map[string]string{
+		"1.10.38":   "1.10.0",
+		"1.10.43":   "1.10.0",
+		"1.10":      "1.10.0",
+		"v1.10.38":  "1.10.0",
+		"1.10.0":    "1.10.0",
+		"1.10.1":    "1.10.1",
+		"1.9.38":    "1.9.3",
+		"1.9.37":    "1.9.2",
+		"1.9.36":    "1.9.1",
+		"1.9.3":     "1.9.3",
+		"1.8.29":    "1.8.0",
+		"dev":       "dev",
+		"unknown":   "unknown",
+		"":          "",
+	}
+	for in, want := range cases {
+		if got := NormalizeVersion(in); got != want {
+			t.Errorf("NormalizeVersion(%q) = %q, want %q", in, got, want)
+		}
+	}
+}

@@ -533,6 +533,7 @@ func handlePresence(w http.ResponseWriter, r *http.Request) {
 		presenceTracker.Close(id)
 	}
 	if telemetryStore != nil {
+		body.Version = telemetry.NormalizeVersion(body.Version)
 		isDeb := isDebianPackage(body.PackageFormat, body.Version)
 		if isDeb {
 			// Debian installations are excluded from user/install counts,
@@ -598,6 +599,7 @@ func handlePresenceWS(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	hello.Version = telemetry.NormalizeVersion(hello.Version)
 	isDeb := isDebianPackage(hello.PackageFormat, hello.Version)
 	minimal := telemetry.ParseLevel(hello.Level) == telemetry.Minimal
 	tok := presenceTracker.Pin(id, platform, clock.NowMs())
@@ -724,6 +726,7 @@ func handleTelemetryError(w http.ResponseWriter, r *http.Request) {
 	body.DeviceModel = stripNullBytes(body.DeviceModel)
 	body.OSVersion = stripNullBytes(body.OSVersion)
 	body.ABI = stripNullBytes(body.ABI)
+	body.AppVersion = telemetry.NormalizeVersion(body.AppVersion)
 
 	// A minimal report is counted by its type and nothing else is read from it:
 	// whatever else the body carries (an ID, a message, a stack trace, a device)

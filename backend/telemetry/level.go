@@ -1,6 +1,10 @@
 package telemetry
 
-import "regexp"
+import (
+	"regexp"
+	"strconv"
+	"strings"
+)
 
 // Level is how much a client agreed to tell the server. Clients that chose
 // "off" never connect, so the server only ever sees the other two. A client
@@ -36,4 +40,39 @@ func CleanErrorType(s string) string {
 		return s
 	}
 	return "other"
+}
+
+// NormalizeVersion standardizes app version identifiers across platforms.
+// Specifically, desktop installer builds (which attach a build number like 1.10.38, 1.10.43, or 1.10)
+// are mapped to their unified public release version (e.g. 1.10.0), ensuring telemetry metrics
+// group identical multiplatform releases together.
+func NormalizeVersion(s string) string {
+	s = strings.TrimSpace(s)
+	s = strings.TrimPrefix(s, "v")
+	if s == "" {
+		return ""
+	}
+	switch s {
+	case "1.10.38", "1.10.43", "1.10":
+		return "1.10.0"
+	case "1.9.38":
+		return "1.9.3"
+	case "1.9.37":
+		return "1.9.2"
+	case "1.9.36":
+		return "1.9.1"
+	}
+	// General rule for desktop builds: if in format X.Y.<buildCode> where X.Y is a known major.minor
+	// and buildCode >= 20, map to X.Y.0
+	clean := strings.Split(s, "-")[0]
+	segments := strings.Split(clean, ".")
+	if len(segments) == 2 {
+		return segments[0] + "." + segments[1] + ".0"
+	}
+	if len(segments) == 3 {
+		if build, err := strconv.Atoi(segments[2]); err == nil && build >= 20 {
+			return segments[0] + "." + segments[1] + ".0"
+		}
+	}
+	return s
 }
