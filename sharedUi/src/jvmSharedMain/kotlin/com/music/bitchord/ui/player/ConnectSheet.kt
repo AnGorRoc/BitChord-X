@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -268,7 +269,7 @@ private fun SoundingCard(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // Device Information (Left - compact against the left)
-            Column(modifier = Modifier.weight(1f, fill = false)) {
+            Column(modifier = Modifier.widthIn(max = 160.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(iconFor(device.type), null, tint = accent, modifier = Modifier.size(15.dp))
                     Spacer(Modifier.width(6.dp))
@@ -297,11 +298,16 @@ private fun SoundingCard(
                 }
             }
 
-            Spacer(Modifier.width(20.dp))
+            Spacer(Modifier.width(16.dp))
 
-            // Song Information (Fills all remaining width, stretches to the right)
+            // Song Information (Recuadro: fills all remaining width, stretches to the right)
             Row(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(Color.White.copy(alpha = 0.07f))
+                    .border(1.dp, Color.White.copy(alpha = 0.09f), RoundedCornerShape(12.dp))
+                    .padding(horizontal = 8.dp, vertical = 7.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(
