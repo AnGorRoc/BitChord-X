@@ -22,7 +22,46 @@ data class AccountNowPlaying(
     val anchorMs: Long = 0L,
     val volume: Double? = null,
     val updatedAtMs: Long = 0L,
+    /** An analysed Automix handoff is audibly mixing two songs: what the bar draws as its sheen. */
+    val mixing: Boolean = false,
+    /** A blend of two songs is under way: what the player shows as "Mixing", breathing on the beat. */
+    val blending: Boolean = false,
+    /** The song the blend leads to, when the device knows it; empty otherwise. */
+    val blendTo: String = "",
+    /** One beat of the blend, for the label to breathe on; 0 when the tempo is not known. */
+    val blendBeatMs: Double = 0.0,
+    /** A point of this song's playhead a beat lands on, folded into one beat. See [blendBeatAt]. */
+    val blendBeatAtMs: Long = 0L,
 )
+
+/**
+ * Where a blend's beat falls, as the wire carries it: the playhead position a beat landed on, folded
+ * into one beat. A device's own beat is a moment on its own clock, which means nothing anywhere else;
+ * a place in the song that is playing means the same on every device that follows its playhead.
+ */
+fun blendBeatAt(positionMs: Long, beatMs: Double, beatAnchorNanos: Long, nowNanos: Long): Long {
+    if (beatMs <= 0.0) return 0L
+    val sinceBeat = ((nowNanos - beatAnchorNanos) / 1e6).mod(beatMs)
+    return (positionMs - sinceBeat).mod(beatMs).toLong()
+}
+
+/** The moment on this device's [System.nanoTime] clock a beat of [this] blend landed, the playhead at [positionMs]. */
+fun AccountNowPlaying.blendAnchorNanos(positionMs: Long, nowNanos: Long): Long {
+    if (blendBeatMs <= 0.0) return nowNanos
+    val sinceBeat = (positionMs - blendBeatAtMs).toDouble().mod(blendBeatMs)
+    return nowNanos - (sinceBeat * 1e6).toLong()
+}
+
+/** Whether two reports describe the same blend, a few milliseconds of beat reading aside. */
+internal fun AccountNowPlaying.sameBlend(other: AccountNowPlaying): Boolean {
+    if (mixing != other.mixing || blending != other.blending || blendTo != other.blendTo) return false
+    if (kotlin.math.abs(blendBeatMs - other.blendBeatMs) > BEAT_JITTER_MS) return false
+    if (blendBeatMs <= 0.0) return true
+    val apart = kotlin.math.abs(blendBeatAtMs - other.blendBeatAtMs).toDouble().mod(blendBeatMs)
+    return minOf(apart, blendBeatMs - apart) <= BEAT_JITTER_MS
+}
+
+private const val BEAT_JITTER_MS = 40.0
 
 /**
  * The playhead of a song that is playing moves on with the clock, but the device only reports it when

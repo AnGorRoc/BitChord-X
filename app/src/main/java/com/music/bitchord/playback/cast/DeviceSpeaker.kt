@@ -23,6 +23,12 @@ import com.music.bitchord.data.listentogether.account.HandoffWindow
 import com.music.bitchord.data.listentogether.account.PlayIntent
 import com.music.bitchord.data.listentogether.account.SeekIntent
 import com.music.bitchord.data.listentogether.account.SkipIntent
+import com.music.bitchord.data.listentogether.account.blendAnchorNanos
+import com.music.bitchord.data.listentogether.account.blendBeatAt
+import com.music.bitchord.data.settings.AppSettings
+import com.music.bitchord.data.settings.MixBlend
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
 import com.music.bitchord.playback.DeviceLink
 import com.music.bitchord.playback.toMediaItem
 import com.music.bitchord.playback.toPartyTrack
@@ -427,8 +433,11 @@ internal class DeviceSpeaker(
         press.clear()
         skip.clear()
         // What the target is already playing is known; starting from it is what keeps this phone's
-        // own mirror from looking like a change.
-        status = account.state.value.devices.firstOrNull { it.deviceId == deviceId }?.playhead()?.let(::statusOf)
+        // own mirror from looking like a change. A blend it is already in the middle of included:
+        // nothing new is reported until it ends.
+        val playhead = account.state.value.devices.firstOrNull { it.deviceId == deviceId }?.playhead()
+        showMix(playhead)
+        status = playhead?.let(::statusOf)
         // And whether it is playing: a phone that connects to a device that is playing shows playing,
         // not the stale "paused" it had before it was anything's remote.
         wantsPlay = status?.isPlaying == true
@@ -504,6 +513,7 @@ internal class DeviceSpeaker(
         seek.clear()
         press.clear()
         skip.clear()
+        showMix(null)
         gaveMusic = false
         if (old != null) account.detach()
         val kept = stash
@@ -539,6 +549,7 @@ internal class DeviceSpeaker(
         seek.clear()
         press.clear()
         skip.clear()
+        showMix(null)
         holdPlayingUntil = NEVER
         active = false
         targetId = null
@@ -758,9 +769,12 @@ internal class DeviceSpeaker(
         if (np != null && np.updatedAtMs != status?.stamp) {
             // A song the target is passing through while the person skips ahead (or the one it is
             // leaving): the phone already shows where the skips end, and is not sent back.
-            if (!skip.accepts(np.videoId)) return
+            // A blend heading to the song skipped to is that skip under way: the target keeps the
+            // song it leaves for the first half of the mix, and this phone shows it the same way.
+            if (!skip.accepts(np.videoId, headingTo = np.blendTo.ifEmpty { null })) return
             val before = status
             val playhead = target.playhead() ?: np
+            showMix(playhead)
             val isRecentVol = recentVolumeIntent()
             val effectiveVol = if (isRecentVol && lastLocalVolume != null) lastLocalVolume!! else playhead.volume
             // A report from before a seek made here still has the old place; it does not move the bar.
@@ -805,6 +819,20 @@ internal class DeviceSpeaker(
             sink?.onRemotePlaybackChanged()
             if (!isRecentVol && before?.volume != np.volume) sink?.onRemoteVolumeChanged()
             onChanged()
+        }
+    }
+
+    /**
+     * The target's blend on this phone's player: "Mixing" breathing on its beat and the bar's sheen,
+     * as the target's own screen shows them. The flags are the ones this phone's own mixes set; while
+     * it is a remote its player is quiet and mixes nothing, so they are the target's to fill. Null
+     * puts them down, on leaving.
+     */
+    private fun showMix(np: AccountNowPlaying?) {
+        AppSettings.smartMixInProgress.value = np?.mixing == true
+        AppSettings.smartMixBlend.value = np?.takeIf { it.blending }?.let {
+            val now = System.nanoTime()
+            MixBlend(beatMs = it.blendBeatMs.toFloat(), beatAnchorNanos = it.blendAnchorNanos(it.positionMs, now), playing = it.isPlaying)
         }
     }
 
@@ -930,6 +958,13 @@ internal class DeviceTarget(
                 mirrorEdits()
             }
         }
+        // A blend starting or ending is told at once, not at the next tick: a remote showing the
+        // mix a second late shows it out of step with what is heard.
+        scope.launch {
+            combine(AppSettings.smartMixInProgress, AppSettings.smartMixBlend) { mixing, blend -> mixing to (blend != null) }
+                .distinctUntilChanged()
+                .collect { publish() }
+        }
     }
 
     /** What this phone plays, for the person's other devices. Nothing while it is only a remote. */
@@ -941,6 +976,9 @@ internal class DeviceTarget(
             return
         }
         val playing = p.playWhenReady && p.playbackState != Player.STATE_ENDED && p.playbackState != Player.STATE_IDLE
+        val position = p.currentPosition.coerceAtLeast(0L)
+        // The blend this phone is mixing, as its own player shows it, so a remote can show it too.
+        val blend = AppSettings.smartMixBlend.value
         account.publish(
             AccountNowPlaying(
                 videoId = item.mediaId,
@@ -949,8 +987,14 @@ internal class DeviceTarget(
                 thumbnailUrl = item.mediaMetadata.artworkUri?.toString(),
                 durationMs = p.duration.takeIf { it != C.TIME_UNSET && it > 0 } ?: 0L,
                 isPlaying = playing,
-                positionMs = p.currentPosition.coerceAtLeast(0L),
+                positionMs = position,
                 volume = p.volume.toDouble(),
+                mixing = AppSettings.smartMixInProgress.value,
+                blending = blend != null,
+                blendBeatMs = blend?.beatMs?.toDouble() ?: 0.0,
+                blendBeatAtMs = blend?.let {
+                    blendBeatAt(position, it.beatMs.toDouble(), it.beatAnchorNanos, System.nanoTime())
+                } ?: 0L,
             ).also { last = it },
         )
     }

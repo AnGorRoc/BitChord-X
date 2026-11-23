@@ -209,6 +209,8 @@ class AccountDevices(
             np.isPlaying == previous.isPlaying && np.volume == previous.volume &&
             np.durationMs == previous.durationMs && np.title == previous.title &&
             np.artist == previous.artist && np.thumbnailUrl == previous.thumbnailUrl &&
+            // A blend starting, ending, or moving onto another beat is news for a remote showing it.
+            np.sameBlend(previous) &&
             kotlin.math.abs(np.positionMs - expectedPosition(previous, now)) < POSITION_JITTER_MS
         ) return
         lastPublished = np

@@ -160,10 +160,14 @@ class SkipIntent(private val clock: () -> Long) {
 
     val pending: Boolean get() = expectedId != null && clock() - sentAt < WINDOW_MS
 
-    /** True when a report of [reportMediaId] is to be believed; reaching the song ends the skip. */
-    fun accepts(reportMediaId: String): Boolean {
+    /**
+     * True when a report of [reportMediaId] is to be believed; reaching the song ends the skip. So does
+     * a blend [headingTo] it: a device that mixes into the next song keeps the one it leaves for half
+     * the blend, and that is the skip under way, shown as the device shows it, not a song passed by.
+     */
+    fun accepts(reportMediaId: String, headingTo: String? = null): Boolean {
         val expected = expectedId ?: return true
-        if (reportMediaId == expected) {
+        if (reportMediaId == expected || headingTo == expected) {
             clear()
             return true
         }

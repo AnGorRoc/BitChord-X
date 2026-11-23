@@ -395,3 +395,25 @@ func TestARefusalNamesItsReason(t *testing.T) {
 		t.Fatalf("an unknown device is not_available: %v", got)
 	}
 }
+
+func TestNowPlayingCarriesABlendOnlyWhileOneRuns(t *testing.T) {
+	np := nowPlayingFromFrame(map[string]interface{}{"nowPlaying": map[string]interface{}{
+		"videoId": "a", "isPlaying": true, "positionMs": 1000.0,
+		"mixing": true, "blending": true, "blendTo": "b", "blendBeatMs": 480.0, "blendBeatAtMs": 120.0,
+	}})
+	if !np.Mixing || !np.Blending || np.BlendTo != "b" || np.BlendBeatMs != 480 || np.BlendBeatAtMs != 120 {
+		t.Fatalf("blend not carried: %+v", np)
+	}
+	np = nowPlayingFromFrame(map[string]interface{}{"nowPlaying": map[string]interface{}{
+		"videoId": "a", "blendTo": "b", "blendBeatMs": 480.0, "blendBeatAtMs": 120.0,
+	}})
+	if np.Blending || np.BlendTo != "" || np.BlendBeatMs != 0 {
+		t.Fatalf("a blend that is not running was kept: %+v", np)
+	}
+	np = nowPlayingFromFrame(map[string]interface{}{"nowPlaying": map[string]interface{}{
+		"videoId": "a", "blending": true, "blendBeatMs": 1e9,
+	}})
+	if np.BlendBeatMs != 0 {
+		t.Fatalf("an absurd beat was kept: %+v", np)
+	}
+}

@@ -152,6 +152,13 @@ class DesktopPlaybackEngine(
     @Volatile private var blendActive = false
 
     /**
+     * The song the running blend leads to, read off the audio thread — by a remote's report, so the
+     * person's other devices show the mix heading where it is. Null between blends.
+     */
+    @Volatile var blendingTo: String? = null
+        private set
+
+    /**
      * A [nextSong] an addon may serve, not yet resolved: it is held until the transition into it
      * is close, then armed by [armAddonUpcoming].
      */
@@ -1219,6 +1226,7 @@ class DesktopPlaybackEngine(
         endBlend()
         nextDeckOpenId = null
         blendActive = false
+        blendingTo = null
         if (!announced) onCrossfaded(incoming.song)
     }
 
@@ -1346,6 +1354,7 @@ class DesktopPlaybackEngine(
                     val wasBlending = fadeRemaining > 0
                     fadeRemaining = 0
                     blendActive = false
+                    blendingTo = null
                     if (wasBlending) endBlend()
                 }
                 Command.Flush -> {
@@ -1356,6 +1365,7 @@ class DesktopPlaybackEngine(
                     nextDeckOpenId = null
                     fadeRemaining = 0
                     blendActive = false
+                    blendingTo = null
                     sink.flush()
                     framesWritten = sink.framesPlayed()
                     endBlend()
@@ -1752,6 +1762,7 @@ class DesktopPlaybackEngine(
         outgoingFilter.flush()
         incomingFilter.flush()
         blendActive = true
+        blendingTo = incoming.song.videoId
     }
 
     /**

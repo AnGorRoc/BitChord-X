@@ -355,6 +355,16 @@ func nowPlayingFromFrame(frame map[string]interface{}) *account.NowPlaying {
 	if v, ok := m["volume"].(float64); ok && v >= 0 && v <= 1 {
 		np.Volume = &v
 	}
+	np.Mixing, _ = m["mixing"].(bool)
+	np.Blending, _ = m["blending"].(bool)
+	if np.Blending {
+		np.BlendTo = str("blendTo", 128)
+		// A beat outside a few seconds is not a tempo; it is dropped rather than drawn.
+		if beat, ok := m["blendBeatMs"].(float64); ok && beat > 0 && beat <= 5000 {
+			np.BlendBeatMs = beat
+			np.BlendBeatAtMs = num("blendBeatAtMs")
+		}
+	}
 	return np
 }
 

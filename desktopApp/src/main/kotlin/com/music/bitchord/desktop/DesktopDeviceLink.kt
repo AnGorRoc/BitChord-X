@@ -17,6 +17,9 @@ import com.music.bitchord.data.listentogether.account.HandoffWindow
 import com.music.bitchord.data.listentogether.account.PlayIntent
 import com.music.bitchord.data.listentogether.account.SeekIntent
 import com.music.bitchord.data.listentogether.account.SkipIntent
+import com.music.bitchord.data.listentogether.account.blendAnchorNanos
+import com.music.bitchord.data.listentogether.account.blendBeatAt
+import com.music.bitchord.data.settings.MixBlend
 import com.music.bitchord.data.model.Song
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
@@ -24,6 +27,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
@@ -191,6 +195,12 @@ internal class DesktopDeviceLink(
                 mirrorEdits()
             }
         }
+        // A blend starting or ending is told at once, so a remote shows the mix with the music.
+        scope.launch {
+            combine(engine.state, DesktopPlayerSettings.smartMixBlend) { state, blend -> state.mixing to (blend != null) }
+                .distinctUntilChanged()
+                .collect { publish() }
+        }
         scope.launch {
             while (true) {
                 delay(OVERLAY_MS)
@@ -215,6 +225,8 @@ internal class DesktopDeviceLink(
         // being reported carries through the load.
         val playing = if (state.isLoading) lastPublishedPlaying else state.isPlaying
         lastPublishedPlaying = playing
+        // The blend this computer is mixing, so a remote shows the mix the way this screen does.
+        val blend = DesktopPlayerSettings.smartMixBlend.value
         account.publish(
             AccountNowPlaying(
                 videoId = song.videoId,
@@ -225,6 +237,13 @@ internal class DesktopDeviceLink(
                 isPlaying = playing,
                 positionMs = state.positionMs,
                 volume = state.volume.toDouble(),
+                mixing = state.mixing,
+                blending = blend != null,
+                blendTo = engine.blendingTo.orEmpty(),
+                blendBeatMs = blend?.beatMs?.toDouble() ?: 0.0,
+                blendBeatAtMs = blend?.let {
+                    blendBeatAt(state.positionMs, it.beatMs.toDouble(), it.beatAnchorNanos, System.nanoTime())
+                } ?: 0L,
             ),
         )
     }
@@ -540,7 +559,10 @@ internal class DesktopDeviceLink(
         active = true
         holdPlayingUntilNanos = NEVER
         clearIntents()
-        status = account.state.value.devices.firstOrNull { it.deviceId == deviceId }?.playhead()?.let(::statusOf)
+        // A blend the target is already in the middle of included: nothing new comes until it ends.
+        val playhead = account.state.value.devices.firstOrNull { it.deviceId == deviceId }?.playhead()
+        showMix(playhead)
+        status = playhead?.let(::statusOf)
         // A computer that connects to a device that is playing shows playing, not a stale "paused".
         wantsPlay = status?.isPlaying == true
         refreshOverlay()
@@ -712,6 +734,26 @@ internal class DesktopDeviceLink(
         seek.clear()
         press.clear()
         skip.clear()
+        showMix(null)
+    }
+
+    /** Whether the target's blend is an analysed Automix handoff: the bar's sheen. See [showMix]. */
+    private var remoteMixing = false
+
+    /**
+     * The target's blend on this computer's player: "Mixing" breathing on its beat and the bar's
+     * sheen, as the target's own screen shows them. This computer's engine is silent while it is a
+     * remote and blends nothing, so the beat is the target's to set. Null puts it down, on leaving.
+     */
+    private fun showMix(np: AccountNowPlaying?) {
+        remoteMixing = np?.mixing == true
+        DesktopPlayerSettings.smartMixBlend.value = np?.takeIf { it.blending }?.let {
+            MixBlend(
+                beatMs = it.blendBeatMs.toFloat(),
+                beatAnchorNanos = it.blendAnchorNanos(it.positionMs, System.nanoTime()),
+                playing = it.isPlaying,
+            )
+        }
     }
 
     fun setVolume(fraction: Float) =
@@ -800,12 +842,15 @@ internal class DesktopDeviceLink(
         val np = target.nowPlaying
         if (np != null && np.updatedAtMs != status?.stamp) {
             // The song being left, or one passed through, while a skip made here is under way.
-            if (!skip.accepts(np.videoId)) {
+            // A blend heading to the song skipped to is that skip under way: the target keeps the song
+            // it leaves for the first half of the mix, and this computer shows it the same way.
+            if (!skip.accepts(np.videoId, headingTo = np.blendTo.ifEmpty { null })) {
                 refreshOverlay()
                 return
             }
             val before = status
             val playhead = target.playhead() ?: np
+            showMix(playhead)
             // A report from before a seek made here still has the old place; it does not move the bar.
             val shownPlaying = effectivePlaying()
             seek.accepts(np.videoId, playhead.positionMs, shownPlaying, settled = np.isPlaying == shownPlaying)
@@ -865,6 +910,7 @@ internal class DesktopDeviceLink(
             positionSampledAtNanos = System.nanoTime(),
             durationMs = s?.durationMs?.takeIf { it > 0 } ?: base.durationMs,
             volume = (s?.volume ?: base.volume.toDouble()).toFloat(),
+            mixing = remoteMixing,
         )
     }
 

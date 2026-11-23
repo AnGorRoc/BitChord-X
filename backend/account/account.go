@@ -67,6 +67,14 @@ type NowPlaying struct {
 	AnchorMs  int64    `json:"anchorMs"`
 	Volume    *float64 `json:"volume,omitempty"`
 	UpdatedAt int64    `json:"updatedAtMs"`
+	// Mixing is an analysed Automix handoff audibly mixing two songs; Blending any blend under way,
+	// towards BlendTo when the device knows it. BlendBeatMs and BlendBeatAtMs place its beat on the
+	// playhead, so a remote's "Mixing" breathes with the music.
+	Mixing        bool    `json:"mixing,omitempty"`
+	Blending      bool    `json:"blending,omitempty"`
+	BlendTo       string  `json:"blendTo,omitempty"`
+	BlendBeatMs   float64 `json:"blendBeatMs,omitempty"`
+	BlendBeatAtMs int64   `json:"blendBeatAtMs,omitempty"`
 }
 
 // Device is one of the person's devices.
