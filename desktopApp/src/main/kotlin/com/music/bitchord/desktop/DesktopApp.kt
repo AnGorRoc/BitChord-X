@@ -92,6 +92,7 @@ import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -7168,29 +7169,11 @@ private fun DesktopArtistPage(
                         item(key = "artist-header") {
                             DesktopArtistBanner(artist.thumbnailUrl, name, palette)
                         }
-                        if (artist.subscriberCountText != null || artist.monthlyListenerCount != null) {
-                            item(key = "artist-stats") {
-                                Row(
-                                    Modifier.fillMaxWidth().padding(horizontal = DesktopPageGutter, vertical = 12.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    // YouTube's own text already reads "1.2M subscribers" in full,
-                                    // so only the number is kept and the label re-said in the app's
-                                    // words.
-                                    artist.subscriberCountText?.let {
-                                        DesktopStatChip(Icons.Rounded.Person, "${it.substringBefore(' ')} subscribers")
-                                    }
-                                    artist.monthlyListenerCount?.let {
-                                        DesktopStatChip(Icons.Rounded.GraphicEq, "${it.substringBefore(' ')} monthly listeners")
-                                    }
-                                }
-                            }
-                        }
                         item(key = "artist-actions") {
                             // The phone's artist controls: subscribing first, where saving sits on a
                             // release, then the labelled Play pill and Shuffle.
                             Row(
-                                Modifier.fillMaxWidth().padding(horizontal = DesktopPageGutter, vertical = 6.dp),
+                                Modifier.fillMaxWidth().padding(horizontal = DesktopPageGutter).padding(top = 14.dp, bottom = 6.dp),
                                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
@@ -7211,20 +7194,6 @@ private fun DesktopArtistPage(
                                     onClick = { if (top.isNotEmpty()) onPlaySongs(top, 0) },
                                 )
                                 DesktopCircleButton(BitChordIcons.Shuffle, DesktopStrings["shuffle", "Shuffle"], onClick = { onShuffle(top) })
-                            }
-                        }
-                        artist.description?.takeIf(String::isNotBlank)?.let { blurb ->
-                            item(key = "artist-about") {
-                                Column(Modifier.padding(top = 16.dp)) {
-                                    SectionTitle(DesktopStrings["d_about_artist", "About artist"])
-                                    Spacer(Modifier.height(8.dp))
-                                    Text(
-                                        blurb,
-                                        color = DesktopSecondary,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        modifier = Modifier.padding(horizontal = DesktopPageGutter),
-                                    )
-                                }
                             }
                         }
                         if (top.isNotEmpty()) {
@@ -7264,7 +7233,24 @@ private fun DesktopArtistPage(
                                 }
                             }
                         }
-                        if (top.isEmpty() && artist.sections.isEmpty()) {
+                        val hasStats = artist.subscriberCountText != null || artist.monthlyListenerCount != null
+                        val showAbout = !artist.description.isNullOrBlank() || hasStats
+                        if (showAbout) {
+                            item(key = "artist-about") {
+                                DesktopArtistAboutCard(
+                                    title = DesktopStrings["about_artist", "About the artist"],
+                                    text = artist.description?.takeIf(String::isNotBlank),
+                                    subscriberCountText = artist.subscriberCountText,
+                                    monthlyListenerCount = artist.monthlyListenerCount,
+                                    palette = palette,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = DesktopPageGutter)
+                                        .padding(top = 28.dp, bottom = 28.dp),
+                                )
+                            }
+                        }
+                        if (top.isEmpty() && artist.sections.isEmpty() && !showAbout) {
                             item {
                                 DesktopEmptyPage(
                                     Icons.Rounded.Person,
@@ -7318,19 +7304,121 @@ private fun DesktopArtistBanner(url: String?, name: String, palette: DesktopArtw
     }
 }
 
+/**
+ * The artist page's "About the artist" section enclosed within a clean card at the bottom of the page,
+ * matching the mobile design.
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun DesktopStatChip(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String) {
+private fun DesktopArtistAboutCard(
+    title: String,
+    text: String?,
+    subscriberCountText: String?,
+    monthlyListenerCount: String?,
+    palette: DesktopArtworkPalette,
+    modifier: Modifier = Modifier,
+) {
+    val shape = remember { RoundedCornerShape(20.dp) }
+    var expanded by remember(text) { mutableStateOf(false) }
+    var clipped by remember(text) { mutableStateOf(false) }
+    val hasStats = subscriberCountText != null || monthlyListenerCount != null
+
+    Column(
+        modifier = modifier
+            .clip(shape)
+            .background(Color.White.copy(alpha = 0.07f), shape)
+            .border(1.dp, Color.White.copy(alpha = 0.10f), shape)
+            .padding(20.dp),
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+        )
+
+        if (hasStats) {
+            Spacer(Modifier.height(14.dp))
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                subscriberCountText?.let {
+                    DesktopStatChip(
+                        icon = Icons.Rounded.Person,
+                        text = DesktopStrings.format("subscribers", it.substringBefore(' '), fallback = "$it subscribers"),
+                        palette = palette,
+                    )
+                }
+                monthlyListenerCount?.let {
+                    DesktopStatChip(
+                        icon = Icons.Rounded.GraphicEq,
+                        text = DesktopStrings.format("monthly_listeners", it.substringBefore(' '), fallback = "$it monthly listeners"),
+                        palette = palette,
+                    )
+                }
+            }
+        }
+
+        if (text != null) {
+            Spacer(Modifier.height(if (hasStats) 14.dp else 12.dp))
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyMedium,
+                color = DesktopSecondary,
+                lineHeight = 22.sp,
+                maxLines = if (expanded) Int.MAX_VALUE else 3,
+                overflow = TextOverflow.Ellipsis,
+                onTextLayout = { result -> if (!expanded) clipped = result.hasVisualOverflow },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .animateContentSize()
+                    .let { m -> if (clipped || expanded) m.clickable { expanded = !expanded } else m },
+            )
+            if (clipped || expanded) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = if (expanded) DesktopStrings["less", "Less"] else DesktopStrings["more", "More"],
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = palette.primary,
+                    modifier = Modifier
+                        .clickable { expanded = !expanded }
+                        .padding(vertical = 4.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DesktopStatChip(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    text: String,
+    palette: DesktopArtworkPalette,
+) {
     Row(
-        Modifier
+        modifier = Modifier
             .clip(CircleShape)
-            .background(DesktopGlass.copy(alpha = 0.55f))
-            .border(0.5.dp, Color.White.copy(alpha = 0.10f), CircleShape)
+            .background(Color.White.copy(alpha = 0.08f), CircleShape)
+            .border(0.5.dp, Color.White.copy(alpha = 0.14f), CircleShape)
             .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, null, tint = DesktopSecondary, modifier = Modifier.size(15.dp))
-        Spacer(Modifier.width(7.dp))
-        Text(text, style = MaterialTheme.typography.bodySmall, color = Color.White)
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = palette.primary,
+            modifier = Modifier.size(15.dp),
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Medium,
+            color = Color.White,
+        )
     }
 }
 
