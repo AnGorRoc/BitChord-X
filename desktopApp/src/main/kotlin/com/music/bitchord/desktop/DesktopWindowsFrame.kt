@@ -101,7 +101,7 @@ internal object DesktopWindowsFrame {
                             val extra = User32Extra.INSTANCE
                             val zoomed = extra?.IsZoomed(hWnd) ?: false
                             if (zoomed) {
-                                val hMonitor = extra?.MonitorFromWindow(hWnd, 2 /* MONITOR_DEFAULTTONEAREST */)
+                                val hMonitor = extra.MonitorFromWindow(hWnd, 2 /* MONITOR_DEFAULTTONEAREST */)
                                 if (hMonitor != null) {
                                     val info = WinUser.MONITORINFO()
                                     if (extra.GetMonitorInfoW(hMonitor, info)) {

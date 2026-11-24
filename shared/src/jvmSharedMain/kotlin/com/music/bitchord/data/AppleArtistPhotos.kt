@@ -141,7 +141,7 @@ object AppleArtistPhotos {
     private fun ogImage(pageUrl: String): String? =
         client.newCall(Request.Builder().url(pageUrl).header("User-Agent", USER_AGENT).build()).execute().use { response ->
             if (!response.isSuccessful) return null
-            val source = response.body.source() ?: return null
+            val source = response.body.source()
             val buffer = Buffer()
             val head = StringBuilder()
             while (head.length < HEAD_LIMIT && source.read(buffer, 8_192) != -1L) {

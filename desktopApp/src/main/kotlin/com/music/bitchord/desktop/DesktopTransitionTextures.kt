@@ -177,7 +177,7 @@ internal class DesktopTransitionStereo(private val sampleRate: Int, channels: In
         if (pan > 2.0 * PI) pan -= 2.0 * PI
         // Right channel gets the delayed, opposite-swung copy so the pair separates and moves.
         val offset = if (ch % 2 == 0) -swing else swing
-        return ((sample * 0.35f + haas * 0.35f) * (1f + 0.5f * abs(offset).toFloat())).toFloat() * WET
+        return ((sample * 0.35f + haas * 0.35f) * (1f + 0.5f * abs(offset).toFloat())) * WET
     }
 
     companion object {

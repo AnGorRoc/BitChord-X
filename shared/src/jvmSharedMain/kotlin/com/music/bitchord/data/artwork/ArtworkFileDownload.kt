@@ -63,7 +63,7 @@ object ArtworkFileDownload {
             if (!response.isSuccessful) error("HTTP ${response.code}")
             val type = response.header("Content-Type")?.substringBefore(';')?.trim().orEmpty()
             if (!type.startsWith("image/")) error("Not an image")
-            val data = response.body.bytes()?.takeIf { it.isNotEmpty() } ?: error("Empty image")
+            val data = response.body.bytes().takeIf { it.isNotEmpty() } ?: error("Empty image")
             return Fetched(data, type)
         }
     }

@@ -244,7 +244,7 @@ object LoopMix {
 
         // Verify incoming song doesn't sing while the mix is still running (prevent vocal clash):
         val inEndPosition = inPick.start + totalBars * fold * inBeat
-        if (firstInVocal != null && inEndPosition > firstInVocal!!) {
+        if (firstInVocal != null && inEndPosition > firstInVocal) {
             why?.append("incoming vocal starts at ${firstInVocal.roundToInt()}s, mix runs until ${inEndPosition.roundToInt()}s (vocal clash)")
             return null
         }

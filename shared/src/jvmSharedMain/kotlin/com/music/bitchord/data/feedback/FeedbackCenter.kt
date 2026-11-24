@@ -315,7 +315,7 @@ class FeedbackCenter internal constructor(
                 }
                 OutboxItem.RATING -> {
                     val m = api.rate(token(), item.ticketId!!, item.clientId, item.resolved, item.body)
-                    appendToThread(item.ticketId!!, m)
+                    appendToThread(item.ticketId, m)
                     update { s ->
                         s.copy(tickets = s.tickets.map {
                             if (it.id != item.ticketId) it

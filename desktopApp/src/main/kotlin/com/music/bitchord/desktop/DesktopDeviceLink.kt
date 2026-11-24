@@ -602,7 +602,7 @@ internal class DesktopDeviceLink(
                     awaitingConfirm = null
                     engine.pause()
                     refreshOverlay()
-                    say(if (gaveMusic) DeviceNotice.PlayingOn(target?.name) else DeviceNotice.Controlling(target?.name))
+                    say(if (gaveMusic) DeviceNotice.PlayingOn(target.name) else DeviceNotice.Controlling(target.name))
                     return@launch
                 }
             }
@@ -868,7 +868,7 @@ internal class DesktopDeviceLink(
             status = statusOf(playhead)
             // A song change that comes with "not playing" is the target loading it, not pausing.
             val changedSong = before != null && before.mediaId != np.videoId
-            val opening = changedSong && !np.isPlaying && (before?.isPlaying == true || wantsPlay)
+            val opening = changedSong && !np.isPlaying && (before.isPlaying == true || wantsPlay)
             holdPlayingUntilNanos = when {
                 opening -> System.nanoTime() + HOLD_PLAYING_NANOS
                 np.isPlaying || changedSong -> NEVER

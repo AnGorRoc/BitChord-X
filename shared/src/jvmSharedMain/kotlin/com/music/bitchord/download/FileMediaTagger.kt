@@ -251,7 +251,7 @@ object FileMediaTagger {
         Http.client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) return@runCatching null
             val contentType = response.header("Content-Type")?.substringBefore(';')?.trim().orEmpty()
-            val raw = response.body.bytes()?.takeIf { it.isNotEmpty() } ?: return@runCatching null
+            val raw = response.body.bytes().takeIf { it.isNotEmpty() } ?: return@runCatching null
             val decoded = runCatching { ImageIO.read(ByteArrayInputStream(raw)) }.getOrNull()
             if (decoded != null) {
                 val scaled = downscale(decoded, COVER_MAX_SIDE)

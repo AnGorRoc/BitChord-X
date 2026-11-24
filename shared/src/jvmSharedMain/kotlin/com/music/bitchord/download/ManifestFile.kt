@@ -37,7 +37,7 @@ object ManifestFile {
             }.build()
             return Http.client.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) error("Segment failed (HTTP ${response.code})")
-                response.body.bytes() ?: error("Empty segment")
+                response.body.bytes()
             }
         }
 
