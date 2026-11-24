@@ -2,6 +2,7 @@ package com.music.bitchord.desktop
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Row
@@ -78,7 +79,13 @@ internal fun DesktopConnectButton(modifier: Modifier = Modifier) {
                 .desktopHoverWash(covered = open)
                 // The panel hands focus back on closing; a focused button would stay greyed.
                 .focusProperties { canFocus = false }
-                .clickable { open = !open }
+                // No ripple: it keeps its own hover layer, which the panel strands just like the
+                // wash (it takes the pointer, so the button never hears it leave). The wash above
+                // is the only hover the button shows, and it is dropped while the panel is open.
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                ) { open = !open }
                 .padding(horizontal = if (label != null) 10.dp else 7.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
