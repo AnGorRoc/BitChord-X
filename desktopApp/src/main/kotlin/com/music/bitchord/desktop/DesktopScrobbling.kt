@@ -33,6 +33,9 @@ import kotlinx.coroutines.launch
 import java.security.MessageDigest
 import kotlin.math.min
 
+/** One shared parser: building a `Json` per call is wasteful. */
+private val LenientJson = Json { ignoreUnknownKeys = true }
+
 /**
  * Scrobbling to Last.fm and ListenBrainz.
  *
@@ -45,7 +48,7 @@ object DesktopScrobbling {
     private const val LISTENBRAINZ_ENDPOINT = "https://api.listenbrainz.org/1/submit-listens"
 
     private val client = HttpClient(CIO) {
-        install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
+        install(ContentNegotiation) { json(LenientJson) }
     }
     private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
         System.err.println("DesktopScrobbling uncaught coroutine error: ${throwable.message}")
@@ -115,7 +118,7 @@ object DesktopScrobbling {
             "username" to username,
         )
         val body = postLastFm(values)
-        val session = Json { ignoreUnknownKeys = true }
+        val session = LenientJson
             .parseToJsonElement(body).jsonObject["session"]?.jsonObject
             ?: error("Last.fm did not return a session")
         val name = session["name"]?.jsonPrimitive?.contentOrNull ?: username
@@ -272,7 +275,7 @@ object DesktopScrobbling {
             // Last.fm answers a wrong password with a 403 and a message worth
             // showing, so the body is what the login dialog reports.
             runCatching {
-                Json { ignoreUnknownKeys = true }
+                LenientJson
                     .parseToJsonElement(body).jsonObject["message"]?.jsonPrimitive?.contentOrNull
             }.getOrNull() ?: "Last.fm returned HTTP ${response.status.value}"
         }

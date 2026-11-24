@@ -32,8 +32,8 @@ import androidx.compose.material.icons.rounded.LockOpen
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
-import androidx.compose.material.icons.rounded.VolumeOff
-import androidx.compose.material.icons.rounded.VolumeUp
+import androidx.compose.material.icons.automirrored.rounded.VolumeOff
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.spring
@@ -835,7 +835,7 @@ private fun MembersCard(state: DesktopListenTogether.State) {
 @Composable
 private fun PlayHereRow(playHere: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Icon(if (playHere) Icons.Rounded.VolumeUp else Icons.Rounded.VolumeOff, null, tint = DesktopAccent, modifier = Modifier.size(20.dp))
+        Icon(if (playHere) Icons.AutoMirrored.Rounded.VolumeUp else Icons.AutoMirrored.Rounded.VolumeOff, null, tint = DesktopAccent, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(tr("d_listen_together_play_on_pc", "Play on this computer"), fontWeight = FontWeight.SemiBold)
@@ -925,7 +925,7 @@ private fun MemberRow(member: PartyMember, devices: List<PartyMember>, isYou: Bo
                 if (isYou) { Spacer(Modifier.width(8.dp)); Tag(tr("d_you", "You")) }
                 if (!member.playsAudio) {
                     Spacer(Modifier.width(8.dp))
-                    Icon(Icons.Rounded.VolumeOff, tr("d_not_playing_here", "Not playing on this device"), tint = PartySecondary, modifier = Modifier.size(16.dp))
+                    Icon(Icons.AutoMirrored.Rounded.VolumeOff, tr("d_not_playing_here", "Not playing on this device"), tint = PartySecondary, modifier = Modifier.size(16.dp))
                 }
             }
             // "Away" rather than offline: the seat is still theirs while a connection comes back.

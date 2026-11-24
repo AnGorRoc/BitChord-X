@@ -144,7 +144,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
 import androidx.compose.material.icons.rounded.Album
-import androidx.compose.material.icons.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.Feedback
 import androidx.compose.material.icons.rounded.Groups
@@ -178,7 +177,7 @@ import androidx.compose.material.icons.rounded.RemoveCircleOutline
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.MoreHoriz
-import androidx.compose.material.icons.rounded.Sort
+import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material.icons.rounded.CloudOff
@@ -206,7 +205,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Typography
@@ -7635,7 +7634,7 @@ private fun DesktopLocalMusicPage(
                 }
             }
             Spacer(Modifier.height(10.dp))
-            TabRow(selectedTabIndex = selectedTab.coerceIn(0, tabs.lastIndex), containerColor = Color.Transparent) {
+            PrimaryTabRow(selectedTabIndex = selectedTab.coerceIn(0, tabs.lastIndex), containerColor = Color.Transparent) {
                 tabs.forEachIndexed { index, label ->
                     Tab(
                         selected = selectedTab == index,
@@ -7656,7 +7655,7 @@ private fun DesktopLocalMusicPage(
                     if (selectedTab == 1) activeGroup.songs.sortedForAlbum() else activeGroup.songs
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { drillDown = null }) { Icon(Icons.Rounded.ArrowBack, DesktopStrings["back", "Back"]) }
+                    IconButton(onClick = { drillDown = null }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, DesktopStrings["back", "Back"]) }
                     Column(Modifier.weight(1f)) {
                         Text(activeGroup.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                         if (activeGroup.subtitle.isNotBlank()) {
@@ -9618,7 +9617,7 @@ private fun DesktopCollectionPage(
                             if (collection.type == BrowseType.PLAYLIST) {
                                 Box {
                                     DesktopCircleButton(
-                                        Icons.Rounded.Sort,
+                                        Icons.AutoMirrored.Rounded.Sort,
                                         DesktopStrings["sort_playlist", "Sort playlist"],
                                         onClick = { sortOpen = true },
                                     )
