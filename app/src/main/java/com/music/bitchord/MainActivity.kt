@@ -1762,7 +1762,9 @@ private fun BitChordApp(
                 // page it came from: a whole library in the player is a whole
                 // library re-sent to every media controller on each queue edit.
                 val bounded = boundedContext || songs.size > BoundedQueuePlanner.MAX_PHYSICAL_CONTEXT
-                if (bounded && !CastController.state.value.casting) {
+                if (bounded && !CastController.state.value.casting &&
+                    !com.music.bitchord.playback.DeviceLink.remoteActive.value
+                ) {
                     c.playBoundedContext(songs, index, source, continuationToken)
                 } else {
                     val result = QueueCoordinator.buildContextQueue(
@@ -3846,7 +3848,8 @@ private fun BitChordApp(
                                     (page.type == BrowseType.ALBUM || page.type == BrowseType.PLAYLIST) &&
                                         selected?.contextEntryKey()?.let(pageSongKeys::contains) == true &&
                                         inPageOrder(songs.map { it.contextEntryKey() }, pageKeys) &&
-                                        !CastController.state.value.casting
+                                        !CastController.state.value.casting &&
+                                        !com.music.bitchord.playback.DeviceLink.remoteActive.value
                                 val latestPage = if (useBounded) {
                                     viewModel.takePlaybackContext(page.browseId)
                                 } else {
