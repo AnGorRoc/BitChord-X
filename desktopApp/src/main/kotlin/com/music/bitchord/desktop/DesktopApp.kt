@@ -8,6 +8,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.ui.input.key.isAltPressed
 import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.pointer.isBackPressed
 import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.PointerEventType
@@ -775,6 +776,18 @@ fun BitChordDesktopApp() {
     var playbackSpeed by remember { mutableStateOf(persistence.string("playback_speed", "1.0").toFloatOrNull() ?: 1.0f) }
     var volume by remember { mutableStateOf(persistence.string("volume", "1.0").toFloatOrNull()?.coerceIn(0.0f, 1.0f) ?: 1.0f) }
     var volumeBeforeMute by remember { mutableStateOf<Float?>(null) }
+    fun toggleMute() {
+        if (volume > 0f) {
+            volumeBeforeMute = volume
+            volume = 0f
+            persistence.saveString("volume", "0.0")
+        } else {
+            val restored = (volumeBeforeMute ?: 1.0f).coerceIn(0.05f, 1.0f)
+            volume = restored
+            volumeBeforeMute = null
+            persistence.saveString("volume", restored.toString())
+        }
+    }
     var crossfadeSeconds by remember { mutableStateOf(persistence.string("crossfade_seconds", "0").toIntOrNull()?.coerceIn(0, 12) ?: 0) }
     var downloadQuality by remember { mutableStateOf(persistence.string("download_quality", "LOSSLESS")) }
     var trayIconEnabled by remember { mutableStateOf(persistence.boolean("tray_icon", true)) }
@@ -4077,8 +4090,17 @@ fun BitChordDesktopApp() {
                                 playPrevious()
                                 true
                             }
+                            event.key == Key.MediaStop -> {
+                                if (playback.isPlaying) togglePlayPauseFromUser()
+                                playbackEngine.seekTo(0L)
+                                true
+                            }
                             event.key == Key.F11 -> {
                                 DesktopWindowMode.toggle()
+                                true
+                            }
+                            event.key == Key.F1 || (isCmdOrCtrl && event.key == Key.Slash) -> {
+                                overlays.keyboardShortcuts = !overlays.keyboardShortcuts
                                 true
                             }
                             event.key == Key.DirectionLeft && event.isAltPressed && !overlays.nowPlaying -> {
@@ -4095,6 +4117,7 @@ fun BitChordDesktopApp() {
                             }
                             isCmdOrCtrl && event.key == Key.W -> {
                                 when {
+                                    overlays.keyboardShortcuts -> overlays.keyboardShortcuts = false
                                     overlays.nowPlaying -> overlays.nowPlaying = false
                                     overlays.sidePanel != null -> overlays.sidePanel = null
                                     overlays.settingsPage != null -> goBack()
@@ -4102,26 +4125,21 @@ fun BitChordDesktopApp() {
                                 }
                                 true
                             }
-                            isCmdOrCtrl && event.key == Key.M -> {
-                                if (volume > 0f) {
-                                    volumeBeforeMute = volume
-                                    volume = 0f
-                                    persistence.saveString("volume", "0.0")
-                                } else {
-                                    val restored = (volumeBeforeMute ?: 1.0f).coerceIn(0.05f, 1.0f)
-                                    volume = restored
-                                    volumeBeforeMute = null
-                                    persistence.saveString("volume", restored.toString())
-                                }
-                                true
-                            }
-                            DesktopPlatform.isMac && event.isMetaPressed && event.key == Key.M -> {
+                            DesktopPlatform.isMac && event.isMetaPressed && !event.isShiftPressed && event.key == Key.M -> {
                                 windowActions?.minimize?.invoke()
                                 true
                             }
-                            // One layer at a time, innermost first: the player's own side panel, then
+                            (if (DesktopPlatform.isMac) (event.isMetaPressed && event.isShiftPressed) else (isCmdOrCtrl && !event.isShiftPressed)) && event.key == Key.M -> {
+                                toggleMute()
+                                true
+                            }
+                            // One layer at a time, innermost first: the shortcuts dialog, the player's own side panel, then
                             // the player.
                             event.key == Key.Escape -> when {
+                                overlays.keyboardShortcuts -> {
+                                    overlays.keyboardShortcuts = false
+                                    true
+                                }
                                 // The player's own layers first — the lyrics, the queue, a
                                 // drawer — in the order Android's back reaches them.
                                 overlays.nowPlaying && PlayerBack.dispatch() -> true
@@ -4156,27 +4174,105 @@ fun BitChordDesktopApp() {
                                     true
                                 } else false
                             }
+                            // Next track: Ctrl + Right arrow
+                            isCmdOrCtrl && !event.isAltPressed && event.key == Key.DirectionRight -> {
+                                playNext()
+                                true
+                            }
+                            // Previous track: Ctrl + Left arrow
+                            isCmdOrCtrl && !event.isAltPressed && event.key == Key.DirectionLeft -> {
+                                playPrevious()
+                                true
+                            }
+                            // Toggle shuffle: Ctrl + S
+                            isCmdOrCtrl && !event.isShiftPressed && event.key == Key.S -> {
+                                setShuffle(!shuffle)
+                                true
+                            }
+                            // Toggle repeat mode: Ctrl + R
+                            isCmdOrCtrl && !event.isShiftPressed && event.key == Key.R -> {
+                                val nextMode = repeatMode.next()
+                                repeatMode = nextMode
+                                persistence.saveString("repeat_mode", nextMode.name)
+                                true
+                            }
+                            // Toggle lyrics side panel: Ctrl + L
+                            isCmdOrCtrl && !event.isShiftPressed && event.key == Key.L -> {
+                                overlays.toggleSidePanel(DesktopSidePanel.LYRICS)
+                                true
+                            }
+                            // Toggle queue side panel: Ctrl + Q (non-Mac) or Ctrl/Cmd + J
+                            ((!DesktopPlatform.isMac && isCmdOrCtrl && event.key == Key.Q) || (isCmdOrCtrl && event.key == Key.J)) -> {
+                                overlays.toggleSidePanel(DesktopSidePanel.QUEUE)
+                                true
+                            }
+                            // Toggle Now Playing overlay: Ctrl + N or Ctrl + P
+                            isCmdOrCtrl && !event.isShiftPressed && (event.key == Key.N || event.key == Key.P) -> {
+                                overlays.nowPlaying = !overlays.nowPlaying
+                                true
+                            }
+                            // Favorite / Like current track: Ctrl + D
+                            isCmdOrCtrl && !event.isShiftPressed && event.key == Key.D -> {
+                                selectedSong?.let { toggleLike(it) }
+                                true
+                            }
+                            // Toggle audio output dialog: Ctrl + O
+                            isCmdOrCtrl && !event.isShiftPressed && event.key == Key.O -> {
+                                overlays.audioOutput = !overlays.audioOutput
+                                true
+                            }
+                            // Shift + Left / Right arrow keys seek 15s (faster seek)
+                            event.key == Key.DirectionRight && !event.isAltPressed && !isCmdOrCtrl && event.isShiftPressed -> {
+                                val current = playback.positionMs
+                                val duration = playback.durationMs
+                                val nextPos = (current + 15_000L).coerceAtMost(if (duration > 0) duration else current + 15_000L)
+                                playbackEngine.seekTo(nextPos)
+                                true
+                            }
+                            event.key == Key.DirectionLeft && !event.isAltPressed && !isCmdOrCtrl && event.isShiftPressed -> {
+                                val current = playback.positionMs
+                                val nextPos = (current - 15_000L).coerceAtLeast(0L)
+                                playbackEngine.seekTo(nextPos)
+                                true
+                            }
                             // Left / Right arrow keys seek 5s
-                            event.key == Key.DirectionRight && !event.isAltPressed && !isCmdOrCtrl -> {
+                            event.key == Key.DirectionRight && !event.isAltPressed && !isCmdOrCtrl && !event.isShiftPressed -> {
                                 val current = playback.positionMs
                                 val duration = playback.durationMs
                                 val nextPos = (current + 5_000L).coerceAtMost(if (duration > 0) duration else current + 5_000L)
                                 playbackEngine.seekTo(nextPos)
                                 true
                             }
-                            event.key == Key.DirectionLeft && !event.isAltPressed && !isCmdOrCtrl -> {
+                            event.key == Key.DirectionLeft && !event.isAltPressed && !isCmdOrCtrl && !event.isShiftPressed -> {
                                 val current = playback.positionMs
                                 val nextPos = (current - 5_000L).coerceAtLeast(0L)
                                 playbackEngine.seekTo(nextPos)
                                 true
                             }
+                            // Ctrl + Shift + Down: Mute volume (Spotify standard)
+                            isCmdOrCtrl && event.isShiftPressed && event.key == Key.DirectionDown -> {
+                                if (volume > 0f) {
+                                    volumeBeforeMute = volume
+                                    volume = 0f
+                                    persistence.saveString("volume", "0.0")
+                                }
+                                true
+                            }
+                            // Ctrl + Shift + Up: Restore or max volume
+                            isCmdOrCtrl && event.isShiftPressed && event.key == Key.DirectionUp -> {
+                                val restored = (volumeBeforeMute ?: 1.0f).coerceIn(0.05f, 1.0f)
+                                volume = restored
+                                volumeBeforeMute = null
+                                persistence.saveString("volume", restored.toString())
+                                true
+                            }
                             // Ctrl + Up / Down adjusts volume by 5%
-                            isCmdOrCtrl && event.key == Key.DirectionUp -> {
+                            isCmdOrCtrl && !event.isShiftPressed && event.key == Key.DirectionUp -> {
                                 volume = (volume + 0.05f).coerceAtMost(1.0f)
                                 persistence.saveString("volume", volume.toString())
                                 true
                             }
-                            isCmdOrCtrl && event.key == Key.DirectionDown -> {
+                            isCmdOrCtrl && !event.isShiftPressed && event.key == Key.DirectionDown -> {
                                 volume = (volume - 0.05f).coerceAtLeast(0.0f)
                                 persistence.saveString("volume", volume.toString())
                                 true
@@ -4783,6 +4879,9 @@ fun BitChordDesktopApp() {
                             onDismiss = { overlays.pipeline = false },
                         )
                     }
+                    if (overlays.keyboardShortcuts) {
+                        DesktopShortcutsDialog(onDismiss = { overlays.keyboardShortcuts = false })
+                    }
                 },
             ) { contentPadding ->
                 // Desktop pages start at the same top edge as Library. Only preserve space for the
@@ -5050,6 +5149,7 @@ fun BitChordDesktopApp() {
                                     onConfigureWebDav = { showWebDavDialog = true },
                                     onConfigureSmb = { showSmbDialog = true },
                                     onOpenFeedback = { overlays.settingsPage = DesktopSettingsPage.FEEDBACK },
+                                    onOpenKeyboardShortcuts = { overlays.keyboardShortcuts = true },
                                 )
                                 DesktopSettingsPage.EQUALIZER -> DesktopEqualizerDialog(onDismiss = ::goBack)
                                 DesktopSettingsPage.AUDIO_OUTPUT -> DesktopAudioOutputDialog(onDismiss = ::goBack)
@@ -6812,7 +6912,8 @@ internal fun DesktopSearchField(
                     } else {
                         false
                     }
-                },
+                }
+                .onKeyEvent { it.type == KeyEventType.KeyUp },
             singleLine = true,
             textStyle = MaterialTheme.typography.bodyMedium.copy(color = Color.White),
             cursorBrush = SolidColor(DesktopAccent),
@@ -7761,6 +7862,7 @@ private fun DesktopSettingsScreen(
     onConfigureWebDav: () -> Unit = {},
     onConfigureSmb: () -> Unit = {},
     onOpenFeedback: () -> Unit = {},
+    onOpenKeyboardShortcuts: () -> Unit = {},
 ) {
     var editingSource by remember { mutableStateOf<DesktopSourceConfig?>(null) }
     val sourceProbeKey = sourceConfigs
@@ -8746,6 +8848,12 @@ private fun DesktopSettingsScreen(
                             DesktopStrings["telemetry_diagnostics", "Anonymous telemetry and error reports"],
                             telemetryLevelLabel(telemetryLevel),
                             DesktopPresence::openPicker,
+                        )
+
+                        SettingsNavigationRow(
+                            DesktopStrings["keyboard_shortcuts", "Keyboard shortcuts"],
+                            DesktopStrings["d_keyboard_shortcuts_subtitle", "View all desktop keyboard shortcuts (F1 or Ctrl+/)"],
+                            onOpenKeyboardShortcuts,
                         )
 
                         var prioritizeCanvas by remember { mutableStateOf(DesktopPersistence().prioritizeSpotifyCanvas()) }

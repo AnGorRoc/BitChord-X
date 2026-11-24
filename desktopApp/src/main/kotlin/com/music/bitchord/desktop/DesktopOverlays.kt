@@ -42,6 +42,9 @@ internal class DesktopOverlays {
     var reorder by mutableStateOf(false)
     var nowPlaying by mutableStateOf(false)
 
+    /** The cheat sheet dialog listing desktop keyboard shortcuts. */
+    var keyboardShortcuts by mutableStateOf(false)
+
     /**
      * Which page of Settings fills the page area, or none. A place like any other: it goes into
      * the back history, so back from a sub-page lands on Settings and back from Settings on
