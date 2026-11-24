@@ -158,6 +158,7 @@ object YtMusicRepository {
                     browseId = null,
                 )
             },
+            layout = ShelfLayout.LIST,
         )
     }
 
