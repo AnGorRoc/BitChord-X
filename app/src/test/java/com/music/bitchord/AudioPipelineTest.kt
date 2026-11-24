@@ -534,6 +534,31 @@ class AudioPipelineTest {
     }
 
     @Test
+    fun `markPlaying enriches generic winner status once summary is available`() {
+        SourceResolutionTracker.markPlaying(
+            "vidSummary",
+            "Summary",
+            com.music.bitchord.playback.PlayingSource.Provider("monochrome", "Monochrome", SourceKind.MONOCHROME, null),
+        )
+        assertEquals(
+            SourceResolutionTracker.text(R.string.pipeline_status_playing),
+            SourceResolutionTracker.playing.value.reports.single { it.sourceId == "monochrome" }.status,
+        )
+
+        SourceResolutionTracker.markPlaying(
+            "vidSummary",
+            "Summary",
+            com.music.bitchord.playback.PlayingSource.Provider("monochrome", "Monochrome", SourceKind.MONOCHROME, "24-bit / 96 kHz FLAC"),
+        )
+        val updated = SourceResolutionTracker.playing.value.reports.single { it.sourceId == "monochrome" }
+        assertTrue(updated.isWinner)
+        assertEquals(
+            SourceResolutionTracker.text(R.string.pipeline_status_playing_with, "24-bit / 96 kHz FLAC"),
+            updated.status,
+        )
+    }
+
+    @Test
     fun `a lookup's report lands on its own track`() {
         SourceResolutionTracker.resetForTrack("vidA", "A")
         SourceResolutionTracker.resetForTrack("vidB", "B")

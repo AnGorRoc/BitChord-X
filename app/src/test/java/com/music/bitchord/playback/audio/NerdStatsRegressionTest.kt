@@ -115,6 +115,13 @@ class NerdStatsRegressionTest {
     }
 
     @Test
+    fun cachedLosslessWithoutDeclaration_doesNotInheritPickedYouTubeBitrate() {
+        NerdStats.onStreamPicked("track", 160, "YouTube")
+
+        assertNull(NerdStats.sourceBitrate("track", isLossless = true) { 2_400 })
+    }
+
+    @Test
     fun revertedUpgrade_fallsBackToThePickedStream() {
         NerdStats.onStreamPicked("track", 160, "YouTube")
         NerdStats.onSourceStream("track", StreamFormat(codec = "flac"), "Tidal")

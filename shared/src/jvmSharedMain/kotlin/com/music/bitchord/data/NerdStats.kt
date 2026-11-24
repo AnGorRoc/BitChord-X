@@ -407,11 +407,15 @@ object NerdStats {
      *
      * @param measuredKbps only called when its answer would be used.
      */
-    fun sourceBitrate(mediaId: String?, measuredKbps: () -> Int?): Pair<Int, TelemetryProvenance>? {
+    fun sourceBitrate(
+        mediaId: String?,
+        isLossless: Boolean = false,
+        measuredKbps: () -> Int?,
+    ): Pair<Int, TelemetryProvenance>? {
         val declared = declaredFormat(mediaId)
         declared?.takeUnless { it.kbpsInferred }?.kbps
             ?.let { return it to TelemetryProvenance.AUTHORITATIVE }
-        if (declared?.isLossless == true) return null
+        if (isLossless || declared?.isLossless == true) return null
         if (declared != null) {
             measuredKbps()?.let { return it to TelemetryProvenance.MEASURED }
             declared.kbps?.let { return it to TelemetryProvenance.DERIVED }

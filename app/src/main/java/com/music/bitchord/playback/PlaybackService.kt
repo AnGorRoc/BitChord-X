@@ -758,6 +758,32 @@ class PlaybackService : MediaLibraryService() {
 
     private fun spareTap(): PcmTap = if (activeFilter === transitionFilterA) tapB else tapA
 
+    private var sinkA: PrecisionAudioSink? = null
+    private var sinkB: PrecisionAudioSink? = null
+
+    private fun activeSink(): PrecisionAudioSink? =
+        if (activeFilter === transitionFilterA) sinkA else sinkB
+
+    private class PlayerOutputTelemetry(
+        var decoderName: String? = null,
+        var audioTrackConfig: AudioSink.AudioTrackConfig? = null,
+    )
+
+    private val playerOutputTelemetry = java.util.IdentityHashMap<ExoPlayer, PlayerOutputTelemetry>()
+
+    private fun restoreAdoptedTelemetry(incoming: ExoPlayer) {
+        activeSink()?.republishTelemetry()
+        val telemetry = playerOutputTelemetry[incoming]
+        telemetry?.decoderName?.let { AudioOutputStatus.publishDecoder(it) }
+        telemetry?.audioTrackConfig?.let {
+            AudioOutputStatus.publishAudioTrack(
+                encoding = it.encoding,
+                sampleRateHz = it.sampleRate,
+                bufferSize = it.bufferSize,
+            )
+        }
+    }
+
     /** Automix's DSP analyzer — see [com.music.bitchord.playback.smart.TrackAnalyzer]. */
     private val trackAnalyzer = com.music.bitchord.playback.smart.TrackAnalyzer(this, AudioCache)
 
@@ -1339,6 +1365,7 @@ class PlaybackService : MediaLibraryService() {
             // so it names the track this format arrived for even if the
             // queue has moved on again since. See [audioFormatFor].
             audioFormatFor = eventTime.mediaId()
+            audioFormatForUri = eventTime.mediaUri()
             // Ground truth for a real-device listening test: this is the
             // renderer's own Format, straight off the decoder with none of
             // the app's caching/upgrade logic in between, so it's the one
@@ -1454,6 +1481,14 @@ class PlaybackService : MediaLibraryService() {
         ?.getWindow(windowIndex, Timeline.Window())
         ?.mediaItem
         ?.mediaId
+
+    private fun AnalyticsListener.EventTime.mediaUri(): String? = timeline
+        .takeIf { windowIndex < it.windowCount }
+        ?.getWindow(windowIndex, Timeline.Window())
+        ?.mediaItem
+        ?.localConfiguration
+        ?.uri
+        ?.toString()
 
     override fun onCreate() {
         super.onCreate()
@@ -1687,8 +1722,10 @@ class PlaybackService : MediaLibraryService() {
             // Automix owns a base-cache Opus rendition. It must bypass the
             // playback race winner (JioSaavn, a module, or a lossless upgrade)
             // and resolve directly to YouTube for this analysis-only request.
+            // Never touch NerdStats here: this read is background analysis, not
+            // playback, and recording "YouTube" would overwrite the active
+            // lossless source name for the playing track.
             if (analysisRead) {
-                NerdStats.recordSource(videoId, "YouTube")
                 val streamUrl = try {
                     runBlocking(about) {
                         withTimeout(RESOLVE_TIMEOUT_MS) { StreamResolver.resolve(videoId) }
@@ -1713,7 +1750,12 @@ class PlaybackService : MediaLibraryService() {
                 // and may never. Recording it here would light "Lossless" over
                 // the lossy stream still coming out of the speaker. The real
                 // open, moments later, records it.
-                val proving = QualityUpgrade.isAuditioning(videoId)
+                // Both auditions and standby-deck preparation open the upgraded
+                // stream while the listener is still hearing the previous copy.
+                // Recording its format/source here would mislabel the playing
+                // stream before the handover commits (and leave stale metadata
+                // if alignment aborts). [swapIn] records them once swapped.
+                val proving = QualityUpgrade.isAuditioning(videoId) || sourceSwapActive
                 val sourceName = upgraded.sourceConfigId?.let { SourceRegistry.config(it)?.displayName }
                     ?: "Upgrade"
                 if (!proving) {
@@ -1883,9 +1925,20 @@ class PlaybackService : MediaLibraryService() {
             when (won) {
                 is Resolved.Module -> {
                     val kept = StreamChoice.rememberIfAbsent(videoId, won.stream, substituted = true)
+                    val isSub = StreamChoice.isSubstitute(videoId)
                     val sourceName = kept.sourceConfigId?.let { SourceRegistry.config(it)?.displayName }
-                        ?: "Module"
-                    if (kept.format != StreamFormat()) NerdStats.onSourceStream(videoId, kept.format, sourceName)
+                        ?: if (isSub) "Module" else "YouTube"
+                    if (isSub && kept.format != StreamFormat()) {
+                        NerdStats.onSourceStream(videoId, kept.format, sourceName)
+                    } else if (!isSub) {
+                        NerdStats.clearDeclared(videoId)
+                        val ytBitrate = NerdStats.pickedBitrateKbps(videoId) ?: 160
+                        SourceResolutionTracker.setWinner(
+                            SourceRegistry.youtubeConfigId(),
+                            SourceResolutionTracker.text(R.string.pipeline_status_playing_with, "~$ytBitrate kbps Opus"),
+                            mediaId = videoId,
+                        )
+                    }
                     NerdStats.recordSource(videoId, sourceName)
                     dataSpec.buildUpon()
                         .setUri(Uri.parse(kept.url))
@@ -1907,8 +1960,23 @@ class PlaybackService : MediaLibraryService() {
                         SourceStream(won.url, headers = headers),
                         substituted = false,
                     )
-                    val sourceName = kept.sourceConfigId?.let { SourceRegistry.config(it)?.displayName } ?: "YouTube"
-                    if (kept.format != StreamFormat()) NerdStats.onSourceStream(videoId, kept.format, sourceName)
+                    val isSub = StreamChoice.isSubstitute(videoId)
+                    val sourceName = kept.sourceConfigId?.let { SourceRegistry.config(it)?.displayName }
+                        ?: if (isSub) "Module" else "YouTube"
+                    if (isSub && kept.format != StreamFormat()) {
+                        NerdStats.onSourceStream(videoId, kept.format, sourceName)
+                        if (kept.format.isLossless == true) {
+                            QualityUpgrade.forget(videoId)
+                            NerdStats.onLosslessRaceEnd(videoId)
+                        }
+                        kept.sourceConfigId?.let { cfgId ->
+                            SourceResolutionTracker.setWinner(
+                                cfgId,
+                                SourceResolutionTracker.text(R.string.pipeline_status_playing_with, kept.format.summary),
+                                mediaId = videoId,
+                            )
+                        }
+                    }
                     NerdStats.recordSource(videoId, sourceName)
                     dataSpec.buildUpon()
                         .setUri(Uri.parse(kept.url))
@@ -2531,6 +2599,7 @@ class PlaybackService : MediaLibraryService() {
 
     private var versionSwapJob: Job? = null
     private var versionSwapGeneration = 0
+    @Volatile
     private var sourceSwapActive = false
 
     /**
@@ -3214,6 +3283,7 @@ class PlaybackService : MediaLibraryService() {
     private fun adoptFormatOf(incoming: ExoPlayer) {
         if (incoming.audioFormat == null) return
         audioFormatFor = incoming.currentMediaItem?.mediaId
+        audioFormatForUri = incoming.currentMediaItem?.localConfiguration?.uri?.toString()
     }
 
     private fun adoptPlayerForVersionSwap(outgoing: ExoPlayer, incoming: ExoPlayer) {
@@ -3250,6 +3320,8 @@ class PlaybackService : MediaLibraryService() {
             reason = Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED,
             alreadyAudible = true,
         )
+        restoreAdoptedTelemetry(incoming)
+        publishNerdStats()
     }
 
     /**
@@ -4294,6 +4366,27 @@ class PlaybackService : MediaLibraryService() {
         // [holdAwakeWhileDownloading].
         .setWakeMode(C.WAKE_MODE_NETWORK)
         .build()
+        .also { built ->
+            val telemetry = PlayerOutputTelemetry()
+            playerOutputTelemetry[built] = telemetry
+            built.addAnalyticsListener(object : AnalyticsListener {
+                override fun onAudioDecoderInitialized(
+                    eventTime: AnalyticsListener.EventTime,
+                    decoderName: String,
+                    initializedTimestampMs: Long,
+                    initializationDurationMs: Long,
+                ) {
+                    telemetry.decoderName = decoderName
+                }
+
+                override fun onAudioTrackInitialized(
+                    eventTime: AnalyticsListener.EventTime,
+                    audioTrackConfig: AudioSink.AudioTrackConfig,
+                ) {
+                    telemetry.audioTrackConfig = audioTrackConfig
+                }
+            })
+        }
 
     /**
      * Keeps the CPU and Wi-Fi up for as long as the download scheduler has a
@@ -4347,6 +4440,8 @@ class PlaybackService : MediaLibraryService() {
             reason = Player.MEDIA_ITEM_TRANSITION_REASON_AUTO,
             alreadyAudible = true,
         )
+        restoreAdoptedTelemetry(incoming)
+        publishNerdStats()
 
         // A crossfade starts the incoming item on the player that was idle, so
         // it never delivers onMediaItemTransition to playbackListener. Keep
@@ -4474,6 +4569,9 @@ class PlaybackService : MediaLibraryService() {
             saveBoundedContextSnapshot(exoPlayer)
         }
         currentAudioInputFormat = null
+        if (!alreadyAudible && reason != Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT) {
+            audioFormatForUri = null
+        }
         NerdStats.onTrackTransition(mediaItem?.mediaId)
         // A rendition discarded and fetched again comes back under the same
         // URI, so a size measured for the last track isn't kept past it.
@@ -5135,6 +5233,8 @@ class PlaybackService : MediaLibraryService() {
                 val live = this@PlaybackService.player ?: return@withContext
                 if (live.currentMediaItem?.mediaId != mediaId) return@withContext
                 swappingMediaId = mediaId
+                audioFormatForUri = null
+                NerdStats.current.value = null
                 live.replaceMediaItem(live.currentMediaItemIndex, fallback)
                 live.seekTo(live.currentMediaItemIndex, position)
                 live.prepare()
@@ -5432,6 +5532,7 @@ class PlaybackService : MediaLibraryService() {
      * of the session.
      */
     private var audioFormatFor: String? = null
+    private var audioFormatForUri: String? = null
 
     /** Whether offline mode rules out a second look, which would only be asking the network. */
     private fun offlineBlocksUpgrades(): Boolean {
@@ -5562,10 +5663,12 @@ class PlaybackService : MediaLibraryService() {
                     // The badge comes down when the upgrade is done, not when the
                     // search that found it was — including the deliberate wait in
                     // [swapIn] before the audio is allowed to be cut. See
-                    // [QualityUpgrade.lookAgain]. In `finally` because a queue
-                    // that moves on cancels this job, and a cancelled swap has to
-                    // put the badge out as surely as a completed one.
-                    NerdStats.onLosslessRaceEnd(mediaId)
+                    // [QualityUpgrade.lookAgain]. Keep it up only when a live
+                    // follow-up lossless pass was just armed by
+                    // [QualityUpgrade.continueAfterLossySwap].
+                    if (!isActive || !QualityUpgrade.isPending(mediaId)) {
+                        NerdStats.onLosslessRaceEnd(mediaId)
+                    }
                 }
 
                 QualityUpgrade.Look.NoMatch -> {
@@ -6042,6 +6145,8 @@ class PlaybackService : MediaLibraryService() {
         if (!canUseStandby) {
             swappingMediaId = mediaId
             swapCutAt = SystemClock.elapsedRealtime()
+            audioFormatForUri = null
+            NerdStats.current.value = null
             val targetSeekPos = StreamAudioAligner.seekPositionMs(activePlayer.currentPosition, offsetMs)
             if (offsetMs != 0L) {
                 TrackLog.d("BitChord", "waveform alignment applied: offset=${offsetMs}ms, seeking to ${targetSeekPos}ms (raw=${activePlayer.currentPosition}ms)", about = mediaId)
@@ -7499,184 +7604,204 @@ class PlaybackService : MediaLibraryService() {
         }
         if (DirectSourceGate.isActive()) return resolveDirect(videoId, target)
         NerdStats.onLosslessRaceStart(videoId)
-        // The listener would rather wait for lossless than hear the opening in
-        // anything less — see [AppSettings.losslessFromStart]. The lookup is
-        // waited out alone; only when no source has a lossless copy does the
-        // ordinary race below run, and its lossy start with it. A manifest
-        // can't start a track here (see below), so it goes the same way.
-        val allConfigured = SourceRegistry.active()
-        val ceiling = AppSettings.effectiveAudioQuality
-        SourceResolutionTracker.resetForTrack(videoId, target.title)
-        // Every active source is listed as queued up front. Each one moves on
-        // to "Looking up…" only when it is actually asked — see matchAndStream.
-        for (s in allConfigured) {
-            if (!ceiling.permits(s.kind)) {
-                SourceResolutionTracker.record(
-                    s.configId,
-                    s.displayName,
-                    s.kind,
-                    SourceResolutionTracker.text(R.string.pipeline_status_skipped_data, ceiling.label),
-                )
-            } else {
-                SourceResolutionTracker.record(
-                    s.configId,
-                    s.displayName,
-                    s.kind,
-                    SourceResolutionTracker.text(R.string.pipeline_status_queued),
-                )
-            }
-        }
-
-        if (SourceResolver.losslessFromStart()) {
-            val lossless = withContext(Dispatchers.IO + TrackLog.about(videoId)) {
-                withTimeoutOrNull(LOSSLESS_FROM_START_TIMEOUT_MS) { SourceResolver.losslessForYouTube(target) }
-            }
-            if (lossless != null && !StreamContainer.isManifest(lossless.url)) {
-                NerdStats.onLosslessRaceEnd(videoId)
-                val configId = lossless.sourceConfigId ?: "module"
-                SourceResolutionTracker.setWinner(configId, SourceResolutionTracker.text(R.string.pipeline_status_playing_with, lossless.format.summary), mediaId = videoId)
-                SourceResolutionTracker.record(SourceRegistry.youtubeConfigId(), "YouTube Music", SourceKind.YOUTUBE, SourceResolutionTracker.text(R.string.pipeline_status_skipped_lossless_first))
-                return Resolved.Module(lossless)
-            }
-            TrackLog.d("BitChord", "no lossless copy of '${target.title}' in ${LOSSLESS_FROM_START_TIMEOUT_MS}ms; starting as usual", about = videoId)
-        }
-        // Both legs are parented to the service's scope rather than to the
-        // caller, so neither inherits whose track this is — see
-        // [TrackLog.about]. Without it the module walk and the client walk both
-        // log from a scope that knows nothing, which is most of what a resolve
-        // has to say about itself.
-        val lookup = scope.async(Dispatchers.IO + TrackLog.about(videoId)) {
-            withTimeoutOrNull(SUBSTITUTE_TIMEOUT_MS) { SourceResolver.substituteForYouTube(target) }
-        }
-        // Started now rather than after the modules have had their say, and
-        // wrapped rather than thrown from: it is awaited only on the paths
-        // that need it, and an async that fails without ever being awaited is
-        // an unhandled exception in this service's scope.
-        SourceResolutionTracker.record(
-            SourceRegistry.youtubeConfigId(),
-            "YouTube Music",
-            SourceKind.YOUTUBE,
-            SourceResolutionTracker.text(R.string.pipeline_status_querying),
-        )
-        val fallback = scope.async(Dispatchers.IO + TrackLog.about(videoId)) {
-            runCatching { StreamResolver.resolve(videoId) }
-        }
-
-        // First past the post. A null because [lookup] won is a module miss; a
-        // null because [fallback] won means YouTube has a URL and the modules
-        // are still looking — [lookup.isActive] below is what tells those
-        // apart, which is the question the old head start answered by timing
-        // out rather than by asking.
-        val quick: SourceStream? = select {
-            lookup.onAwait { it }
-            // A fallback that finished without a URL has not won anything.
-            //
-            // If YouTube crosses the line while modules are still actively looking
-            // for a lossless copy, grant a brief grace window so a fast FLAC source
-            // arriving a fraction of a second later can still take the lead.
-            fallback.onAwait { resolved ->
-                if (!resolved.isSuccess) {
-                    lookup.await()
-                } else if (lookup.isActive && SourceResolver.requestForNow() is StreamRequest.Lossless) {
-                    withTimeoutOrNull(SourceResolver.LOSSLESS_GRACE_WINDOW_MS) { lookup.await() }
+        try {
+            // The listener would rather wait for lossless than hear the opening in
+            // anything less — see [AppSettings.losslessFromStart]. The lookup is
+            // waited out alone; only when no source has a lossless copy does the
+            // ordinary race below run, and its lossy start with it. A manifest
+            // can't start a track here (see below), so it goes the same way.
+            val allConfigured = SourceRegistry.active()
+            val ceiling = AppSettings.effectiveAudioQuality
+            SourceResolutionTracker.resetForTrack(videoId, target.title)
+            // Every active source is listed as queued up front. Each one moves on
+            // to "Looking up…" only when it is actually asked — see matchAndStream.
+            for (s in allConfigured) {
+                if (!ceiling.permits(s.kind)) {
+                    SourceResolutionTracker.record(
+                        s.configId,
+                        s.displayName,
+                        s.kind,
+                        SourceResolutionTracker.text(R.string.pipeline_status_skipped_data, ceiling.label),
+                        mediaId = videoId,
+                    )
                 } else {
-                    null
+                    SourceResolutionTracker.record(
+                        s.configId,
+                        s.displayName,
+                        s.kind,
+                        SourceResolutionTracker.text(R.string.pipeline_status_queued),
+                        mediaId = videoId,
+                    )
                 }
             }
-        }
 
-        // A manifest cannot be substituted here, however good it is. This
-        // function runs on the loader thread, *inside* the open of a media
-        // source that was built minutes ago from an extensionless
-        // `bitchord://` URI — so the source is already progressive and cannot
-        // be told otherwise, and handing it a manifest is a track that fails
-        // at 0ms rather than a track that plays lossless. See [StreamContainer]
-        // for the log of exactly that.
-        //
-        // Nothing is thrown away for it. What the modules found is passed to
-        // the second look already answered, which is the same handover a lookup
-        // that merely lost the race gets — and [QualityUpgrade]'s swap does
-        // declare the type, so the manifest plays there. The cost is a seam a
-        // few seconds in instead of a clean start, which is the trade this
-        // whole path is built to make.
-        if (quick != null && StreamContainer.isManifest(quick.url)) {
-            val url = runCatching { fallback.await().getOrThrow() }.getOrNull()
-            if (url != null) {
-                TrackLog.d(
+            if (SourceResolver.losslessFromStart()) {
+                val lossless = withContext(Dispatchers.IO + TrackLog.about(videoId)) {
+                    withTimeoutOrNull(LOSSLESS_FROM_START_TIMEOUT_MS) { SourceResolver.losslessForYouTube(target) }
+                }
+                if (lossless != null && !StreamContainer.isManifest(lossless.url)) {
+                    NerdStats.onLosslessRaceEnd(videoId)
+                    val configId = lossless.sourceConfigId ?: "module"
+                    SourceResolutionTracker.setWinner(configId, SourceResolutionTracker.text(R.string.pipeline_status_playing_with, lossless.format.summary), mediaId = videoId)
+                    SourceResolutionTracker.record(SourceRegistry.youtubeConfigId(), "YouTube Music", SourceKind.YOUTUBE, SourceResolutionTracker.text(R.string.pipeline_status_skipped_lossless_first), mediaId = videoId)
+                    return Resolved.Module(lossless)
+                }
+                TrackLog.d("BitChord", "no lossless copy of '${target.title}' in ${LOSSLESS_FROM_START_TIMEOUT_MS}ms; starting as usual", about = videoId)
+            }
+            // Both legs are parented to the service's scope rather than to the
+            // caller, so neither inherits whose track this is — see
+            // [TrackLog.about]. Without it the module walk and the client walk both
+            // log from a scope that knows nothing, which is most of what a resolve
+            // has to say about itself.
+            val lookup = scope.async(Dispatchers.IO + TrackLog.about(videoId)) {
+                withTimeoutOrNull(SUBSTITUTE_TIMEOUT_MS) { SourceResolver.substituteForYouTube(target) }
+            }
+            // Started now rather than after the modules have had their say, and
+            // wrapped rather than thrown from: it is awaited only on the paths
+            // that need it, and an async that fails without ever being awaited is
+            // an unhandled exception in this service's scope.
+            SourceResolutionTracker.record(
+                SourceRegistry.youtubeConfigId(),
+                "YouTube Music",
+                SourceKind.YOUTUBE,
+                SourceResolutionTracker.text(R.string.pipeline_status_querying),
+                mediaId = videoId,
+            )
+            val fallback = scope.async(Dispatchers.IO + TrackLog.about(videoId)) {
+                runCatching { StreamResolver.resolve(videoId) }
+            }
+
+            // First past the post. A null because [lookup] won is a module miss; a
+            // null because [fallback] won means YouTube has a URL and the modules
+            // are still looking — [lookup.isActive] below is what tells those
+            // apart, which is the question the old head start answered by timing
+            // out rather than by asking.
+            val quick: SourceStream? = select {
+                lookup.onAwait { it }
+                // A fallback that finished without a URL has not won anything.
+                //
+                // If YouTube crosses the line while modules are still actively looking
+                // for a lossless copy, grant a brief grace window so a fast FLAC source
+                // arriving a fraction of a second later can still take the lead.
+                fallback.onAwait { resolved ->
+                    if (!resolved.isSuccess) {
+                        lookup.await()
+                    } else if (lookup.isActive && SourceResolver.requestForNow() is StreamRequest.Lossless) {
+                        withTimeoutOrNull(SourceResolver.LOSSLESS_GRACE_WINDOW_MS) { lookup.await() }
+                    } else {
+                        null
+                    }
+                }
+            }
+
+            // A manifest cannot be substituted here, however good it is. This
+            // function runs on the loader thread, *inside* the open of a media
+            // source that was built minutes ago from an extensionless
+            // `bitchord://` URI — so the source is already progressive and cannot
+            // be told otherwise, and handing it a manifest is a track that fails
+            // at 0ms rather than a track that plays lossless. See [StreamContainer]
+            // for the log of exactly that.
+            //
+            // Nothing is thrown away for it. What the modules found is passed to
+            // the second look already answered, which is the same handover a lookup
+            // that merely lost the race gets — and [QualityUpgrade]'s swap does
+            // declare the type, so the manifest plays there. The cost is a seam a
+            // few seconds in instead of a clean start, which is the trade this
+            // whole path is built to make.
+            if (quick != null && StreamContainer.isManifest(quick.url)) {
+                val url = runCatching { fallback.await().getOrThrow() }.getOrNull()
+                if (url != null) {
+                    val ytBitrate = NerdStats.pickedBitrateKbps(videoId) ?: 160
+                    SourceResolutionTracker.setWinner(
+                        SourceRegistry.youtubeConfigId(),
+                        SourceResolutionTracker.text(R.string.pipeline_status_playing_with, "~$ytBitrate kbps Opus"),
+                        mediaId = videoId,
+                    )
+                    TrackLog.d(
+                        "BitChord",
+                        "'${target.title}' was offered ${quick.format.summary} as a manifest; " +
+                            "starting on YouTube and swapping to it under the music",
+                        about = videoId,
+                    )
+                    val handed = QualityUpgrade.settledForLess(
+                        mediaId = videoId,
+                        target = target,
+                        inFlight = CompletableDeferred(quick),
+                        playing = NerdStats.pickedBitrateKbps(videoId)?.let { StreamFormat(kbps = it) },
+                    )
+                    if (!handed) NerdStats.onLosslessRaceEnd(videoId)
+                    return Resolved.YouTube(url)
+                }
+                // YouTube cannot serve it either, so there is nothing to start on
+                // and nothing to swap from. The manifest goes out as it is: it will
+                // fail its first read, and [replayAsManifest] rebuilds the item
+                // with the type declared and prepares it again. A cut before the
+                // first note beats a track that does not play at all.
+                TrackLog.w(
                     "BitChord",
-                    "'${target.title}' was offered ${quick.format.summary} as a manifest; " +
-                        "starting on YouTube and swapping to it under the music",
+                    "'${target.title}' has only a manifest and YouTube cannot serve it; " +
+                        "letting it fail once to declare its type",
                     about = videoId,
                 )
-                val handed = QualityUpgrade.settledForLess(
-                    mediaId = videoId,
-                    target = target,
-                    inFlight = CompletableDeferred(quick),
-                    playing = NerdStats.pickedBitrateKbps(videoId)?.let { StreamFormat(kbps = it) },
-                )
-                if (!handed) NerdStats.onLosslessRaceEnd(videoId)
-                return Resolved.YouTube(url)
-            }
-            // YouTube cannot serve it either, so there is nothing to start on
-            // and nothing to swap from. The manifest goes out as it is: it will
-            // fail its first read, and [replayAsManifest] rebuilds the item
-            // with the type declared and prepares it again. A cut before the
-            // first note beats a track that does not play at all.
-            TrackLog.w(
-                "BitChord",
-                "'${target.title}' has only a manifest and YouTube cannot serve it; " +
-                    "letting it fail once to declare its type",
-                about = videoId,
-            )
-            NerdStats.onLosslessRaceEnd(videoId)
-            return Resolved.Module(quick)
-        }
-
-        if (quick != null) {
-            // The modules got there first, so the YouTube walk is genuinely
-            // spare work now. Cancelling drops only this service's wait on it;
-            // [StreamResolver] parents the walk itself elsewhere and lets it
-            // finish into its own cache.
-            fallback.cancel()
-            val quickConfigId = quick.sourceConfigId ?: "module"
-            SourceResolutionTracker.setWinner(quickConfigId, SourceResolutionTracker.text(R.string.pipeline_status_playing_with, quick.format.summary), mediaId = videoId)
-            SourceResolutionTracker.record(SourceRegistry.youtubeConfigId(), "YouTube Music", SourceKind.YOUTUBE, SourceResolutionTracker.text(R.string.pipeline_status_skipped_better_source))
-            // Everything that was asked for, ahead of the fallback: the
-            // ordinary good case, and the one with no seam in it.
-            if (!quick.belowRequest) {
                 NerdStats.onLosslessRaceEnd(videoId)
+                val quickConfigId = quick.sourceConfigId ?: "module"
+                SourceResolutionTracker.setWinner(
+                    quickConfigId,
+                    SourceResolutionTracker.text(R.string.pipeline_status_playing_with, quick.format.summary),
+                    mediaId = videoId,
+                )
                 return Resolved.Module(quick)
             }
-            // Less than was asked for — but a lossy copy from a module still
-            // beats going back to YouTube for one. Worth a second look, and
-            // with this lookup already finished that look starts from scratch.
-            val settled = QualityUpgrade.settledForLess(
+
+            if (quick != null) {
+                // The modules got there first, so the YouTube walk is genuinely
+                // spare work now. Cancelling drops only this service's wait on it;
+                // [StreamResolver] parents the walk itself elsewhere and lets it
+                // finish into its own cache.
+                fallback.cancel()
+                val quickConfigId = quick.sourceConfigId ?: "module"
+                SourceResolutionTracker.setWinner(quickConfigId, SourceResolutionTracker.text(R.string.pipeline_status_playing_with, quick.format.summary), mediaId = videoId)
+                SourceResolutionTracker.record(SourceRegistry.youtubeConfigId(), "YouTube Music", SourceKind.YOUTUBE, SourceResolutionTracker.text(R.string.pipeline_status_skipped_better_source), mediaId = videoId)
+                // Everything that was asked for, ahead of the fallback: the
+                // ordinary good case, and the one with no seam in it.
+                if (!quick.belowRequest) {
+                    NerdStats.onLosslessRaceEnd(videoId)
+                    return Resolved.Module(quick)
+                }
+                // Less than was asked for — but a lossy copy from a module still
+                // beats going back to YouTube for one. Worth a second look, and
+                // with this lookup already finished that look starts from scratch.
+                val settled = QualityUpgrade.settledForLess(
+                    mediaId = videoId,
+                    target = target,
+                    playing = quick.format,
+                    servedBy = quick.sourceConfigId,
+                )
+                if (!settled) NerdStats.onLosslessRaceEnd(videoId)
+                return Resolved.Module(quick)
+            }
+
+            val url = fallback.await().getOrThrow()
+            val ytBitrate = NerdStats.pickedBitrateKbps(videoId) ?: 160
+            SourceResolutionTracker.setWinner(SourceRegistry.youtubeConfigId(), SourceResolutionTracker.text(R.string.pipeline_status_playing_with, "~$ytBitrate kbps Opus"), mediaId = videoId)
+            // Marked pending only here, with the fallback's own bitrate in hand:
+            // that figure is the answer to "better than what?" the second look
+            // measures candidates against, and it isn't known until the client
+            // walk has picked a format. A lookup still running is handed over to
+            // be waited on rather than repeated; one that already finished with
+            // nothing leaves the second look to find its own candidates.
+            val pending = QualityUpgrade.settledForLess(
                 mediaId = videoId,
                 target = target,
-                playing = quick.format,
-                servedBy = quick.sourceConfigId,
+                inFlight = lookup.takeIf { lookup.isActive },
+                playing = NerdStats.pickedBitrateKbps(videoId)?.let { StreamFormat(kbps = it) },
             )
-            if (!settled) NerdStats.onLosslessRaceEnd(videoId)
-            return Resolved.Module(quick)
+            if (!pending) NerdStats.onLosslessRaceEnd(videoId)
+            return Resolved.YouTube(url)
+        } catch (t: Throwable) {
+            NerdStats.onLosslessRaceEnd(videoId)
+            throw t
         }
-
-        val url = fallback.await().getOrThrow()
-        val ytBitrate = NerdStats.pickedBitrateKbps(videoId) ?: 160
-        SourceResolutionTracker.setWinner(SourceRegistry.youtubeConfigId(), SourceResolutionTracker.text(R.string.pipeline_status_playing_with, "~$ytBitrate kbps Opus"), mediaId = videoId)
-        // Marked pending only here, with the fallback's own bitrate in hand:
-        // that figure is the answer to "better than what?" the second look
-        // measures candidates against, and it isn't known until the client
-        // walk has picked a format. A lookup still running is handed over to
-        // be waited on rather than repeated; one that already finished with
-        // nothing leaves the second look to find its own candidates.
-        val pending = QualityUpgrade.settledForLess(
-            mediaId = videoId,
-            target = target,
-            inFlight = lookup.takeIf { lookup.isActive },
-            playing = NerdStats.pickedBitrateKbps(videoId)?.let { StreamFormat(kbps = it) },
-        )
-        if (!pending) NerdStats.onLosslessRaceEnd(videoId)
-        return Resolved.YouTube(url)
     }
 
     /**
@@ -7893,53 +8018,50 @@ class PlaybackService : MediaLibraryService() {
         return false
     }
 
-    private fun currentSourceName(mediaId: String?, mediaItem: MediaItem?): String? {
+    private fun isYouTubeSourceName(name: String?): Boolean =
+        name != null && (name.equals("YouTube", ignoreCase = true) || name.equals("YouTube Music", ignoreCase = true))
+
+    private fun currentSourceName(
+        mediaId: String?,
+        mediaItem: MediaItem?,
+        isLossless: Boolean = false,
+        isDolbyAtmos: Boolean = false,
+    ): String? {
         val id = mediaId ?: return null
         if (isLocalPlayback(id, mediaItem)) {
             return "Local Storage"
         }
 
-        // 1. Forced upgrade stream on active playback URI
-        val uri = mediaItem?.localConfiguration?.uri
-        if (uri != null) {
-            QualityUpgrade.forcedStream(uri)?.let { upgraded ->
-                val name = upgraded.sourceConfigId?.let { SourceRegistry.config(it)?.displayName }
-                if (!name.isNullOrBlank()) return name
+        // Derive from the exact same authority as Source Inspection so Track Info
+        // and Source Inspection never disagree on who is serving the bytes.
+        val playing = mediaItem?.let(::playingSourceOf)
+        when (playing) {
+            is PlayingSource.Provider -> {
+                val incompatibleYouTube = playing.kind == SourceKind.YOUTUBE && (isLossless || isDolbyAtmos)
+                if (!incompatibleYouTube) return playing.displayName
             }
+            is PlayingSource.Storage -> return playing.label
+            null -> Unit
         }
 
-        // 2. Exact recorded source for this media item
+        // Fallback to recorded source metadata when the item hasn't been matched
+        // above, refusing impossible YouTube labels for lossless/Atmos streams.
         val exactRecorded = NerdStats.exactSourceFor(id)
-        if (!exactRecorded.isNullOrBlank()) return exactRecorded
-
-        // 3. Source-backed track key (e.g. src:<configId>::<trackId>)
-        val sourceTrack = SourceRegistry.parseTrackKey(id)
-        if (sourceTrack != null) {
-            val config = SourceRegistry.config(sourceTrack.first)
-            if (config != null) return config.displayName
-            return "Unknown"
+        if (!exactRecorded.isNullOrBlank() && !((isLossless || isDolbyAtmos) && isYouTubeSourceName(exactRecorded))) {
+            return exactRecorded
         }
 
-        // 4. Stream substitution (e.g. YouTube substituted by addon)
-        StreamChoice.of(id)?.let { serving ->
-            val name = serving.sourceConfigId?.let { SourceRegistry.config(it)?.displayName }
-                ?: if (StreamChoice.isSubstitute(id)) "Module" else null
-            if (!name.isNullOrBlank()) return name
-        }
-
-        // 5. Virtual bitchord://source?s=... playback URI
-        if (uri?.authority == "source") {
-            val configId = uri.getQueryParameter("s")
-            val name = configId?.let { SourceRegistry.config(it)?.displayName }
-            if (!name.isNullOrBlank()) return name
-            return "Unknown"
-        }
-
-        // 6. Non-prefixed mediaId fallback to recorded source if any
         val recorded = NerdStats.sourceFor(id)
-        if (!recorded.isNullOrBlank()) return recorded
+        if (!recorded.isNullOrBlank() && !((isLossless || isDolbyAtmos) && isYouTubeSourceName(recorded))) {
+            return recorded
+        }
 
-        // 7. YouTube video ID
+        // YouTube never serves FLAC/ALAC/DSD/Dolby Atmos; never label them "YouTube".
+        if (isLossless || isDolbyAtmos) {
+            return "Unknown"
+        }
+
+        val uri = mediaItem?.localConfiguration?.uri
         if (id.length == 11 || uri?.getQueryParameter("v") != null) {
             return "YouTube"
         }
@@ -8089,56 +8211,71 @@ class PlaybackService : MediaLibraryService() {
             provider(uri.getQueryParameter("s"), null)?.let { return it }
         }
         if (uri != null) {
-            val cached = storageVerdict?.takeIf { it.first == mediaId }?.second
-                ?: AudioCache.isFullyCached(uri).also { storageVerdict = mediaId to it }
+            val uriKey = uri.toString()
+            val cached = storageVerdict?.takeIf { it.first == uriKey }?.second
+                ?: AudioCache.isFullyCached(uri).also { storageVerdict = uriKey to it }
             if (cached) return PlayingSource.Storage(SourceResolutionTracker.text(R.string.pipeline_storage_cache))
         }
         return null
     }
 
     private fun publishNerdStats() {
-        syncPlayingSource()
         val player = player ?: return
+        val currentItem = player.currentMediaItem
+        val currentUri = currentItem?.localConfiguration?.uri?.toString()
         val format = player.audioFormat
-        val mediaId = player.currentMediaItem?.mediaId
+        val mediaId = currentItem?.mediaId
+
+        // While a track transition or in-place rendition swap (replaceMediaItem)
+        // is preparing, the player's audioFormat still belongs to the outgoing
+        // rendition. Do not publish a hybrid snapshot pairing the old codec
+        // (e.g. Opus) with the new source (e.g. Hi-Res Lossless); wait for
+        // onAudioInputFormatChanged to confirm the format for currentUri.
+        if (currentUri != null && audioFormatForUri != currentUri) {
+            return
+        }
+
+        syncPlayingSource()
+        if (format == null) return
         val generation = NerdStats.currentGeneration
-        val measured = format?.measure()
+        val measured = format.measure()
         // DSD reaches the renderer already decimated to PCM (DsdExtractor), so
         // its sample mime is `audio/raw`; the extractor leaves `dsd64` and the
         // like in `codecs`, and that is the name worth showing — with the DSD
         // stream's own bitrate and rate (2.8224 MHz for DSD64) rather than the
         // 176.4 kHz PCM it became.
-        val dsd = format?.codecs?.takeIf { it.startsWith("dsd") }
+        val dsd = format.codecs?.takeIf { it.startsWith("dsd") }
         val dsdRateHz = dsd?.removePrefix("dsd")?.toIntOrNull()?.times(44_100)
-        val isLossless = dsd != null || NerdStats.isLosslessMime(format?.sampleMimeType)
-        val isRawPcm = NerdStats.isRawPcm(format?.sampleMimeType)
-        val pcmDataRate = measured?.pcmBitrateKbps
+        val isLossless = dsd != null || NerdStats.isLosslessMime(format.sampleMimeType)
+        val isDolbyAtmos = NerdStats.isDolbyAtmosMime(format.sampleMimeType)
+        val isRawPcm = NerdStats.isRawPcm(format.sampleMimeType)
+        val pcmDataRate = measured.pcmBitrateKbps
 
         val (bitrate, provenance) = when {
-            format?.averageBitrate != null && format.averageBitrate > 0 ->
+            format.averageBitrate > 0 ->
                 Pair((format.averageBitrate + 500) / 1000, TelemetryProvenance.AUTHORITATIVE)
-            format?.bitrate != null && format.bitrate > 0 ->
+            format.bitrate > 0 ->
                 Pair((format.bitrate + 500) / 1000, TelemetryProvenance.AUTHORITATIVE)
             mediaId != null && localBitrateCache.containsKey(mediaId) ->
                 Pair(localBitrateCache[mediaId], TelemetryProvenance.AUTHORITATIVE)
             dsd == null && isRawPcm && pcmDataRate != null ->
                 Pair(pcmDataRate, TelemetryProvenance.DERIVED)
             else ->
-                NerdStats.sourceBitrate(mediaId) { measuredStreamKbps(player) }
+                NerdStats.sourceBitrate(mediaId, isLossless = isLossless) { measuredStreamKbps(player) }
                     ?: Pair(null, TelemetryProvenance.UNKNOWN)
         }
 
         NerdStats.publish(NerdStats.Snapshot(
-            mimeType = dsd?.let { "audio/$it" } ?: format?.sampleMimeType,
+            mimeType = dsd?.let { "audio/$it" } ?: format.sampleMimeType,
             bitrateKbps = bitrate,
             bitrateProvenance = provenance,
             pcmDataRateKbps = if (isLossless) pcmDataRate else null,
-            sampleRateHz = dsdRateHz ?: measured?.sampleRateHz,
-            channels = measured?.channels,
-            bitDepth = if (dsd != null) 1 else if (isLossless) measured?.bitDepth else null,
+            sampleRateHz = dsdRateHz ?: measured.sampleRateHz,
+            channels = measured.channels,
+            bitDepth = if (dsd != null) 1 else if (isLossless) measured.bitDepth else null,
             claimed = NerdStats.declaredFormat(mediaId),
-            sourceName = currentSourceName(mediaId, player.currentMediaItem),
-            container = when (format?.containerMimeType) {
+            sourceName = currentSourceName(mediaId, currentItem, isLossless = isLossless, isDolbyAtmos = isDolbyAtmos),
+            container = when (format.containerMimeType) {
                 "audio/x-dsf" -> "DSF"
                 "audio/x-dff" -> "DFF"
                 else -> null
@@ -8172,7 +8309,14 @@ class PlaybackService : MediaLibraryService() {
                     val bytes = AudioCache.contentLengthOf(uri)
                     if (bytes > 0) {
                         val kbps = (bytes * 8 / durationMs).toInt()
-                        if (kbps > 0) measuredBitrateCache[key] = kbps
+                        if (kbps > 0) {
+                            measuredBitrateCache[key] = kbps
+                            withContext(Dispatchers.Main) {
+                                if (this@PlaybackService.player?.currentMediaItem?.localConfiguration?.uri?.toString() == key) {
+                                    publishNerdStats()
+                                }
+                            }
+                        }
                     }
                 } finally {
                     measuringBitrate.remove(key)
@@ -9241,6 +9385,7 @@ class PlaybackService : MediaLibraryService() {
                 // cannot publish "not exact" over the playing track's verdict.
                 isAudible = { transition === activeFilter },
             )
+            if (transition === transitionFilterA) sinkA = precision else sinkB = precision
             // In front of everything above: a track the bit-perfect output can
             // carry skips the DSP chain and Media3's sink altogether.
             return TappingAudioSink(
