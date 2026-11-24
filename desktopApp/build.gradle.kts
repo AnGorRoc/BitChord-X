@@ -13,7 +13,7 @@ val appVersion: String = providers.gradleProperty("bitchordVersionName").orNull
     ?: providers.gradleProperty("bitchord.version").orNull
     ?.removePrefix("v")
     ?.takeIf { it.isNotBlank() }
-    ?: (rootProject.extra["bitchordVersionName"] as? String ?: "1.10.0")
+    ?: (rootProject.extra["bitchordVersionName"] as? String ?: "1.10.1")
 
 /** Which platform this build is *for*, which is the host unless told otherwise. */
 val hostIsWindows = System.getProperty("os.name").contains("Windows", ignoreCase = true)
@@ -34,7 +34,7 @@ val isArm64 = hostArch == "aarch64" || hostArch == "arm64"
 // The build number is the desktop version code; it also keeps "-beta1" out of the numeric installer version.
 // Linked to the root project's bitchordVersionCode so both mobile and desktop build numbers stay synchronized.
 val desktopVersionCode = providers.gradleProperty("bitchord.desktopVersionCode").orNull?.toIntOrNull()
-    ?: (rootProject.extra["bitchordVersionCode"] as? Int ?: 43)
+    ?: (rootProject.extra["bitchordVersionCode"] as? Int ?: 44)
 val nativePackageVersion = appVersion.substringBefore('-').split('.').take(2).joinToString(".") + ".$desktopVersionCode"
 
 // FFmpeg decodes audio; see DesktopAudioDecoder.
