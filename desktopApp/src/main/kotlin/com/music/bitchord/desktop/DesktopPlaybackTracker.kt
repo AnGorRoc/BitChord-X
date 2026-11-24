@@ -1,6 +1,5 @@
 package com.music.bitchord.desktop
 
-import io.ktor.client.request.get
 import com.music.bitchord.data.innertube.Innertube
 import com.music.bitchord.data.innertube.StreamResolver
 import kotlinx.coroutines.CancellationException
