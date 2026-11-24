@@ -152,6 +152,13 @@ data class Song(
      * non-history rows (e.g. search results, library).
      */
     val feedbackToken: String? = null,
+    /**
+     * Raw YouTube Music classification when present on the endpoint config:
+     * `MUSIC_VIDEO_TYPE_ATV` (label/distributor catalogue track),
+     * `MUSIC_VIDEO_TYPE_OMV` (official artist music video),
+     * `MUSIC_VIDEO_TYPE_UGC` (user-generated upload), etc.
+     */
+    val musicVideoType: String? = null,
 ) {
     /** Legacy derived property: true if and only if [queueTier] is [QueueTier.AUTOPLAY]. */
     val fromAutoplay: Boolean get() = queueTier == QueueTier.AUTOPLAY
@@ -511,6 +518,11 @@ enum class SearchFilter(
     ALL("All", null),
     SONGS("Songs", "EgWKAQIIAWoKEAkQChAFEAMQBA=="),
     VIDEOS("Videos", "EgWKAQIQAWoKEAkQChAFEAMQBA=="),
+    /**
+     * Continuous DJ sets and enganchados (>= 12-15 min continuous mixes).
+     * Shown dynamically in search only when the active query has matching sets.
+     */
+    DJ_SETS("DJ Sets", "EgWKAQIQAWoKEAkQChAFEAMQBA=="),
     ALBUMS("Albums", "EgWKAQIYAWoKEAkQChAFEAMQBA=="),
     ARTISTS("Artists", "EgWKAQIgAWoKEAkQChAFEAMQBA=="),
     PLAYLISTS("Playlists", "EgWKAQIoAWoKEAkQChAFEAMQBA=="),
@@ -529,6 +541,18 @@ enum class LiveStation(val id: String, val query: String) {
     JAZZ("jazz", "jazz radio live"),
     CHILL("chill", "live radio music"),
     PHONK("phonk", "phonk radio 24/7"),
+}
+
+/**
+ * Explore's continuous DJ sets and enganchados categories.
+ * Strictly long-form continuous mixes and live DJ sessions (never individual remixes).
+ */
+enum class DjSetCategory(val id: String, val query: String) {
+    FEATURED("featured", "dj set live mix"),
+    ELECTRONIC("electronic", "house techno dj set boiler room cercle"),
+    CUMBIA_RKT("cumbia_rkt", "enganchado cumbia rkt cachengue dj set"),
+    REGGAETON("reggaeton", "enganchado reggaeton old school dj set mix"),
+    CLUB("club", "club continuous dj mix set fiesta"),
 }
 
 /** A card in a home-feed carousel: either a track (videoId) or an album/playlist (browseId). */

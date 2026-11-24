@@ -23,6 +23,7 @@ class SearchFilterTest {
             SearchFilter.ALL,
             SearchFilter.SONGS,
             SearchFilter.VIDEOS,
+            SearchFilter.DJ_SETS,
             SearchFilter.ALBUMS,
             SearchFilter.ARTISTS,
             SearchFilter.PLAYLISTS,
@@ -30,6 +31,13 @@ class SearchFilterTest {
         for (filter in publicFilters) {
             assertFalse("${filter.name} should not require auth", filter.requiresAuth)
         }
+    }
+
+    @Test
+    fun `dj sets filter sits directly between videos and albums`() {
+        val entries = SearchFilter.entries
+        assertEquals(entries.indexOf(SearchFilter.VIDEOS) + 1, entries.indexOf(SearchFilter.DJ_SETS))
+        assertEquals(entries.indexOf(SearchFilter.ALBUMS) - 1, entries.indexOf(SearchFilter.DJ_SETS))
     }
 
     @Test

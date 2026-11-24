@@ -84,6 +84,7 @@ import com.music.bitchord.data.model.HomeShelf
 import com.music.bitchord.data.model.MoodGenre
 import com.music.bitchord.data.model.MoodGenreSection
 import com.music.bitchord.data.model.ShelfItem
+import com.music.bitchord.data.model.DjSetCategory
 import com.music.bitchord.data.model.LiveStation
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.model.UiState
@@ -675,6 +676,12 @@ fun ExploreScreen(
     onLiveStationChange: (LiveStation) -> Unit = {},
     onBroadcastClick: ((Song) -> Unit)? = null,
     onRetryLive: () -> Unit = {},
+    /** Continuous DJ sets & enganchados; left out when [onDjSetClick] is null. */
+    djSetsState: UiState<List<Song>> = UiState.Loading,
+    djSetCategory: DjSetCategory = DjSetCategory.FEATURED,
+    onDjSetCategoryChange: (DjSetCategory) -> Unit = {},
+    onDjSetClick: ((Song) -> Unit)? = null,
+    onRetryDjSets: () -> Unit = {},
 ) {
     val isOffline = AppUi.host.isOffline()
     var showChartOptionsModal by remember { mutableStateOf(false) }
@@ -1140,6 +1147,17 @@ fun ExploreScreen(
                         onStationChange = onLiveStationChange,
                         onBroadcastClick = onBroadcastClick,
                         onRetry = onRetryLive,
+                    )
+                }
+
+                // ---- ENGANCHADOS Y DJ SETS: sesiones continuas de larga duracion ----
+                if (onDjSetClick != null && !isOffline) {
+                    djSetsSection(
+                        state = djSetsState,
+                        category = djSetCategory,
+                        onCategoryChange = onDjSetCategoryChange,
+                        onSetClick = onDjSetClick,
+                        onRetry = onRetryDjSets,
                     )
                 }
 

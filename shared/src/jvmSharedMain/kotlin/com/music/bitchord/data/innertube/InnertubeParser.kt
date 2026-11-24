@@ -22,6 +22,7 @@ import com.music.bitchord.data.model.shelfLayoutFor
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.model.SongMenu
 import com.music.bitchord.data.model.SubscriptionState
+import com.music.bitchord.data.model.TrackFilter
 import com.music.bitchord.data.model.UserPlaylist
 import com.music.bitchord.data.model.VersionPair
 import com.music.bitchord.data.model.VersionTimeMap
@@ -71,7 +72,11 @@ object InnertubeParser {
      */
     fun parseSearch(response: JsonObject): List<SearchResult> = parseSearchPage(response).rows
 
-    fun parseSearchPage(response: JsonObject, includeVideos: Boolean = false): SearchPage {
+    fun parseSearchPage(
+        response: JsonObject,
+        includeVideos: Boolean = false,
+        includeMatchingSetVideos: Boolean = false,
+    ): SearchPage {
         // The "All" tab spreads results across several shelf types (card shelf
         // for the top result, then one shelf per category). Its promoted top
         // result lives on the card itself, not in a responsive row, so read it
@@ -101,9 +106,12 @@ object InnertubeParser {
             topResults.forEach { result ->
                 when (result) {
                     is SearchResult.TopTrack -> {
-                        // The mixed All page stays music-only; music-video uploads
-                        // belong exclusively to the dedicated Videos tab.
-                        if (!result.song.isVideo && seen.add("v:${result.song.videoId}")) add(result)
+                        // The mixed All page stays music-only unless the user explicitly
+                        // searched for a DJ set/enganchado/mix, in which case matching
+                        // continuous sets stay directly in All.
+                        val keep = !result.song.isVideo ||
+                            (includeMatchingSetVideos && TrackFilter.isDjSetOrEnganchado(result.song))
+                        if (keep && seen.add("v:${result.song.videoId}")) add(result)
                     }
                     is SearchResult.Browse -> {
                         if (seen.add("b:${result.item.browseId}")) add(result)
@@ -121,9 +129,12 @@ object InnertubeParser {
                 } else {
                     val fallback = cardCredits.firstOrNull { it.first === renderer }?.second
                     parseResponsiveListItem(renderer, fallback ?: Credits())?.let { song ->
-                        // The mixed All page stays music-only; the dedicated Videos
-                        // filter is the one place music-video uploads belong.
-                        if (song.isVideo == includeVideos && seen.add("v:${song.videoId}")) {
+                        // The mixed All page stays music-only; music-video uploads
+                        // belong to the Videos tab, except continuous DJ sets/enganchados
+                        // when the user explicitly queried for sets/mixes.
+                        val keep = song.isVideo == includeVideos ||
+                            (includeMatchingSetVideos && song.isVideo && TrackFilter.isDjSetOrEnganchado(song))
+                        if (keep && seen.add("v:${song.videoId}")) {
                             add(SearchResult.Track(song))
                         }
                     }
@@ -811,6 +822,7 @@ object InnertubeParser {
 
         val thumbnails = renderer.o("thumbnail").o("musicThumbnailRenderer")
             .o("thumbnail").a("thumbnails")
+        val videoType = renderer.rowMusicVideoType()
 
         return Song(
             videoId = videoId,
@@ -845,6 +857,7 @@ object InnertubeParser {
             isExplicit = renderer.hasExplicitBadge(),
             // Extract the "Remove from history" feedback token from the row's menu, if present.
             feedbackToken = extractFeedbackToken(renderer),
+            musicVideoType = videoType,
         )
     }
 
@@ -950,6 +963,9 @@ object InnertubeParser {
         }
         val thumbnails = renderer.o("thumbnail").o("musicThumbnailRenderer")
             .o("thumbnail").a("thumbnails")
+        val videoType = renderer.o("onTap").o("watchEndpoint")
+            .o("watchEndpointMusicSupportedConfigs")
+            .o("watchEndpointMusicConfig").s("musicVideoType")
 
         return Song(
             videoId = videoId,
@@ -966,6 +982,7 @@ object InnertubeParser {
             albumName = credits.albumName,
             isVideo = rowType == "video" || thumbnails.isNotSquare(),
             isExplicit = renderer["subtitleBadges"].hasExplicitBadge(),
+            musicVideoType = videoType,
         )
     }
 
@@ -1398,6 +1415,21 @@ object InnertubeParser {
         o("navigationEndpoint").o("watchEndpoint").o("watchEndpointMusicSupportedConfigs")
             .o("watchEndpointMusicConfig").s("musicVideoType")
 
+    private fun JsonObject.rowMusicVideoType(): String? =
+        o("overlay").o("musicItemThumbnailOverlayRenderer").o("content")
+            .o("musicPlayButtonRenderer").o("playNavigationEndpoint")
+            .o("watchEndpoint").o("watchEndpointMusicSupportedConfigs")
+            .o("watchEndpointMusicConfig").s("musicVideoType")
+            ?: musicVideoType()
+            ?: a("flexColumns").orEmpty().firstNotNullOfOrNull { col ->
+                col.o("musicResponsiveListItemFlexColumnRenderer")
+                    .o("text").a("runs").orEmpty().firstNotNullOfOrNull { run ->
+                        run.o("navigationEndpoint").o("watchEndpoint")
+                            .o("watchEndpointMusicSupportedConfigs")
+                            .o("watchEndpointMusicConfig").s("musicVideoType")
+                    }
+            }
+
     private const val MUSIC_VIDEO_TYPE_ATV = "MUSIC_VIDEO_TYPE_ATV"
 
     /**
@@ -1459,12 +1491,13 @@ object InnertubeParser {
         val thumbnails = renderer.o("thumbnail").a("thumbnails")
         // Check musicVideoType first (locale-independent); fall back to widescreen
         // art or localized view counts when YouTube omits the endpoint config.
-        val isVideo = when (val type = renderer.musicVideoType()) {
+        val videoType = renderer.musicVideoType()
+        val isVideo = when (videoType) {
             MUSIC_VIDEO_TYPE_ATV,
             "MUSIC_VIDEO_TYPE_PODCAST_EPISODE",
             -> false
             null -> thumbnails.isNotSquare() || byline.any { VIEWS_TEXT.containsMatchIn(it) }
-            else -> !type.contains("PRIVATELY_OWNED", ignoreCase = true)
+            else -> !videoType.contains("PRIVATELY_OWNED", ignoreCase = true)
         }
         return Song(
             videoId = videoId,
@@ -1478,6 +1511,7 @@ object InnertubeParser {
             albumName = credits.albumName,
             isVideo = isVideo,
             isExplicit = renderer.hasExplicitBadge(),
+            musicVideoType = videoType,
         )
     }
 

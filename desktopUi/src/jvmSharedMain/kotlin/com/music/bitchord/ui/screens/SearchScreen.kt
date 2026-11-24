@@ -100,6 +100,7 @@ fun SearchScreen(
     currentSong: Song?,
     isPlaying: Boolean,
     onFilterChange: (SearchFilter) -> Unit,
+    showDjSetsFilter: Boolean = false,
     results: UiState<List<SearchResult>>?,
     loadingMore: Boolean,
     onLoadMore: () -> Unit,
@@ -270,10 +271,18 @@ fun SearchScreen(
                         }
                     }
                 }
+                val visibleFilters = remember(showDjSetsFilter, filter) {
+                    SearchFilter.entries.filter {
+                        it != SearchFilter.DJ_SETS || showDjSetsFilter || filter == SearchFilter.DJ_SETS
+                    }
+                }
+                val djSetsLabel = stringResource(Res.string.search_filter_dj_sets)
                 PillSegmentedControl(
-                    options = SearchFilter.entries.map { it.label },
-                    selectedIndex = filter.ordinal,
-                    onSelect = { onFilterChange(SearchFilter.entries[it]) },
+                    options = visibleFilters.map {
+                        if (it == SearchFilter.DJ_SETS) djSetsLabel else it.label
+                    },
+                    selectedIndex = visibleFilters.indexOf(filter).coerceAtLeast(0),
+                    onSelect = { onFilterChange(visibleFilters[it]) },
                     modifier = Modifier.padding(start = PAGE_GUTTER, end = PAGE_GUTTER, bottom = 6.dp),
                 )
             }

@@ -83,9 +83,11 @@ import com.music.bitchord.data.model.ROW_ART_PX
 import com.music.bitchord.data.model.artworkAt
 import com.music.bitchord.ui.components.prefetchArtwork
 import com.music.bitchord.data.model.Song
+import com.music.bitchord.data.model.DjSetCategory
 import com.music.bitchord.data.model.LiveStation
 import com.music.bitchord.data.model.SongMenu
 import com.music.bitchord.data.model.SubscriptionState
+import com.music.bitchord.data.model.TrackFilter
 import com.music.bitchord.data.model.UiState
 import com.music.bitchord.data.model.UserPlaylist
 import com.music.bitchord.data.model.SearchHistoryEntity
@@ -258,6 +260,15 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /** The mixed YouTube Music result page is the fast, useful default. */
     private val _filter = MutableStateFlow(SearchFilter.ALL)
     val filter: StateFlow<SearchFilter> = _filter.asStateFlow()
+
+    /**
+     * True only when the active search query has genuine continuous DJ sets / enganchados.
+     * Controls whether the dynamic DJ Sets chip appears between Videos and Albums.
+     */
+    private val _djSetsAvailable = MutableStateFlow(false)
+    val djSetsAvailable: StateFlow<Boolean> = _djSetsAvailable.asStateFlow()
+    private var djSetProbeJob: Job? = null
+    private var lastProbedDjQuery: String = ""
 
     private val _searchLoadingMore = MutableStateFlow(false)
     val searchLoadingMore: StateFlow<Boolean> = _searchLoadingMore.asStateFlow()
@@ -1843,6 +1854,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                         launch { fetchCharts(force = true) }
                         launch { fetchNewReleases(force = true) }
                         launch { fetchLive(force = true) }
+                        launch { fetchDjSets(force = true) }
                     }
                 }
                 Feed.LIBRARY -> fetchLibrary(identity)
@@ -1856,6 +1868,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     private var chartsFetchJob: Job? = null
     private var newReleasesFetchJob: Job? = null
     private var liveFetchJob: Job? = null
+    private var djSetsFetchJob: Job? = null
 
     /** The station Explore's live section is tuned to — see [LiveStation]. */
     private val _liveStation = MutableStateFlow(LiveStation.MIX)
@@ -1864,6 +1877,47 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     /** Broadcasts on the air for [liveStation]: the only live rows the app shows. */
     private val _live = MutableStateFlow<UiState<List<Song>>>(UiState.Loading)
     val live: StateFlow<UiState<List<Song>>> = _live.asStateFlow()
+
+    /** Active category for Explore's continuous DJ sets & enganchados section. */
+    private val _djSetCategory = MutableStateFlow(DjSetCategory.FEATURED)
+    val djSetCategory: StateFlow<DjSetCategory> = _djSetCategory.asStateFlow()
+
+    /** Continuous DJ sets & enganchados for [djSetCategory]. */
+    private val _djSets = MutableStateFlow<UiState<List<Song>>>(UiState.Loading)
+    val djSets: StateFlow<UiState<List<Song>>> = _djSets.asStateFlow()
+
+    fun selectDjSetCategory(category: DjSetCategory) {
+        if (_djSetCategory.value == category) return
+        _djSetCategory.value = category
+        _djSets.value = UiState.Loading
+        djSetsFetchJob?.cancel()
+        loadDjSets()
+    }
+
+    fun loadDjSets(force: Boolean = false) {
+        if (AppSettings.effectiveOffline.value) return
+        if (djSetsFetchJob?.isActive == true && !force) return
+        djSetsFetchJob = viewModelScope.launch { fetchDjSets(force) }
+    }
+
+    private suspend fun fetchDjSets(force: Boolean = false) {
+        val category = _djSetCategory.value
+        YtMusicRepository.djSets(category, force).fold(
+            onSuccess = { sets ->
+                if (_djSetCategory.value != category) return@fold
+                _djSets.value = if (sets.isNotEmpty()) {
+                    UiState.Success(sets)
+                } else {
+                    UiState.Error(text(R.string.nothing_to_explore))
+                }
+            },
+            onFailure = { failure ->
+                if (_djSetCategory.value == category && _djSets.value !is UiState.Success) {
+                    _djSets.value = UiState.Error(failure.friendly())
+                }
+            },
+        )
+    }
 
     fun selectLiveStation(station: LiveStation) {
         if (_liveStation.value == station) return
@@ -1903,6 +1957,7 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         loadCharts()
         loadNewReleases()
         loadLive()
+        loadDjSets()
         val cached = FeedCache.getExplore()
         if (!cached.isNullOrEmpty()) {
             _explore.value = UiState.Success(cached)
@@ -3087,16 +3142,77 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             // id it would be checked against has already moved past it.
             newestRequestId.incrementAndGet()
             searchPrefetchJob?.cancel()
+            djSetProbeJob?.cancel()
+            lastProbedDjQuery = ""
+            _djSetsAvailable.value = false
+            if (_filter.value == SearchFilter.DJ_SETS) {
+                _filter.value = SearchFilter.ALL
+            }
             searchSession = null
             _searchLoadingMore.value = false
             _results.value = null
             return
         }
+        probeDjSetsAvailability(query, refresh)
         val id = newestRequestId.incrementAndGet()
         _searchScrollReset.value += 1
         searchSession = null
         _searchLoadingMore.value = false
         searchRequests.tryEmit(SearchRequest(query, _filter.value, id, refresh))
+    }
+
+    /**
+     * Checks in the background whether [query] has continuous DJ sets / enganchados.
+     * Populates [searchCache] on hit so switching to [SearchFilter.DJ_SETS] is instant.
+     */
+    private fun probeDjSetsAvailability(query: String, force: Boolean) {
+        val norm = query.trim().lowercase(Locale.ROOT)
+        if (norm.isEmpty()) return
+        // When the user explicitly searches for a set, enganchado, or mix,
+        // those results stay directly in SearchFilter.ALL — do not split them
+        // into a separate DJ_SETS tab.
+        if (TrackFilter.queryRequestsDjSet(query)) {
+            djSetProbeJob?.cancel()
+            lastProbedDjQuery = norm
+            _djSetsAvailable.value = false
+            if (_filter.value == SearchFilter.DJ_SETS) {
+                _filter.value = SearchFilter.ALL
+            }
+            return
+        }
+        if (!force && norm == lastProbedDjQuery) return
+        lastProbedDjQuery = norm
+        djSetProbeJob?.cancel()
+
+        val djKey = cacheKey(query, SearchFilter.DJ_SETS)
+        val cached = searchCache.get(djKey)
+        val isFresh = cached != null &&
+            (System.currentTimeMillis() - cached.cachedAtMs) <= SEARCH_CACHE_TTL_MS
+        if (cached != null && isFresh && !force) {
+            val hasSets = cached.rows.isNotEmpty()
+            _djSetsAvailable.value = hasSets
+            if (!hasSets && _filter.value == SearchFilter.DJ_SETS) {
+                _filter.value = SearchFilter.ALL
+            }
+            return
+        }
+
+        if (_filter.value != SearchFilter.DJ_SETS) {
+            _djSetsAvailable.value = false
+        }
+        djSetProbeJob = viewModelScope.launch {
+            val result = YtMusicRepository.searchPage(query, SearchFilter.DJ_SETS, anonymous = false)
+            if (_query.value.trim().lowercase(Locale.ROOT) != norm) return@launch
+            result.onSuccess { page ->
+                searchCache.put(djKey, SearchCacheEntry(page.rows, page.continuation))
+                val hasSets = page.rows.isNotEmpty()
+                _djSetsAvailable.value = hasSets
+                if (!hasSets && _filter.value == SearchFilter.DJ_SETS) {
+                    _filter.value = SearchFilter.ALL
+                    runSearch()
+                }
+            }
+        }
     }
 
     /**
@@ -3178,7 +3294,12 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         if (_searchLoadingMore.value) return
         _searchLoadingMore.value = true
         viewModelScope.launch {
-            val next = YtMusicRepository.searchContinuation(token, session.filter, anonymous = false)
+            val next = YtMusicRepository.searchContinuation(
+                token = token,
+                filter = session.filter,
+                anonymous = false,
+                query = _query.value,
+            )
             val stillCurrent = searchSession == session && session.requestId == newestRequestId.get()
             if (stillCurrent) {
                 next.onSuccess { page ->
