@@ -487,6 +487,7 @@
     <string name="close_replay">Fermer Replay</string>
     <string name="couldnt_draw_picture">Impossible de créer l\'image</string>
     <string name="default_replay_holder">Auditeur BitChord</string>
+    <string name="default_user_name">Utilisateur</string>
     <string name="different_albums">Albums différents</string>
     <string name="genres_pending">Les genres apparaîtront à mesure que votre historique d\'écoute grandit</string>
     <string name="hour_am">%1$d AM</string>

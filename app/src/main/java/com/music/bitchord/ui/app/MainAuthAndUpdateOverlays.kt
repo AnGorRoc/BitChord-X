@@ -114,10 +114,10 @@ internal fun LyricsLoaderEffect(
 internal fun OnboardingOverlay(
     onboardingShown: MutableTransitionState<Boolean>,
     signedIn: Boolean,
-    accountName: String?,
     onSignIn: () -> Unit,
     onConnectSpotify: () -> Unit,
     onOpenSpotifyTokenSetup: () -> Unit,
+    accountName: String? = null,
 ) {
     // There from the first frame, so no way in; on the way out it drops
     // like a dismissed sheet onto the app it was standing in front of.
@@ -129,13 +129,14 @@ internal fun OnboardingOverlay(
         ) { it },
     ) {
         val spotifySpdcToken by AppSettings.spotifySpdcToken.collectAsStateWithLifecycle()
+        val currentUserName by AppSettings.userName.collectAsStateWithLifecycle()
         OnboardingScreen(
             signedIn = signedIn,
             spotifyConnected = spotifySpdcToken.isNotBlank(),
             initialName = remember {
-                ListenTogether.nickname().ifBlank { accountName.orEmpty() }
+                currentUserName.ifBlank { ListenTogether.nickname() }
             },
-            onNameChosen = ListenTogether::setNickname,
+            onNameChosen = AppSettings::setUserName,
             onSignIn = onSignIn,
             onConnectSpotify = onConnectSpotify,
             onOpenSpotifyTokenSetup = onOpenSpotifyTokenSetup,

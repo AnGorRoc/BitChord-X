@@ -178,6 +178,7 @@ enum class EqualizerMode {
 object AppSettings {
 
     private lateinit var prefs: SharedPreferences
+    private lateinit var appContext: Context
 
     /** Only for the Discord, WebDAV and SMB secrets â€” everything else on here is plain prefs. */
     private lateinit var authStore: AuthStore
@@ -563,6 +564,12 @@ object AppSettings {
      * had no onboarding, so they get it once too â€” they have no party name yet.
      */
     val onboardingComplete = MutableStateFlow(false)
+
+    /**
+     * The display name configured by the user on first launch onboarding.
+     * Used everywhere a user name is displayed, never falling back to Google.
+     */
+    val userName = MutableStateFlow("")
 
     /** Requests a sustained high-refresh UI. Off keeps Android's automatic policy. */
     val highPerformanceMode = MutableStateFlow(false)
@@ -1170,8 +1177,16 @@ object AppSettings {
      */
     fun init(context: Context, authStore: AuthStore) {
         prefs = context.getSharedPreferences("bitchord_settings", Context.MODE_PRIVATE)
+        appContext = context.applicationContext
         this.authStore = authStore
         moveSecretsOutOfSettings()
+        if (!prefs.contains(KEY_USER_NAME)) {
+            val legacyNickname = context.getSharedPreferences("listen_together", Context.MODE_PRIVATE)
+                .getString("party_nickname", null)?.trim().orEmpty()
+            if (legacyNickname.isNotBlank()) {
+                prefs.edit().putString(KEY_USER_NAME, legacyNickname).apply()
+            }
+        }
         com.music.bitchord.data.spotify.LocalPlaylistStore.init(context)
         com.music.bitchord.data.spotify.SpotifyCache.init(context)
         com.music.bitchord.data.FeedCache.init(context)
@@ -1301,6 +1316,7 @@ object AppSettings {
         reduceAnimation.value = prefs.getBoolean(KEY_REDUCE_ANIMATION, false)
         showNavLabels.value = prefs.getBoolean(KEY_NAV_LABELS, true)
         onboardingComplete.value = prefs.getBoolean(KEY_ONBOARDING_COMPLETE, false)
+        userName.value = prefs.getString(KEY_USER_NAME, "").orEmpty()
         highPerformanceMode.value = prefs.getBoolean(KEY_HIGH_PERFORMANCE_MODE, false)
         performanceRefreshRate.value = normalizePerformanceRefreshRate(
             prefs.getInt(KEY_PERFORMANCE_REFRESH_RATE, DEFAULT_PERFORMANCE_REFRESH_RATE),
@@ -1882,6 +1898,37 @@ object AppSettings {
     fun setOnboardingComplete() {
         onboardingComplete.value = true
         prefs.edit().putBoolean(KEY_ONBOARDING_COMPLETE, true).apply()
+    }
+
+    fun setUserName(value: String) {
+        val normalized = value.trim().take(80)
+        userName.value = normalized
+        if (::prefs.isInitialized) {
+            prefs.edit().putString(KEY_USER_NAME, normalized).apply()
+        }
+        runCatching {
+            com.music.bitchord.data.listentogether.ListenTogether.setNickname(normalized)
+        }
+    }
+
+    fun defaultUserName(): String = if (::appContext.isInitialized) {
+        appContext.getString(com.music.bitchord.R.string.default_user_name)
+    } else {
+        "User"
+    }
+
+    /**
+     * Resolves the user name with the priority order:
+     * 1. User name configured by the user in onboarding or settings.
+     * 2. Google account name if signed in.
+     * 3. Localized "User" ("Usuario", etc.).
+     */
+    fun resolveUserName(googleAccountName: String? = null): String {
+        val configured = userName.value.trim()
+        if (configured.isNotBlank()) return configured
+        val googleName = googleAccountName?.trim().orEmpty()
+        if (googleName.isNotBlank()) return googleName
+        return defaultUserName()
     }
 
     fun setStopOnTaskRemoved(value: Boolean) {
@@ -2925,6 +2972,7 @@ object AppSettings {
     private const val KEY_REDUCE_ANIMATION = "reduce_animation"
     private const val KEY_NAV_LABELS = "show_nav_labels"
     private const val KEY_ONBOARDING_COMPLETE = "onboarding_complete"
+    private const val KEY_USER_NAME = "user_name"
     private const val KEY_HIGH_PERFORMANCE_MODE = "high_performance_mode"
     private const val KEY_PERFORMANCE_REFRESH_RATE = "performance_refresh_rate"
     private const val KEY_STOP_ON_TASK_REMOVED = "stop_on_task_removed"

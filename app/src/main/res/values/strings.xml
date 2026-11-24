@@ -745,6 +745,7 @@
     <string name="close_replay">Close Replay</string>
     <string name="couldnt_draw_picture">Could not create the picture</string>
     <string name="default_replay_holder">BitChord listener</string>
+    <string name="default_user_name">User</string>
     <string name="different_albums">Different albums</string>
     <string name="genres_pending">Genres will appear as your listening history grows</string>
     <string name="hour_am">%1$d AM</string>

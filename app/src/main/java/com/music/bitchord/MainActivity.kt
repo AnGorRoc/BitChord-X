@@ -1067,6 +1067,13 @@ private fun BitChordApp(
     val searchSource by viewModel.searchSource.collectAsStateWithLifecycle()
     val signedIn by viewModel.signedIn.collectAsStateWithLifecycle()
     val account by viewModel.account.collectAsStateWithLifecycle()
+    val userName by AppSettings.userName.collectAsStateWithLifecycle()
+    val defaultUserLabel = stringResource(R.string.default_user_name)
+    val resolvedUserName = remember(userName, account?.name, defaultUserLabel) {
+        userName.trim().takeIf { it.isNotBlank() }
+            ?: account?.name?.trim()?.takeIf { it.isNotBlank() }
+            ?: defaultUserLabel
+    }
     val selectedChannelName by viewModel.selectedChannelName.collectAsStateWithLifecycle()
     val googleAccounts by viewModel.googleAccounts.collectAsStateWithLifecycle()
     val activeAccountId by viewModel.activeAccountId.collectAsStateWithLifecycle()
@@ -2945,7 +2952,7 @@ private fun BitChordApp(
         NowPlayingScreen(
             song = displayedSong,
             playedBy = playedBy,
-            accountName = account?.name,
+            accountName = resolvedUserName,
             windowWidth = windowWidth,
             windowHeight = windowHeight,
             // A canvas under the ⋯ menu holds still. Asked, not passed — see
@@ -3524,7 +3531,7 @@ private fun BitChordApp(
                         } else if (pageRoute == AppRoute.Replay) {
                             ReplayScreen(
                                 state = replay,
-                                holder = account?.name.orEmpty(),
+                                holder = resolvedUserName,
                                 onPeriodChange = setReplayPeriod,
                                 onOpenStory = { replayStory = it },
                                 // A track tapped on a chart is one the user already
@@ -3679,14 +3686,14 @@ private fun BitChordApp(
                             )
                         } else if (pageRoute == AppRoute.Feedback) {
                             com.music.bitchord.ui.screens.FeedbackScreen(
-                                accountName = account?.name,
+                                accountName = resolvedUserName,
                                 contentPadding = feedbackPadding,
                                 onNew = { navigator.push(AppRoute.FeedbackNew) },
                                 onOpenTicket = { navigator.push(AppRoute.FeedbackThread(it)) },
                             )
                         } else if (pageRoute == AppRoute.FeedbackNew) {
                             com.music.bitchord.ui.screens.FeedbackComposeScreen(
-                                accountName = account?.name,
+                                accountName = resolvedUserName,
                                 contentPadding = feedbackPadding,
                                 onDone = { navigator.pop() },
                             )
@@ -4051,7 +4058,7 @@ private fun BitChordApp(
                                 refreshing = MainViewModel.Feed.HOME in refreshing,
                                 pullState = homePull,
                                 contentPadding = listPadding,
-                                accountName = account?.name,
+                                accountName = resolvedUserName,
                                 artworkMotion = artworkMotion,
                                 shelfSong = shelfSong,
                                 onSignIn = { webSession = WebSessionMode.SIGN_IN },
@@ -4119,7 +4126,7 @@ private fun BitChordApp(
                                     LibraryReplayEntry(
                                         cards = replayCards,
                                         loading = replay.loading,
-                                        holder = account?.name.orEmpty(),
+                                        holder = resolvedUserName,
                                         memberSince = replay.memberSince,
                                         onOpenReplay = { page ->
                                             replayLandingPage = page
@@ -5666,7 +5673,7 @@ private fun BitChordApp(
                 ) {
                     ReplayShareSheet(
                         summary = summary,
-                        holder = account?.name.orEmpty(),
+                        holder = resolvedUserName,
                         memberSince = replay.memberSince,
                         page = replaySharePage,
                         onDismiss = { showReplayShare = false },
@@ -6241,7 +6248,6 @@ private fun BitChordApp(
         OnboardingOverlay(
             onboardingShown = onboardingShown,
             signedIn = signedIn,
-            accountName = account?.name,
             onSignIn = { webSession = WebSessionMode.SIGN_IN },
             onConnectSpotify = { showSpotifyLogin = true },
             onOpenSpotifyTokenSetup = { showSpotifyCanvasAuth = true },

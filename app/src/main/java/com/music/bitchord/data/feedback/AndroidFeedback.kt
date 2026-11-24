@@ -80,7 +80,11 @@ object AndroidFeedback {
             appVersion = BuildConfig.VERSION_NAME,
             platformLabel = "Android",
             locale = { Locale.getDefault().toLanguageTag() },
-            accountName = { prefs.getString(KEY_ACCOUNT_NAME, null) },
+            accountName = {
+                com.music.bitchord.data.settings.AppSettings.resolveUserName(
+                    prefs.getString(KEY_ACCOUNT_NAME, null),
+                )
+            },
         )
         FeedbackNotifications.createChannel(application)
         ProcessLifecycleOwner.get().lifecycle.addObserver(object : DefaultLifecycleObserver {
