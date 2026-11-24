@@ -46,4 +46,10 @@ class DesktopScrobbleTest {
         assertEquals(0.5f, DesktopScrobbleSettings.DEFAULT_DELAY_PERCENT)
         assertEquals(180, DesktopScrobbleSettings.DEFAULT_DELAY_SECONDS)
     }
+
+    @Test
+    fun listenBrainzTokenSanitization() {
+        DesktopScrobbleSettings.setListenBrainzToken("  Token test-token-12345  ")
+        assertEquals("test-token-12345", DesktopScrobbleSettings.listenBrainzToken.value)
+    }
 }
