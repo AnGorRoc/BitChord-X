@@ -362,7 +362,7 @@ internal object DesktopSpotifyToken {
         val query = buildList {
             add("reason" to "init")
             add("productType" to "web-player")
-            if (code != null && secret != null) {
+            if (code != null) {
                 add("totp" to code)
                 add("totpServer" to code)
                 add("totpVer" to secret.key.toString())

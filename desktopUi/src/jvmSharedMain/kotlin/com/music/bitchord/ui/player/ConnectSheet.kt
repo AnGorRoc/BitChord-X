@@ -620,22 +620,20 @@ private fun DeviceRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (subtitle != null) {
-                Spacer(Modifier.height(1.dp))
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (device.unreachable || device.noControl) {
-                        Color(0xFFFFB454).copy(alpha = alpha)
-                    } else if (device.controlledBy != null || device.controlling != null) {
-                        MaterialTheme.colorScheme.primary.copy(alpha = alpha)
-                    } else {
-                        Color.White.copy(alpha = 0.6f * alpha)
-                    },
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+            Spacer(Modifier.height(1.dp))
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.labelSmall,
+                color = if (device.unreachable || device.noControl) {
+                    Color(0xFFFFB454).copy(alpha = alpha)
+                } else if (device.controlledBy != null || device.controlling != null) {
+                    MaterialTheme.colorScheme.primary.copy(alpha = alpha)
+                } else {
+                    Color.White.copy(alpha = 0.6f * alpha)
+                },
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
         if (connecting) {
             CircularProgressIndicator(
