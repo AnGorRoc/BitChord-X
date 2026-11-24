@@ -884,6 +884,17 @@
     <string name="pin">Pin</string>
     <string name="unpin">Unpin</string>
     <string name="rename">Rename</string>
+    <string name="edit_cover">Edit cover</string>
+    <string name="restore_original_cover">Restore original</string>
+    <string name="edit_playlist">Edit playlist</string>
+    <string name="change_cover">Change cover</string>
+    <string name="name_label">Name</string>
+    <string name="title_logo">Title logo (PNG)</string>
+    <string name="title_logo_description">Displays the official typographic logo with transparent background</string>
+    <string name="change_logo">Change logo</string>
+    <string name="select_logo">Select PNG logo</string>
+    <string name="restore_original_title">Restore text title</string>
+    <string name="no_logo_set">No logo (using text title)</string>
     <string name="downloading">Downloading</string>
     <string name="delete_playlist">Delete playlist</string>
     <string name="delete_download">Delete download</string>

@@ -20,6 +20,8 @@ import com.music.bitchord.data.TopPicks
 import com.music.bitchord.data.CachedHomeFeed
 import com.music.bitchord.data.FeedCache
 import com.music.bitchord.data.AppleArtistPhotos
+import com.music.bitchord.data.AppleCatalogue
+import com.music.bitchord.data.canvas.AppleArtistArtRepository
 import com.music.bitchord.data.model.ArtistRef
 import com.music.bitchord.data.model.TopPick
 import com.music.bitchord.data.stats.ListeningStats
@@ -129,9 +131,9 @@ import com.music.bitchord.playback.BoundedContextRequests
 import com.music.bitchord.playback.DirectSourceGate
 import com.music.bitchord.playback.contextEntryKey
 import com.music.bitchord.ui.screens.CACHE_FOLDER_BROWSE_ID
+import com.music.bitchord.ui.screens.prewarmExploreAffinity
 import com.music.bitchord.data.LocalGroup
 import com.music.bitchord.data.LocalGroups
-import com.music.bitchord.ui.screens.prewarmExploreAffinity
 import com.music.bitchord.data.OfflinePlaylists
 import com.music.bitchord.data.matchesSearch
 import java.util.Locale
@@ -2119,13 +2121,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     prefetchArtwork(getApplication(), urls)
                 }
             }
-            delay(4_000)
-            if (!exploreRequested && exploreFetchJob?.isActive != true) {
             // Resolve the ordering keywords before the first visit, so Explore's
             // first frame already has its final order instead of reshuffling.
             runCatching { prewarmExploreAffinity() }
-                exploreFetchJob = viewModelScope.launch { fetchExplore() }
+            delay(4_000)
             if (!exploreRequested) loadLive()
+            if (!exploreRequested && exploreFetchJob?.isActive != true) {
+                exploreFetchJob = viewModelScope.launch { fetchExplore() }
             }
         }
     }
@@ -3383,7 +3385,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     return@collectLatest
                 }
                 // Cap results so the dropdown doesn't grow unbounded.
-                _typeaheadResults.value = result?.rows.orEmpty().take(TYPEAHEAD_MAX_RESULTS)
+                val typeaheadRows = result?.rows.orEmpty().take(TYPEAHEAD_MAX_RESULTS)
+                _typeaheadResults.value = typeaheadRows
+                if (typeaheadRows.isNotEmpty()) {
+                    prefetchSearchResults(typeaheadRows)
+                }
             }
     }
 
@@ -3428,14 +3434,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      */
     private fun prefetchSearchResults(rows: List<SearchResult>) {
         searchPrefetchJob?.cancel()
-        val artistIds = rows.take(SEARCH_ARTIST_PREFETCH_LIMIT)
+        val artistItems = rows.take(SEARCH_ARTIST_PREFETCH_LIMIT)
             .mapNotNull { row ->
                 (row as? SearchResult.Browse)
                     ?.item
                     ?.takeIf { browseTypeOf(it.browseId, it.type) == BrowseType.ARTIST }
-                    ?.browseId
             }
-            .distinct()
+            .distinctBy { it.browseId }
         val topSongs = rows.mapNotNull { row ->
             when (row) {
                 is SearchResult.TopTrack -> row.song
@@ -3444,13 +3449,27 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             }
         }.distinctBy { it.videoId }.take(SEARCH_SONG_PREFETCH_LIMIT)
 
-        if (artistIds.isEmpty() && topSongs.isEmpty()) return
+        if (artistItems.isEmpty() && topSongs.isEmpty()) return
 
         searchPrefetchJob = viewModelScope.launch {
-            artistIds.forEach { artistId ->
+            artistItems.forEach { item ->
                 launch {
+                    val artistId = item.browseId
+                    val artistName = item.title
                     YtMusicRepository.artistPage(artistId).onSuccess { page ->
-                        page.thumbnailUrl?.let { prefetchArtwork(getApplication(), listOf(it)) }
+                        val effectiveName = page.name ?: artistName
+                        val catalogue = AppleCatalogue.titlesOf(page)
+                        val appleArt = AppleArtistArtRepository.artFor(artistId, effectiveName) { catalogue }
+                        val finalPhoto = appleArt?.heroUrl
+                            ?: page.thumbnailUrl?.artworkAt(HEADER_ART_PX)
+                            ?: page.thumbnailUrl
+                        val urls = buildList {
+                            finalPhoto?.let { add(it) }
+                            appleArt?.logoUrl?.let { add(it) }
+                        }
+                        if (urls.isNotEmpty()) {
+                            prefetchArtwork(getApplication(), urls)
+                        }
                     }
                 }
             }
@@ -3845,24 +3864,38 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         // A fast double tap: the page is already on top, drawn from what was kept.
         if (_detailStack.value.lastOrNull()?.browseId == browseId) return
         val kept = YtMusicRepository.cachedArtist(browseId)
+        val cachedApple = AppleArtistArtRepository.cached(browseId)
+        val initialThumbnail = cachedApple?.heroUrl
+            ?: kept?.value?.thumbnailUrl?.artworkAt(HEADER_ART_PX)
+            ?: kept?.value?.thumbnailUrl
+            ?: thumbnailUrl
         _detailStack.value += DetailPage(
             browseId = browseId,
             title = title,
             subtitle = subtitle,
-            thumbnailUrl = thumbnailUrl,
+            thumbnailUrl = initialThumbnail,
             songs = UiState.Loading,
             type = BrowseType.ARTIST,
         )
-        kept?.let { applyArtistPage(browseId, thumbnailUrl, it.value, whole = it.complete) }
+        kept?.let { applyArtistPage(browseId, initialThumbnail, it.value, whole = it.complete) }
         if (kept != null && kept.complete && kept.ageMs() < YtMusicRepository.ARTIST_FRESH_MS) return
         // Only a page with nothing better on it takes a landing: one showing a
         // whole page, if an old one, would lose most of its songs to it.
         val takesLanding = kept?.complete != true
         viewModelScope.launch {
             YtMusicRepository.artistPage(browseId) { landing ->
-                if (takesLanding) applyArtistPage(browseId, thumbnailUrl, landing, whole = false)
+                if (takesLanding) applyArtistPage(browseId, initialThumbnail, landing, whole = false)
             }.fold(
-                onSuccess = { page -> applyArtistPage(browseId, thumbnailUrl, page, whole = true) },
+                onSuccess = { page ->
+                    applyArtistPage(browseId, initialThumbnail, page, whole = true)
+                    if (AppleArtistArtRepository.cached(browseId) == null) {
+                        val catalogue = AppleCatalogue.titlesOf(page)
+                        val apple = AppleArtistArtRepository.artFor(browseId, page.name ?: title) { catalogue }
+                        apple?.heroUrl?.let { hero ->
+                            applyArtistPhoto(browseId, hero)
+                        }
+                    }
+                },
                 onFailure = { error ->
                     // Whatever was kept stays up; only an empty page says it failed.
                     _detailStack.value = _detailStack.value.map {
@@ -3879,17 +3912,22 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     /** Puts [page] on every open copy of the artist [browseId]; [whole] says it is all there is. */
     private fun applyArtistPage(browseId: String, thumbnailUrl: String?, page: ArtistPage, whole: Boolean) {
+        val cachedApple = AppleArtistArtRepository.cached(browseId)
         val songsState: UiState<List<Song>>? = when {
             page.songs.isNotEmpty() -> UiState.Success(page.songs.withArtwork(thumbnailUrl ?: page.thumbnailUrl))
             // A landing with no songs may still be followed by a list that has some.
             whole -> UiState.Error(text(R.string.no_tracks_here))
             else -> null
         }
+        val targetPhoto = cachedApple?.heroUrl
+            ?: page.thumbnailUrl?.artworkAt(HEADER_ART_PX)
+            ?: page.thumbnailUrl
+            ?: thumbnailUrl
         _detailStack.value = _detailStack.value.map {
             if (it.browseId != browseId) return@map it
             it.copy(
                 title = page.name ?: it.title,
-                thumbnailUrl = page.thumbnailUrl ?: it.thumbnailUrl,
+                thumbnailUrl = targetPhoto ?: it.thumbnailUrl,
                 songs = songsState ?: it.songs,
                 sections = page.sections,
                 description = page.description ?: it.description,
@@ -3899,6 +3937,13 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             )
         }
         if (whole && page.songs.isNotEmpty()) prefetchArtistSongs(page.songs)
+    }
+
+    private fun applyArtistPhoto(browseId: String, photoUrl: String) {
+        _detailStack.value = _detailStack.value.map {
+            if (it.browseId != browseId) return@map it
+            it.copy(thumbnailUrl = photoUrl)
+        }
     }
 
     /**

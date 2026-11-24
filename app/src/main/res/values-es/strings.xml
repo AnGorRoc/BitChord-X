@@ -642,6 +642,17 @@
     <string name="pin">Fijar</string>
     <string name="unpin">Desfijar</string>
     <string name="rename">Cambiar nombre</string>
+    <string name="edit_cover">Editar portada</string>
+    <string name="restore_original_cover">Restaurar original</string>
+    <string name="edit_playlist">Editar playlist</string>
+    <string name="change_cover">Cambiar portada</string>
+    <string name="name_label">Nombre</string>
+    <string name="title_logo">Logo del título (PNG)</string>
+    <string name="title_logo_description">Muestra el logo tipográfico oficial con fondo transparente</string>
+    <string name="change_logo">Cambiar logo</string>
+    <string name="select_logo">Seleccionar logo PNG</string>
+    <string name="restore_original_title">Restaurar título original</string>
+    <string name="no_logo_set">Sin logo (se usará texto)</string>
     <string name="downloading">Descargando</string>
     <string name="delete_playlist">Eliminar playlist</string>
     <string name="delete_download">Eliminar descarga</string>

@@ -44,6 +44,8 @@ import com.music.bitchord.data.artwork.ArtworkFileDownload
 import com.music.bitchord.download.DOWNLOAD_PLAYLIST_PREFIX
 import com.music.bitchord.download.DownloadTarget
 import com.music.bitchord.download.downloadPageIdFor
+import com.music.bitchord.data.AppleCatalogue
+import com.music.bitchord.data.canvas.AppleArtistArtRepository
 import com.music.bitchord.data.TopPicks
 import com.music.bitchord.data.model.ArtistRef
 import com.music.bitchord.data.model.TopPick
@@ -5224,6 +5226,7 @@ fun BitChordDesktopApp() {
                             contentPadding = contentPadding,
                         )
                         openedArtist != null -> DesktopArtistPage(
+                            browseId = openedArtist!!.browseId,
                             state = artistState,
                             fallbackName = openedArtist!!.name,
                             onRetry = {
@@ -7134,6 +7137,7 @@ private const val LOCAL_PLAYLIST_PREFIX = "desktop-playlist:"
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun DesktopArtistPage(
+    browseId: String,
     state: UiState<ArtistPage>,
     fallbackName: String,
     onRetry: () -> Unit,
@@ -7157,7 +7161,26 @@ private fun DesktopArtistPage(
             is UiState.Success -> {
                 val artist = state.data
                 val name = artist.name?.takeIf(String::isNotBlank) ?: fallbackName
-                val palette = rememberDesktopArtworkPalette(artist.thumbnailUrl)
+
+                var appleArt by remember(browseId) {
+                    mutableStateOf(AppleArtistArtRepository.cached(browseId))
+                }
+                LaunchedEffect(browseId, name, artist.songs.size) {
+                    if (appleArt == null && artist.songs.isNotEmpty()) {
+                        val loaded = AppleArtistArtRepository.artFor(browseId, name) {
+                            AppleCatalogue.titlesOf(artist)
+                        }
+                        if (loaded != null) {
+                            appleArt = loaded
+                        }
+                    }
+                }
+
+                val bannerUrl = appleArt?.heroUrl ?: artist.bannerUrl
+                val hasBanner = !bannerUrl.isNullOrBlank()
+                val displayArtUrl = if (hasBanner) bannerUrl else artist.thumbnailUrl
+                val palette = rememberDesktopArtworkPalette(displayArtUrl ?: artist.thumbnailUrl)
+
                 // Android caps the top-songs block and pages it sideways so the release shelves are
                 // not buried under a hundred rows.
                 val top = artist.songs.take(MAX_ARTIST_SONGS)
@@ -7167,7 +7190,7 @@ private fun DesktopArtistPage(
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         item(key = "artist-header") {
-                            DesktopArtistBanner(artist.thumbnailUrl, name, palette)
+                            DesktopArtistBanner(displayArtUrl, hasBanner, name, palette)
                         }
                         item(key = "artist-actions") {
                             // The phone's artist controls: subscribing first, where saving sits on a
@@ -7268,9 +7291,20 @@ private fun DesktopArtistPage(
 
 /** The photograph, and the name across the foot of it. */
 @Composable
-private fun DesktopArtistBanner(url: String?, name: String, palette: DesktopArtworkPalette) {
-    Box(Modifier.fillMaxWidth().height(ARTIST_BANNER_HEIGHT)) {
-        DesktopArtwork(url, Modifier.matchParentSize(), px = HEADER_ART_PX)
+private fun DesktopArtistBanner(
+    url: String?,
+    isBanner: Boolean,
+    name: String,
+    palette: DesktopArtworkPalette,
+) {
+    Box(Modifier.fillMaxWidth().height(ARTIST_BANNER_HEIGHT).clipToBounds()) {
+        DesktopArtwork(
+            url = url,
+            modifier = Modifier.fillMaxWidth().matchParentSize(),
+            contentScale = ContentScale.Crop,
+            alignment = Alignment.Center,
+            px = if (isBanner) null else PLAYER_ART_PX,
+        )
         // Two washes rather than one.
         Box(
             Modifier.matchParentSize().background(

@@ -6122,6 +6122,10 @@ private fun BitChordApp(
                     browseMenuOrigin = null
                 },
                 startRenaming = browseRenameInSheet,
+                onDismiss = {
+                    browseActions = null
+                    browseRenameInSheet = false
+                },
                 onPlayNext = act(playSongsNext),
                 onAddToQueue = act(addSongsToQueue),
                 // Only on an album: a playlist already is one, and an artist
@@ -6219,6 +6223,15 @@ private fun BitChordApp(
                             ).show()
                         }
                         browseActions = null
+                    }
+                },
+                onEditCover = target.browseId?.takeIf {
+                    target.type == BrowseType.PLAYLIST || target.type == BrowseType.ALBUM ||
+                        it.startsWith(OfflinePlaylists.PREFIX) || it.startsWith("local:playlist:")
+                }?.let { id ->
+                    {
+                        browseActions = null
+                        com.music.bitchord.data.artwork.CustomArtworkStore.requestCoverEdit(id)
                     }
                 },
                 onRename = playlist?.let { p ->
@@ -6323,8 +6336,13 @@ private fun BitChordApp(
             // floating over the page: the menu hands it on, and the form comes up
             // here on a sheet of its own.
             browseActions?.takeIf { browseRenameInSheet }?.let { target ->
+                val editSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
                 ModalBottomSheet(
-                    onDismissRequest = { browseActions = null },
+                    onDismissRequest = {
+                        browseActions = null
+                        browseRenameInSheet = false
+                    },
+                    sheetState = editSheetState,
                     containerColor = com.music.bitchord.ui.theme.pageBackground(),
                 ) {
                     browseMenuBody(target)

@@ -447,6 +447,7 @@ object InnertubeParser {
         return ArtistPage(
             songs, moreSongs, shelves,
             thumbnailUrl = artistThumbnail(header),
+            bannerUrl = artistBanner(header),
             name = credit.artistName,
             description = parseDescription(response),
             subscriberCountText = subscriberCount(header),
@@ -568,6 +569,57 @@ object InnertubeParser {
             // the header rather than to the caller's album art.
             ?: collectRenderers(header, "musicThumbnailRenderer").firstOrNull()
         return renderer.o("thumbnail").a("thumbnails").best()
+    }
+
+    /**
+     * An artist's banner image off the page header, picking a widescreen or
+     * landscape background image when present.
+     */
+    private fun artistBanner(header: JsonElement?): String? {
+        if (header == null) return null
+        val visual = header.o("musicVisualHeaderRenderer")
+        val immersive = header.o("musicImmersiveHeaderRenderer")
+        val tabbed = header.o("c4TabbedHeaderRenderer")
+
+        // 1. In musicVisualHeaderRenderer, thumbnail is the background banner
+        //    (while foregroundThumbnail is the circular avatar).
+        val visualThumbnail = visual.o("thumbnail").o("musicThumbnailRenderer")
+            .o("thumbnail").a("thumbnails")
+        if (visualThumbnail != null) {
+            val best = visualThumbnail.best()
+            if (best != null) return best
+        }
+
+        // 2. In musicImmersiveHeaderRenderer, thumbnail is the full-bleed hero banner.
+        val immersiveThumbnail = immersive.o("thumbnail").o("musicThumbnailRenderer")
+            .o("thumbnail").a("thumbnails")
+        if (immersiveThumbnail != null) {
+            val best = immersiveThumbnail.best()
+            if (best != null) return best
+        }
+
+        // 3. YouTube channel headers (c4TabbedHeaderRenderer, carouselHeaderRenderer, etc.)
+        val channelBanner = (
+            tabbed.o("banner")
+                ?: tabbed.o("tvBanner")
+                ?: tabbed.o("mobileBanner")
+                ?: header.o("carouselHeaderRenderer")
+        ).a("thumbnails")
+        if (channelBanner != null) {
+            val best = channelBanner.best()
+            if (best != null) return best
+        }
+
+        // 4. Any thumbnail renderer under the header that is widescreen (not square).
+        val anyWidescreen = collectRenderers(header, "musicThumbnailRenderer")
+            .mapNotNull { it.o("thumbnail").a("thumbnails") }
+            .firstOrNull { it.isNotSquare() }
+        if (anyWidescreen != null) {
+            val best = anyWidescreen.best()
+            if (best != null) return best
+        }
+
+        return null
     }
 
     // ---- Generic / robust ---------------------------------------------------

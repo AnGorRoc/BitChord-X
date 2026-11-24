@@ -33,7 +33,7 @@ import java.util.Locale
 object AppleMusicCanvas {
 
     private const val TAG = "AppleMusicCanvas"
-    private const val AMP = "https://amp-api.music.apple.com/v1/catalog"
+    internal const val AMP = "https://amp-api.music.apple.com/v1/catalog"
     private const val WEB_PLAYER = "https://music.apple.com/us/browse"
 
     private val json = Json { ignoreUnknownKeys = true; isLenient = true }
@@ -170,14 +170,14 @@ object AppleMusicCanvas {
      * reach 25, so this only ever admits a result that matched on both, or one
      * that matched the artist plus a fuzzy title and the right album.
      */
-    private const val MIN_SCORE = 12
+    internal const val MIN_SCORE = 12
 
     /**
      * How well a search hit lines up with what's playing, or null to reject it
      * outright. Artist is a gate rather than a score: a clip credited to
      * someone else is never the right one, however well the title reads.
      */
-    private fun score(
+    internal fun score(
         song: JsonObject,
         title: String,
         artist: String,
@@ -357,7 +357,7 @@ object AppleMusicCanvas {
      * fixes nothing and makes every canvas lookup pay for the round trip.
      */
     @Synchronized
-    private fun token(): String? {
+    internal fun token(): String? {
         val now = System.currentTimeMillis()
         cachedToken?.let { if (now < tokenExpiresAtMs - 60_000) return it }
         if (now < retryTokenAfterMs) return null

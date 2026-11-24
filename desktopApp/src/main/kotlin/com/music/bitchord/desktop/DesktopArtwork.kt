@@ -12,6 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.painter.BitmapPainter
@@ -154,6 +155,7 @@ fun DesktopArtwork(
     url: String?,
     modifier: Modifier = Modifier,
     contentScale: ContentScale = ContentScale.Crop,
+    alignment: Alignment = Alignment.Center,
     contentDescription: String? = null,
     px: Int? = null,
 ) {
@@ -170,6 +172,7 @@ fun DesktopArtwork(
             painter = BitmapPainter(bitmap!!),
             contentDescription = contentDescription,
             contentScale = contentScale,
+            alignment = alignment,
             modifier = modifier,
         )
     }

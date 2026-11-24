@@ -134,6 +134,7 @@ fun BrowseActionsMenu(
      */
     isPinned: Boolean = false,
     onTogglePin: (() -> Unit)? = null,
+    onEditCover: (() -> Unit)? = null,
     onRename: ((String) -> Unit)? = null,
     /**
      * Opens the reorder page for one of the account's own playlists — set
@@ -168,17 +169,18 @@ fun BrowseActionsMenu(
      */
     onRenameInSheet: (() -> Unit)? = null,
     startRenaming: Boolean = false,
+    onDismiss: (() -> Unit)? = null,
 ) {
     var renaming by remember { mutableStateOf(startRenaming) }
     var confirmingDelete by remember { mutableStateOf(false) }
     var confirmingDeleteDownload by remember { mutableStateOf(false) }
 
-    val playlist = target.playlist
-    if (renaming && playlist != null && onRename != null) {
-        RenamePlaylistForm(
-            playlist = playlist,
+    if (renaming && (target.playlist != null || target.browseId != null)) {
+        EditReleaseForm(
+            target = target,
             onBack = { renaming = false },
             onRename = onRename,
+            onDone = onDismiss ?: { renaming = false },
             modifier = modifier,
         )
         return
@@ -292,8 +294,8 @@ fun BrowseActionsMenu(
                     onClick = it,
                 )
             }
-            if (onRename != null) {
-                ActionRow(SfIcons.Pencil, stringResource(R.string.rename)) {
+            if (onRename != null || onEditCover != null) {
+                ActionRow(SfIcons.Pencil, stringResource(R.string.edit)) {
                     if (onRenameInSheet != null) {
                         onRenameInSheet()
                     } else {

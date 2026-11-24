@@ -799,6 +799,8 @@ data class ArtistPage(
     val sections: List<HomeShelf>,
     /** The artist's own picture, off the page header. */
     val thumbnailUrl: String? = null,
+    /** The wide banner format image for the artist, when the header carries one. */
+    val bannerUrl: String? = null,
     /** The single artist this page is for, as the header bills them. */
     val name: String? = null,
     /** The artist bio YouTube Music writes for the page, when it has one. */

@@ -348,6 +348,7 @@ object BrowseCache {
         opt("moreSongsBrowseId", p.moreSongsBrowseId)
         put("sections", list(p.sections.map(::encodeShelf)))
         opt("thumbnailUrl", p.thumbnailUrl)
+        opt("bannerUrl", p.bannerUrl)
         opt("name", p.name)
         opt("description", p.description)
         opt("subscriberCountText", p.subscriberCountText)
@@ -364,6 +365,7 @@ object BrowseCache {
         moreSongsBrowseId = o.str("moreSongsBrowseId"),
         sections = o.arr("sections").map(::decodeShelf),
         thumbnailUrl = o.str("thumbnailUrl"),
+        bannerUrl = o.str("bannerUrl"),
         name = o.str("name"),
         description = o.str("description"),
         subscriberCountText = o.str("subscriberCountText"),
