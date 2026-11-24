@@ -39,7 +39,7 @@
     <string name="listen_together_away">Ausente — su plaza está reservada</string>
     <string name="listen_together_host">Anfitrión</string>
     <string name="listen_together_in_party">En una fiesta · %1$s</string>
-    <string name="listen_together_jam">Jam de %1$s</string>
+    <string name="listen_together_jam">Party de %1$s</string>
     <string name="listen_together_jam_unnamed">Escuchando juntos</string>
     <string name="listen_together_manage">Administrar</string>
     <string name="connect_title">Conectar</string>

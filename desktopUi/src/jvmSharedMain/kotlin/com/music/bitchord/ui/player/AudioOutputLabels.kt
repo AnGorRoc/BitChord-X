@@ -33,16 +33,10 @@ internal fun outputLabel(device: AudioOutputDevice, accountName: String?): Strin
  * selected route and the picker read the audio devices.
  */
 @Composable
-internal fun rememberAudioOutputName(accountName: String?): String {
+internal fun rememberAudioOutputName(accountName: String?): String? {
     val outputs = rememberAudioOutputs()
     val active = outputs.firstOrNull { it.isActive }
-        ?: return if (accountName.isNullOrBlank()) {
-            stringResource(Res.string.this_phone)
-        } else {
-            stringResource(
-                Res.string.personal_phone,
-                accountName.trim().split(Regex("\\s+")).first(),
-            )
-        }
+        ?: return null
+    if (active.kind == AudioOutputKind.PHONE) return null
     return outputLabel(active, accountName)
 }

@@ -710,7 +710,7 @@
     <string name="listen_together_reconnecting">Reconectando…</string>
     <string name="listen_together_syncing_clock">Midiendo el reloj…</string>
     <string name="listen_together_in_sync">Sincronizado · %1$d ms de ida y vuelta</string>
-    <string name="listen_together_jam">Jam de %1$s</string>
+    <string name="listen_together_jam">Party de %1$s</string>
     <string name="listen_together_jam_unnamed">Escuchando juntos</string>
     <string name="listen_together_open">Escuchar juntos</string>
     <string name="listen_together_open_count">Escuchando juntos · %1$d</string>

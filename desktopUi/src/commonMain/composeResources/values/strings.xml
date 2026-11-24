@@ -39,7 +39,7 @@
   <string name="listen_together_away">Away — their slot is held</string>
   <string name="listen_together_host">Host</string>
   <string name="listen_together_in_party">In a party · %1$s</string>
-  <string name="listen_together_jam">%1$s’s Jam</string>
+  <string name="listen_together_jam">%1$s’s Party</string>
   <string name="listen_together_jam_unnamed">Listening together</string>
   <string name="listen_together_manage">Manage</string>
   <string name="listen_together_open">Listen together</string>

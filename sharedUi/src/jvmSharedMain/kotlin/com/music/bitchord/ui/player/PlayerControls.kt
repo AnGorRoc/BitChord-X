@@ -1434,6 +1434,8 @@ internal fun OutputCaption(
     // what the line under the controls has to say, and it opens Connect to change it.
     val devices by PlayerPlatform.host.devices.collectAsStateWithLifecycle()
     val remoteName = devices.controlled?.name
+    val cast by PlayerPlatform.host.castState.collectAsStateWithLifecycle()
+    val watch by PlayerPlatform.host.watchOutput.collectAsStateWithLifecycle()
     val outputName = rememberAudioOutputName(accountName)
     val outputFormat by PlayerPlatform.host.outputFormat.collectAsStateWithLifecycle()
     // The shine means one thing: the DAC has this track to itself, bit-perfect
@@ -1445,13 +1447,24 @@ internal fun OutputCaption(
     val jamName = badge.hostFirstName
         ?.let { stringResource(Res.string.listen_together_jam, it) }
         ?: stringResource(Res.string.listen_together_jam_unnamed)
+
+    val captionText = when {
+        remoteName != null -> stringResource(Res.string.connect_playing_on, remoteName)
+        badge.inParty -> jamName
+        cast.connectedName != null -> stringResource(Res.string.connect_playing_on, cast.connectedName!!)
+        watch.active -> watch.name?.takeIf(String::isNotBlank) ?: stringResource(Res.string.watch_output)
+        else -> outputName
+    }
+
+    if (captionText == null) return
+
     val captionModifier = Modifier
         .fillMaxWidth(0.65f)
         .additiveChrome(LocalPlayerChrome.current)
         .clickable { if (remoteName != null || badge.inParty) onOpenMembers() else onOpenOutput() }
     if (remoteName == null && !badge.inParty && (outputFormat.bitPerfect || outputFormat.dacLimited)) {
         ShimmerText(
-            text = outputName,
+            text = captionText,
             style = MaterialTheme.typography.labelSmall.copy(
                 fontSize = 11.sp,
                 fontWeight = FontWeight.SemiBold,
@@ -1461,11 +1474,7 @@ internal fun OutputCaption(
         )
     } else {
         Text(
-            text = when {
-                remoteName != null -> stringResource(Res.string.connect_playing_on, remoteName)
-                badge.inParty -> jamName
-                else -> outputName
-            },
+            text = captionText,
             style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
             color = chromeWhite(0.55f),
             maxLines = 1,

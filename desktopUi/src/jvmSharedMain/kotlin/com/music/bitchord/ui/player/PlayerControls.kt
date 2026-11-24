@@ -1412,33 +1412,47 @@ internal fun OutputCaption(
     val jamName = badge.hostFirstName
         ?.let { stringResource(Res.string.listen_together_jam, it) }
         ?: stringResource(Res.string.listen_together_jam_unnamed)
+
+    val captionText = when {
+        remoteName != null -> stringResource(Res.string.connect_playing_on, remoteName)
+        badge.inParty -> jamName
+        else -> outputName
+    }
+
+    if (captionText == null) return
+
     val captionModifier = Modifier
-        .fillMaxWidth(0.65f)
+        .clip(CircleShape)
         .clickable { if (remoteName != null || badge.inParty) onOpenMembers() else onOpenOutput() }
-    if (remoteName == null && !badge.inParty && isHiResOutput) {
-        ShimmerText(
-            text = outputName,
-            style = MaterialTheme.typography.labelSmall.copy(
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
+        .padding(horizontal = 14.dp, vertical = 5.dp)
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth(0.70f)
+            .height(20.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (remoteName == null && !badge.inParty && isHiResOutput) {
+            ShimmerText(
+                text = captionText,
+                style = MaterialTheme.typography.labelSmall.copy(
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center,
+                ),
+                modifier = captionModifier,
+            )
+        } else {
+            Text(
+                text = captionText,
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
+                color = LocalPlayerTint.current.copy(alpha = 0.55f),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 textAlign = TextAlign.Center,
-            ),
-            modifier = captionModifier,
-        )
-    } else {
-        Text(
-            text = when {
-                remoteName != null -> stringResource(Res.string.connect_playing_on, remoteName)
-                badge.inParty -> jamName
-                else -> outputName
-            },
-            style = MaterialTheme.typography.labelSmall.copy(fontSize = 11.sp),
-            color = LocalPlayerTint.current.copy(alpha = 0.55f),
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-            textAlign = TextAlign.Center,
-            modifier = captionModifier,
-        )
+                modifier = captionModifier,
+            )
+        }
     }
 }
 

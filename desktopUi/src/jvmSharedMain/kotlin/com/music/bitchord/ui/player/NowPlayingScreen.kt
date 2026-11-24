@@ -1601,7 +1601,7 @@ fun NowPlayingScreen(
         Spacer(Modifier.height(18.dp))
         Box(
             modifier = Modifier.fillMaxWidth().height(20.dp),
-            contentAlignment = Alignment.TopCenter,
+            contentAlignment = Alignment.Center,
         ) {
             OutputCaption(
                 accountName = accountName,
@@ -1989,7 +1989,7 @@ fun NowPlayingScreen(
                     outputCaption = {
                         Box(
                             modifier = Modifier.fillMaxWidth().height(20.dp),
-                            contentAlignment = Alignment.TopCenter,
+                            contentAlignment = Alignment.Center,
                         ) {
                             OutputCaption(
                                 accountName = accountName,

@@ -867,7 +867,7 @@
     <string name="listen_together_reconnecting">Reconnecting…</string>
     <string name="listen_together_syncing_clock">Measuring the clock…</string>
     <string name="listen_together_in_sync">In sync · %1$d ms round trip</string>
-    <string name="listen_together_jam">%1$s’s Jam</string>
+    <string name="listen_together_jam">%1$s’s Party</string>
     <string name="listen_together_jam_unnamed">Listening together</string>
     <string name="listen_together_open">Listen together</string>
     <string name="listen_together_open_count">Listening together · %1$d</string>
