@@ -20,7 +20,6 @@ import okhttp3.Request
 import java.io.IOException
 import java.util.Collections
 import java.util.Locale
-import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 
 private const val TAG = "BitChord"

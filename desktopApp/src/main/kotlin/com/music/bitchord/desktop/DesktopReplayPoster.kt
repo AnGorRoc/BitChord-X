@@ -14,7 +14,6 @@ import java.awt.datatransfer.UnsupportedFlavorException
 import java.awt.image.BufferedImage
 import java.io.File
 import javax.imageio.ImageIO
-import kotlin.math.roundToInt
 
 /**
  * Renders a high-resolution 1080x1920 shareable poster of the listener's Replay stats.

@@ -1,7 +1,6 @@
 package com.music.bitchord.playback.smart
 
 import kotlin.math.PI
-import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min

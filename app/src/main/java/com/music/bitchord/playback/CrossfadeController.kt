@@ -46,7 +46,6 @@ import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.ceil
 import kotlin.math.cos
-import kotlin.math.max
 import kotlin.math.pow
 import kotlin.math.round
 import kotlin.math.roundToInt

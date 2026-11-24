@@ -3,25 +3,9 @@ package com.music.bitchord.desktop
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.NerdStats
 import com.music.bitchord.data.innertube.StreamResolver
-import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
-import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
-import kotlinx.serialization.json.put
-import kotlinx.serialization.json.putJsonObject
 import java.net.URI
-import java.net.http.HttpRequest
-import java.net.http.HttpResponse
-import java.time.Duration
-import java.util.concurrent.atomic.AtomicBoolean
 
 data class DesktopPlaybackState(
     val song: Song? = null,

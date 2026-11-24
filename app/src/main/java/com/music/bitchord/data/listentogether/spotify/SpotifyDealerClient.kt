@@ -4,7 +4,6 @@ import com.music.bitchord.data.DebugLog as Log
 import com.music.bitchord.data.canvas.SpotifyToken
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
-import io.ktor.client.plugins.websocket.DefaultClientWebSocketSession
 import io.ktor.client.plugins.websocket.WebSockets
 import io.ktor.client.plugins.websocket.webSocket
 import io.ktor.websocket.Frame

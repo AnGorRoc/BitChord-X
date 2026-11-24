@@ -3,7 +3,6 @@ package com.music.bitchord
 import com.music.bitchord.data.model.ArtistCredit
 import com.music.bitchord.data.model.ArtistNameIndex
 import com.music.bitchord.data.model.ArtistRef
-import com.music.bitchord.data.model.completeArtistCredits
 import com.music.bitchord.data.model.creditSegments
 import com.music.bitchord.data.scrobbling.primaryArtist
 import com.music.bitchord.ui.player.artistCredits

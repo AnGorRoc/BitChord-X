@@ -12,14 +12,8 @@ import com.music.bitchord.data.model.ArtistCredit
 import com.music.bitchord.data.model.CreditSegment
 import com.music.bitchord.data.model.creditSegments
 import com.music.bitchord.sharedui.resources.*
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.tween
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.produceState
 import androidx.compose.ui.graphics.Shape
-import com.music.bitchord.playback.PlaybackPosition
 import com.music.bitchord.ui.components.MenuFrostDark
 import com.music.bitchord.ui.components.liveMenuFrost
 import dev.chrisbanes.haze.HazeState

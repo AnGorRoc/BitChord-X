@@ -1,6 +1,5 @@
 package com.music.bitchord.desktop
 
-import com.music.bitchord.data.lyrics.TRANSLATION_LANGUAGES
 import com.music.bitchord.data.lyrics.translationLanguageName
 
 import java.util.Locale

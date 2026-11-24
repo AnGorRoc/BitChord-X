@@ -12,7 +12,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.music.bitchord.data.TrackLog
-import com.music.bitchord.data.model.ArtistRef
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.sources.MonochromeGate
 import com.music.bitchord.data.sources.SkipPace

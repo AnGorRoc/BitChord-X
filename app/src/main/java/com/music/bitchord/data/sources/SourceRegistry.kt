@@ -3,7 +3,6 @@ package com.music.bitchord.data.sources
 import android.content.Context
 import android.content.SharedPreferences
 import android.net.Uri
-import android.util.Log
 import com.music.bitchord.R
 import com.music.bitchord.auth.EncryptedPrefs
 import com.music.bitchord.data.TrackLog

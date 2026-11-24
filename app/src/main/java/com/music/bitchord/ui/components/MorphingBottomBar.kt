@@ -9,7 +9,6 @@ import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.CircularProgressIndicator
 import com.music.bitchord.ui.components.rememberRemoteArtworkUrl
-import androidx.compose.animation.core.Spring
 import androidx.compose.ui.unit.lerp
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight

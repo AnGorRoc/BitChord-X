@@ -4,7 +4,6 @@ import android.content.Intent
 import android.graphics.Bitmap
 import androidx.annotation.StringRes
 import androidx.compose.ui.draw.blur
-import com.music.bitchord.data.canvas.CanvasArtwork
 import com.music.bitchord.data.canvas.CanvasRepository
 import com.music.bitchord.data.canvas.CanvasSource
 import com.music.bitchord.ui.screens.SegmentedControl

@@ -1,6 +1,5 @@
 package com.music.bitchord.ui.tv.auth
 
-import android.content.Context
 import android.util.Log
 import com.music.bitchord.data.YtMusicRepository
 import com.music.bitchord.data.model.SearchFilter

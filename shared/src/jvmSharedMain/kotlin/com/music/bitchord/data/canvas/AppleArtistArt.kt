@@ -13,7 +13,6 @@ import okhttp3.Request
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.URLEncoder
-import java.util.Locale
 
 /**
  * What Apple Music's artist page shows at the top: a hero photograph, usually
