@@ -3039,7 +3039,7 @@ fun BitChordDesktopApp() {
             LibraryLink(
                 item = ShelfItem(
                     title = "WebDAV",
-                    subtitle = "Remote WebDAV music folder",
+                    subtitle = DesktopStrings["d_webdav_folder", "Remote WebDAV music folder"],
                     thumbnailUrl = null,
                     videoId = null,
                     browseId = "remote:webdav",
@@ -3049,7 +3049,7 @@ fun BitChordDesktopApp() {
             LibraryLink(
                 item = ShelfItem(
                     title = "SMB Share",
-                    subtitle = "Network share music folder",
+                    subtitle = DesktopStrings["d_smb_folder", "Network share music folder"],
                     thumbnailUrl = null,
                     videoId = null,
                     browseId = "remote:smb",
@@ -5559,8 +5559,8 @@ fun BitChordDesktopApp() {
                                 onSongClick = { playSong(it, source = DesktopQueueSource("WebDAV", PlaybackSourceType.BROWSE)) },
                                 contentPadding = contentPadding,
                                 title = "WebDAV",
-                                subtitle = "Remote WebDAV music folder",
-                                emptyTitle = "No WebDAV music found",
+                                subtitle = DesktopStrings["d_webdav_folder", "Remote WebDAV music folder"],
+                                emptyTitle = DesktopStrings["d_webdav_empty", "No WebDAV music found"],
                                 emptyDescription = "Configure your WebDAV server and check the connection.",
                                 persistenceKey = "webdav",
                                 menu = { song -> songMenu(song) },
@@ -5574,9 +5574,9 @@ fun BitChordDesktopApp() {
                                 songs = smbSongs,
                                 onSongClick = { playSong(it, source = DesktopQueueSource("SMB", PlaybackSourceType.BROWSE)) },
                                 contentPadding = contentPadding,
-                                title = "SMB / Windows Share",
-                                subtitle = "Network share music folder",
-                                emptyTitle = "No SMB music found",
+                                title = DesktopStrings["d_remote_library_smb_title", "SMB / Windows Share"],
+                                subtitle = DesktopStrings["d_smb_folder", "Network share music folder"],
+                                emptyTitle = DesktopStrings["d_smb_empty", "No SMB music found"],
                                 emptyDescription = "Configure your SMB network share and check the connection.",
                                 persistenceKey = "smb",
                                 menu = { song -> songMenu(song) },
@@ -6484,7 +6484,7 @@ private fun DesktopSidebar(
                     if (visibleAccount.isEmpty() && visibleLocal.isEmpty()) {
                         item {
                             Text(
-                                "Your playlists will appear here",
+                                DesktopStrings["d_empty_playlists", "Your playlists will appear here"],
                                 modifier = Modifier.padding(horizontal = 9.dp, vertical = 8.dp),
                                 color = DesktopSecondary.copy(alpha = 0.68f),
                                 style = MaterialTheme.typography.bodySmall,

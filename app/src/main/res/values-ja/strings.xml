@@ -923,7 +923,7 @@
 
 
 
-    <string name="lyrics_offset">Lyrics offset</string>
+    <string name="lyrics_offset">歌詞のオフセット</string>
 
 
 
@@ -1327,10 +1327,10 @@
     <string name="yt_export_failed_other">「%1$s」をエクスポートできませんでした: %2$s</string>
     <string name="enable_monochrome">Monochrome を有効にしますか？</string>
     <string name="monochrome_opt_in_warning">再生する曲ごとのタイトルとアーティスト、およびお使いの IP アドレスを、非公式のサードパーティサービスである Monochrome に送り、ロスレスのコピーを探します。自己責任で有効にしてください。</string>
-    <string name="save_as_playlist">Save as playlist</string>
-    <string name="save_queue_as_playlist">Save queue as playlist</string>
-    <string name="save_radio_as_playlist">Save radio as playlist</string>
-    <string name="playlist_created">Playlist created: %1$s</string>
+    <string name="save_as_playlist">プレイリストとして保存</string>
+    <string name="save_queue_as_playlist">キューをプレイリストとして保存</string>
+    <string name="save_radio_as_playlist">ラジオをプレイリストとして保存</string>
+    <string name="playlist_created">プレイリストを作成しました: %1$s</string>
     <string name="auto_download_playlists">プレイリストの新曲を自動ダウンロード</string>
     <string name="cover_save_failed">カバーアートを保存できませんでした</string>
     <string name="cover_saved">%1$s を保存しました</string>
@@ -1577,10 +1577,10 @@
     <string name="listen_together_scan_spotify_jam_qr">Spotify Jam QRをスキャン</string>
     <string name="listen_together_scan_spotify_jam_subtitle">SpotifyユーザーはSpotifyアプリのカメラでこのコードをスキャンできます</string>
     <string name="listen_together_spotify_members">Spotify Jamメンバー</string>
-    <string name="created_by_bitchord">Created by BitChord</string>
+    <string name="created_by_bitchord">BitChordで作成</string>
     <string name="trending_title">Trending</string>
     <string name="region_global">Global</string>
-    <string name="region_auto">Automatic (IP)</string>
+    <string name="region_auto">自動 (IP)</string>
     <string name="listen_together_you_header">あなた</string>
     <string name="listen_together_you_footer">あなたの名前は、パーティーで他の人に表示される名前です。デバイス名は、「接続」で他のデバイスと並んで表示されるこのデバイスの名前です。</string>
     <string name="listen_together_your_name">パーティーでの名前</string>
@@ -1843,8 +1843,8 @@
     <string name="drive_over_cellular_subtitle">オフの場合、自動同期は Wi-Fi 接続を待ちます</string>
     <string name="show_best_part">Best Part button</string>
     <string name="show_best_part_subtitle">A button on the artwork that skips to the part of the song people replay most</string>
-    <string name="disable_spotify_canvas">Disable Spotify Canvas</string>
-    <string name="disable_spotify_canvas_subtitle">Never use Spotify Canvas. Animated artwork comes only from Apple Music</string>
+    <string name="disable_spotify_canvas">Spotify Canvasを無効化</string>
+    <string name="disable_spotify_canvas_subtitle">Spotify Canvasを使用しません。アニメーションアートワークはApple Musicからのみ取得されます</string>
     <string name="lyrics_share_canvas">Canvas</string>
     <string name="lyrics_share_video">Video</string>
     <string name="lyrics_share_image">Image</string>
@@ -1852,15 +1852,15 @@
     <string name="lyrics_share_gradient">Gradient</string>
     <string name="lyrics_share_apple_canvas">Apple</string>
     <string name="lyrics_share_spotify_canvas">Spotify</string>
-    <string name="lyrics_share_show_logo">Show BitChord logo</string>
-    <string name="youtube_premium_audio">YouTube Premium Audio</string>
-    <string name="youtube_premium_audio_subtitle">Request 256 kbps Opus stream for Premium accounts</string>
-    <string name="replay_year_open">Open your Replay %1$s</string>
-    <string name="replay_year_building">Building your year…</string>
+    <string name="lyrics_share_show_logo">BitChordロゴを表示</string>
+    <string name="youtube_premium_audio">YouTube Premium オーディオ</string>
+    <string name="youtube_premium_audio_subtitle">Premiumアカウント向けに256 kbpsのOpusストリームをリクエスト</string>
+    <string name="replay_year_open">Replay %1$s を開く</string>
+    <string name="replay_year_building">あなたの1年を振り返っています…</string>
     <string name="replay_year_opener_start">Your</string>
-    <string name="replay_year_opener_end">in BitChord</string>
-    <string name="replay_year_opener_detail">Let’s look back at what you played.</string>
-    <string name="replay_year_minutes_start">This year you listened for</string>
+    <string name="replay_year_opener_end">BitChordで</string>
+    <string name="replay_year_opener_detail">あなたが聴いた音楽を振り返りましょう。</string>
+    <string name="replay_year_minutes_start">今年あなたが音楽を聴いた時間:</string>
     <plurals name="replay_year_minutes_word">
         <item quantity="one">minute</item>
         <item quantity="other">minutes</item>
@@ -1869,33 +1869,33 @@
     <string name="replay_year_minutes_days_value">%1$s days</string>
     <string name="replay_year_minutes_hours_value">%1$s hours</string>
     <string name="replay_year_minutes_days_end">of music.</string>
-    <string name="replay_year_busiest_start">Your biggest day was</string>
-    <string name="replay_year_busiest_minutes">%1$s minutes of music in one day</string>
-    <string name="replay_year_busiest_song">Mostly %1$s</string>
-    <string name="replay_year_clock_start">You came alive around</string>
+    <string name="replay_year_busiest_start">最も多く聴いた日:</string>
+    <string name="replay_year_busiest_minutes">1日で%1$s分の音楽</string>
+    <string name="replay_year_busiest_song">主に %1$s</string>
+    <string name="replay_year_clock_start">あなたが最も音楽を聴いた時間帯:</string>
     <string name="replay_year_night_owl">Night Owl</string>
-    <string name="replay_year_night_owl_detail">So much of your listening happened after 10 pm.</string>
-    <string name="replay_year_early_bird">Early Riser</string>
-    <string name="replay_year_early_bird_detail">Your days started with music before 10 am.</string>
-    <string name="replay_year_golden_hour">Golden Hour</string>
-    <string name="replay_year_golden_hour_detail">Evenings were when the music came out.</string>
-    <string name="replay_year_daytime">Daytime Drifter</string>
-    <string name="replay_year_daytime_detail">You kept the music going through the day.</string>
-    <string name="replay_year_all_day">Around the Clock</string>
-    <string name="replay_year_all_day_detail">Morning, noon or night, something was playing.</string>
-    <string name="replay_year_genres_start">Your sound this year</string>
-    <string name="replay_year_artist_start">Your top artist this year was…</string>
-    <string name="replay_year_minutes_together">%1$s minutes together</string>
-    <string name="replay_year_top_artists">Your top artists</string>
-    <string name="replay_year_song_start">And your song of the year…</string>
+    <string name="replay_year_night_owl_detail">音楽を聴いた時間の多くは午後10時以降でした。</string>
+    <string name="replay_year_early_bird">早起き鳥</string>
+    <string name="replay_year_early_bird_detail">午前10時前には音楽とともに1日が始まっていました。</string>
+    <string name="replay_year_golden_hour">ゴールデンアワー</string>
+    <string name="replay_year_golden_hour_detail">夕暮れどきが一番音楽を楽しんだ時間でした。</string>
+    <string name="replay_year_daytime">デイタイムリスナー</string>
+    <string name="replay_year_daytime_detail">日中を通してずっと音楽を流していました。</string>
+    <string name="replay_year_all_day">オールデイ</string>
+    <string name="replay_year_all_day_detail">朝も昼も夜も、いつでも音楽が流れていました。</string>
+    <string name="replay_year_genres_start">今年のあなたのサウンド</string>
+    <string name="replay_year_artist_start">今年のトップアーティストは…</string>
+    <string name="replay_year_minutes_together">一緒に過ごした時間: %1$s分</string>
+    <string name="replay_year_top_artists">トップアーティスト</string>
+    <string name="replay_year_song_start">そして、あなたの今年の曲は…</string>
     <plurals name="replay_year_played_times">
         <item quantity="one">Played %1$s time</item>
         <item quantity="other">Played %1$s times</item>
     </plurals>
-    <string name="replay_year_top_songs">The rest of your top songs</string>
-    <string name="replay_year_albums">Albums you lived in</string>
-    <string name="replay_year_months">Your year, month by month</string>
-    <string name="replay_year_discovery_start">This year you explored</string>
+    <string name="replay_year_top_songs">その他のトップソング</string>
+    <string name="replay_year_albums">あなたの心に残ったアルバム</string>
+    <string name="replay_year_months">月ごとのあなたの1年</string>
+    <string name="replay_year_discovery_start">今年あなたが発見した音楽</string>
     <plurals name="replay_year_songs_word">
         <item quantity="one">song</item>
         <item quantity="other">songs</item>
@@ -1909,14 +1909,27 @@
         <item quantity="other">albums</item>
     </plurals>
     <string name="replay_year_summary_title">Your %1$s</string>
-    <string name="replay_year_summary_artists">Top artists</string>
+    <string name="replay_year_summary_artists">トップアーティスト</string>
     <string name="replay_year_summary_songs">Top songs</string>
-    <string name="replay_year_summary_minutes">Minutes listened</string>
-    <string name="replay_year_mute">Mute the story</string>
-    <string name="replay_year_unmute">Unmute the story</string>
-    <string name="automix_model_downloading">Downloading the Automix model: %1$d%%</string>
-    <string name="automix_model_failed">The Automix model could not be downloaded. Turn Automix off and on to try again.</string>
-    <string name="listen_together_own_device_dialog_title">Party on your device</string>
-    <string name="listen_together_own_device_dialog_message">Your device “%1$s” is already in this party. Connect to it via Connect to control playback or listen together.</string>
+    <string name="replay_year_summary_minutes">再生時間(分)</string>
+    <string name="replay_year_mute">ストーリーをミュート</string>
+    <string name="replay_year_unmute">ストーリーのミュートを解除</string>
+    <string name="automix_model_downloading">Automixモデルをダウンロード中: %1$d%%</string>
+    <string name="automix_model_failed">Automixモデルをダウンロードできませんでした。Automixをオフにしてから再度オンにしてください。</string>
+    <string name="listen_together_own_device_dialog_title">お使いのデバイスでのパーティー</string>
+    <string name="listen_together_own_device_dialog_message">お使いのデバイス「%1$s」はすでにこのパーティーに参加しています。Connect経由で接続して再生を操作するか一緒に聴きましょう。</string>
     <string name="listen_together_connect_action">Connect</string>
+
+    <string name="change_cover">カバーを変更</string>
+    <string name="change_logo">ロゴを変更</string>
+    <string name="edit_cover">カバーを編集</string>
+    <string name="edit_playlist">プレイリストを編集</string>
+    <string name="name_label">名前</string>
+    <string name="no_logo_set">ロゴなし (テキストタイトルを使用)</string>
+    <string name="restore_original_cover">オリジナルに戻す</string>
+    <string name="restore_original_title">テキストタイトルに戻す</string>
+    <string name="select_logo">PNGロゴを選択</string>
+    <string name="title_logo">タイトルロゴ (PNG)</string>
+    <string name="title_logo_description">透明な背景を持つ公式タイポグラフィロゴを表示します</string>
+    <string name="sign_in_discord">Discordにログイン</string>
 </resources>

@@ -373,4 +373,16 @@
   <string name="daily_topic_reggaeton_duro">硬核雷鬼动</string>
   <string name="daily_topic_hiphop_clasico">经典嘻哈</string>
   <string name="daily_topic_previa_bailable">派对前热场</string>
+
+    <string name="dj_sets_title">DJ 演出与混音</string>
+    <string name="dj_sets_subtitle">不间断连续混音与现场俱乐部演出</string>
+    <string name="dj_sets_badge">DJ SET</string>
+    <string name="search_filter_dj_sets">DJ 演出</string>
+    <string name="dj_set_cat_featured">精选</string>
+    <string name="dj_set_cat_electronic">电子</string>
+    <string name="dj_set_cat_cumbia_rkt">坎比亚与 RKT</string>
+    <string name="dj_set_cat_club">俱乐部与派对</string>
+    <string name="dj_set_cat_reggaeton">雷鬼动</string>
+    <string name="featured_badge">精选</string>
+    <string name="special_mix">特别混音</string>
 </resources>

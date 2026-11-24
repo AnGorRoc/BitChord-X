@@ -370,4 +370,16 @@
     <string name="daily_topic_reggaeton_duro">ハード・レゲトン</string>
     <string name="daily_topic_hiphop_clasico">クラシック・ヒップホップ</string>
     <string name="daily_topic_previa_bailable">パーティー前のビート</string>
+
+    <string name="dj_sets_title">DJセット＆ミックス</string>
+    <string name="dj_sets_subtitle">ノンストップの連続ミックスとライブクラブセッション</string>
+    <string name="dj_sets_badge">DJ SET</string>
+    <string name="search_filter_dj_sets">DJセット</string>
+    <string name="dj_set_cat_featured">注目</string>
+    <string name="dj_set_cat_electronic">エレクトロニック</string>
+    <string name="dj_set_cat_cumbia_rkt">クンビア＆RKT</string>
+    <string name="dj_set_cat_club">クラブ＆パーティー</string>
+    <string name="dj_set_cat_reggaeton">レゲトン</string>
+    <string name="featured_badge">注目</string>
+    <string name="special_mix">スペシャルミックス</string>
 </resources>

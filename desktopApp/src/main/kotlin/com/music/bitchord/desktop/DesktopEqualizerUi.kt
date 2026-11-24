@@ -140,9 +140,9 @@ internal fun DesktopEqualizerDialog(onDismiss: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("ReplayGain", style = MaterialTheme.typography.titleMedium, color = Color.White)
+                    Text(DesktopStrings["d_equalizer_replaygain", "ReplayGain"], style = MaterialTheme.typography.titleMedium, color = Color.White)
                     Text(
-                        "Automatically equalizes the perceived loudness between songs",
+                        DesktopStrings["d_equalizer_replaygain_desc", "Automatically equalizes the perceived loudness between songs"],
                         style = MaterialTheme.typography.bodySmall,
                         color = DesktopSecondary,
                     )
@@ -161,12 +161,12 @@ internal fun DesktopEqualizerDialog(onDismiss: () -> Unit) {
                     DesktopChip(
                         selected = !replayGainAlbum,
                         onClick = { DesktopEqualizerSettings::setReplayGainAlbum.invoke(false) },
-                        label = "Track Gain",
+                        label = DesktopStrings["d_equalizer_track_gain", "Track Gain"],
                     )
                     DesktopChip(
                         selected = replayGainAlbum,
                         onClick = { DesktopEqualizerSettings::setReplayGainAlbum.invoke(true) },
-                        label = "Album Gain",
+                        label = DesktopStrings["d_equalizer_album_gain", "Album Gain"],
                     )
                 }
                 Column(Modifier.fillMaxWidth().padding(horizontal = panelInset(22.dp), vertical = 6.dp)) {
@@ -185,7 +185,7 @@ internal fun DesktopEqualizerDialog(onDismiss: () -> Unit) {
                     Modifier.fillMaxWidth().padding(horizontal = panelInset(22.dp), vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("Prevent Clipping", style = MaterialTheme.typography.bodyMedium, color = Color.White, modifier = Modifier.weight(1f))
+                    Text(DesktopStrings["d_equalizer_prevent_clipping", "Prevent Clipping"], style = MaterialTheme.typography.bodyMedium, color = Color.White, modifier = Modifier.weight(1f))
                     Switch(
                         checked = replayGainPreventClipping,
                         onCheckedChange = DesktopEqualizerSettings::setReplayGainPreventClipping,
@@ -213,7 +213,7 @@ internal fun DesktopEqualizerDialog(onDismiss: () -> Unit) {
                     valueRange = 0f..1f,
                 )
                 Spacer(Modifier.height(6.dp))
-                Text("DSP Algorithm:", style = MaterialTheme.typography.bodySmall, color = DesktopSecondary)
+                Text(DesktopStrings["d_equalizer_dsp_algorithm", "DSP Algorithm:"], style = MaterialTheme.typography.bodySmall, color = DesktopSecondary)
                 Spacer(Modifier.height(4.dp))
                 Row(
                     Modifier.fillMaxWidth(),

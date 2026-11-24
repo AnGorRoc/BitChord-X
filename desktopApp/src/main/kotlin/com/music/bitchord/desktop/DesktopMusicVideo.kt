@@ -101,7 +101,7 @@ fun DesktopMusicVideoView(
                 }
             } else {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    Text("Loading video...", color = Color.White.copy(alpha = 0.5f))
+                    Text(DesktopStrings["d_video_loading", "Loading video..."], color = Color.White.copy(alpha = 0.5f))
                 }
             }
         }

@@ -373,4 +373,16 @@
   <string name="daily_topic_reggaeton_duro">רגאטון כבד</string>
   <string name="daily_topic_hiphop_clasico">היפ-הופ קלאסי</string>
   <string name="daily_topic_previa_bailable">ביטים לפני המסיבה</string>
+
+    <string name="dj_sets_title">סטים ומיקסים של דיג'יי</string>
+    <string name="dj_sets_subtitle">מיקסים רציפים ללא הפסקה וסשנים חיים ממועדונים</string>
+    <string name="dj_sets_badge">DJ SET</string>
+    <string name="search_filter_dj_sets">סטים של דיג'יי</string>
+    <string name="dj_set_cat_featured">מומלצים</string>
+    <string name="dj_set_cat_electronic">אלקטרוני</string>
+    <string name="dj_set_cat_cumbia_rkt">קומביה ו-RKT</string>
+    <string name="dj_set_cat_club">מועדונים ומסיבות</string>
+    <string name="dj_set_cat_reggaeton">רגאטון</string>
+    <string name="featured_badge">מומלץ</string>
+    <string name="special_mix">מיקס מיוחד</string>
 </resources>

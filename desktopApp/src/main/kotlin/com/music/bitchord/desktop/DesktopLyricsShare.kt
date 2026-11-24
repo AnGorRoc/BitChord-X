@@ -224,7 +224,7 @@ fun DesktopLyricsShareDialog(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        "Share Lyrics",
+                        DesktopStrings["d_lyrics_share_title", "Share Lyrics"],
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
@@ -252,7 +252,7 @@ fun DesktopLyricsShareDialog(
                             modifier = Modifier.fillMaxSize(),
                         )
                     } else {
-                        Text("Rendering...", color = Color.White.copy(alpha = 0.5f))
+                        Text(DesktopStrings["d_lyrics_share_rendering", "Rendering..."], color = Color.White.copy(alpha = 0.5f))
                     }
                 }
 
@@ -292,7 +292,7 @@ fun DesktopLyricsShareDialog(
                     ) {
                         Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Save PNG")
+                        Text(DesktopStrings["d_lyrics_share_save_png", "Save PNG"])
                     }
                 }
             }

@@ -328,7 +328,7 @@ internal fun DiscordSignInWebViewOverlay(
                     )
                 }
                 Text(
-                    "Sign in to Discord",
+                    stringResource(R.string.sign_in_discord),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onBackground,
                 )

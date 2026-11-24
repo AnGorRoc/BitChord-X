@@ -1033,7 +1033,7 @@ private fun HeroBillboardSpotlight(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "DESTACADO",
+                text = stringResource(Res.string.featured_badge),
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
@@ -1084,7 +1084,7 @@ private fun HeroBillboardSpotlight(
                     modifier = Modifier.size(18.dp),
                 )
                 Text(
-                    text = "Reproducir",
+                    text = stringResource(Res.string.play),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     color = Color.Black,

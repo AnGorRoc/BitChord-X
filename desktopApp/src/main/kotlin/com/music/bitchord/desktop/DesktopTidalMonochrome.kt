@@ -224,7 +224,7 @@ internal fun DesktopTidalInstancesSection() {
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                "Lossless Provider Instances",
+                DesktopStrings["d_lossless_provider_instances", "Lossless Provider Instances"],
                 fontWeight = FontWeight.Medium,
                 fontSize = 13.sp,
                 color = Color.White.copy(alpha = 0.9f),
@@ -301,7 +301,7 @@ internal fun DesktopTidalInstancesSection() {
             OutlinedTextField(
                 value = newInstanceUrl,
                 onValueChange = { newInstanceUrl = it },
-                placeholder = { Text("Add custom provider URL...", fontSize = 11.sp) },
+                placeholder = { Text(DesktopStrings["d_lossless_add_custom_url", "Add custom provider URL..."], fontSize = 11.sp) },
                 singleLine = true,
                 modifier = Modifier.weight(1f),
             )
@@ -318,7 +318,7 @@ internal fun DesktopTidalInstancesSection() {
                 },
                 enabled = newInstanceUrl.isNotBlank(),
             ) {
-                Text("Add", fontSize = 12.sp)
+                Text(DesktopStrings["d_lossless_add", "Add"], fontSize = 12.sp)
             }
         }
     }

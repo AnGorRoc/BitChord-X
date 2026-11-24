@@ -1929,4 +1929,6 @@
     <string name="replay_year_summary_minutes">Minutos escuchados</string>
     <string name="replay_year_mute">Silenciar la historia</string>
     <string name="replay_year_unmute">Activar sonido de la historia</string>
+
+    <string name="sign_in_discord">Iniciar sesión en Discord</string>
 </resources>

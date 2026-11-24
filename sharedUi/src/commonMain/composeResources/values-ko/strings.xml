@@ -371,4 +371,16 @@
     <string name="daily_topic_reggaeton_duro">하드 레게톤</string>
     <string name="daily_topic_hiphop_clasico">클래식 힙합</string>
     <string name="daily_topic_previa_bailable">파티 전 비트</string>
+
+    <string name="dj_sets_title">DJ 세트 및 믹스</string>
+    <string name="dj_sets_subtitle">끊김 없는 논스톱 믹스와 라이브 클럽 세션</string>
+    <string name="dj_sets_badge">DJ SET</string>
+    <string name="search_filter_dj_sets">DJ 세트</string>
+    <string name="dj_set_cat_featured">추천</string>
+    <string name="dj_set_cat_electronic">일렉트로닉</string>
+    <string name="dj_set_cat_cumbia_rkt">쿰비아 &amp; RKT</string>
+    <string name="dj_set_cat_club">클럽 &amp; 파티</string>
+    <string name="dj_set_cat_reggaeton">레게톤</string>
+    <string name="featured_badge">추천</string>
+    <string name="special_mix">스페셜 믹스</string>
 </resources>

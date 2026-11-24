@@ -357,10 +357,10 @@
     <string name="live_tune_in">Tune in</string>
     <string name="search_filter_dj_sets">DJ Sets</string>
     <string name="dj_sets_title">DJ Sets &amp; Mixes</string>
-    <string name="dj_sets_subtitle">Continuous live sets and non-stop sessions</string>
-    <string name="dj_sets_badge">SET</string>
+    <string name="dj_sets_subtitle">Non-stop continuous mixes and live club sessions</string>
+    <string name="dj_sets_badge">DJ SET</string>
     <string name="dj_set_cat_featured">Featured</string>
-    <string name="dj_set_cat_electronic">House &amp; Techno</string>
+    <string name="dj_set_cat_electronic">Electronic</string>
     <string name="dj_set_cat_cumbia_rkt">Cumbia &amp; RKT</string>
     <string name="dj_set_cat_reggaeton">Reggaeton</string>
     <string name="dj_set_cat_club">Club &amp; Party</string>
@@ -382,4 +382,7 @@
     <string name="daily_topic_reggaeton_duro">Heavy Reggaeton</string>
     <string name="daily_topic_hiphop_clasico">Classic Hip-Hop</string>
     <string name="daily_topic_previa_bailable">Pre-Party Beats</string>
+
+    <string name="featured_badge">FEATURED</string>
+    <string name="special_mix">Special mix</string>
 </resources>

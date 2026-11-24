@@ -195,7 +195,7 @@ internal fun DesktopWindowsCaptionButtons(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         WindowsCaptionButton(
-            label = "Minimize",
+            label = DesktopStrings["d_chrome_minimize", "Minimize"],
             onClick = actions.minimize,
             isClose = false,
         ) { glyphColor ->
@@ -242,7 +242,7 @@ internal fun DesktopWindowsCaptionButtons(
             }
         }
         WindowsCaptionButton(
-            label = "Close",
+            label = DesktopStrings["d_chrome_close", "Close"],
             onClick = actions.close,
             isClose = true,
         ) { glyphColor ->

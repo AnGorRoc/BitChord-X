@@ -355,12 +355,12 @@
     <string name="live_on_air">Al aire</string>
     <string name="live_broadcast">Transmisión en vivo</string>
     <string name="live_tune_in">Sintonizar</string>
-    <string name="search_filter_dj_sets">Enganchados</string>
-    <string name="dj_sets_title">Enganchados y DJ Sets</string>
-    <string name="dj_sets_subtitle">Sesiones continuas y sets de DJ sin cortes</string>
-    <string name="dj_sets_badge">SET</string>
+    <string name="search_filter_dj_sets">DJ Sets</string>
+    <string name="dj_sets_title">DJ Sets y Sesiones</string>
+    <string name="dj_sets_subtitle">Sesiones continuas sin pausas y sets en vivo</string>
+    <string name="dj_sets_badge">DJ SET</string>
     <string name="dj_set_cat_featured">Destacados</string>
-    <string name="dj_set_cat_electronic">House y Techno</string>
+    <string name="dj_set_cat_electronic">Electrónica</string>
     <string name="dj_set_cat_cumbia_rkt">Cumbia y RKT</string>
     <string name="dj_set_cat_reggaeton">Reggaeton</string>
     <string name="dj_set_cat_club">Club y Fiesta</string>
@@ -382,4 +382,7 @@
     <string name="daily_topic_reggaeton_duro">Reggaeton Duro</string>
     <string name="daily_topic_hiphop_clasico">Hip-Hop Clásico</string>
     <string name="daily_topic_previa_bailable">Previa Bailable</string>
+
+    <string name="featured_badge">DESTACADO</string>
+    <string name="special_mix">Mix especial</string>
 </resources>

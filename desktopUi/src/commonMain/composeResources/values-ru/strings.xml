@@ -373,4 +373,16 @@
   <string name="daily_topic_reggaeton_duro">Жёсткий реггетон</string>
   <string name="daily_topic_hiphop_clasico">Классический хип-хоп</string>
   <string name="daily_topic_previa_bailable">Биты для разогрева</string>
+
+    <string name="dj_sets_title">DJ-сеты и миксы</string>
+    <string name="dj_sets_subtitle">Непрерывные нон-стоп миксы и живые клубные сеты</string>
+    <string name="dj_sets_badge">DJ SET</string>
+    <string name="search_filter_dj_sets">DJ-сеты</string>
+    <string name="dj_set_cat_featured">Избранное</string>
+    <string name="dj_set_cat_electronic">Электронная</string>
+    <string name="dj_set_cat_cumbia_rkt">Кумбия и RKT</string>
+    <string name="dj_set_cat_club">Клуб и вечеринка</string>
+    <string name="dj_set_cat_reggaeton">Реггетон</string>
+    <string name="featured_badge">ИЗБРАННОЕ</string>
+    <string name="special_mix">Специальный микс</string>
 </resources>

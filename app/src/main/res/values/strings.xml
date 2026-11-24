@@ -1799,4 +1799,6 @@
     <string name="replay_year_summary_minutes">Minutes listened</string>
     <string name="replay_year_mute">Mute the story</string>
     <string name="replay_year_unmute">Unmute the story</string>
+
+    <string name="sign_in_discord">Sign in to Discord</string>
 </resources>

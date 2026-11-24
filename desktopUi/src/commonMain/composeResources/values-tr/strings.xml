@@ -373,4 +373,16 @@
   <string name="daily_topic_reggaeton_duro">Sert Reggaeton</string>
   <string name="daily_topic_hiphop_clasico">Klasik Hip-Hop</string>
   <string name="daily_topic_previa_bailable">Parti Öncesi Ritimler</string>
+
+    <string name="dj_sets_title">DJ Setleri ve Miksleri</string>
+    <string name="dj_sets_subtitle">Kesintisiz miksler ve canlı kulüp performansları</string>
+    <string name="dj_sets_badge">DJ SET</string>
+    <string name="search_filter_dj_sets">DJ Setleri</string>
+    <string name="dj_set_cat_featured">Öne Çıkanlar</string>
+    <string name="dj_set_cat_electronic">Elektronik</string>
+    <string name="dj_set_cat_cumbia_rkt">Cumbia ve RKT</string>
+    <string name="dj_set_cat_club">Kulüp ve Parti</string>
+    <string name="dj_set_cat_reggaeton">Reggaeton</string>
+    <string name="featured_badge">ÖNE ÇIKAN</string>
+    <string name="special_mix">Özel miks</string>
 </resources>

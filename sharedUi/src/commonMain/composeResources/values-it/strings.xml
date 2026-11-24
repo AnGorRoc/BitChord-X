@@ -370,4 +370,16 @@
     <string name="daily_topic_reggaeton_duro">Reggaeton duro</string>
     <string name="daily_topic_hiphop_clasico">Hip-hop classico</string>
     <string name="daily_topic_previa_bailable">Beat da pre-serata</string>
+
+    <string name="dj_sets_title">DJ Set e Mix</string>
+    <string name="dj_sets_subtitle">Mix continui senza interruzioni e sessioni club dal vivo</string>
+    <string name="dj_sets_badge">DJ SET</string>
+    <string name="search_filter_dj_sets">DJ Set</string>
+    <string name="dj_set_cat_featured">In evidenza</string>
+    <string name="dj_set_cat_electronic">Elettronica</string>
+    <string name="dj_set_cat_cumbia_rkt">Cumbia e RKT</string>
+    <string name="dj_set_cat_club">Club e Feste</string>
+    <string name="dj_set_cat_reggaeton">Reggaeton</string>
+    <string name="featured_badge">IN EVIDENZA</string>
+    <string name="special_mix">Mix speciale</string>
 </resources>

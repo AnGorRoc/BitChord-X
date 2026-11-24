@@ -370,4 +370,16 @@
     <string name="daily_topic_reggaeton_duro">हेवी रेगेटन</string>
     <string name="daily_topic_hiphop_clasico">क्लासिक हिप-हॉप</string>
     <string name="daily_topic_previa_bailable">पार्टी से पहले की बीट्स</string>
+
+    <string name="dj_sets_title">डीजे सेट और मिक्स</string>
+    <string name="dj_sets_subtitle">नॉन-स्टॉप निरंतर मिक्स और लाइव क्लब सत्र</string>
+    <string name="dj_sets_badge">DJ SET</string>
+    <string name="search_filter_dj_sets">डीजे सेट</string>
+    <string name="dj_set_cat_featured">विशेष</string>
+    <string name="dj_set_cat_electronic">इलेक्ट्रॉनिक</string>
+    <string name="dj_set_cat_cumbia_rkt">कुम्बिया और आरकेटी</string>
+    <string name="dj_set_cat_club">क्लब और पार्टी</string>
+    <string name="dj_set_cat_reggaeton">रेगेटन</string>
+    <string name="featured_badge">विशेष</string>
+    <string name="special_mix">विशेष मिक्स</string>
 </resources>

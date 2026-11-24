@@ -922,7 +922,7 @@
     <string name="use_this_profile">使用此资料</string>
 
 
-    <string name="lyrics_offset">Lyrics offset</string>
+    <string name="lyrics_offset">歌词偏移</string>
 
 
 
@@ -1326,10 +1326,10 @@
     <string name="yt_export_failed_other">无法导出“%1$s”：%2$s</string>
     <string name="enable_monochrome">启用 Monochrome？</string>
     <string name="monochrome_opt_in_warning">会将你播放的每首歌曲的标题和艺术家，以及你的 IP 地址，发送给非官方第三方服务 Monochrome，以查找无损副本。启用风险自负。</string>
-    <string name="save_as_playlist">Save as playlist</string>
-    <string name="save_queue_as_playlist">Save queue as playlist</string>
-    <string name="save_radio_as_playlist">Save radio as playlist</string>
-    <string name="playlist_created">Playlist created: %1$s</string>
+    <string name="save_as_playlist">另存为播放列表</string>
+    <string name="save_queue_as_playlist">将队列保存为播放列表</string>
+    <string name="save_radio_as_playlist">将电台保存为播放列表</string>
+    <string name="playlist_created">播放列表已创建：%1$s</string>
     <string name="auto_download_playlists">自动下载播放列表中的新歌曲</string>
     <string name="cover_save_failed">无法保存封面</string>
     <string name="cover_saved">已保存 %1$s</string>
@@ -1576,10 +1576,10 @@
     <string name="listen_together_scan_spotify_jam_qr">扫描 Spotify Jam 二维码</string>
     <string name="listen_together_scan_spotify_jam_subtitle">Spotify 用户可以使用 Spotify 应用相机扫描此代码</string>
     <string name="listen_together_spotify_members">Spotify Jam 成员</string>
-    <string name="created_by_bitchord">Created by BitChord</string>
+    <string name="created_by_bitchord">由 BitChord 创建</string>
     <string name="trending_title">Trending</string>
     <string name="region_global">Global</string>
-    <string name="region_auto">Automatic (IP)</string>
+    <string name="region_auto">自动（基于 IP）</string>
     <string name="listen_together_you_header">你</string>
     <string name="listen_together_you_footer">你的名字是其他人在派对中看到的名字。设备名称是这台设备在“连接”中与你其他设备并列显示的名称。</string>
     <string name="listen_together_your_name">你在派对中的名字</string>
@@ -1842,8 +1842,8 @@
     <string name="drive_over_cellular_subtitle">关闭时，自动同步会等待 Wi-Fi</string>
     <string name="show_best_part">Best Part button</string>
     <string name="show_best_part_subtitle">A button on the artwork that skips to the part of the song people replay most</string>
-    <string name="disable_spotify_canvas">Disable Spotify Canvas</string>
-    <string name="disable_spotify_canvas_subtitle">Never use Spotify Canvas. Animated artwork comes only from Apple Music</string>
+    <string name="disable_spotify_canvas">禁用 Spotify Canvas</string>
+    <string name="disable_spotify_canvas_subtitle">从不使用 Spotify Canvas。动态封面仅来自 Apple Music</string>
     <string name="lyrics_share_canvas">Canvas</string>
     <string name="lyrics_share_video">Video</string>
     <string name="lyrics_share_image">Image</string>
@@ -1851,15 +1851,15 @@
     <string name="lyrics_share_gradient">Gradient</string>
     <string name="lyrics_share_apple_canvas">Apple</string>
     <string name="lyrics_share_spotify_canvas">Spotify</string>
-    <string name="lyrics_share_show_logo">Show BitChord logo</string>
-    <string name="youtube_premium_audio">YouTube Premium Audio</string>
-    <string name="youtube_premium_audio_subtitle">Request 256 kbps Opus stream for Premium accounts</string>
-    <string name="replay_year_open">Open your Replay %1$s</string>
-    <string name="replay_year_building">Building your year…</string>
+    <string name="lyrics_share_show_logo">显示 BitChord 图标</string>
+    <string name="youtube_premium_audio">YouTube Premium 音频</string>
+    <string name="youtube_premium_audio_subtitle">为 Premium 账户请求 256 kbps Opus 音频流</string>
+    <string name="replay_year_open">开启您的年度回顾 %1$s</string>
+    <string name="replay_year_building">正在生成您的年度回顾…</string>
     <string name="replay_year_opener_start">Your</string>
-    <string name="replay_year_opener_end">in BitChord</string>
-    <string name="replay_year_opener_detail">Let’s look back at what you played.</string>
-    <string name="replay_year_minutes_start">This year you listened for</string>
+    <string name="replay_year_opener_end">在 BitChord</string>
+    <string name="replay_year_opener_detail">一起回顾您听过的音乐吧。</string>
+    <string name="replay_year_minutes_start">今年您共聆听了</string>
     <plurals name="replay_year_minutes_word">
         <item quantity="one">minute</item>
         <item quantity="other">minutes</item>
@@ -1868,33 +1868,33 @@
     <string name="replay_year_minutes_days_value">%1$s days</string>
     <string name="replay_year_minutes_hours_value">%1$s hours</string>
     <string name="replay_year_minutes_days_end">of music.</string>
-    <string name="replay_year_busiest_start">Your biggest day was</string>
-    <string name="replay_year_busiest_minutes">%1$s minutes of music in one day</string>
-    <string name="replay_year_busiest_song">Mostly %1$s</string>
-    <string name="replay_year_clock_start">You came alive around</string>
+    <string name="replay_year_busiest_start">您听歌最多的一天是</string>
+    <string name="replay_year_busiest_minutes">单日听歌 %1$s 分钟</string>
+    <string name="replay_year_busiest_song">主要聆听了 %1$s</string>
+    <string name="replay_year_clock_start">您最活跃的时段大约在</string>
     <string name="replay_year_night_owl">Night Owl</string>
-    <string name="replay_year_night_owl_detail">So much of your listening happened after 10 pm.</string>
-    <string name="replay_year_early_bird">Early Riser</string>
-    <string name="replay_year_early_bird_detail">Your days started with music before 10 am.</string>
-    <string name="replay_year_golden_hour">Golden Hour</string>
-    <string name="replay_year_golden_hour_detail">Evenings were when the music came out.</string>
-    <string name="replay_year_daytime">Daytime Drifter</string>
-    <string name="replay_year_daytime_detail">You kept the music going through the day.</string>
-    <string name="replay_year_all_day">Around the Clock</string>
-    <string name="replay_year_all_day_detail">Morning, noon or night, something was playing.</string>
-    <string name="replay_year_genres_start">Your sound this year</string>
-    <string name="replay_year_artist_start">Your top artist this year was…</string>
-    <string name="replay_year_minutes_together">%1$s minutes together</string>
-    <string name="replay_year_top_artists">Your top artists</string>
-    <string name="replay_year_song_start">And your song of the year…</string>
+    <string name="replay_year_night_owl_detail">您的绝大部分听歌时间都在晚上 10 点之后。</string>
+    <string name="replay_year_early_bird">早起鸟</string>
+    <string name="replay_year_early_bird_detail">您的每一天都在上午 10 点前伴随音乐开始。</string>
+    <string name="replay_year_golden_hour">黄金时段</string>
+    <string name="replay_year_golden_hour_detail">傍晚是您沉浸在音乐中的最佳时刻。</string>
+    <string name="replay_year_daytime">白昼漫游者</string>
+    <string name="replay_year_daytime_detail">白天的时间里，音乐始终伴您左右。</string>
+    <string name="replay_year_all_day">全天候</string>
+    <string name="replay_year_all_day_detail">早晨、午后或深夜，总有音乐在播放。</string>
+    <string name="replay_year_genres_start">您今年的音乐风格</string>
+    <string name="replay_year_artist_start">今年您最喜爱的艺人是…</string>
+    <string name="replay_year_minutes_together">共同度过 %1$s 分钟</string>
+    <string name="replay_year_top_artists">您的主要艺人</string>
+    <string name="replay_year_song_start">以及您的年度歌曲…</string>
     <plurals name="replay_year_played_times">
         <item quantity="one">Played %1$s time</item>
         <item quantity="other">Played %1$s times</item>
     </plurals>
-    <string name="replay_year_top_songs">The rest of your top songs</string>
-    <string name="replay_year_albums">Albums you lived in</string>
-    <string name="replay_year_months">Your year, month by month</string>
-    <string name="replay_year_discovery_start">This year you explored</string>
+    <string name="replay_year_top_songs">其余最爱单曲</string>
+    <string name="replay_year_albums">陪伴您生活的专辑</string>
+    <string name="replay_year_months">您的这一年，逐月回顾</string>
+    <string name="replay_year_discovery_start">今年您探索了</string>
     <plurals name="replay_year_songs_word">
         <item quantity="one">song</item>
         <item quantity="other">songs</item>
@@ -1908,14 +1908,27 @@
         <item quantity="other">albums</item>
     </plurals>
     <string name="replay_year_summary_title">Your %1$s</string>
-    <string name="replay_year_summary_artists">Top artists</string>
+    <string name="replay_year_summary_artists">顶级艺人</string>
     <string name="replay_year_summary_songs">Top songs</string>
-    <string name="replay_year_summary_minutes">Minutes listened</string>
-    <string name="replay_year_mute">Mute the story</string>
-    <string name="replay_year_unmute">Unmute the story</string>
-    <string name="automix_model_downloading">Downloading the Automix model: %1$d%%</string>
-    <string name="automix_model_failed">The Automix model could not be downloaded. Turn Automix off and on to try again.</string>
-    <string name="listen_together_own_device_dialog_title">Party on your device</string>
-    <string name="listen_together_own_device_dialog_message">Your device “%1$s” is already in this party. Connect to it via Connect to control playback or listen together.</string>
+    <string name="replay_year_summary_minutes">聆听分钟数</string>
+    <string name="replay_year_mute">静音故事</string>
+    <string name="replay_year_unmute">取消静音故事</string>
+    <string name="automix_model_downloading">正在下载 Automix 模型：%1$d%%</string>
+    <string name="automix_model_failed">无法下载 Automix 模型。请关闭并重新开启 Automix 重试。</string>
+    <string name="listen_together_own_device_dialog_title">您设备上的派对</string>
+    <string name="listen_together_own_device_dialog_message">您的设备“%1$s”已在此派对中。通过 Connect 连接以控制播放或一起收听。</string>
     <string name="listen_together_connect_action">Connect</string>
+
+    <string name="change_cover">更改封面</string>
+    <string name="change_logo">更改图标</string>
+    <string name="edit_cover">编辑封面</string>
+    <string name="edit_playlist">编辑播放列表</string>
+    <string name="name_label">名称</string>
+    <string name="no_logo_set">无图标（使用文本标题）</string>
+    <string name="restore_original_cover">恢复原始封面</string>
+    <string name="restore_original_title">恢复文本标题</string>
+    <string name="select_logo">选择 PNG 图标</string>
+    <string name="title_logo">标题图标 (PNG)</string>
+    <string name="title_logo_description">显示透明背景的官方排版图标</string>
+    <string name="sign_in_discord">登录 Discord</string>
 </resources>

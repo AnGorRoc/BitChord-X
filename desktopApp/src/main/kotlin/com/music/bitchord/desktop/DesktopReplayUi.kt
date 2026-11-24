@@ -139,7 +139,7 @@ internal fun DesktopReplayPage(
                                         )
                                         Spacer(Modifier.width(6.dp))
                                         Text(
-                                            "Stories",
+                                            DesktopStrings["d_replay_stories", "Stories"],
                                             style = MaterialTheme.typography.labelMedium,
                                             fontWeight = FontWeight.Bold,
                                             color = Color.White,
@@ -170,7 +170,7 @@ internal fun DesktopReplayPage(
                                         )
                                         Spacer(Modifier.width(6.dp))
                                         Text(
-                                            "Poster",
+                                            DesktopStrings["d_replay_poster", "Poster"],
                                             style = MaterialTheme.typography.labelMedium,
                                             fontWeight = FontWeight.Bold,
                                             color = Color.White,
@@ -229,7 +229,7 @@ internal fun DesktopReplayPage(
             if (summary.genres.isNotEmpty()) {
                 chart(
                     key = "genres",
-                    title = "Top Genres",
+                    title = DesktopStrings["d_replay_top_genres", "Top Genres"],
                     rows = summary.genreRows(CHART_LENGTH),
                     onClick = {},
                 )

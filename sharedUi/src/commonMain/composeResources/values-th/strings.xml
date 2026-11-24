@@ -370,4 +370,16 @@
     <string name="daily_topic_reggaeton_duro">เร็กเกตันหนักๆ</string>
     <string name="daily_topic_hiphop_clasico">ฮิปฮอปคลาสสิก</string>
     <string name="daily_topic_previa_bailable">บีตก่อนปาร์ตี้</string>
+
+    <string name="dj_sets_title">ดีเจเซ็ตและมิกซ์</string>
+    <string name="dj_sets_subtitle">มิกซ์ต่อเนื่องแบบน็อนสต็อปและเซสชันคลับสด</string>
+    <string name="dj_sets_badge">DJ SET</string>
+    <string name="search_filter_dj_sets">ดีเจเซ็ต</string>
+    <string name="dj_set_cat_featured">แนะนำ</string>
+    <string name="dj_set_cat_electronic">อิเล็กทรอนิกส์</string>
+    <string name="dj_set_cat_cumbia_rkt">คุมเบียและ RKT</string>
+    <string name="dj_set_cat_club">คลับและปาร์ตี้</string>
+    <string name="dj_set_cat_reggaeton">เรเกตอน</string>
+    <string name="featured_badge">แนะนำ</string>
+    <string name="special_mix">มิกซ์พิเศษ</string>
 </resources>

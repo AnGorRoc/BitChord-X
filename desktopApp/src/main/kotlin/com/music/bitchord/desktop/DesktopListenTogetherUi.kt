@@ -838,7 +838,7 @@ private fun PlayHereRow(playHere: Boolean, onChange: (Boolean) -> Unit, modifier
         Icon(if (playHere) Icons.Rounded.VolumeUp else Icons.Rounded.VolumeOff, null, tint = DesktopAccent, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text("Play on this computer", fontWeight = FontWeight.SemiBold)
+            Text(tr("d_listen_together_play_on_pc", "Play on this computer"), fontWeight = FontWeight.SemiBold)
             Text(
                 if (playHere) tr("d_play_here_on", "You hear it here, and everyone else on theirs.")
                 else tr("d_play_here_off", "Sound comes only from the host. You still see and control the party."),

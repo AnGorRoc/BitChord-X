@@ -1470,7 +1470,7 @@ fun DailyTopicGlassCard(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = "Mix especial",
+                text = stringResource(Res.string.special_mix),
                 style = MaterialTheme.typography.labelSmall,
                 color = Color.White.copy(alpha = 0.70f),
                 fontWeight = FontWeight.Medium,

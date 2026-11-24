@@ -370,4 +370,16 @@
     <string name="daily_topic_reggaeton_duro">Reggaeton Keras</string>
     <string name="daily_topic_hiphop_clasico">Hip-Hop Klasik</string>
     <string name="daily_topic_previa_bailable">Beat Pemanasan Pesta</string>
+
+    <string name="dj_sets_title">DJ Set &amp; Mix</string>
+    <string name="dj_sets_subtitle">Mix berkelanjutan tanpa henti dan sesi klub langsung</string>
+    <string name="dj_sets_badge">DJ SET</string>
+    <string name="search_filter_dj_sets">DJ Set</string>
+    <string name="dj_set_cat_featured">Unggulan</string>
+    <string name="dj_set_cat_electronic">Elektronik</string>
+    <string name="dj_set_cat_cumbia_rkt">Cumbia &amp; RKT</string>
+    <string name="dj_set_cat_club">Klub &amp; Pesta</string>
+    <string name="dj_set_cat_reggaeton">Reggaeton</string>
+    <string name="featured_badge">UNGGULAN</string>
+    <string name="special_mix">Mix spesial</string>
 </resources>
