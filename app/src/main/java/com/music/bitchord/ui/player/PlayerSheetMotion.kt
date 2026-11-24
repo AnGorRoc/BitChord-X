@@ -214,6 +214,10 @@ class PlayerSheetMotion(
         this.window = window ?: return
         windowAnimations = window.attributes.windowAnimations
         window.setWindowAnimations(0)
+        if (closing) {
+            passTouchesThrough(true)
+            return
+        }
         windowRestore?.cancel()
         windowRestore = scope.launch {
             delay(WINDOW_ENTER_MS)
@@ -233,16 +237,19 @@ class PlayerSheetMotion(
 
     /**
      * The sheet's window covers the whole app until it is dismissed, and a close
-     * is slow enough to watch: left touchable, it swallowed every tap and scroll
-     * meant for the page the player was sliding off of. So from the moment a
-     * close starts it lets touches fall through to the app beneath.
+     * is slow enough to watch: left touchable or focusable, it swallowed every
+     * tap, scroll, and Android back gesture meant for the page the player was
+     * sliding off of. So from the moment a close starts it lets touches and
+     * focus fall through to the app beneath.
      */
     private fun passTouchesThrough(pass: Boolean) {
         val window = window ?: return
+        val flags = WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE or
+            WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
         if (pass) {
-            window.addFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
+            window.addFlags(flags)
         } else {
-            window.clearFlags(WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE)
+            window.clearFlags(flags)
         }
     }
 
@@ -333,22 +340,39 @@ class PlayerSheetMotion(
 
     private suspend fun slide(from: Float, to: Float, velocity: Float = 0f) {
         val travel = travel()
-        animate(
-            initialValue = from,
-            targetValue = to,
-            initialVelocity = velocity,
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioNoBouncy,
-                stiffness = SLIDE_STIFFNESS,
-                visibilityThreshold = SLIDE_SETTLED_PX,
-            ),
-        ) { value, _ ->
-            // Critically damped never bounces from rest, but thrown hard
-            // enough at its target it can pass it once: never past open or
-            // past the bar.
-            held = value.coerceIn(0f, travel)
+        val closingToEnd = travel > 0f && to >= travel
+        if (closingToEnd && from >= travel) {
+            held = travel
+            return
+        }
+        try {
+            animate(
+                initialValue = from,
+                targetValue = to,
+                initialVelocity = velocity,
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = SLIDE_STIFFNESS,
+                    visibilityThreshold = SLIDE_SETTLED_PX,
+                ),
+            ) { value, _ ->
+                // Critically damped never bounces from rest, but thrown hard
+                // enough at its target it can pass it once: never past open or
+                // past the bar.
+                held = value.coerceIn(0f, travel)
+                // Once a downward fling has carried the sheet off the bottom,
+                // the overshot tail is invisible — stop now so the sheet's
+                // window dismisses immediately instead of lingering off-screen.
+                if (closingToEnd && value >= travel) {
+                    throw SlideReachedEnd
+                }
+            }
+        } catch (_: SlideReachedEnd) {
+            held = travel
         }
     }
+
+    private object SlideReachedEnd : Exception(null, null, false, false)
 
     /** Gone — with the window's own exit animation already off (see [quietWindow]). */
     private fun dismissQuietly() {
