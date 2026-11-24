@@ -461,11 +461,6 @@ fun SearchScreen(
     }
 }
 
-private data class SearchSection(
-    val title: String?,
-    val rows: List<SearchResult>,
-)
-
 /**
  * The Library source's page: the Local Music folder's tracks that match, as
  * plain song rows. An artist or album hit needs no row of its own — every

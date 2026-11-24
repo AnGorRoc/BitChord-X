@@ -107,4 +107,29 @@ plugins {
     id("org.jetbrains.kotlin.plugin.compose") version "2.3.20" apply false
     id("org.jetbrains.kotlin.plugin.serialization") version "2.3.20" apply false
     id("org.jetbrains.compose") version "1.10.3" apply false
+    id("dev.detekt") version "2.0.0-alpha.6"
+}
+
+/*
+ * Dead-code detector: `./gradlew detekt`. Only the rules in
+ * config/detekt/detekt.yml are on (unused private classes, unused parameters,
+ * FIXME/STOPSHIP markers), so it is a cleanliness check and not a style
+ * police. It runs in detekt's "light" mode, without type resolution, which
+ * keeps it to one task for every module (Android, Compose Multiplatform and
+ * JVM alike). detekt 2.0.0-alpha.6 does not run its type-resolution rules
+ * (unused private functions/properties/variables/imports) against Kotlin 2.3,
+ * so unused imports are covered by scripts/unused_imports.py instead.
+ *
+ * Existing findings are reported but do not fail the build; fix them or add
+ * a baseline before turning ignoreFailures off.
+ */
+detekt {
+    buildUponDefaultConfig = false
+    ignoreFailures = true
+    config.setFrom(layout.projectDirectory.file("config/detekt/detekt.yml"))
+    parallel = true
+    source.setFrom(
+        listOf("app", "tv", "wearos", "shared", "sharedUi", "desktopApp", "desktopUi")
+            .map { layout.projectDirectory.dir("$it/src") },
+    )
 }

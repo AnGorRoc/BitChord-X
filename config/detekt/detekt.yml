@@ -1,0 +1,13 @@
+# Dead-code checks only. Run with `./gradlew detekt`.
+# Only rules that work without type resolution are listed: detekt 2.0.0-alpha.6
+# silently skips the rest on this Kotlin version.
+style:
+  UnusedParameter:
+    active: true
+  UnusedPrivateClass:
+    active: true
+  ForbiddenComment:
+    active: true
+    comments:
+      - "FIXME:"
+      - "STOPSHIP:"
