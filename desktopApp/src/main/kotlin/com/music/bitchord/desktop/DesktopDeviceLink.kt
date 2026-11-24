@@ -186,6 +186,14 @@ internal class DesktopDeviceLink(
             account.state.collect { state ->
                 watchOwnConnection(state)
                 onAccountState(state.devices.firstOrNull { d -> d.deviceId == targetId })
+                val code = DesktopListenTogether.state.value.code?.takeIf { DesktopListenTogether.state.value.inParty }
+                if (code != null && !DesktopListenTogether.listenHere.value) {
+                    val anyOtherInParty = state.others.any { it.connected && it.partyCode.equals(code, ignoreCase = true) }
+                    if (!anyOtherInParty) {
+                        DesktopListenTogether.setListenHere(true)
+                        say(DeviceNotice.Disconnected(null))
+                    }
+                }
             }
         }
         scope.launch {
@@ -465,11 +473,17 @@ internal class DesktopDeviceLink(
                 delay(CONFIRM_POLL_MS)
                 waited += CONFIRM_POLL_MS
                 val now = account.state.value.devices.firstOrNull { it.deviceId == target.deviceId }
-                if (now?.partyCode.equals(code, ignoreCase = true)) {
+                if (now == null || !now.connected) {
+                    partyHandover = null
+                    refreshConnecting()
+                    say(DeviceNotice.Disconnected(now?.name ?: target.name))
+                    return@launch
+                }
+                if (now.partyCode.equals(code, ignoreCase = true)) {
                     DesktopListenTogether.setListenHere(false)
                     partyHandover = null
                     refreshConnecting()
-                    say(DeviceNotice.PartyOn(now?.name))
+                    say(DeviceNotice.PartyOn(now.name))
                     return@launch
                 }
             }
@@ -577,6 +591,13 @@ internal class DesktopDeviceLink(
                 delay(CONFIRM_POLL_MS)
                 waited += CONFIRM_POLL_MS
                 val target = account.state.value.devices.firstOrNull { it.deviceId == targetId }
+                if (target == null || !target.connected) {
+                    awaitingConfirm = null
+                    val disconnectedName = target?.name ?: account.state.value.devices.firstOrNull { it.deviceId == targetId }?.name
+                    say(DeviceNotice.Disconnected(disconnectedName))
+                    endLocally(false)
+                    return@launch
+                }
                 if (HandoffRules.shouldSilenceLocal(target, handedVideoId, handedPlaying)) {
                     awaitingConfirm = null
                     engine.pause()
@@ -610,10 +631,12 @@ internal class DesktopDeviceLink(
         pulling = false
         active = false
         targetId = null
+        refreshConnecting()
         status = null
         wantsPlay = false
         holdPlayingUntilNanos = NEVER
         clearIntents()
+        val hadGivenMusic = gaveMusic
         gaveMusic = false
         account.detach()
         val kept = stash
@@ -621,7 +644,8 @@ internal class DesktopDeviceLink(
         if (kept != null) {
             // What this computer had before it controlled anything, not what the other device had.
             setQueue(kept.queue)
-            kept.song?.let { engine.load(it, false, kept.positionMs) }
+            val resumePos = if (hadGivenMusic && position > 0L) position else kept.positionMs
+            kept.song?.let { engine.load(it, false, resumePos) }
         } else {
             val local = queue()
             val at = s?.mediaId?.let { id -> local.songs.indexOfFirst { it.videoId == id } }?.takeIf { it >= 0 }
@@ -809,23 +833,10 @@ internal class DesktopDeviceLink(
     private fun onAccountState(target: AccountDevice?) {
         if (!active) return
         if (target == null || !target.connected) {
-            // Only away may mean back in a moment (the server keeps the link for that long); give it
-            // the time before handing the sound back, so a network blip does not end the link.
-            if (target != null) {
-                if (awayJob == null) {
-                    awayJob = scope.launch {
-                        delay(AWAY_GRACE_MS)
-                        awayJob = null
-                        val now = account.state.value.devices.firstOrNull { it.deviceId == targetId }
-                        if (active && (now == null || !now.connected)) {
-                            say(DeviceNotice.Disconnected(now?.name))
-                            endLocally(false)
-                        }
-                    }
-                }
-                return
-            }
-            say(DeviceNotice.Disconnected(null))
+            awayJob?.cancel()
+            awayJob = null
+            val disconnectedName = target?.name ?: account.state.value.devices.firstOrNull { it.deviceId == targetId }?.name
+            say(DeviceNotice.Disconnected(disconnectedName))
             endLocally(false)
             return
         }

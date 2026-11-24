@@ -74,7 +74,11 @@ internal class DeviceSpeaker(
     override var sink: CastSink? = null
 
     override var active = false
-        private set
+        private set(value) {
+            field = value
+            // The screens choose how to start a list by whether the sound is elsewhere.
+            DeviceLink.setRemoteActive(value)
+        }
 
     /** The device that is the speaker, while [active]. */
     var targetId: String? = null
@@ -319,11 +323,17 @@ internal class DeviceSpeaker(
                 delay(CONFIRM_POLL_MS)
                 waited += CONFIRM_POLL_MS
                 val now = account.state.value.devices.firstOrNull { it.deviceId == target.deviceId }
-                if (now?.partyCode.equals(code, ignoreCase = true)) {
+                if (now == null || !now.connected) {
+                    partyHandover = null
+                    refreshConnecting()
+                    say(DeviceNotice.Disconnected(now?.name ?: target.name))
+                    return@launch
+                }
+                if (now.partyCode.equals(code, ignoreCase = true)) {
                     ListenTogether.setListenHere(false)
                     partyHandover = null
                     refreshConnecting()
-                    say(DeviceNotice.PartyOn(now?.name))
+                    say(DeviceNotice.PartyOn(now.name))
                     return@launch
                 }
             }
@@ -454,6 +464,13 @@ internal class DeviceSpeaker(
                 delay(CONFIRM_POLL_MS)
                 waited += CONFIRM_POLL_MS
                 val target = account.state.value.devices.firstOrNull { it.deviceId == targetId }
+                if (target == null || !target.connected) {
+                    awaitingConfirm = null
+                    val disconnectedName = target?.name ?: account.state.value.devices.firstOrNull { it.deviceId == targetId }?.name
+                    say(DeviceNotice.Disconnected(disconnectedName))
+                    endLocally(resumeHere = false)
+                    return@launch
+                }
                 if (HandoffRules.shouldSilenceLocal(target, handedVideoId, handedPlaying)) {
                     awaitingConfirm = null
                     quietLocalPlayer()
@@ -503,6 +520,7 @@ internal class DeviceSpeaker(
         pulling = false
         active = false
         targetId = null
+        refreshConnecting()
         status = null
         wantsPlay = false
         holdPlayingUntil = NEVER
@@ -514,6 +532,7 @@ internal class DeviceSpeaker(
         press.clear()
         skip.clear()
         showMix(null)
+        val hadGivenMusic = gaveMusic
         gaveMusic = false
         if (old != null) account.detach()
         val kept = stash
@@ -524,7 +543,8 @@ internal class DeviceSpeaker(
                 if (kept.items.isEmpty()) {
                     player.clearMediaItems()
                 } else {
-                    player.setMediaItems(kept.items, kept.index.coerceIn(0, kept.items.lastIndex), kept.positionMs)
+                    val resumePos = if (hadGivenMusic && position > 0L) position else kept.positionMs
+                    player.setMediaItems(kept.items, kept.index.coerceIn(0, kept.items.lastIndex), resumePos)
                     player.prepare()
                     player.pause()
                 }
@@ -731,26 +751,11 @@ internal class DeviceSpeaker(
     private fun onAccountState(target: AccountDevice?) {
         if (!active) return
         if (target == null || !target.connected) {
-            // A device that is only away may be back in a moment (a mobile network blip; the
-            // server keeps the link for that long). One that is gone for good is not. Waiting
-            // before giving the sound back means a blip does not drop the whole link.
-            if (target != null) {
-                if (awayJob == null) {
-                    awayJob = scope.launch {
-                        delay(AWAY_GRACE_MS)
-                        awayJob = null
-                        val now = account.state.value.devices.firstOrNull { it.deviceId == targetId }
-                        if (active && (now == null || !now.connected)) {
-                            android.util.Log.i("DeviceSpeaker", "target away past grace")
-                            say(DeviceNotice.Disconnected(now?.name))
-                            endLocally(resumeHere = false)
-                        }
-                    }
-                }
-                return
-            }
-            // Forgotten by the server: it is not coming back.
-            say(DeviceNotice.Disconnected(null))
+            awayJob?.cancel()
+            awayJob = null
+            val disconnectedName = target?.name ?: account.state.value.devices.firstOrNull { it.deviceId == targetId }?.name
+            android.util.Log.i("DeviceSpeaker", "target disconnected ($disconnectedName), disconnecting control back to this device")
+            say(DeviceNotice.Disconnected(disconnectedName))
             endLocally(resumeHere = false)
             return
         }

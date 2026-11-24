@@ -2105,6 +2105,24 @@ class PlaybackService : MediaLibraryService() {
                 .distinctUntilChanged()
                 .collect { owns -> if (owns && deviceSpeaker.active) deviceSpeaker.endLocally(resumeHere = false) }
         }
+        // When in a party where this device is following another of the user's devices as speaker,
+        // if that device disconnects, automatically bring party listening back to this device and alert.
+        scope.launch {
+            ListenTogether.account.state.collect { accountState ->
+                val code = ListenTogether.state.value.code?.takeIf { ListenTogether.state.value.inParty }
+                if (code != null && !ListenTogether.listenHere.value) {
+                    val anyOtherInParty = accountState.others.any { it.connected && it.partyCode.equals(code, ignoreCase = true) }
+                    if (!anyOtherInParty) {
+                        ListenTogether.setListenHere(true)
+                        Toast.makeText(
+                            applicationContext,
+                            com.music.bitchord.data.listentogether.account.DeviceNotice.Disconnected(null).text(applicationContext),
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    }
+                }
+            }
+        }
         loadAutoplayForCurrentTrack()
 
         // Only the analytics listener reports the format the audio renderer was

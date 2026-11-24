@@ -260,10 +260,38 @@ class AccountDevices(
         )
     }
 
-    fun attach(deviceId: String) = sendFrame(buildJsonObject { put("type", "attach"); put("to", deviceId) })
+    fun attach(deviceId: String) {
+        _state.update { current ->
+            val myId = current.selfId
+            val updatedDevices = current.devices.map { d ->
+                when {
+                    d.deviceId == myId -> d.copy(controlling = deviceId)
+                    d.deviceId == deviceId -> d.copy(controlledBy = myId)
+                    else -> d
+                }
+            }
+            val updatedLocal = current.localSelf?.copy(controlling = deviceId)
+            current.copy(devices = updatedDevices, localSelf = updatedLocal)
+        }
+        sendFrame(buildJsonObject { put("type", "attach"); put("to", deviceId) })
+    }
 
     /** Stops being a remote. */
-    fun detach() = sendFrame(buildJsonObject { put("type", "detach") })
+    fun detach() {
+        _state.update { current ->
+            val myId = current.selfId
+            val updatedDevices = current.devices.map { d ->
+                when {
+                    d.deviceId == myId -> d.copy(controlling = null)
+                    d.controlledBy == myId -> d.copy(controlledBy = null)
+                    else -> d
+                }
+            }
+            val updatedLocal = current.localSelf?.copy(controlling = null)
+            current.copy(devices = updatedDevices, localSelf = updatedLocal)
+        }
+        sendFrame(buildJsonObject { put("type", "detach") })
+    }
 
     fun rename(name: String) = sendFrame(buildJsonObject { put("type", "rename"); put("name", name) })
 
@@ -407,6 +435,13 @@ class AccountDevices(
                     localSelf = local,
                     failure = null,
                 )
+            }
+            val controllingTargetId = selfInList?.controlling
+            if (controllingTargetId != null) {
+                val targetDevice = merged.firstOrNull { it.deviceId == controllingTargetId }
+                if (targetDevice == null || !targetDevice.connected) {
+                    detach()
+                }
             }
             return
         }

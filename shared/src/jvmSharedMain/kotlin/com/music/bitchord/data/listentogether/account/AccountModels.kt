@@ -172,10 +172,10 @@ data class AccountState(
     val others: List<AccountDevice> get() = devices.filter { it.deviceId != selfId }
 
     /** The device this one is acting as the remote of, if any. */
-    val controlled: AccountDevice? get() = self?.controlling?.let { id -> devices.firstOrNull { it.deviceId == id } }
+    val controlled: AccountDevice? get() = self?.controlling?.let { id -> devices.firstOrNull { it.deviceId == id && it.connected } }
 
     /** The device that is remote-controlling this one, if any. */
-    val controller: AccountDevice? get() = self?.controlledBy?.let { id -> devices.firstOrNull { it.deviceId == id } }
+    val controller: AccountDevice? get() = self?.controlledBy?.let { id -> devices.firstOrNull { it.deviceId == id && it.connected } }
 
     /**
      * The device the sound is coming out of for this person right now, as the Connect card shows:
