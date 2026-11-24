@@ -129,6 +129,7 @@ import com.music.bitchord.playback.contextEntryKey
 import com.music.bitchord.ui.screens.CACHE_FOLDER_BROWSE_ID
 import com.music.bitchord.data.LocalGroup
 import com.music.bitchord.data.LocalGroups
+import com.music.bitchord.ui.screens.prewarmExploreAffinity
 import com.music.bitchord.data.OfflinePlaylists
 import com.music.bitchord.data.matchesSearch
 import java.util.Locale
@@ -2065,7 +2066,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
             }
             delay(4_000)
             if (!exploreRequested && exploreFetchJob?.isActive != true) {
+            // Resolve the ordering keywords before the first visit, so Explore's
+            // first frame already has its final order instead of reshuffling.
+            runCatching { prewarmExploreAffinity() }
                 exploreFetchJob = viewModelScope.launch { fetchExplore() }
+            if (!exploreRequested) loadLive()
             }
         }
     }

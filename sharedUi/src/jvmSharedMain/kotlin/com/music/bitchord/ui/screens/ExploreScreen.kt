@@ -583,6 +583,9 @@ private object ExploreAffinityCache {
         return if (System.currentTimeMillis() < expiresAtMs) current else null
     }
 
+    /** Last computed value even if expired: the list orders by it at first paint instead of reshuffling when the refresh lands. */
+    fun getStale(): Set<String>? = cachedKeywords
+
     suspend fun getOrLoad(): Set<String> {
         getFresh()?.let { return it }
         val resolved = computeUserAffinityKeywords()
@@ -590,6 +593,15 @@ private object ExploreAffinityCache {
         expiresAtMs = System.currentTimeMillis() + TTL_MS
         return resolved
     }
+}
+
+/**
+ * Computes the Explore ordering keywords ahead of the first visit. Without it the
+ * first open paints the categories unsorted, then reorders and rebuilds the whole
+ * list once the keywords resolve — the hitch seen on a session's first Explore open.
+ */
+suspend fun prewarmExploreAffinity() {
+    withContext(Dispatchers.IO) { ExploreAffinityCache.getOrLoad() }
 }
 
 private suspend fun computeUserAffinityKeywords(): Set<String> {
@@ -739,7 +751,7 @@ fun ExploreScreen(
         val columns = 2
         val successSections = (state as? UiState.Success)?.data
         val userAffinityKeywords by produceState<Set<String>>(
-            initialValue = remember { ExploreAffinityCache.getFresh() ?: emptySet() },
+            initialValue = remember { ExploreAffinityCache.getStale() ?: emptySet() },
         ) {
             if (ExploreAffinityCache.getFresh() != null) return@produceState
             val resolved = withContext(Dispatchers.IO) {
