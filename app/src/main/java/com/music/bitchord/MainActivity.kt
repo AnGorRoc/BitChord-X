@@ -81,6 +81,11 @@ import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.util.VelocityTracker
+import com.music.bitchord.ui.haptics.Haptic
+import com.music.bitchord.ui.haptics.rememberHaptics
 import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ArrowUpward
@@ -3239,6 +3244,155 @@ private fun BitChordApp(
         }
     }
 
+    var gestureSwipeForward by remember { mutableStateOf<Boolean?>(null) }
+
+    LaunchedEffect(selectedTab) {
+        gestureSwipeForward = null
+    }
+
+    val selectTab: (Int, Boolean?) -> Unit = { index, swipeForward ->
+        gestureSwipeForward = swipeForward
+        navBarScroll.expand()
+        if (selectedTab == index) {
+            if (route != null || detail != null || selectedMoodGenre != null) {
+                navigator.clear()
+                viewModel.closeMoodGenre()
+            } else {
+                scope.launch {
+                    currentListState.animateScrollToItem(0)
+                }
+            }
+        } else {
+            if (selectedTab != TAB_SEARCH) {
+                lastNonSearchTab = selectedTab
+            }
+            navigator.clear()
+            viewModel.closeMoodGenre()
+            selectedTab = index
+
+            // Every search tab tap resets the field, focuses it, and opens
+            // the keyboard through SearchScreen's focus request.
+            if (index == TAB_SEARCH) {
+                viewModel.onQueryChange("")
+                searchFocusRequested = true
+            }
+        }
+    }
+
+    val onTabSelected: (Int) -> Unit = { index -> selectTab(index, null) }
+
+    val haptics = rememberHaptics()
+    val canSwipeTabs = route == null &&
+        detail == null &&
+        selectedMoodGenre == null &&
+        !yearStoryOpen &&
+        selectedTab in TAB_HOME..TAB_LIBRARY
+    val density = androidx.compose.ui.platform.LocalDensity.current
+
+    val tabSwipeModifier = Modifier.pointerInput(canSwipeTabs, selectedTab) {
+        if (!canSwipeTabs) return@pointerInput
+        val quickTriggerThreshold = with(density) { 36.dp.toPx() }
+        val velocityThreshold = with(density) { 140.dp.toPx() }
+        val minDisplacement = with(density) { 8.dp.toPx() }
+        val velocityTracker = VelocityTracker()
+        var totalDragX = 0f
+        var triggeredInDrag = false
+        detectHorizontalDragGestures(
+            onDragStart = {
+                totalDragX = 0f
+                triggeredInDrag = false
+                velocityTracker.resetTracking()
+            },
+            onDragCancel = {
+                totalDragX = 0f
+                triggeredInDrag = false
+            },
+            onDragEnd = {
+                if (!triggeredInDrag) {
+                    val velocityX = velocityTracker.calculateVelocity().x
+                    val swipedLeft = totalDragX <= -quickTriggerThreshold ||
+                        (totalDragX <= -minDisplacement && velocityX <= -velocityThreshold)
+                    val swipedRight = totalDragX >= quickTriggerThreshold ||
+                        (totalDragX >= minDisplacement && velocityX >= velocityThreshold)
+
+                    if (swipedLeft) {
+                        when (selectedTab) {
+                            TAB_HOME -> {
+                                haptics.play(Haptic.Select)
+                                selectTab(TAB_EXPLORE, true)
+                            }
+                            TAB_EXPLORE -> {
+                                haptics.play(Haptic.Select)
+                                selectTab(TAB_LIBRARY, true)
+                            }
+                            TAB_LIBRARY -> {
+                                haptics.play(Haptic.Select)
+                                selectTab(TAB_HOME, true)
+                            }
+                        }
+                    } else if (swipedRight) {
+                        when (selectedTab) {
+                            TAB_LIBRARY -> {
+                                haptics.play(Haptic.Select)
+                                selectTab(TAB_EXPLORE, false)
+                            }
+                            TAB_EXPLORE -> {
+                                haptics.play(Haptic.Select)
+                                selectTab(TAB_HOME, false)
+                            }
+                            TAB_HOME -> {
+                                haptics.play(Haptic.Select)
+                                selectTab(TAB_LIBRARY, false)
+                            }
+                        }
+                    }
+                }
+                totalDragX = 0f
+                triggeredInDrag = false
+            },
+            onHorizontalDrag = { change, dragAmount ->
+                totalDragX += dragAmount
+                velocityTracker.addPosition(change.uptimeMillis, change.position)
+                change.consume()
+
+                if (!triggeredInDrag && kotlin.math.abs(totalDragX) >= quickTriggerThreshold) {
+                    triggeredInDrag = true
+                    if (totalDragX < 0) {
+                        when (selectedTab) {
+                            TAB_HOME -> {
+                                haptics.play(Haptic.Select)
+                                selectTab(TAB_EXPLORE, true)
+                            }
+                            TAB_EXPLORE -> {
+                                haptics.play(Haptic.Select)
+                                selectTab(TAB_LIBRARY, true)
+                            }
+                            TAB_LIBRARY -> {
+                                haptics.play(Haptic.Select)
+                                selectTab(TAB_HOME, true)
+                            }
+                        }
+                    } else {
+                        when (selectedTab) {
+                            TAB_LIBRARY -> {
+                                haptics.play(Haptic.Select)
+                                selectTab(TAB_EXPLORE, false)
+                            }
+                            TAB_EXPLORE -> {
+                                haptics.play(Haptic.Select)
+                                selectTab(TAB_HOME, false)
+                            }
+                            TAB_HOME -> {
+                                haptics.play(Haptic.Select)
+                                selectTab(TAB_LIBRARY, false)
+                            }
+                        }
+                    }
+                }
+            },
+        )
+    }
+
     Box(
         Modifier
             .fillMaxSize()
@@ -3360,17 +3514,17 @@ private fun BitChordApp(
                             (target.isShowAll() && initial == libraryTab)
                         when {
                             tabSwap -> {
-                                val forward = target.index >= initial.index
+                                val forward = gestureSwipeForward ?: (target.index > initial.index)
                                 if (forward) {
-                                    (slideInHorizontally(tween(220, easing = FastOutSlowInEasing)) { (it * 0.12f).toInt() } +
-                                        fadeIn(tween(200, easing = FastOutSlowInEasing))) togetherWith
-                                    (slideOutHorizontally(tween(180, easing = FastOutLinearInEasing)) { (-it * 0.12f).toInt() } +
-                                        fadeOut(tween(140, easing = FastOutLinearInEasing)))
+                                    (slideInHorizontally(tween(190, easing = FastOutSlowInEasing)) { (it * 0.20f).toInt() } +
+                                        fadeIn(tween(170, easing = FastOutSlowInEasing))) togetherWith
+                                    (slideOutHorizontally(tween(160, easing = FastOutLinearInEasing)) { (-it * 0.20f).toInt() } +
+                                        fadeOut(tween(120, easing = FastOutLinearInEasing)))
                                 } else {
-                                    (slideInHorizontally(tween(220, easing = FastOutSlowInEasing)) { (-it * 0.12f).toInt() } +
-                                        fadeIn(tween(200, easing = FastOutSlowInEasing))) togetherWith
-                                    (slideOutHorizontally(tween(180, easing = FastOutLinearInEasing)) { (it * 0.12f).toInt() } +
-                                        fadeOut(tween(140, easing = FastOutLinearInEasing)))
+                                    (slideInHorizontally(tween(190, easing = FastOutSlowInEasing)) { (-it * 0.20f).toInt() } +
+                                        fadeIn(tween(170, easing = FastOutSlowInEasing))) togetherWith
+                                    (slideOutHorizontally(tween(160, easing = FastOutLinearInEasing)) { (it * 0.20f).toInt() } +
+                                        fadeOut(tween(120, easing = FastOutLinearInEasing)))
                                 }
                             }
                             libraryShowAllSwap -> {
@@ -3435,7 +3589,8 @@ private fun BitChordApp(
                         // Every page's scroll passes through here, so
                         // the dock collapses on all of them
                         // without each one having to know about it.
-                        .nestedScroll(navBarScroll),
+                        .nestedScroll(navBarScroll)
+                        .then(tabSwipeModifier),
                     label = "content",
                 ) { destination ->
                     // Every branch below reads `destination` rather than the
@@ -4608,34 +4763,6 @@ private fun BitChordApp(
                 }
                 val dismissSearch: () -> Unit = {
                     selectedTab = lastNonSearchTab
-                }
-
-                val onTabSelected: (Int) -> Unit = { index ->
-                    navBarScroll.expand()
-                    if (selectedTab == index) {
-                        if (route != null || detail != null || selectedMoodGenre != null) {
-                            navigator.clear()
-                            viewModel.closeMoodGenre()
-                        } else {
-                            scope.launch {
-                                currentListState.animateScrollToItem(0)
-                            }
-                        }
-                    } else {
-                        if (selectedTab != TAB_SEARCH) {
-                            lastNonSearchTab = selectedTab
-                        }
-                        navigator.clear()
-                        viewModel.closeMoodGenre()
-                        selectedTab = index
-
-                        // Every search tab tap resets the field, focuses it, and opens
-                        // the keyboard through SearchScreen's focus request.
-                        if (index == TAB_SEARCH) {
-                            viewModel.onQueryChange("")
-                            searchFocusRequested = true
-                        }
-                    }
                 }
                 val isSearchActive = selectedTab == TAB_SEARCH && route == null && detail == null && selectedMoodGenre == null
                 if (isLandscapeChrome) {
