@@ -738,7 +738,6 @@ fun DetailScreen(
                         autoFocus = focusSearch,
                         onFocused = { focusSearch = false },
                         palette = palette,
-                        type = page.type,
                     )
                 }
             }
@@ -1858,7 +1857,6 @@ private fun DetailSearchField(
     autoFocus: Boolean,
     onFocused: () -> Unit,
     palette: ArtworkPalette,
-    type: BrowseType,
 ) {
     // Opened by a tap on a button, which is as clear a statement of intent as
     // the keyboard is going to get — so it comes up with the field rather than

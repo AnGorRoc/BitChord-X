@@ -3525,7 +3525,7 @@ fun BitChordDesktopApp() {
         if (collectionLoadingMore) return
         collectionLoadingMore = true
         scope.launch {
-            DesktopSearchClient.moreCollectionSongs(token, collection.songs.firstOrNull()?.artist)
+            DesktopSearchClient.moreCollectionSongs(token)
                 .onSuccess { (songs, next) ->
                     val current = openedCollection
                     if (current != null && current.browseId == collection.browseId) {
@@ -4328,7 +4328,6 @@ fun BitChordDesktopApp() {
                             volume = it
                             persistence.saveString("volume", it.toString())
                         },
-                        onOpenAudioOutput = { overlays.audioOutput = true },
                         onOpenLyrics = { overlays.toggleSidePanel(DesktopSidePanel.LYRICS) },
                         onOpenQueue = { overlays.toggleSidePanel(DesktopSidePanel.QUEUE) },
                         sidePanel = overlays.sidePanel,
@@ -5026,7 +5025,6 @@ fun BitChordDesktopApp() {
                                         audioQuality = it
                                         persistence.saveAudioQuality(it)
                                     },
-                                    sleepTimerMinutes = sleepTimerMinutes,
                                     sleepAfterTrack = sleepAfterTrack,
                                     sleepRemainingMs = sleepRemainingMs,
                                     onSleepTimerCycle = ::cycleSleepTimer,
@@ -5971,7 +5969,6 @@ private fun DesktopPlayerCapsule(
     onRepeatModeChange: (DesktopRepeatMode) -> Unit,
     onOpenNowPlaying: () -> Unit,
     onVolumeChange: (Float) -> Unit,
-    onOpenAudioOutput: () -> Unit,
     onOpenLyrics: () -> Unit,
     onOpenQueue: () -> Unit,
     sidePanel: DesktopSidePanel?,
@@ -7916,7 +7913,6 @@ private fun DesktopSettingsScreen(
     onDownloadQualityChange: (String) -> Unit,
     audioQuality: DesktopAudioQuality,
     onAudioQualityChange: (DesktopAudioQuality) -> Unit,
-    sleepTimerMinutes: Int?,
     sleepAfterTrack: Boolean,
     sleepRemainingMs: Long?,
     onSleepTimerCycle: () -> Unit,

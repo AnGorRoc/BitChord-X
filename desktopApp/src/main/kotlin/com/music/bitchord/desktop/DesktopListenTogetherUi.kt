@@ -249,7 +249,6 @@ internal fun DesktopListenTogetherDialog(autoplayEnabled: Boolean, onDismiss: ()
                     },
                 )
                 else -> PartyLanding(
-                    signedIn = DesktopListenTogether.canJoin(),
                     enabled = DesktopListenTogether.canJoin() && DesktopListenTogether.hasServer,
                     avatarUrl = DesktopListenTogether.myAvatarUrl(),
                     nickname = nickname,
@@ -364,7 +363,6 @@ internal fun DesktopListenTogetherDialog(autoplayEnabled: Boolean, onDismiss: ()
 
 @Composable
 private fun PartyLanding(
-    signedIn: Boolean,
     enabled: Boolean,
     avatarUrl: String?,
     nickname: String,

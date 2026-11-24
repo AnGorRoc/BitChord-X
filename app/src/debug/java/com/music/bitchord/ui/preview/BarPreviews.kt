@@ -134,7 +134,6 @@ private fun ChromeStack(scrolled: Boolean, withMiniPlayer: Boolean) {
             modifier = Modifier.align(Alignment.TopCenter),
         )
         FrostedTopBar(
-            title = "Listen Now",
             scrolled = { scrolled },
             modifier = Modifier.align(Alignment.TopCenter),
         )
@@ -297,13 +296,13 @@ private fun TopBarBackdropPreview() {
                 .background(MaterialTheme.colorScheme.background),
         ) {
             Box(Modifier.height(160.dp)) {
-                FrostedTopBar(title = "At rest", scrolled = { false })
+                FrostedTopBar(scrolled = { false })
             }
             Box(Modifier.height(160.dp)) {
-                FrostedTopBar(title = "Scrolled", scrolled = { true })
+                FrostedTopBar(scrolled = { true })
             }
             Box(Modifier.height(160.dp)) {
-                FrostedTopBar(title = "Pushed page", scrolled = { true }, onBack = {})
+                FrostedTopBar(scrolled = { true }, onBack = {})
             }
         }
     }

@@ -152,7 +152,6 @@ fun TvCard(
     aspectRatio: Float = 1.0f,
     isCircle: Boolean = false,
     isPlaying: Boolean = false,
-    badge: String? = null,
     onClick: () -> Unit,
     onLongClick: (() -> Unit)? = null,
 ) {

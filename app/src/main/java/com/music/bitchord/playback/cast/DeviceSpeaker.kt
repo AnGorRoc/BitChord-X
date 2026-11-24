@@ -1033,7 +1033,7 @@ internal class DeviceTarget(
             DeviceActions.NEXT -> p.seekToNextMediaItem()
             DeviceActions.PREVIOUS -> p.seekToPreviousMediaItem()
             DeviceActions.SET_VOLUME -> DeviceWire.double(payload, "volume")?.let { p.volume = it.toFloat().coerceIn(0f, 1f) }
-            DeviceActions.PLAY_QUEUE -> playQueue(p, command, payload)
+            DeviceActions.PLAY_QUEUE -> playQueue(p, payload)
             DeviceActions.ENQUEUE -> enqueue(p, payload)
             DeviceActions.SNAPSHOT -> answer(p, command.from, pullIt = false)
             DeviceActions.RELEASE -> answer(p, command.from, pullIt = true)
@@ -1070,7 +1070,7 @@ internal class DeviceTarget(
         scope.launch { ListenTogether.joinFromOwnDevice(code, server) }
     }
 
-    private fun playQueue(p: ExoPlayer, command: DeviceCommand, payload: JsonObject) {
+    private fun playQueue(p: ExoPlayer, payload: JsonObject) {
         val tracks = DeviceWire.tracksFrom(payload)
         if (tracks.isEmpty()) return
         val index = (DeviceWire.int(payload, "index") ?: 0).coerceIn(0, tracks.lastIndex)

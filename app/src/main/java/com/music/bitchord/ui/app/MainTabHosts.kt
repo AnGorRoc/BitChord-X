@@ -156,7 +156,6 @@ internal fun ExploreTabHost(
     pullState: PullToRefreshState,
     contentPadding: PaddingValues,
     shelfSong: (ShelfItem) -> Song?,
-    onPlayRadio: (Song, QueueSource) -> Unit,
     onPlayFromShelf: (ShelfItem, List<ShelfItem>?, QueueSource) -> Unit,
     onPlayFrom: (List<Song>, Int, QueueSource) -> Unit,
     onAddToQueue: (Song) -> Unit,
@@ -332,7 +331,6 @@ internal fun SearchTabHost(
     onSongSwipe: (Song) -> Unit,
     onSongSwipeAction: (Song, SongSwipeAction) -> Unit,
     onSongHoldPlaylist: (Song) -> Unit,
-    onSetPlaylistTarget: (Song) -> Unit,
     onOpenBrowseMenu: (BrowseTarget) -> Unit,
     onBlockedAddonSongClick: (Song) -> Unit,
 ) {

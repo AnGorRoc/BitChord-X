@@ -1592,7 +1592,6 @@ fun NowPlayingScreen(
             onCycleRepeat = onCycleRepeat,
             onToggleAutoplay = onToggleAutoplay,
             onOpenOutput = openAudioOutput,
-            onListenTogether = onListenTogether,
             onOpenListenTogetherMembers = openListenTogetherMembers,
         )
         // Keep the current output caption visible in every state.
@@ -1646,7 +1645,6 @@ fun NowPlayingScreen(
         }
         if (showListenTogetherMembers) {
             ConnectSheet(
-                hazeState = playerHaze,
                 onDismiss = { showListenTogetherMembers = false },
                 onOpenParty = {
                     showListenTogetherMembers = false

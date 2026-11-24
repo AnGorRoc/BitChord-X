@@ -528,7 +528,6 @@ private fun phraseBarPlan(
     nextLength: Double,
     phraseBars: Int,
     mixAnchor: Double,
-    advanced: Boolean,
 ): TransitionPlan? {
     val outgoingBpm = analysis.bpm.orZero()
     if (outgoingBpm < MIN_BPM || outgoingBpm > MAX_BPM) return null
@@ -571,15 +570,15 @@ private fun phraseBarPlan(
     // Tempo handling mirrors the adaptive blend: fold the incoming tempo into
     // the outgoing octave, stretch only what a speed-up can meet, and never slow
     // the incoming deck under Advanced.
-    val policy = assessTransitionTier(analysis, nextAnalysis, advanced)
+    val policy = assessTransitionTier(analysis, nextAnalysis)
     val beatmatched = policy.tier == TransitionTier.BEATMATCHED
     val nextBpm = nextAnalysis.bpm.orZero()
     val alignedIncomingBpm = alignTempoOctave(outgoingBpm, nextBpm)
     val tempoFar = nextBpm > 0 && !stretchReachable(outgoingBpm, nextBpm)
     val mediaRatio =
         if (nextBpm > 0 && !tempoFar) roundRate(1.0 / normalizedTempoRatio(outgoingBpm, nextBpm)) else 1.0
-    val incomingPlaybackRate = incomingRateFor(mediaRatio, advanced)
-    val outgoingPlaybackRate = outgoingRateFor(mediaRatio, advanced)
+    val incomingPlaybackRate = incomingRateFor(mediaRatio)
+    val outgoingPlaybackRate = outgoingRate()
     val incomingBeatSeconds = if (alignedIncomingBpm > 0) 60.0 / alignedIncomingBpm else beatSeconds
 
     val audibleStart = incomingStartPoint(nextAnalysis)
@@ -918,9 +917,8 @@ fun planWsolaTransition(
     nextAnalysis: TrackAnalysis,
     duration: Double = 0.0,
     nextDuration: Double = 0.0,
-    advanced: Boolean = false,
 ): WsolaPlanResult {
-    val policy = assessTransitionTier(analysis, nextAnalysis, advanced)
+    val policy = assessTransitionTier(analysis, nextAnalysis)
     if (policy.tier != TransitionTier.BEATMATCHED) {
         return WsolaPlanResult.Refused(policy.reasons.firstOrNull() ?: "policy")
     }
@@ -1072,7 +1070,6 @@ private fun phraseSwitch(
     nextAnalysis: TrackAnalysis,
     length: Double,
     nextLength: Double,
-    advanced: Boolean,
 ): TransitionPlan? {
     if (!harmonicallyCompatible(trustedKey(analysis), trustedKey(nextAnalysis))) return null
 
@@ -1081,7 +1078,6 @@ private fun phraseSwitch(
         nextAnalysis = nextAnalysis,
         duration = length,
         nextDuration = nextLength,
-        advanced = advanced,
     ) as? WsolaPlanResult.Planned ?: return null
     // The incoming song is slowed by at most 10% and sped up by at most 25%;
     // the audible outgoing song is never retimed. A phrase switch that needs
@@ -1089,7 +1085,7 @@ private fun phraseSwitch(
     if (planned.stretchRatio !in MIN_INCOMING_RATE..MAX_INCOMING_RATE) return null
 
     val overlap = planned.transitionEnd - planned.transitionStart
-    val renderedIncomingRate = incomingRateFor(planned.stretchRatio, advanced)
+    val renderedIncomingRate = incomingRateFor(planned.stretchRatio)
     return TransitionPlan(
         markerVisible = true,
         transitionStart = planned.transitionStart,
@@ -1100,7 +1096,7 @@ private fun phraseSwitch(
         incomingCueTime = planned.incomingCueTime,
         incomingHandoffTime = planned.incomingHandoffTime,
         incomingPlaybackRate = renderedIncomingRate,
-        outgoingPlaybackRate = outgoingRateFor(planned.stretchRatio, advanced),
+        outgoingPlaybackRate = outgoingRate(),
         pickupSeconds = incomingAudibleStart(nextAnalysis),
         transitionBeats = planned.beats,
         bassSwap = true,
@@ -1150,12 +1146,11 @@ private data class Overlap(
  * Changing the already-audible outgoing deck's AudioTrack rate causes
  * discontinuities on some Android routes, so only the incoming one moves.
  */
-@Suppress("UNUSED_PARAMETER")
-private fun incomingRateFor(mediaRatio: Double, advanced: Boolean): Double =
+private fun incomingRateFor(mediaRatio: Double): Double =
     roundRate(clamp(mediaRatio, MIN_INCOMING_RATE, MAX_INCOMING_RATE))
 
 /** The audible outgoing deck is never tempo-shifted. */
-private fun outgoingRateFor(mediaRatio: Double, advanced: Boolean): Double =
+private fun outgoingRate(): Double =
     1.0
 
 private fun roundRate(rate: Double): Double = (rate * 10000).roundToInt() / 10000.0
@@ -1552,7 +1547,7 @@ private fun planTransitionInner(
             preferredMixAnchor
         }
 
-    val policy = assessTransitionTier(analysis, nextAnalysis, advanced)
+    val policy = assessTransitionTier(analysis, nextAnalysis)
     if (policy.tier == TransitionTier.PLAIN_CROSSFADE) {
         val transitionStart = max(0.0, mixAnchor - standardFade)
         val started = playbackTime >= transitionStart
@@ -1614,7 +1609,6 @@ private fun planTransitionInner(
             nextLength = nextLength,
             phraseBars = phraseBars,
             mixAnchor = mixAnchor,
-            advanced = advanced,
         )?.let { plan ->
             if (playbackTime < plan.transitionEnd) {
                 val started = playbackTime >= plan.transitionStart
@@ -1631,7 +1625,7 @@ private fun planTransitionInner(
         }
     }
 
-    phraseSwitch(analysis, nextAnalysis, length, nextLength, advanced)
+    phraseSwitch(analysis, nextAnalysis, length, nextLength)
         ?.takeIf { playbackTime < it.transitionEnd }
         ?.let { plan ->
             val started = playbackTime >= plan.transitionStart
@@ -1849,8 +1843,8 @@ private fun mixPlan(
         handoffDuration = alignedOverlap,
         incomingCueTime = finalIncomingCueTime,
         incomingHandoffTime = incomingHandoffTime,
-        incomingPlaybackRate = incomingRateFor(incomingPlaybackRate, traits != null),
-        outgoingPlaybackRate = outgoingRateFor(incomingPlaybackRate, traits != null),
+        incomingPlaybackRate = incomingRateFor(incomingPlaybackRate),
+        outgoingPlaybackRate = outgoingRate(),
         pickupSeconds = pickupSeconds,
         transitionBeats = transitionBeats,
         bassSwap = sameBeatBlend || hasBassContent,

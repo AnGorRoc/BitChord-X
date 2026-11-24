@@ -185,7 +185,6 @@ private enum class TopBarLeadingSlot {
  */
 @Composable
 fun FrostedTopBar(
-    title: String,
     // A lambda, not a value: this flips as a feed leaves its very top, and
     // reading it in the caller would recompose the whole app on that frame of
     // the scroll.

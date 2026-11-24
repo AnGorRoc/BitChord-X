@@ -61,7 +61,6 @@ fun DesktopReplayStoriesDialog(
     holder: String,
     memberSince: String?,
     onDismiss: () -> Unit,
-    onPlaySong: (Song) -> Unit,
     onSharePoster: () -> Unit,
 ) {
     var currentPage by remember { mutableIntStateOf(0) }
@@ -116,7 +115,6 @@ fun DesktopReplayStoriesDialog(
                         summary = summary,
                         holder = holder,
                         memberSince = memberSince,
-                        onPlaySong = onPlaySong,
                     )
                 }
 
@@ -239,7 +237,6 @@ private fun StoryPageContent(
     summary: DesktopReplaySummary,
     holder: String,
     memberSince: String?,
-    onPlaySong: (Song) -> Unit,
 ) {
     Box(
         Modifier
@@ -250,7 +247,7 @@ private fun StoryPageContent(
         when (page) {
             0 -> StoryIntro(summary, holder, memberSince)
             1 -> StoryMinutes(summary)
-            2 -> StoryTopSong(summary, onPlaySong)
+            2 -> StoryTopSong(summary)
             3 -> StoryTopArtist(summary)
             4 -> StoryTopAlbum(summary)
             5 -> StoryTopGenre(summary)
@@ -320,7 +317,7 @@ private fun StoryMinutes(summary: DesktopReplaySummary) {
 }
 
 @Composable
-private fun StoryTopSong(summary: DesktopReplaySummary, onPlaySong: (Song) -> Unit) {
+private fun StoryTopSong(summary: DesktopReplaySummary) {
     val top = summary.songs.firstOrNull()
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Text(

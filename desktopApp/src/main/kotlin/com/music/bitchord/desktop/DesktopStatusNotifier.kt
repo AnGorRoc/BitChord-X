@@ -157,7 +157,7 @@ internal class DesktopStatusNotifierController(
 
     fun update(title: String?, isPlaying: Boolean) {
         if (!isLinuxSession()) {
-            DesktopAwtTray.update(title, isPlaying)
+            DesktopAwtTray.update(title)
             return
         }
         val changed = synchronized(lock) {

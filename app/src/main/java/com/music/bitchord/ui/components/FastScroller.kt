@@ -117,7 +117,6 @@ fun FastScroller(
         sectionNameForIndex = sectionNameForIndex,
         modifier = modifier,
         contentPadding = contentPadding,
-        headerCount = headerCount,
         minItemsForFastScroll = minItemsForFastScroll,
     )
 }
@@ -202,7 +201,6 @@ fun FastScroller(
         sectionNameForIndex = sectionNameForIndex,
         modifier = modifier,
         contentPadding = contentPadding,
-        headerCount = headerCount,
         minItemsForFastScroll = minItemsForFastScroll,
     )
 }
@@ -222,7 +220,6 @@ fun FastScrollerCore(
     activeTopItemIndex: () -> Int = { 0 },
     targetItemIndexForFraction: (Float) -> Int = { (it * (itemCount - 1)).roundToInt().coerceIn(0, (itemCount - 1).coerceAtLeast(0)) },
     contentPadding: PaddingValues = PaddingValues(),
-    headerCount: Int = 1,
     minItemsForFastScroll: Int = 6,
 ) {
     if (itemCount < minItemsForFastScroll) return

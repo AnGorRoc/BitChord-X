@@ -238,7 +238,6 @@ fun ReplayStories(
                 onClose = onClose,
                 onShare = onShare,
                 palette = palette,
-                artwork = artwork,
                 page = page,
             )
         }
@@ -287,7 +286,6 @@ private fun Stage(
     onClose: () -> Unit,
     onShare: (ReplayStoryPage) -> Unit,
     palette: MeshPalette,
-    artwork: String?,
     page: ReplayStoryPage,
 ) {
     Box(

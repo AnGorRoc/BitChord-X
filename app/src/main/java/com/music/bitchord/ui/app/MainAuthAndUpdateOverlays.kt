@@ -117,7 +117,6 @@ internal fun OnboardingOverlay(
     onSignIn: () -> Unit,
     onConnectSpotify: () -> Unit,
     onOpenSpotifyTokenSetup: () -> Unit,
-    accountName: String? = null,
 ) {
     // There from the first frame, so no way in; on the way out it drops
     // like a dismissed sheet onto the app it was standing in front of.

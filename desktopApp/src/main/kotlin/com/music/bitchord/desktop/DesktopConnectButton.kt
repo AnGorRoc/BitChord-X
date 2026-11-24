@@ -112,7 +112,6 @@ internal fun DesktopConnectButton(modifier: Modifier = Modifier) {
                 properties = PopupProperties(focusable = true),
             ) {
                 ConnectPopover(
-                    onDismiss = { open = false },
                     onOpenParty = { open = false; DesktopPlayerHost.openListenTogether() },
                     onStartParty = {
                         open = false

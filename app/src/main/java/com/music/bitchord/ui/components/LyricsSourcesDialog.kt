@@ -80,7 +80,6 @@ import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 fun LyricsSourcesDialog(
     hazeState: HazeState,
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier,
 ) {
     val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
     val selected by AppSettings.lyricsSources.collectAsStateWithLifecycle()

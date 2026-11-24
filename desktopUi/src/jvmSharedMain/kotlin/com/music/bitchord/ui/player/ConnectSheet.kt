@@ -78,7 +78,6 @@ import com.music.bitchord.sharedui.resources.*
 import com.music.bitchord.ui.haptics.Haptic
 import com.music.bitchord.ui.haptics.rememberHaptics
 import com.music.bitchord.ui.icons.BitChordIcons
-import dev.chrisbanes.haze.HazeState
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -99,7 +98,6 @@ val LocalConnectSheetDismiss = compositionLocalOf<((() -> Unit)?) -> Unit> { { i
 
 @Composable
 internal fun ConnectSheet(
-    hazeState: HazeState,
     onDismiss: () -> Unit,
     onOpenParty: () -> Unit,
     onStartParty: () -> Unit = onOpenParty,
@@ -163,7 +161,6 @@ internal fun ConnectSheet(
         ) {
             CompositionLocalProvider(LocalConnectSheetDismiss provides close) {
                 ConnectPopover(
-                    onDismiss = { close(null) },
                     onOpenParty = onOpenParty,
                     onStartParty = onStartParty,
                     onJoinParty = onJoinParty,
@@ -198,7 +195,6 @@ val FLOATING_PANEL_GAP = 16.dp
  */
 @Composable
 fun ConnectPopover(
-    onDismiss: () -> Unit,
     onOpenParty: () -> Unit,
     onStartParty: () -> Unit = onOpenParty,
     onJoinParty: () -> Unit = onOpenParty,
@@ -221,13 +217,12 @@ fun ConnectPopover(
             modifier = Modifier.padding(start = 4.dp),
         )
         Spacer(Modifier.height(10.dp))
-        ConnectContent(onDismiss, onOpenParty, onStartParty, onJoinParty)
+        ConnectContent(onOpenParty, onStartParty, onJoinParty)
     }
 }
 
 @Composable
 internal fun ConnectContent(
-    onDismiss: () -> Unit,
     onOpenParty: () -> Unit,
     onStartParty: () -> Unit,
     onJoinParty: () -> Unit,

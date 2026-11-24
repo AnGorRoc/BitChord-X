@@ -282,13 +282,12 @@ object ReplaySync {
         }
 
         val devices = devicesOf(token, listing)
-        val downloaded = pull(context, token, listing, devices, myId, onStep)
+        val downloaded = pull(token, listing, devices, myId, onStep)
         Report(identity = me, uploaded = uploaded, downloaded = downloaded, devices = devices, forkedTo = forkedTo)
     }
 
     /** Brings every other device's changed months down, and drops what has gone. */
     private suspend fun pull(
-        context: Context,
         token: String,
         listing: Listing,
         devices: List<RemoteDevice>,

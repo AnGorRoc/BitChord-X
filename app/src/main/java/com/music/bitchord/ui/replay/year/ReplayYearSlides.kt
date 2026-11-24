@@ -95,7 +95,7 @@ fun YearSlideContent(slide: YearSlide, year: ReplayYear, palette: MeshPalette) {
             .padding(top = CHROME_HEIGHT + 6.dp, bottom = 72.dp),
     ) {
         when (slide) {
-            YearSlide.OPENER -> Opener(year, accent, confetti)
+            YearSlide.OPENER -> Opener(year, confetti)
             YearSlide.MINUTES -> Minutes(year, accent, confetti)
             YearSlide.BUSIEST_DAY -> BusiestDay(year, accent)
             YearSlide.CLOCK -> Clock(year, accent)
@@ -144,7 +144,7 @@ private fun SetupLine(text: String, start: Long = 120) {
 // ── Cards ───────────────────────────────────────────────────────────────────
 
 @Composable
-private fun ColumnScope.Opener(year: ReplayYear, accent: Color, confetti: List<Color>) {
+private fun ColumnScope.Opener(year: ReplayYear, confetti: List<Color>) {
     val clock = LocalSlideClock.current
     val reveal = YearSlide.OPENER.revealAtMs
     // The title first, set and timed like every other card's opening line.

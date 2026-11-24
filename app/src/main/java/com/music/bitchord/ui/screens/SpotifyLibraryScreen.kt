@@ -205,10 +205,8 @@ fun SpotifyLibraryScreen(
     onOpenTokenSetup: () -> Unit,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
-    hazeState: HazeState? = null,
     signedIn: Boolean = false,
     bottomBarsHeight: Dp = 0.dp,
-    onOpenLinkImport: (() -> Unit)? = null,
     onImportToYouTube: ((List<SpotifyPlaylist>) -> Unit)? = null,
 ) {
     val cookie by AppSettings.spotifySpdcToken.collectAsStateWithLifecycle()
@@ -932,7 +930,6 @@ internal fun SpotifyLibraryIntroDialog(
     onDestinationChange: (SpotifyImportDestination) -> Unit,
     onStartSelecting: () -> Unit,
     onDismiss: () -> Unit,
-    onOpenLinkImport: (() -> Unit)? = null,
 ) {
     val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
     val dialogShape = RoundedCornerShape(26.dp)

@@ -90,7 +90,6 @@ private val LANGUAGE_LIST_MAX_HEIGHT = 340.dp
 fun AppLanguageDialog(
     hazeState: HazeState,
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier,
 ) {
     val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
     val shape = RoundedCornerShape(ALERT_CORNER)

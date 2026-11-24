@@ -32,7 +32,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.music.bitchord.R
 import com.music.bitchord.data.model.Account
 import com.music.bitchord.data.settings.AppSettings
-import com.music.bitchord.data.settings.BitPerfectMode
 import com.music.bitchord.data.settings.LosslessDataNotice
 import com.music.bitchord.ui.components.MessageState
 import com.music.bitchord.ui.components.SearchField
@@ -52,8 +51,6 @@ fun SettingsScreen(
     windowWidth: Dp,
     signedIn: Boolean,
     account: Account?,
-    onSignIn: () -> Unit,
-    onSignOut: () -> Unit,
     onAccountScrobbling: () -> Unit,
     onEqualizer: () -> Unit,
     onOpenReplay: () -> Unit,
@@ -67,11 +64,6 @@ fun SettingsScreen(
     onSpotifyCanvasAuth: () -> Unit,
     onAppLanguage: () -> Unit,
     onEditSignatureApi: () -> Unit,
-    /**
-     * Asks before [mode] is turned on: it hands volume to the DAC at full
-     * scale. Shown in the app's frosted alert, which needs the app's blur.
-     */
-    onConfirmBitPerfect: (BitPerfectMode) -> Unit,
     /** Asks before a DAC with no settable volume may play at full scale. */
     onConfirmFixedVolume: () -> Unit,
     contentPadding: PaddingValues,

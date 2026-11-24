@@ -299,7 +299,7 @@ class WebDavTest {
         val siblings = listOf(img("IMG_1234.jpg"), img("cover.jpg"), img("back.jpg"))
         assertEquals(
             "https://cloud.example.com/Music/Album/cover.jpg",
-            WebDavRepository.artworkFor("https://cloud.example.com/Music/Album/song.mp3", siblings),
+            WebDavRepository.artworkFor(siblings),
         )
     }
 
@@ -314,12 +314,11 @@ class WebDavTest {
         assertEquals(
             "https://cloud.example.com/Music/Album/a.jpg",
             WebDavRepository.artworkFor(
-                "https://cloud.example.com/Music/Album/song.mp3",
                 listOf(img("z.jpg"), img("a.jpg")),
             ),
         )
         assertNull(
-            WebDavRepository.artworkFor("https://cloud.example.com/Music/Album/song.mp3", emptyList()),
+            WebDavRepository.artworkFor(emptyList()),
         )
     }
 

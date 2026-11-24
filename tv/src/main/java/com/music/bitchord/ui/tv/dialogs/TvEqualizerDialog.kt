@@ -130,7 +130,6 @@ fun TvEqualizerDialog(
                         TvBandFader(
                             hz = hz,
                             gainDb = bands.getOrElse(index) { 0f },
-                            enabled = enabled,
                             onGainChange = { newDb ->
                                 val updated = bands.toMutableList().also {
                                     while (it.size <= index) it.add(0f)
@@ -197,7 +196,6 @@ fun TvEqualizerDialog(
 private fun TvBandFader(
     hz: Float,
     gainDb: Float,
-    enabled: Boolean,
     onGainChange: (Float) -> Unit,
     onReset: () -> Unit,
 ) {

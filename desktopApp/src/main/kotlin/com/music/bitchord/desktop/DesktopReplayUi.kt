@@ -79,7 +79,6 @@ internal fun DesktopReplayPage(
             holder = holder,
             memberSince = summary.memberSince(),
             onDismiss = { showStories = false },
-            onPlaySong = onPlaySong,
             onSharePoster = {
                 val poster = DesktopReplayPoster.renderPoster(summary, holder, summary.memberSince())
                 val target = DesktopReplayPoster.promptSaveFile(suggestedName = "bitchord-replay-${summary.period.name.lowercase()}.png")

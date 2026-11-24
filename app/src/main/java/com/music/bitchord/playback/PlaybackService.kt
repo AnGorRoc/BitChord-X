@@ -2678,10 +2678,10 @@ class PlaybackService : MediaLibraryService() {
                 var alignmentOffsetMs = presetOffsetMs ?: if (measureAlignment) {
                     if (willLockOnAudio) {
                         withTimeoutOrNull(VERSION_GUESS_BUDGET_MS) {
-                            prepareVersionAlignment(sourceSong, targetSong, startPosition)
+                            prepareVersionAlignment(sourceSong, targetSong)
                         } ?: 0L
                     } else {
-                        prepareVersionAlignment(sourceSong, targetSong, startPosition)
+                        prepareVersionAlignment(sourceSong, targetSong)
                     }
                 } else {
                     0L
@@ -2867,7 +2867,7 @@ class PlaybackService : MediaLibraryService() {
                     // search) goes over the old way, on the offset measured on
                     // the files — waited for now if it was cut short above.
                     if (measureAlignment && !guessKnown) {
-                        alignmentOffsetMs = prepareVersionAlignment(sourceSong, targetSong, activePlayer.currentPosition)
+                        alignmentOffsetMs = prepareVersionAlignment(sourceSong, targetSong)
                     }
                     TrackLog.d(
                         "BitChord",
@@ -3089,7 +3089,6 @@ class PlaybackService : MediaLibraryService() {
     private suspend fun prepareVersionAlignment(
         sourceSong: Song,
         targetSong: Song,
-        currentPosMs: Long,
     ): Long {
         val sourceId = sourceSong.videoId
         val targetId = targetSong.videoId
@@ -3757,7 +3756,7 @@ class PlaybackService : MediaLibraryService() {
         return null
     }
 
-    private fun syncBoundedContextCursor(exoPlayer: ExoPlayer, mediaItem: MediaItem?) {
+    private fun syncBoundedContextCursor(mediaItem: MediaItem?) {
         val window = boundedContextWindow ?: return
         if (ListenTogether.state.value.inParty) return
         if (mediaItem?.queueTier != QueueTier.CONTEXT) return
@@ -4554,7 +4553,7 @@ class PlaybackService : MediaLibraryService() {
         alreadyAudible: Boolean = false,
     ) {
         val exoPlayer = player ?: return
-        syncBoundedContextCursor(exoPlayer, mediaItem)
+        syncBoundedContextCursor(mediaItem)
         if (boundedContextWindow != null && !ListenTogether.state.value.inParty) {
             saveBoundedContextSnapshot(exoPlayer)
         }
@@ -9458,7 +9457,6 @@ class PlaybackService : MediaLibraryService() {
                 audioManager = manager,
                 sampleRateHz = sampleRate,
                 channelCount = channels,
-                activeDevice = activeDevice,
             )
         } else {
             DirectAudioProbe.DirectSupport.NONE
@@ -9543,7 +9541,6 @@ class PlaybackService : MediaLibraryService() {
             audioManager = manager,
             sampleRateHz = sampleRate,
             channelCount = channels,
-            activeDevice = activeDevice,
         )
         val btTelemetry = if (routeKind == AudioRouting.Kind.BLUETOOTH) bluetoothTracker.telemetry.value else null
 
@@ -9713,7 +9710,7 @@ class PlaybackService : MediaLibraryService() {
         val routeKind = resolveActiveRouteKind(activeDevice)
         val advertisesFloat = activeDevice?.encodings?.contains(AudioFormat.ENCODING_PCM_FLOAT) == true
         val directFloatSupported = audioManager?.let { mgr ->
-            DirectAudioProbe.probeDirectSupport(mgr, 48000, 2, activeDevice).supportsFloat
+            DirectAudioProbe.probeDirectSupport(mgr, 48000, 2).supportsFloat
         } ?: false
         // Worth knowing which way this cuts for a hi-res stream: with float
         // off, Media3 downconverts *every* input encoding to 16-bit, because

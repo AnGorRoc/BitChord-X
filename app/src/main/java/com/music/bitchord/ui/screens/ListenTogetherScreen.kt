@@ -193,8 +193,6 @@ private fun NameDialog(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ListenTogetherScreen(
-    signedIn: Boolean,
-    onSignIn: () -> Unit,
     contentPadding: PaddingValues,
     /**
      * Opens the server editor, which is mounted at the root rather than here.

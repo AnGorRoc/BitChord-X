@@ -429,17 +429,3 @@ fun LazyListScope.playlistRowsSkeleton(count: Int = 6, keyPrefix: String = "skel
     }
 }
 
-/**
- * Wraps content in a stable container without re-triggering entrance animations on scroll.
- */
-@Composable
-fun CleanSectionEntrance(
-    index: Int = 0,
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit,
-) {
-    Box(modifier = modifier) {
-        content()
-    }
-}
-

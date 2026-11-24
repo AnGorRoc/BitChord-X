@@ -205,7 +205,7 @@ internal object QuickJsExecutor {
      * a module whose script fails to evaluate cannot permanently consume a slot
      * in the pool it never joined.
      */
-    private suspend fun acquire(moduleId: String, pool: Pool): QuickJs {
+    private suspend fun acquire(pool: Pool): QuickJs {
         pool.free.tryReceive().getOrNull()?.let { return it }
 
         val mine = pool.lock.withLock {
@@ -234,7 +234,7 @@ internal object QuickJsExecutor {
         TrackLog.d(TAG, "QuickJsExecutor.callExport($moduleId, $functionName) args=$args")
         return withContext(Dispatchers.Default) {
             val qjs = try {
-                acquire(moduleId, pool)
+                acquire(pool)
             } catch (e: Throwable) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 return@withContext Result.failure(e)

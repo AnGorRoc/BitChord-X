@@ -72,7 +72,6 @@ private val LIST_MAX_HEIGHT = 340.dp
 fun TranslationLanguageDialog(
     hazeState: HazeState,
     onDismiss: () -> Unit,
-    modifier: Modifier = Modifier,
 ) {
     val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
     val selected by AppSettings.translationLanguage.collectAsStateWithLifecycle()

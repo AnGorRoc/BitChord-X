@@ -3661,7 +3661,6 @@ private fun BitChordApp(
                         } else if (pageRoute == AppRoute.Spotify) {
                             SpotifyLibraryScreen(
                                 state = spotifyLibraryState,
-                                hazeState = hazeState,
                                 signedIn = signedIn,
                                 bottomBarsHeight = with(LocalDensity.current) { floatingBarsHeight.intValue.toDp() },
                                 onOpenPlaylist = { playlist ->
@@ -3675,7 +3674,6 @@ private fun BitChordApp(
                                 },
                                 onOpenLogin = { showSpotifyLogin = true },
                                 onOpenTokenSetup = { showSpotifyCanvasAuth = true },
-                                onOpenLinkImport = { showSpotifyImportDialog = true },
                                 onImportToYouTube = { playlists ->
                                     scope.launch {
                                         playlists.forEach { playlist ->
@@ -3768,11 +3766,6 @@ private fun BitChordApp(
                             )
                         } else if (pageRoute == AppRoute.ListenTogether) {
                             ListenTogetherScreen(
-                                signedIn = signedIn,
-                                onSignIn = {
-                                    navigator.clear()
-                                    webSession = WebSessionMode.SIGN_IN
-                                },
                                 contentPadding = listPadding,
                                 onEditServer = { editingPartyServer = true },
                             )
@@ -3822,11 +3815,6 @@ private fun BitChordApp(
                                 windowWidth = windowWidth,
                                 signedIn = signedIn,
                                 account = account,
-                                onSignIn = {
-                                    navigator.clear()
-                                    webSession = WebSessionMode.SIGN_IN
-                                },
-                                onSignOut = { viewModel.signOut() },
                                 onAccountScrobbling = { navigator.push(AppRoute.AccountScrobbling) },
                                 onEqualizer = { navigator.push(AppRoute.Equalizer) },
                                 onOpenReplay = {
@@ -3842,7 +3830,6 @@ private fun BitChordApp(
                                 onSpotifyCanvasAuth = { showSpotifyCanvasAuth = true },
                                 onAppLanguage = { showAppLanguage = true },
                                 onEditSignatureApi = { editingSignatureApi = true },
-                                onConfirmBitPerfect = { confirmBitPerfect = it },
                                 onConfirmFixedVolume = { confirmFixedVolume = true },
                                 onFeedback = { navigator.push(AppRoute.Feedback) },
                                 contentPadding = listPadding,
@@ -4181,7 +4168,6 @@ private fun BitChordApp(
                                 pullState = explorePull,
                                 contentPadding = listPadding,
                                 shelfSong = shelfSong,
-                                onPlayRadio = playRadio,
                                 onPlayFromShelf = playFromShelf,
                                 onPlayFrom = ::playFrom,
                                 onAddToQueue = addToQueue,
@@ -4207,7 +4193,6 @@ private fun BitChordApp(
                                 onSongSwipe = onSongSwipe,
                                 onSongSwipeAction = onSongSwipeAction,
                                 onSongHoldPlaylist = onSongHoldPlaylist,
-                                onSetPlaylistTarget = { playlistTarget = it },
                                 onOpenBrowseMenu = openBrowseMenu,
                                 onBlockedAddonSongClick = { song -> blockedAddonSong = song },
                             )
@@ -4877,37 +4862,6 @@ private fun BitChordApp(
                         }
                     }
                     FrostedTopBar(
-                        title = when (route) {
-                            AppRoute.Spotify -> stringResource(R.string.spotify)
-                            AppRoute.Downloads -> stringResource(R.string.downloads)
-                            AppRoute.Discord -> "Discord"
-                            AppRoute.History -> stringResource(R.string.history)
-                            is AppRoute.LibraryShowAll -> route.shelf.title
-                            is AppRoute.ArtistShelf -> route.shelf.title
-                            AppRoute.Moods -> stringResource(R.string.find_your_mood)
-                            AppRoute.AccountScrobbling -> stringResource(R.string.account_scrobbling)
-                            AppRoute.Sources -> stringResource(R.string.sources)
-                            AppRoute.ListenTogether -> stringResource(R.string.listen_together)
-                            AppRoute.WearOs -> stringResource(R.string.wear_os_page_title)
-                            AppRoute.DriveBackup -> stringResource(R.string.drive_backup_title)
-                            AppRoute.DriveDevices -> stringResource(R.string.drive_devices_title)
-                            AppRoute.Equalizer -> stringResource(R.string.equalizer)
-                            AppRoute.Settings -> stringResource(R.string.settings)
-                            is AppRoute.SettingsSection -> stringResource(route.category.title)
-                            is AppRoute.SettingsChoice -> stringResource(route.choice.title)
-                            AppRoute.EqualizerPresets -> stringResource(R.string.equalizer_preset)
-                            AppRoute.Feedback, is AppRoute.FeedbackThread -> stringResource(R.string.feedback_page_title)
-                            AppRoute.FeedbackNew -> stringResource(R.string.feedback_new)
-                            AppRoute.Replay -> stringResource(R.string.replay)
-                            null -> when {
-                                detail != null && detailActiveShelf != null -> detailActiveShelf.title.orEmpty()
-                                detail != null -> detail.title
-                                selectedMoodGenre != null -> selectedMoodGenre?.title.orEmpty()
-                                else -> if (selectedTab == TAB_HOME) "" else tabs[selectedTab].let {
-                                    if (it.label == "Play") stringResource(R.string.listen_now) else it.label
-                                }
-                            }
-                        },
                         // Every page, in either material, uses separated floating
                         // circles over the shared gradient — no full-width pane.
                         transparentBackdrop = true,

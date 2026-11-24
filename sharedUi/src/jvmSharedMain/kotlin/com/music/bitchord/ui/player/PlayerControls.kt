@@ -731,7 +731,6 @@ internal fun PlayerActionRow(
     onCycleRepeat: () -> Unit,
     onToggleAutoplay: () -> Unit,
     onOpenOutput: () -> Unit,
-    onListenTogether: () -> Unit,
     /** Opens [ConnectSheet] rather than settings directly. */
     onOpenListenTogetherMembers: () -> Unit,
 ) {
@@ -837,7 +836,6 @@ internal fun PlayerActionRow(
                 } else {
                     OutputPartyPill(
                         onOutput = onOpenOutput,
-                        onParty = onListenTogether,
                         onOpenMembers = onOpenListenTogetherMembers,
                     )
                 }
@@ -1198,7 +1196,6 @@ private fun PillDivider() {
 @Composable
 private fun OutputPartyPill(
     onOutput: () -> Unit,
-    onParty: () -> Unit,
     /** Who's in it, before the settings page — see [ConnectSheet]. */
     onOpenMembers: () -> Unit,
 ) {
