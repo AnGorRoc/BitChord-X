@@ -1688,7 +1688,7 @@
     <string name="telemetry_level_off">Désactivée</string>
     <string name="telemetry_level_off_desc">Rien n\'est envoyé.</string>
     <string name="telemetry_notice_title">Aidez-nous à corriger ce que nous ne voyons pas</string>
-    <string name="telemetry_notice_body">BitChord-X est un petit projet et nous ne pouvons pas tester chaque téléphone et chaque système. Quand quelque chose échoue, un rapport anonyme nous dit quoi et où : par exemple, « erreur du lecteur, Pixel 7, Android 15, version 1.10.0 ». C\'est tout ce qu\'il contient. Jamais votre compte, votre adresse IP, votre historique d\'écoute ni vos playlists. Vous pouvez le changer à tout moment dans les Réglages.</string>
+    <string name="telemetry_notice_body">BitChord-X est un petit projet et nous ne pouvons pas tester chaque téléphone et chaque système. Quand quelque chose échoue, un rapport anonyme nous dit quoi et où : par exemple, « erreur du lecteur, Pixel 7, Android 15, version 1.10.1 ». C\'est tout ce qu\'il contient. Jamais votre compte, votre adresse IP, votre historique d\'écoute ni vos playlists. Vous pouvez le changer à tout moment dans les Réglages.</string>
     <string name="telemetry_notice_ok">Compris</string>
     <string name="telemetry_notice_choose">Choisir ce qui est envoyé</string>
     <string name="telemetry_plea_title">Avant de le désactiver</string>

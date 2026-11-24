@@ -1672,7 +1672,7 @@
     <string name="telemetry_level_off">ปิด</string>
     <string name="telemetry_level_off_desc">ไม่ส่งอะไรเลย</string>
     <string name="telemetry_notice_title">ช่วยเราแก้สิ่งที่เรามองไม่เห็น</string>
-    <string name="telemetry_notice_body">BitChord-X เป็นโครงการเล็ก เราทดสอบทุกเครื่องและทุกระบบไม่ได้ เมื่อมีอะไรผิดพลาด รายงานแบบไม่ระบุตัวตนจะบอกเราว่าอะไรและที่ไหน เช่น “ข้อผิดพลาดของเครื่องเล่น, Pixel 7, Android 15, เวอร์ชัน 1.10.0” มีเพียงเท่านี้ ไม่มีบัญชี ที่อยู่ IP ประวัติการฟัง หรือเพลย์ลิสต์ของคุณ คุณเปลี่ยนได้ทุกเมื่อในการตั้งค่า</string>
+    <string name="telemetry_notice_body">BitChord-X เป็นโครงการเล็ก เราทดสอบทุกเครื่องและทุกระบบไม่ได้ เมื่อมีอะไรผิดพลาด รายงานแบบไม่ระบุตัวตนจะบอกเราว่าอะไรและที่ไหน เช่น “ข้อผิดพลาดของเครื่องเล่น, Pixel 7, Android 15, เวอร์ชัน 1.10.1” มีเพียงเท่านี้ ไม่มีบัญชี ที่อยู่ IP ประวัติการฟัง หรือเพลย์ลิสต์ของคุณ คุณเปลี่ยนได้ทุกเมื่อในการตั้งค่า</string>
     <string name="telemetry_notice_ok">เข้าใจแล้ว</string>
     <string name="telemetry_notice_choose">เลือกสิ่งที่จะส่ง</string>
     <string name="telemetry_plea_title">ก่อนที่คุณจะปิด</string>

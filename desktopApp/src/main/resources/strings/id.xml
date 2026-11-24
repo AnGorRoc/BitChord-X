@@ -676,7 +676,7 @@
     <string name="telemetry_level_off">Mati</string>
     <string name="telemetry_level_off_desc">Tidak ada yang dikirim.</string>
     <string name="telemetry_notice_title">Bantu kami memperbaiki yang tidak terlihat</string>
-    <string name="telemetry_notice_body">BitChord-X adalah proyek kecil dan kami tidak bisa menguji setiap ponsel dan sistem. Saat sesuatu gagal, laporan anonim memberi tahu kami apa dan di mana: misalnya, “kesalahan pemutar, Pixel 7, Android 15, versi 1.10.0”. Hanya itu isinya. Tidak pernah akun, alamat IP, riwayat pemutaran, atau playlist Anda. Anda dapat mengubahnya kapan saja di Pengaturan.</string>
+    <string name="telemetry_notice_body">BitChord-X adalah proyek kecil dan kami tidak bisa menguji setiap ponsel dan sistem. Saat sesuatu gagal, laporan anonim memberi tahu kami apa dan di mana: misalnya, “kesalahan pemutar, Pixel 7, Android 15, versi 1.10.1”. Hanya itu isinya. Tidak pernah akun, alamat IP, riwayat pemutaran, atau playlist Anda. Anda dapat mengubahnya kapan saja di Pengaturan.</string>
     <string name="telemetry_notice_ok">Mengerti</string>
     <string name="telemetry_notice_choose">Pilih yang dikirim</string>
     <string name="telemetry_plea_title">Sebelum mematikannya</string>

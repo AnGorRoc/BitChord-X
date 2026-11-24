@@ -1644,7 +1644,7 @@
     <string name="telemetry_level_off">Kapalı</string>
     <string name="telemetry_level_off_desc">Hiçbir şey gönderilmez.</string>
     <string name="telemetry_notice_title">Göremediğimizi düzeltmemize yardım edin</string>
-    <string name="telemetry_notice_body">BitChord-X küçük bir proje ve her telefonu ve sistemi test edemiyoruz. Bir şey başarısız olduğunda anonim bir rapor bize ne ve nerede olduğunu söyler: örneğin, “oynatıcı hatası, Pixel 7, Android 15, sürüm 1.10.0”. İçinde bundan fazlası yok. Hesabınızı, IP adresinizi, dinleme geçmişinizi veya çalma listelerinizi asla içermez. Bunu istediğiniz zaman Ayarlar\'dan değiştirebilirsiniz.</string>
+    <string name="telemetry_notice_body">BitChord-X küçük bir proje ve her telefonu ve sistemi test edemiyoruz. Bir şey başarısız olduğunda anonim bir rapor bize ne ve nerede olduğunu söyler: örneğin, “oynatıcı hatası, Pixel 7, Android 15, sürüm 1.10.1”. İçinde bundan fazlası yok. Hesabınızı, IP adresinizi, dinleme geçmişinizi veya çalma listelerinizi asla içermez. Bunu istediğiniz zaman Ayarlar\'dan değiştirebilirsiniz.</string>
     <string name="telemetry_notice_ok">Anladım</string>
     <string name="telemetry_notice_choose">Nelerin gönderileceğini seçin</string>
     <string name="telemetry_plea_title">Kapatmadan önce</string>

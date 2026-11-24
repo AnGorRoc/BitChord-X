@@ -698,7 +698,7 @@
     <string name="telemetry_level_off">כבויה</string>
     <string name="telemetry_level_off_desc">שום דבר לא נשלח.</string>
     <string name="telemetry_notice_title">עזרו לנו לתקן מה שאיננו רואים</string>
-    <string name="telemetry_notice_body">BitChord-X הוא פרויקט קטן ואיננו יכולים לבדוק כל טלפון וכל מערכת. כשמשהו נכשל, דוח אנונימי אומר לנו מה ואיפה: למשל, ״שגיאת נגן, Pixel 7, Android 15, גרסה 1.10.0״. זה כל מה שהוא מכיל. לעולם לא החשבון, כתובת ה-IP, היסטוריית ההאזנה או הפלייליסטים. אפשר לשנות זאת בכל עת בהגדרות.</string>
+    <string name="telemetry_notice_body">BitChord-X הוא פרויקט קטן ואיננו יכולים לבדוק כל טלפון וכל מערכת. כשמשהו נכשל, דוח אנונימי אומר לנו מה ואיפה: למשל, ״שגיאת נגן, Pixel 7, Android 15, גרסה 1.10.1״. זה כל מה שהוא מכיל. לעולם לא החשבון, כתובת ה-IP, היסטוריית ההאזנה או הפלייליסטים. אפשר לשנות זאת בכל עת בהגדרות.</string>
     <string name="telemetry_notice_ok">הבנתי</string>
     <string name="telemetry_notice_choose">בחירת מה נשלח</string>
     <string name="telemetry_plea_title">לפני שמכבים</string>

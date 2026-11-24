@@ -1606,7 +1606,7 @@
     <string name="telemetry_level_off">Tắt</string>
     <string name="telemetry_level_off_desc">Không gửi gì cả.</string>
     <string name="telemetry_notice_title">Giúp chúng tôi sửa những gì chúng tôi không thấy</string>
-    <string name="telemetry_notice_body">BitChord-X là một dự án nhỏ và chúng tôi không thể thử trên mọi điện thoại và hệ thống. Khi có gì đó lỗi, một báo cáo ẩn danh cho chúng tôi biết lỗi gì và ở đâu: ví dụ, “lỗi trình phát, Pixel 7, Android 15, phiên bản 1.10.0”. Chỉ có vậy. Không bao giờ có tài khoản, địa chỉ IP, lịch sử nghe hay danh sách phát của bạn. Bạn có thể đổi bất cứ lúc nào trong Cài đặt.</string>
+    <string name="telemetry_notice_body">BitChord-X là một dự án nhỏ và chúng tôi không thể thử trên mọi điện thoại và hệ thống. Khi có gì đó lỗi, một báo cáo ẩn danh cho chúng tôi biết lỗi gì và ở đâu: ví dụ, “lỗi trình phát, Pixel 7, Android 15, phiên bản 1.10.1”. Chỉ có vậy. Không bao giờ có tài khoản, địa chỉ IP, lịch sử nghe hay danh sách phát của bạn. Bạn có thể đổi bất cứ lúc nào trong Cài đặt.</string>
     <string name="telemetry_notice_ok">Đã hiểu</string>
     <string name="telemetry_notice_choose">Chọn nội dung được gửi</string>
     <string name="telemetry_plea_title">Trước khi bạn tắt</string>

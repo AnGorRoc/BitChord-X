@@ -694,7 +694,7 @@
     <string name="telemetry_level_off">बंद</string>
     <string name="telemetry_level_off_desc">कुछ भी नहीं भेजा जाता।</string>
     <string name="telemetry_notice_title">जो हमें दिखता नहीं, उसे ठीक करने में मदद करें</string>
-    <string name="telemetry_notice_body">BitChord-X एक छोटा प्रोजेक्ट है और हम हर फ़ोन और सिस्टम पर टेस्ट नहीं कर सकते। जब कुछ विफल होता है, तो एक गुमनाम रिपोर्ट हमें बताती है कि क्या और कहाँ: उदाहरण के लिए, “प्लेयर त्रुटि, Pixel 7, Android 15, संस्करण 1.10.0”। उसमें बस इतना ही होता है। आपका खाता, IP पता, सुनने का इतिहास या प्लेलिस्ट कभी नहीं। आप इसे कभी भी सेटिंग्स में बदल सकते हैं।</string>
+    <string name="telemetry_notice_body">BitChord-X एक छोटा प्रोजेक्ट है और हम हर फ़ोन और सिस्टम पर टेस्ट नहीं कर सकते। जब कुछ विफल होता है, तो एक गुमनाम रिपोर्ट हमें बताती है कि क्या और कहाँ: उदाहरण के लिए, “प्लेयर त्रुटि, Pixel 7, Android 15, संस्करण 1.10.1”। उसमें बस इतना ही होता है। आपका खाता, IP पता, सुनने का इतिहास या प्लेलिस्ट कभी नहीं। आप इसे कभी भी सेटिंग्स में बदल सकते हैं।</string>
     <string name="telemetry_notice_ok">समझ गया</string>
     <string name="telemetry_notice_choose">चुनें कि क्या भेजा जाए</string>
     <string name="telemetry_plea_title">इसे बंद करने से पहले</string>

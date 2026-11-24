@@ -38,7 +38,7 @@ services:
       JAM_TRUSTED_PROXY_CIDRS: ${JAM_TRUSTED_PROXY_CIDRS:-}
       JAM_PUBLIC_ORIGIN: ${JAM_PUBLIC_ORIGIN:-}
       JAM_ALLOWED_ORIGINS: ${JAM_ALLOWED_ORIGINS:-}
-      JAM_VERSION: ${JAM_VERSION:-1.10.0}
+      JAM_VERSION: ${JAM_VERSION:-1.10.1}
       FEEDBACK_DIR: /data/feedback
     volumes:
       - feedback:/data/feedback

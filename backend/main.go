@@ -488,7 +488,7 @@ func isDebianPackage(packageFormat, version string) bool {
 }
 
 // handlePresence takes the open apps' heartbeat:
-// {"id": "<install uuid>", "platform": "android"|"pc"|"browser", "open": true|false, "version": "1.10.0"}.
+// {"id": "<install uuid>", "platform": "android"|"pc"|"browser", "open": true|false, "version": "1.10.1"}.
 func handlePresence(w http.ResponseWriter, r *http.Request) {
 	if !presenceLimiter.Allow(clientIP(r)) {
 		jsonError(w, http.StatusTooManyRequests, "rate_limited", "Too many presence pings from this address.")

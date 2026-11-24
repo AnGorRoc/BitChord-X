@@ -64,7 +64,7 @@ internal fun DesktopTelemetryDialogHost() {
                 title = DesktopStrings["telemetry_notice_title", "Help us fix what we can't see"],
                 description = DesktopStrings[
                     "telemetry_notice_body",
-                    "BitChord-X is a small project and we can't test every phone and system. When something fails, an anonymous report tells us what and where: for example, “player error, Pixel 7, Android 15, version 1.10.0”. That is all it holds. Never your account, IP address, listening history or playlists. You can change it any time in Settings.",
+                    "BitChord-X is a small project and we can't test every phone and system. When something fails, an anonymous report tells us what and where: for example, “player error, Pixel 7, Android 15, version 1.10.1”. That is all it holds. Never your account, IP address, listening history or playlists. You can change it any time in Settings.",
                 ],
                 onDismiss = { seen(); close() },
                 actions = listOf(

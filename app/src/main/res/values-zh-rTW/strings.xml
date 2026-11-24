@@ -1666,7 +1666,7 @@
     <string name="telemetry_level_off">關閉</string>
     <string name="telemetry_level_off_desc">不傳送任何內容。</string>
     <string name="telemetry_notice_title">幫助我們修復看不到的問題</string>
-    <string name="telemetry_notice_body">BitChord-X 是一個小專案，我們無法在每一支手機和每一種系統上測試。出問題時，匿名報告會告訴我們是什麼、在哪裡：例如「播放器錯誤，Pixel 7，Android 15，版本 1.10.0」。報告裡只有這些。絕不包含你的帳號、IP 位址、收聽記錄或播放清單。你可以隨時在設定中變更。</string>
+    <string name="telemetry_notice_body">BitChord-X 是一個小專案，我們無法在每一支手機和每一種系統上測試。出問題時，匿名報告會告訴我們是什麼、在哪裡：例如「播放器錯誤，Pixel 7，Android 15，版本 1.10.1」。報告裡只有這些。絕不包含你的帳號、IP 位址、收聽記錄或播放清單。你可以隨時在設定中變更。</string>
     <string name="telemetry_notice_ok">知道了</string>
     <string name="telemetry_notice_choose">選擇傳送的內容</string>
     <string name="telemetry_plea_title">關閉之前</string>

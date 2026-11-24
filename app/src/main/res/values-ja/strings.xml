@@ -1667,7 +1667,7 @@
     <string name="telemetry_level_off">オフ</string>
     <string name="telemetry_level_off_desc">何も送信しません。</string>
     <string name="telemetry_notice_title">見えない不具合の修正にご協力ください</string>
-    <string name="telemetry_notice_body">BitChord-Xは小さなプロジェクトで、すべての端末とシステムでテストすることはできません。問題が起きたとき、匿名のレポートが何がどこで起きたかを教えてくれます。たとえば「プレーヤーのエラー、Pixel 7、Android 15、バージョン1.10.0」のように。含まれるのはそれだけです。アカウント、IPアドレス、再生履歴、プレイリストは決して含まれません。設定でいつでも変更できます。</string>
+    <string name="telemetry_notice_body">BitChord-Xは小さなプロジェクトで、すべての端末とシステムでテストすることはできません。問題が起きたとき、匿名のレポートが何がどこで起きたかを教えてくれます。たとえば「プレーヤーのエラー、Pixel 7、Android 15、バージョン1.10.1」のように。含まれるのはそれだけです。アカウント、IPアドレス、再生履歴、プレイリストは決して含まれません。設定でいつでも変更できます。</string>
     <string name="telemetry_notice_ok">わかりました</string>
     <string name="telemetry_notice_choose">送信する内容を選ぶ</string>
     <string name="telemetry_plea_title">オフにする前に</string>
