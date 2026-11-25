@@ -58,12 +58,6 @@ internal object DesktopWindowsFrame {
         return installHwnd(hwnd)
     }
 
-    suspend fun install(title: String): Boolean {
-        if (!DesktopPlatform.isWindows) return false
-        val hwnd = currentHwnd ?: return false
-        return installHwnd(hwnd)
-    }
-
     private fun installHwnd(hwnd: HWND): Boolean {
         if (installed && currentHwnd == hwnd && oldProc != null) return true
 
@@ -101,7 +95,7 @@ internal object DesktopWindowsFrame {
                             val extra = User32Extra.INSTANCE
                             val zoomed = extra?.IsZoomed(hWnd) ?: false
                             if (zoomed) {
-                                val hMonitor = extra?.MonitorFromWindow(hWnd, 2 /* MONITOR_DEFAULTTONEAREST */)
+                                val hMonitor = extra.MonitorFromWindow(hWnd, 2 /* MONITOR_DEFAULTTONEAREST */)
                                 if (hMonitor != null) {
                                     val info = WinUser.MONITORINFO()
                                     if (extra.GetMonitorInfoW(hMonitor, info)) {

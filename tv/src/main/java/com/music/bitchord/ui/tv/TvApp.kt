@@ -492,7 +492,6 @@ private fun TvMainShell(
                         playerState = playerState,
                         onNavigateToDetail = openDetail,
                         onNavigateToNowPlaying = openNowPlaying,
-                        onBack = popDetail,
                     )
                     }
                 }

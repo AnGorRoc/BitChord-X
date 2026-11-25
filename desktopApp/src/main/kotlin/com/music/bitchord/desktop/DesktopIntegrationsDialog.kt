@@ -15,10 +15,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -151,15 +149,15 @@ private fun SpotifySection(spotify: DesktopSpotifyConnection) {
             DesktopCardRule()
             PanelActionRow(
                 title = DesktopStrings["spotify_disconnect", "Disconnect"],
-                subtitle = "Forgets the sp_dc cookie; Canvas stops until you sign in again",
+                subtitle = DesktopStrings["d_spotify_forget_cookie", "Forgets the sp_dc cookie; Canvas stops until you sign in again"],
                 destructive = true,
                 onClick = spotify.onDisconnect,
             )
         } else if (spotify.canSignIn && !spotify.signingIn) {
             DesktopCardRule()
             PanelActionRow(
-                title = "Paste a cookie instead",
-                subtitle = "Copy sp_dc from open.spotify.com yourself",
+                title = DesktopStrings["d_spotify_paste_cookie", "Paste a cookie instead"],
+                subtitle = DesktopStrings["d_spotify_copy_hint", "Copy sp_dc from open.spotify.com yourself"],
                 destructive = false,
                 onClick = spotify.onPasteCookie,
             )
@@ -194,7 +192,7 @@ private fun DiscordSection(
     val connected = local || token.isNotBlank()
 
     PanelGroup(
-        header = "Rich presence",
+        header = DesktopStrings["d_discord_rich_presence", "Rich presence"],
         footer = "The card updates when the track, position or playback state changes. " +
             "It clears when playback stops.",
     ) {
@@ -237,7 +235,7 @@ private fun DiscordSection(
     }
 
     if (connected && rpcEnabled && advanced) {
-        PanelGroup(header = "Presence") {
+        PanelGroup(header = DesktopStrings["d_discord_presence", "Presence"]) {
             PanelValueRow("Status", DesktopDiscordSettings.statusLabel(status)) {
                 onChoose(
                     DiscordChoice(
@@ -281,7 +279,7 @@ private fun DiscordSection(
         }
 
         PanelGroup(
-            header = "Buttons",
+            header = DesktopStrings["d_discord_buttons", "Buttons"],
             footer = "{song_name}, {artist_name} and {album_name} are replaced with the track. " +
                 "The first button opens the song on YouTube Music and the second opens this project.",
         ) {
@@ -324,7 +322,7 @@ private fun DiscordSection(
     }
 
     PanelGroup(
-        header = "Preview",
+        header = DesktopStrings["d_discord_preview", "Preview"],
         boxed = true,
         footer = if (song == null) "Play something to fill in the preview." else null,
     ) {
@@ -372,7 +370,7 @@ private fun ScrobblingSection(onOpenLastfm: () -> Unit, onOpenListenBrainz: () -
     val signedIn = lastfmSession.isNotBlank()
 
     PanelGroup(
-        header = "Scrobbling",
+        header = DesktopStrings["scrobbling", "Scrobbling"],
         footer = "Scrobble your listens to Last.fm and ListenBrainz.",
     ) {
         PanelSwitchRow(

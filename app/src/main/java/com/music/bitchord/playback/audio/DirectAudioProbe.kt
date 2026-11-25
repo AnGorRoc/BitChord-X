@@ -11,10 +11,8 @@
 package com.music.bitchord.playback.audio
 
 import android.media.AudioAttributes
-import android.media.AudioDeviceInfo
 import android.media.AudioFormat
 import android.media.AudioManager
-import android.media.AudioProfile
 import android.os.Build
 import androidx.annotation.RequiresApi
 
@@ -60,20 +58,18 @@ object DirectAudioProbe {
      * @param audioManager System AudioManager service.
      * @param sampleRateHz Desired sample rate in Hz.
      * @param channelCount Channel count (typically 2 for stereo).
-     * @param activeDevice Active output route AudioDeviceInfo, if known.
      */
     fun probeDirectSupport(
         audioManager: AudioManager?,
         sampleRateHz: Int,
         channelCount: Int,
-        activeDevice: AudioDeviceInfo? = null,
     ): DirectSupport {
         if (audioManager == null || Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
             return DirectSupport.NONE
         }
 
         return try {
-            probeDirectSupportApi33(audioManager, sampleRateHz, channelCount, activeDevice)
+            probeDirectSupportApi33(audioManager, sampleRateHz, channelCount)
         } catch (_: Throwable) {
             DirectSupport.NONE
         }
@@ -84,7 +80,6 @@ object DirectAudioProbe {
         audioManager: AudioManager,
         sampleRateHz: Int,
         channelCount: Int,
-        activeDevice: AudioDeviceInfo?,
     ): DirectSupport {
         val channelMask = if (channelCount == 1) {
             AudioFormat.CHANNEL_OUT_MONO

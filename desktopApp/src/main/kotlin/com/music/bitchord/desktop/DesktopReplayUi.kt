@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -25,11 +24,9 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material.icons.rounded.Schedule
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,27 +36,20 @@ import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.model.artworkAt
-import com.music.bitchord.ui.icons.BitChordIcons
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -89,7 +79,6 @@ internal fun DesktopReplayPage(
             holder = holder,
             memberSince = summary.memberSince(),
             onDismiss = { showStories = false },
-            onPlaySong = onPlaySong,
             onSharePoster = {
                 val poster = DesktopReplayPoster.renderPoster(summary, holder, summary.memberSince())
                 val target = DesktopReplayPoster.promptSaveFile(suggestedName = "bitchord-replay-${summary.period.name.lowercase()}.png")
@@ -149,7 +138,7 @@ internal fun DesktopReplayPage(
                                         )
                                         Spacer(Modifier.width(6.dp))
                                         Text(
-                                            "Stories",
+                                            DesktopStrings["d_replay_stories", "Stories"],
                                             style = MaterialTheme.typography.labelMedium,
                                             fontWeight = FontWeight.Bold,
                                             color = Color.White,
@@ -180,7 +169,7 @@ internal fun DesktopReplayPage(
                                         )
                                         Spacer(Modifier.width(6.dp))
                                         Text(
-                                            "Poster",
+                                            DesktopStrings["d_replay_poster", "Poster"],
                                             style = MaterialTheme.typography.labelMedium,
                                             fontWeight = FontWeight.Bold,
                                             color = Color.White,
@@ -239,7 +228,7 @@ internal fun DesktopReplayPage(
             if (summary.genres.isNotEmpty()) {
                 chart(
                     key = "genres",
-                    title = "Top Genres",
+                    title = DesktopStrings["d_replay_top_genres", "Top Genres"],
                     rows = summary.genreRows(CHART_LENGTH),
                     onClick = {},
                 )

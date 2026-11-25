@@ -37,7 +37,6 @@ import androidx.compose.ui.input.pointer.PointerIcon
 import androidx.compose.ui.input.pointer.pointerHoverIcon
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.WindowScope
 import java.awt.MouseInfo
@@ -196,7 +195,7 @@ internal fun DesktopWindowsCaptionButtons(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         WindowsCaptionButton(
-            label = "Minimize",
+            label = DesktopStrings["d_chrome_minimize", "Minimize"],
             onClick = actions.minimize,
             isClose = false,
         ) { glyphColor ->
@@ -243,7 +242,7 @@ internal fun DesktopWindowsCaptionButtons(
             }
         }
         WindowsCaptionButton(
-            label = "Close",
+            label = DesktopStrings["d_chrome_close", "Close"],
             onClick = actions.close,
             isClose = true,
         ) { glyphColor ->

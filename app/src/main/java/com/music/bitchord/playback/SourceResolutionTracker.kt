@@ -285,10 +285,10 @@ object SourceResolutionTracker {
             when (source) {
                 is PlayingSource.Provider -> {
                     val current = track.attempts[source.sourceId]
+                    val status = source.summary?.takeIf { it.isNotBlank() }
+                        ?.let { text(R.string.pipeline_status_playing_with, it) }
+                        ?: text(R.string.pipeline_status_playing)
                     if (current?.isWinner != true) {
-                        val status = source.summary?.takeIf { it.isNotBlank() }
-                            ?.let { text(R.string.pipeline_status_playing_with, it) }
-                            ?: text(R.string.pipeline_status_playing)
                         if (current == null) {
                             track.attempts[source.sourceId] = SourceAttemptReport(
                                 sourceId = source.sourceId,
@@ -300,6 +300,8 @@ object SourceResolutionTracker {
                         promote(track, source.sourceId, status, demotedTo = {
                             text(R.string.pipeline_status_replaced_by, source.displayName)
                         })
+                    } else if (!source.summary.isNullOrBlank() && current.status == text(R.string.pipeline_status_playing)) {
+                        track.attempts[source.sourceId] = current.copy(status = status)
                     }
                 }
                 is PlayingSource.Storage -> {

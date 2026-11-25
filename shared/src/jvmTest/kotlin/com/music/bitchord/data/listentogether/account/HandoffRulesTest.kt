@@ -123,6 +123,10 @@ class HandoffRulesTest {
         val free = AccountState(AccountConnection.LIVE, "phone", listOf(phone.copy(controlling = null), pc.copy(controlledBy = null)))
         assertEquals("phone", free.soundingDevice?.deviceId)
         assertNull(free.controlled)
+
+        val disconnectedPc = AccountState(AccountConnection.LIVE, "phone", listOf(phone, pc.copy(connected = false)))
+        assertEquals("phone", disconnectedPc.soundingDevice?.deviceId)
+        assertNull(disconnectedPc.controlled)
     }
 
     // ---- reading the server's frames ------------------------------------------------------

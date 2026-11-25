@@ -22,20 +22,16 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Slider
 import com.music.bitchord.playback.SingMethod
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -144,9 +140,9 @@ internal fun DesktopEqualizerDialog(onDismiss: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text("ReplayGain", style = MaterialTheme.typography.titleMedium, color = Color.White)
+                    Text(DesktopStrings["d_equalizer_replaygain", "ReplayGain"], style = MaterialTheme.typography.titleMedium, color = Color.White)
                     Text(
-                        "Automatically equalizes the perceived loudness between songs",
+                        DesktopStrings["d_equalizer_replaygain_desc", "Automatically equalizes the perceived loudness between songs"],
                         style = MaterialTheme.typography.bodySmall,
                         color = DesktopSecondary,
                     )
@@ -165,12 +161,12 @@ internal fun DesktopEqualizerDialog(onDismiss: () -> Unit) {
                     DesktopChip(
                         selected = !replayGainAlbum,
                         onClick = { DesktopEqualizerSettings::setReplayGainAlbum.invoke(false) },
-                        label = "Track Gain",
+                        label = DesktopStrings["d_equalizer_track_gain", "Track Gain"],
                     )
                     DesktopChip(
                         selected = replayGainAlbum,
                         onClick = { DesktopEqualizerSettings::setReplayGainAlbum.invoke(true) },
-                        label = "Album Gain",
+                        label = DesktopStrings["d_equalizer_album_gain", "Album Gain"],
                     )
                 }
                 Column(Modifier.fillMaxWidth().padding(horizontal = panelInset(22.dp), vertical = 6.dp)) {
@@ -189,7 +185,7 @@ internal fun DesktopEqualizerDialog(onDismiss: () -> Unit) {
                     Modifier.fillMaxWidth().padding(horizontal = panelInset(22.dp), vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text("Prevent Clipping", style = MaterialTheme.typography.bodyMedium, color = Color.White, modifier = Modifier.weight(1f))
+                    Text(DesktopStrings["d_equalizer_prevent_clipping", "Prevent Clipping"], style = MaterialTheme.typography.bodyMedium, color = Color.White, modifier = Modifier.weight(1f))
                     Switch(
                         checked = replayGainPreventClipping,
                         onCheckedChange = DesktopEqualizerSettings::setReplayGainPreventClipping,
@@ -217,7 +213,7 @@ internal fun DesktopEqualizerDialog(onDismiss: () -> Unit) {
                     valueRange = 0f..1f,
                 )
                 Spacer(Modifier.height(6.dp))
-                Text("DSP Algorithm:", style = MaterialTheme.typography.bodySmall, color = DesktopSecondary)
+                Text(DesktopStrings["d_equalizer_dsp_algorithm", "DSP Algorithm:"], style = MaterialTheme.typography.bodySmall, color = DesktopSecondary)
                 Spacer(Modifier.height(4.dp))
                 Row(
                     Modifier.fillMaxWidth(),

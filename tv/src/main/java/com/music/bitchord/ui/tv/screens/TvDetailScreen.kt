@@ -80,7 +80,6 @@ fun TvDetailScreen(
     playerState: PlayerState,
     onNavigateToDetail: (browseId: String, title: String, subtitle: String, thumbnailUrl: String?, type: BrowseType) -> Unit,
     onNavigateToNowPlaying: () -> Unit,
-    onBack: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val detailStack by viewModel.detailStack.collectAsState()

@@ -260,10 +260,38 @@ class AccountDevices(
         )
     }
 
-    fun attach(deviceId: String) = sendFrame(buildJsonObject { put("type", "attach"); put("to", deviceId) })
+    fun attach(deviceId: String) {
+        _state.update { current ->
+            val myId = current.selfId
+            val updatedDevices = current.devices.map { d ->
+                when {
+                    d.deviceId == myId -> d.copy(controlling = deviceId)
+                    d.deviceId == deviceId -> d.copy(controlledBy = myId)
+                    else -> d
+                }
+            }
+            val updatedLocal = current.localSelf?.copy(controlling = deviceId)
+            current.copy(devices = updatedDevices, localSelf = updatedLocal)
+        }
+        sendFrame(buildJsonObject { put("type", "attach"); put("to", deviceId) })
+    }
 
     /** Stops being a remote. */
-    fun detach() = sendFrame(buildJsonObject { put("type", "detach") })
+    fun detach() {
+        _state.update { current ->
+            val myId = current.selfId
+            val updatedDevices = current.devices.map { d ->
+                when {
+                    d.deviceId == myId -> d.copy(controlling = null)
+                    d.controlledBy == myId -> d.copy(controlledBy = null)
+                    else -> d
+                }
+            }
+            val updatedLocal = current.localSelf?.copy(controlling = null)
+            current.copy(devices = updatedDevices, localSelf = updatedLocal)
+        }
+        sendFrame(buildJsonObject { put("type", "detach") })
+    }
 
     fun rename(name: String) = sendFrame(buildJsonObject { put("type", "rename"); put("name", name) })
 
@@ -300,6 +328,7 @@ class AccountDevices(
 
     private suspend fun run() {
         var backoffMs = 1_000L
+        var openedAtNs = 0L
         var idleDelayMs = 1_000L
         while (scope.isActive) {
             val base = serverBase()?.trimEnd('/')
@@ -312,6 +341,7 @@ class AccountDevices(
             }
             idleDelayMs = 1_000L
             val me = self()
+            openedAtNs = 0L
             try {
                 _state.update { it.copy(connection = AccountConnection.CONNECTING, selfId = me.deviceId) }
                 val response: HttpResponse = http.post("$base/api/account/connect") {
@@ -339,7 +369,7 @@ class AccountDevices(
                     val writer = launch {
                         for (text in box) runCatching { send(Frame.Text(text)) }
                     }
-                    backoffMs = 1_000L
+                    openedAtNs = System.nanoTime()
                     if (partyCode != null) sendParty()
                     sendPrefs()
                     // What this device is playing is not known to the server on a new socket.
@@ -384,6 +414,10 @@ class AccountDevices(
                 _state.update { it.copy(failure = "${failure::class.simpleName}: ${failure.message}") }
             }
             if (!scope.isActive) return
+            // Only a socket that held for a while earns the short wait back. One the server
+            // drops at once would otherwise reconnect every second or so, a POST and an
+            // upgrade each time.
+            if (openedAtNs != 0L && (System.nanoTime() - openedAtNs) / 1_000_000L >= STABLE_SOCKET_MS) backoffMs = 1_000L
             _state.update { it.copy(connection = AccountConnection.CONNECTING) }
             delay(backoffMs / 2 + Random.nextLong(backoffMs + 1))
             backoffMs = (backoffMs * 2).coerceAtMost(MAX_BACKOFF_MS)
@@ -408,6 +442,13 @@ class AccountDevices(
                     failure = null,
                 )
             }
+            val controllingTargetId = selfInList?.controlling
+            if (controllingTargetId != null) {
+                val targetDevice = merged.firstOrNull { it.deviceId == controllingTargetId }
+                if (targetDevice == null || !targetDevice.connected) {
+                    detach()
+                }
+            }
             return
         }
         AccountFrames.command(frame)?.let { _commands.emit(it); return }
@@ -428,6 +469,7 @@ class AccountDevices(
         const val IDLE_RETRY_MS = 15_000L
         const val UNSUPPORTED_RETRY_MS = 10 * 60_000L
         const val MAX_BACKOFF_MS = 30_000L
+        private const val STABLE_SOCKET_MS = 30_000L
         const val OUTBOX_CAPACITY = 256
         const val SERVER_CHECK_MS = 30_000L
 

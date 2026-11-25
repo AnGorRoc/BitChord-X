@@ -21,9 +21,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Shuffle
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -60,7 +57,6 @@ import com.music.bitchord.data.model.artworkAt
 import com.music.bitchord.ui.tv.components.ProvideTvComfortScrolling
 import com.music.bitchord.ui.tv.components.TvActivityIndicator
 import com.music.bitchord.ui.tv.components.TvArtwork
-import com.music.bitchord.ui.tv.components.TvButton
 import com.music.bitchord.ui.tv.components.TvChromeScrollEffect
 import com.music.bitchord.ui.tv.components.TvErrorState
 import com.music.bitchord.ui.tv.components.TvLockup
@@ -69,7 +65,6 @@ import com.music.bitchord.ui.tv.components.TvShelf
 import com.music.bitchord.ui.tv.components.TvShelfTitle
 import com.music.bitchord.ui.tv.components.TvSongRow
 import com.music.bitchord.ui.tv.components.tvClick
-import com.music.bitchord.ui.tv.components.tvInitialFocus
 import com.music.bitchord.ui.tv.components.tvLift
 import com.music.bitchord.ui.tv.components.tvPlatter
 import com.music.bitchord.ui.tv.theme.TvDimensions

@@ -488,7 +488,7 @@ func isDebianPackage(packageFormat, version string) bool {
 }
 
 // handlePresence takes the open apps' heartbeat:
-// {"id": "<install uuid>", "platform": "android"|"pc"|"browser", "open": true|false, "version": "1.10.0"}.
+// {"id": "<install uuid>", "platform": "android"|"pc"|"browser", "open": true|false, "version": "1.10.1"}.
 func handlePresence(w http.ResponseWriter, r *http.Request) {
 	if !presenceLimiter.Allow(clientIP(r)) {
 		jsonError(w, http.StatusTooManyRequests, "rate_limited", "Too many presence pings from this address.")
@@ -561,6 +561,7 @@ func handlePresence(w http.ResponseWriter, r *http.Request) {
 // force-killing the app drops the live count immediately via TCP close.
 func handlePresenceWS(w http.ResponseWriter, r *http.Request) {
 	if !presenceLimiter.Allow(clientIP(r)) {
+		w.Header().Set("Retry-After", "30")
 		jsonError(w, http.StatusTooManyRequests, "rate_limited", "Too many presence connections from this address.")
 		return
 	}
@@ -1335,6 +1336,11 @@ func requestOrigin(r *http.Request) string {
 
 func handleInviteLanding(w http.ResponseWriter, r *http.Request) {
 	code := codes.Normalise(r.PathValue("code"))
+	// Older apps shared the code glued to the message text that followed it, so a
+	// longer path is read by its first characters.
+	if runes := []rune(code); len(runes) > codes.CodeLength {
+		code = string(runes[:codes.CodeLength])
+	}
 	origin := requestOrigin(r)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")

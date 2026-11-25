@@ -12,7 +12,6 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -41,11 +40,9 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Cloud
-import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.Sync
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -106,28 +103,22 @@ import androidx.compose.ui.platform.LocalContext
 import com.music.bitchord.sharedui.resources.Res
 import com.music.bitchord.sharedui.resources.spotify_logo
 import androidx.compose.ui.graphics.luminance
-import com.music.bitchord.ui.components.DIALOG_DARK_GREY
 import com.music.bitchord.ui.components.DIALOG_EDGE_COLOR
 import com.music.bitchord.ui.components.DIALOG_FROST_ALPHA
 import com.music.bitchord.ui.components.DIALOG_LIGHT_EDGE_COLOR
 import com.music.bitchord.ui.components.DIALOG_LIGHT_FROST_ALPHA
-import com.music.bitchord.ui.components.DIALOG_LIGHT_GREY
 import com.music.bitchord.ui.components.dialogInk
 import com.music.bitchord.ui.components.dialogInkInverse
 import com.music.bitchord.ui.components.DestinationOptionCard
-import com.music.bitchord.ui.components.MenuFrostDark
 import com.music.bitchord.ui.components.PAGE_GUTTER
 import com.music.bitchord.ui.components.SpotifyImportDestination
 import com.music.bitchord.ui.components.dialogFrostBackground
-import com.music.bitchord.ui.components.liveMenuFrost
-import com.music.bitchord.ui.components.optimizedHazeEffect
 import com.music.bitchord.ui.haptics.Haptic
 import com.music.bitchord.ui.haptics.rememberHaptics
 import com.music.bitchord.ui.components.thumbnailBorder
 import com.music.bitchord.ui.components.topBarContentPadding
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
-import dev.chrisbanes.haze.materials.HazeMaterials
 import org.jetbrains.compose.resources.painterResource
 
 /**
@@ -214,10 +205,8 @@ fun SpotifyLibraryScreen(
     onOpenTokenSetup: () -> Unit,
     contentPadding: PaddingValues,
     modifier: Modifier = Modifier,
-    hazeState: HazeState? = null,
     signedIn: Boolean = false,
     bottomBarsHeight: Dp = 0.dp,
-    onOpenLinkImport: (() -> Unit)? = null,
     onImportToYouTube: ((List<SpotifyPlaylist>) -> Unit)? = null,
 ) {
     val cookie by AppSettings.spotifySpdcToken.collectAsStateWithLifecycle()
@@ -941,7 +930,6 @@ internal fun SpotifyLibraryIntroDialog(
     onDestinationChange: (SpotifyImportDestination) -> Unit,
     onStartSelecting: () -> Unit,
     onDismiss: () -> Unit,
-    onOpenLinkImport: (() -> Unit)? = null,
 ) {
     val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
     val dialogShape = RoundedCornerShape(26.dp)

@@ -1,9 +1,7 @@
 package com.music.bitchord
 import com.music.bitchord.ui.theme.drawPageWash
-import androidx.compose.ui.res.painterResource
 
 import android.Manifest
-import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Configuration
@@ -21,7 +19,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.EnterExitState
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.expandVertically
@@ -34,21 +31,15 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.core.FastOutLinearInEasing
 import androidx.compose.animation.core.spring
 import androidx.compose.ui.graphics.TransformOrigin
-import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.MutableTransitionState
 import androidx.compose.animation.slideOutVertically
-import androidx.compose.animation.EnterTransition
-import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.fadeIn
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -62,35 +53,32 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.IntrinsicSize
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.navigationBars
-import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.ui.input.nestedscroll.nestedScroll
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
-import androidx.compose.foundation.layout.windowInsetsTopHeight
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.isSystemInDarkTheme
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.util.VelocityTracker
+import com.music.bitchord.ui.haptics.Haptic
+import com.music.bitchord.ui.haptics.rememberHaptics
 import androidx.compose.foundation.LocalOverscrollFactory
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.ArrowUpward
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.IosShare
 import androidx.compose.material.icons.rounded.Download
-import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.rounded.Upgrade
 import com.music.bitchord.data.listentogether.ServerConnectionState
@@ -105,7 +93,6 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.rememberPullToRefreshState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -123,7 +110,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.draw.clip
@@ -134,20 +120,16 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.music.bitchord.auth.DiscordLoginScreen
 import com.music.bitchord.auth.SpotifyLoginScreen
 import com.music.bitchord.auth.WebSessionMode
-import com.music.bitchord.auth.YtMusicLoginScreen
 import com.music.bitchord.data.AppUpdateChecker
 import com.music.bitchord.data.LocalMediaRepository
 import com.music.bitchord.data.listentogether.JamInviteLink
@@ -158,7 +140,6 @@ import com.music.bitchord.data.NerdStats
 import com.music.bitchord.data.TrackLog
 import com.music.bitchord.data.innertube.InnertubeParser
 import com.music.bitchord.data.model.BrowseType
-import com.music.bitchord.data.model.HomeShelf
 import com.music.bitchord.data.model.LikeStatus
 import com.music.bitchord.data.model.PlaybackSourceType
 import com.music.bitchord.data.model.SearchFilter
@@ -167,14 +148,9 @@ import com.music.bitchord.data.model.ShelfItem
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.model.isUnresolvedSpotify
 import com.music.bitchord.data.model.UiState
-import com.music.bitchord.data.model.withoutVideos
 import com.music.bitchord.data.settings.SongSwipeAction
 import com.music.bitchord.data.model.UserPlaylist
-import com.music.bitchord.data.model.EntityType
-import com.music.bitchord.data.model.SearchHistoryEntity
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -222,7 +198,6 @@ import com.music.bitchord.ui.screens.SignatureApiEditor
 import com.music.bitchord.ui.screens.SettingsScreen
 import com.music.bitchord.ui.screens.SourceEditorAlert
 import com.music.bitchord.ui.screens.SourcesScreen
-import com.music.bitchord.data.sources.TrackMatcher
 import com.music.bitchord.ui.screens.SpotifyCanvasAuthScreen
 import com.music.bitchord.ui.screens.SpotifyLibraryIntroDialog
 import com.music.bitchord.ui.screens.SpotifyLibraryScreen
@@ -240,7 +215,6 @@ import com.music.bitchord.playback.LinkRequest
 import com.music.bitchord.playback.MusicLink
 import com.music.bitchord.playback.OriginalVersion
 import com.music.bitchord.playback.PlayerDeepLink
-import com.music.bitchord.playback.QueueBuilder
 import com.music.bitchord.playback.QueueCoordinator
 import com.music.bitchord.playback.QueueCoordinator.asQueueEntry
 import com.music.bitchord.playback.QueueShuffle
@@ -248,7 +222,6 @@ import com.music.bitchord.playback.QueueSource
 import com.music.bitchord.playback.cast.CastController
 import com.music.bitchord.data.model.QueueTier
 import com.music.bitchord.playback.autoplayEnabledFor
-import com.music.bitchord.playback.autoplaySectionStart
 import com.music.bitchord.playback.beginRadioQueue
 import com.music.bitchord.playback.commitRadioQueue
 import com.music.bitchord.playback.replayFromHistory
@@ -262,7 +235,6 @@ import com.music.bitchord.playback.playBoundedContext
 import com.music.bitchord.playback.contextEntryKey
 import com.music.bitchord.playback.toMediaItem
 import com.music.bitchord.playback.toSong
-import com.music.bitchord.playback.toDirectYouTubeMediaItem
 import com.music.bitchord.playback.toggleAutoplay
 import com.music.bitchord.playback.toggleShuffle
 import com.music.bitchord.playback.upgradeQuality
@@ -285,7 +257,6 @@ import com.music.bitchord.ui.components.ReorderPlaylistPage
 import com.music.bitchord.ui.components.LongPressOrigin
 import com.music.bitchord.ui.components.SingSheet
 import com.music.bitchord.ui.components.MenuAnchor
-import com.music.bitchord.ui.components.menuAnchor
 import com.music.bitchord.ui.components.IosMenuPopover
 import com.music.bitchord.ui.components.SongActionsMenu
 import com.music.bitchord.ui.components.HeldContextMenu
@@ -304,7 +275,6 @@ import com.music.bitchord.ui.components.TopFadeBlur
 import com.music.bitchord.ui.components.FloatingBarsTapGuard
 import com.music.bitchord.ui.components.BottomTab
 import com.music.bitchord.ui.components.FLOATING_BAR_MAX_WIDTH
-import com.music.bitchord.ui.components.FloatingBottomBar
 import com.music.bitchord.ui.components.SearchBottomPill
 import com.music.bitchord.ui.components.MorphingBottomBar
 import com.music.bitchord.ui.components.SearchSourceSwitcher
@@ -328,26 +298,18 @@ import com.music.bitchord.ui.components.MiniPlayer
 import com.music.bitchord.ui.components.QueueActionNotice
 import com.music.bitchord.ui.components.QueueActionNoticeHost
 import com.music.bitchord.ui.components.TOP_CONTROL_SIZE
-import com.music.bitchord.ui.components.TopBarAccountButton
 import com.music.bitchord.ui.components.TopBarActionItem
 import com.music.bitchord.ui.components.TopBarActions
 import com.music.bitchord.ui.components.TopBarAnchor
-import com.music.bitchord.ui.screens.SegmentedControl
-import com.music.bitchord.ui.components.SearchField
 import com.music.bitchord.sharedui.resources.Res as SharedRes
-import com.music.bitchord.sharedui.resources.search_hint
-import com.music.bitchord.sharedui.resources.search_addons_hint
-import com.music.bitchord.sharedui.resources.search_library_hint
 import com.music.bitchord.sharedui.resources.on_device
 import com.music.bitchord.ui.components.TopBarDownloadButton
-import com.music.bitchord.ui.components.optimizedHazeEffect
 import com.music.bitchord.ui.components.topBarContentPadding
 import com.music.bitchord.ui.components.topBarHeight
 import com.music.bitchord.ui.components.AppLanguageDialog
 import com.music.bitchord.ui.components.TranslationLanguageDialog
 import com.music.bitchord.ui.components.LyricsSourcesDialog
 import com.music.bitchord.ui.components.ServerEditorHost
-import com.music.bitchord.ui.components.UpdateAvailableDialog
 import com.music.bitchord.ui.components.WebDavConflictAlert
 import com.music.bitchord.ui.components.FieldConfig
 import com.music.bitchord.ui.icons.BitChordIcons
@@ -388,26 +350,19 @@ import com.music.bitchord.ui.player.LocalPlayerDock
 import com.music.bitchord.ui.player.PlayerDock
 import com.music.bitchord.ui.screens.DetailScreen
 import com.music.bitchord.ui.screens.sortedForDetail
-import com.music.bitchord.ui.screens.ExploreScreen
 import com.music.bitchord.ui.screens.LocalFolder
 import com.music.bitchord.ui.screens.LocalFolderState
 import com.music.bitchord.ui.screens.LocalFolderTab
-import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.ui.graphics.vector.ImageVector
 import com.music.bitchord.ui.screens.localizedLabel
 import com.music.bitchord.data.LocalGroups
 import com.music.bitchord.data.OfflinePlaylists
 import com.music.bitchord.data.toGroup
 import com.music.bitchord.data.settings.LibraryViewType
 import com.music.bitchord.data.settings.LocalMusicSort
-import com.music.bitchord.ui.screens.HomeScreen
 import com.music.bitchord.ui.screens.LibraryGridPage
 import com.music.bitchord.ui.screens.LibraryScreen
-import com.music.bitchord.ui.screens.MoodGenrePlaylistsScreen
 import com.music.bitchord.ui.screens.SearchScreen
 import com.music.bitchord.data.settings.SongSort
-import com.music.bitchord.ui.onboarding.OnboardingScreen
 import com.music.bitchord.ui.replay.ReplayScreen
 import com.music.bitchord.ui.replay.cards
 import com.music.bitchord.ui.replay.ReplayShareSheet
@@ -415,7 +370,6 @@ import com.music.bitchord.ui.replay.ReplayStories
 import com.music.bitchord.ui.replay.ReplayStoryPage
 import com.music.bitchord.ui.replay.rememberReplayState
 import com.music.bitchord.ui.theme.BitChordTheme
-import com.music.bitchord.ui.theme.rememberArtworkPalette
 import com.music.bitchord.data.canvas.AppleArtistArtRepository
 import com.music.bitchord.data.canvas.keyColors
 import com.music.bitchord.ui.theme.SystemBarIcons
@@ -425,8 +379,6 @@ import com.music.bitchord.ui.utils.rememberIosOverscrollFactory
 import com.music.bitchord.ui.performance.resolvePerformanceRefreshRate
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
-import dev.chrisbanes.haze.materials.HazeMaterials
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.delay
 import java.util.Locale
@@ -1067,6 +1019,13 @@ private fun BitChordApp(
     val searchSource by viewModel.searchSource.collectAsStateWithLifecycle()
     val signedIn by viewModel.signedIn.collectAsStateWithLifecycle()
     val account by viewModel.account.collectAsStateWithLifecycle()
+    val userName by AppSettings.userName.collectAsStateWithLifecycle()
+    val defaultUserLabel = stringResource(R.string.default_user_name)
+    val resolvedUserName = remember(userName, account?.name, defaultUserLabel) {
+        userName.trim().takeIf { it.isNotBlank() }
+            ?: account?.name?.trim()?.takeIf { it.isNotBlank() }
+            ?: defaultUserLabel
+    }
     val selectedChannelName by viewModel.selectedChannelName.collectAsStateWithLifecycle()
     val googleAccounts by viewModel.googleAccounts.collectAsStateWithLifecycle()
     val activeAccountId by viewModel.activeAccountId.collectAsStateWithLifecycle()
@@ -1762,7 +1721,9 @@ private fun BitChordApp(
                 // page it came from: a whole library in the player is a whole
                 // library re-sent to every media controller on each queue edit.
                 val bounded = boundedContext || songs.size > BoundedQueuePlanner.MAX_PHYSICAL_CONTEXT
-                if (bounded && !CastController.state.value.casting) {
+                if (bounded && !CastController.state.value.casting &&
+                    !com.music.bitchord.playback.DeviceLink.remoteActive.value
+                ) {
                     c.playBoundedContext(songs, index, source, continuationToken)
                 } else {
                     val result = QueueCoordinator.buildContextQueue(
@@ -2943,7 +2904,7 @@ private fun BitChordApp(
         NowPlayingScreen(
             song = displayedSong,
             playedBy = playedBy,
-            accountName = account?.name,
+            accountName = resolvedUserName,
             windowWidth = windowWidth,
             windowHeight = windowHeight,
             // A canvas under the ⋯ menu holds still. Asked, not passed — see
@@ -3231,6 +3192,155 @@ private fun BitChordApp(
         }
     }
 
+    var gestureSwipeForward by remember { mutableStateOf<Boolean?>(null) }
+
+    LaunchedEffect(selectedTab) {
+        gestureSwipeForward = null
+    }
+
+    val selectTab: (Int, Boolean?) -> Unit = { index, swipeForward ->
+        gestureSwipeForward = swipeForward
+        navBarScroll.expand()
+        if (selectedTab == index) {
+            if (route != null || detail != null || selectedMoodGenre != null) {
+                navigator.clear()
+                viewModel.closeMoodGenre()
+            } else {
+                scope.launch {
+                    currentListState.animateScrollToItem(0)
+                }
+            }
+        } else {
+            if (selectedTab != TAB_SEARCH) {
+                lastNonSearchTab = selectedTab
+            }
+            navigator.clear()
+            viewModel.closeMoodGenre()
+            selectedTab = index
+
+            // Every search tab tap resets the field, focuses it, and opens
+            // the keyboard through SearchScreen's focus request.
+            if (index == TAB_SEARCH) {
+                viewModel.onQueryChange("")
+                searchFocusRequested = true
+            }
+        }
+    }
+
+    val onTabSelected: (Int) -> Unit = { index -> selectTab(index, null) }
+
+    val haptics = rememberHaptics()
+    val canSwipeTabs = route == null &&
+        detail == null &&
+        selectedMoodGenre == null &&
+        !yearStoryOpen &&
+        selectedTab in TAB_HOME..TAB_LIBRARY
+    val density = androidx.compose.ui.platform.LocalDensity.current
+
+    val tabSwipeModifier = Modifier.pointerInput(canSwipeTabs, selectedTab) {
+        if (!canSwipeTabs) return@pointerInput
+        val quickTriggerThreshold = with(density) { 36.dp.toPx() }
+        val velocityThreshold = with(density) { 140.dp.toPx() }
+        val minDisplacement = with(density) { 8.dp.toPx() }
+        val velocityTracker = VelocityTracker()
+        var totalDragX = 0f
+        var triggeredInDrag = false
+        detectHorizontalDragGestures(
+            onDragStart = {
+                totalDragX = 0f
+                triggeredInDrag = false
+                velocityTracker.resetTracking()
+            },
+            onDragCancel = {
+                totalDragX = 0f
+                triggeredInDrag = false
+            },
+            onDragEnd = {
+                if (!triggeredInDrag) {
+                    val velocityX = velocityTracker.calculateVelocity().x
+                    val swipedLeft = totalDragX <= -quickTriggerThreshold ||
+                        (totalDragX <= -minDisplacement && velocityX <= -velocityThreshold)
+                    val swipedRight = totalDragX >= quickTriggerThreshold ||
+                        (totalDragX >= minDisplacement && velocityX >= velocityThreshold)
+
+                    if (swipedLeft) {
+                        when (selectedTab) {
+                            TAB_HOME -> {
+                                haptics.play(Haptic.Select)
+                                selectTab(TAB_EXPLORE, true)
+                            }
+                            TAB_EXPLORE -> {
+                                haptics.play(Haptic.Select)
+                                selectTab(TAB_LIBRARY, true)
+                            }
+                            TAB_LIBRARY -> {
+                                haptics.play(Haptic.Select)
+                                selectTab(TAB_HOME, true)
+                            }
+                        }
+                    } else if (swipedRight) {
+                        when (selectedTab) {
+                            TAB_LIBRARY -> {
+                                haptics.play(Haptic.Select)
+                                selectTab(TAB_EXPLORE, false)
+                            }
+                            TAB_EXPLORE -> {
+                                haptics.play(Haptic.Select)
+                                selectTab(TAB_HOME, false)
+                            }
+                            TAB_HOME -> {
+                                haptics.play(Haptic.Select)
+                                selectTab(TAB_LIBRARY, false)
+                            }
+                        }
+                    }
+                }
+                totalDragX = 0f
+                triggeredInDrag = false
+            },
+            onHorizontalDrag = { change, dragAmount ->
+                totalDragX += dragAmount
+                velocityTracker.addPosition(change.uptimeMillis, change.position)
+                change.consume()
+
+                if (!triggeredInDrag && kotlin.math.abs(totalDragX) >= quickTriggerThreshold) {
+                    triggeredInDrag = true
+                    if (totalDragX < 0) {
+                        when (selectedTab) {
+                            TAB_HOME -> {
+                                haptics.play(Haptic.Select)
+                                selectTab(TAB_EXPLORE, true)
+                            }
+                            TAB_EXPLORE -> {
+                                haptics.play(Haptic.Select)
+                                selectTab(TAB_LIBRARY, true)
+                            }
+                            TAB_LIBRARY -> {
+                                haptics.play(Haptic.Select)
+                                selectTab(TAB_HOME, true)
+                            }
+                        }
+                    } else {
+                        when (selectedTab) {
+                            TAB_LIBRARY -> {
+                                haptics.play(Haptic.Select)
+                                selectTab(TAB_EXPLORE, false)
+                            }
+                            TAB_EXPLORE -> {
+                                haptics.play(Haptic.Select)
+                                selectTab(TAB_HOME, false)
+                            }
+                            TAB_HOME -> {
+                                haptics.play(Haptic.Select)
+                                selectTab(TAB_LIBRARY, false)
+                            }
+                        }
+                    }
+                }
+            },
+        )
+    }
+
     Box(
         Modifier
             .fillMaxSize()
@@ -3352,17 +3462,17 @@ private fun BitChordApp(
                             (target.isShowAll() && initial == libraryTab)
                         when {
                             tabSwap -> {
-                                val forward = target.index >= initial.index
+                                val forward = gestureSwipeForward ?: (target.index > initial.index)
                                 if (forward) {
-                                    (slideInHorizontally(tween(220, easing = FastOutSlowInEasing)) { (it * 0.12f).toInt() } +
-                                        fadeIn(tween(200, easing = FastOutSlowInEasing))) togetherWith
-                                    (slideOutHorizontally(tween(180, easing = FastOutLinearInEasing)) { (-it * 0.12f).toInt() } +
-                                        fadeOut(tween(140, easing = FastOutLinearInEasing)))
+                                    (slideInHorizontally(tween(190, easing = FastOutSlowInEasing)) { (it * 0.20f).toInt() } +
+                                        fadeIn(tween(170, easing = FastOutSlowInEasing))) togetherWith
+                                    (slideOutHorizontally(tween(160, easing = FastOutLinearInEasing)) { (-it * 0.20f).toInt() } +
+                                        fadeOut(tween(120, easing = FastOutLinearInEasing)))
                                 } else {
-                                    (slideInHorizontally(tween(220, easing = FastOutSlowInEasing)) { (-it * 0.12f).toInt() } +
-                                        fadeIn(tween(200, easing = FastOutSlowInEasing))) togetherWith
-                                    (slideOutHorizontally(tween(180, easing = FastOutLinearInEasing)) { (it * 0.12f).toInt() } +
-                                        fadeOut(tween(140, easing = FastOutLinearInEasing)))
+                                    (slideInHorizontally(tween(190, easing = FastOutSlowInEasing)) { (-it * 0.20f).toInt() } +
+                                        fadeIn(tween(170, easing = FastOutSlowInEasing))) togetherWith
+                                    (slideOutHorizontally(tween(160, easing = FastOutLinearInEasing)) { (it * 0.20f).toInt() } +
+                                        fadeOut(tween(120, easing = FastOutLinearInEasing)))
                                 }
                             }
                             libraryShowAllSwap -> {
@@ -3427,7 +3537,8 @@ private fun BitChordApp(
                         // Every page's scroll passes through here, so
                         // the dock collapses on all of them
                         // without each one having to know about it.
-                        .nestedScroll(navBarScroll),
+                        .nestedScroll(navBarScroll)
+                        .then(tabSwipeModifier),
                     label = "content",
                 ) { destination ->
                     // Every branch below reads `destination` rather than the
@@ -3523,7 +3634,7 @@ private fun BitChordApp(
                         } else if (pageRoute == AppRoute.Replay) {
                             ReplayScreen(
                                 state = replay,
-                                holder = account?.name.orEmpty(),
+                                holder = resolvedUserName,
                                 onPeriodChange = setReplayPeriod,
                                 onOpenStory = { replayStory = it },
                                 // A track tapped on a chart is one the user already
@@ -3551,7 +3662,6 @@ private fun BitChordApp(
                         } else if (pageRoute == AppRoute.Spotify) {
                             SpotifyLibraryScreen(
                                 state = spotifyLibraryState,
-                                hazeState = hazeState,
                                 signedIn = signedIn,
                                 bottomBarsHeight = with(LocalDensity.current) { floatingBarsHeight.intValue.toDp() },
                                 onOpenPlaylist = { playlist ->
@@ -3565,7 +3675,6 @@ private fun BitChordApp(
                                 },
                                 onOpenLogin = { showSpotifyLogin = true },
                                 onOpenTokenSetup = { showSpotifyCanvasAuth = true },
-                                onOpenLinkImport = { showSpotifyImportDialog = true },
                                 onImportToYouTube = { playlists ->
                                     scope.launch {
                                         playlists.forEach { playlist ->
@@ -3658,11 +3767,6 @@ private fun BitChordApp(
                             )
                         } else if (pageRoute == AppRoute.ListenTogether) {
                             ListenTogetherScreen(
-                                signedIn = signedIn,
-                                onSignIn = {
-                                    navigator.clear()
-                                    webSession = WebSessionMode.SIGN_IN
-                                },
                                 contentPadding = listPadding,
                                 onEditServer = { editingPartyServer = true },
                             )
@@ -3678,14 +3782,14 @@ private fun BitChordApp(
                             )
                         } else if (pageRoute == AppRoute.Feedback) {
                             com.music.bitchord.ui.screens.FeedbackScreen(
-                                accountName = account?.name,
+                                accountName = resolvedUserName,
                                 contentPadding = feedbackPadding,
                                 onNew = { navigator.push(AppRoute.FeedbackNew) },
                                 onOpenTicket = { navigator.push(AppRoute.FeedbackThread(it)) },
                             )
                         } else if (pageRoute == AppRoute.FeedbackNew) {
                             com.music.bitchord.ui.screens.FeedbackComposeScreen(
-                                accountName = account?.name,
+                                accountName = resolvedUserName,
                                 contentPadding = feedbackPadding,
                                 onDone = { navigator.pop() },
                             )
@@ -3712,11 +3816,6 @@ private fun BitChordApp(
                                 windowWidth = windowWidth,
                                 signedIn = signedIn,
                                 account = account,
-                                onSignIn = {
-                                    navigator.clear()
-                                    webSession = WebSessionMode.SIGN_IN
-                                },
-                                onSignOut = { viewModel.signOut() },
                                 onAccountScrobbling = { navigator.push(AppRoute.AccountScrobbling) },
                                 onEqualizer = { navigator.push(AppRoute.Equalizer) },
                                 onOpenReplay = {
@@ -3732,7 +3831,6 @@ private fun BitChordApp(
                                 onSpotifyCanvasAuth = { showSpotifyCanvasAuth = true },
                                 onAppLanguage = { showAppLanguage = true },
                                 onEditSignatureApi = { editingSignatureApi = true },
-                                onConfirmBitPerfect = { confirmBitPerfect = it },
                                 onConfirmFixedVolume = { confirmFixedVolume = true },
                                 onFeedback = { navigator.push(AppRoute.Feedback) },
                                 contentPadding = listPadding,
@@ -3847,7 +3945,8 @@ private fun BitChordApp(
                                     (page.type == BrowseType.ALBUM || page.type == BrowseType.PLAYLIST) &&
                                         selected?.contextEntryKey()?.let(pageSongKeys::contains) == true &&
                                         inPageOrder(songs.map { it.contextEntryKey() }, pageKeys) &&
-                                        !CastController.state.value.casting
+                                        !CastController.state.value.casting &&
+                                        !com.music.bitchord.playback.DeviceLink.remoteActive.value
                                 val latestPage = if (useBounded) {
                                     viewModel.takePlaybackContext(page.browseId)
                                 } else {
@@ -4049,7 +4148,7 @@ private fun BitChordApp(
                                 refreshing = MainViewModel.Feed.HOME in refreshing,
                                 pullState = homePull,
                                 contentPadding = listPadding,
-                                accountName = account?.name,
+                                accountName = resolvedUserName,
                                 artworkMotion = artworkMotion,
                                 shelfSong = shelfSong,
                                 onSignIn = { webSession = WebSessionMode.SIGN_IN },
@@ -4070,7 +4169,6 @@ private fun BitChordApp(
                                 pullState = explorePull,
                                 contentPadding = listPadding,
                                 shelfSong = shelfSong,
-                                onPlayRadio = playRadio,
                                 onPlayFromShelf = playFromShelf,
                                 onPlayFrom = ::playFrom,
                                 onAddToQueue = addToQueue,
@@ -4096,7 +4194,6 @@ private fun BitChordApp(
                                 onSongSwipe = onSongSwipe,
                                 onSongSwipeAction = onSongSwipeAction,
                                 onSongHoldPlaylist = onSongHoldPlaylist,
-                                onSetPlaylistTarget = { playlistTarget = it },
                                 onOpenBrowseMenu = openBrowseMenu,
                                 onBlockedAddonSongClick = { song -> blockedAddonSong = song },
                             )
@@ -4117,7 +4214,7 @@ private fun BitChordApp(
                                     LibraryReplayEntry(
                                         cards = replayCards,
                                         loading = replay.loading,
-                                        holder = account?.name.orEmpty(),
+                                        holder = resolvedUserName,
                                         memberSince = replay.memberSince,
                                         onOpenReplay = { page ->
                                             replayLandingPage = page
@@ -4600,34 +4697,6 @@ private fun BitChordApp(
                 val dismissSearch: () -> Unit = {
                     selectedTab = lastNonSearchTab
                 }
-
-                val onTabSelected: (Int) -> Unit = { index ->
-                    navBarScroll.expand()
-                    if (selectedTab == index) {
-                        if (route != null || detail != null || selectedMoodGenre != null) {
-                            navigator.clear()
-                            viewModel.closeMoodGenre()
-                        } else {
-                            scope.launch {
-                                currentListState.animateScrollToItem(0)
-                            }
-                        }
-                    } else {
-                        if (selectedTab != TAB_SEARCH) {
-                            lastNonSearchTab = selectedTab
-                        }
-                        navigator.clear()
-                        viewModel.closeMoodGenre()
-                        selectedTab = index
-
-                        // Every search tab tap resets the field, focuses it, and opens
-                        // the keyboard through SearchScreen's focus request.
-                        if (index == TAB_SEARCH) {
-                            viewModel.onQueryChange("")
-                            searchFocusRequested = true
-                        }
-                    }
-                }
                 val isSearchActive = selectedTab == TAB_SEARCH && route == null && detail == null && selectedMoodGenre == null
                 if (isLandscapeChrome) {
                     if (isSearchActive) {
@@ -4794,37 +4863,6 @@ private fun BitChordApp(
                         }
                     }
                     FrostedTopBar(
-                        title = when (route) {
-                            AppRoute.Spotify -> stringResource(R.string.spotify)
-                            AppRoute.Downloads -> stringResource(R.string.downloads)
-                            AppRoute.Discord -> "Discord"
-                            AppRoute.History -> stringResource(R.string.history)
-                            is AppRoute.LibraryShowAll -> route.shelf.title
-                            is AppRoute.ArtistShelf -> route.shelf.title
-                            AppRoute.Moods -> stringResource(R.string.find_your_mood)
-                            AppRoute.AccountScrobbling -> stringResource(R.string.account_scrobbling)
-                            AppRoute.Sources -> stringResource(R.string.sources)
-                            AppRoute.ListenTogether -> stringResource(R.string.listen_together)
-                            AppRoute.WearOs -> stringResource(R.string.wear_os_page_title)
-                            AppRoute.DriveBackup -> stringResource(R.string.drive_backup_title)
-                            AppRoute.DriveDevices -> stringResource(R.string.drive_devices_title)
-                            AppRoute.Equalizer -> stringResource(R.string.equalizer)
-                            AppRoute.Settings -> stringResource(R.string.settings)
-                            is AppRoute.SettingsSection -> stringResource(route.category.title)
-                            is AppRoute.SettingsChoice -> stringResource(route.choice.title)
-                            AppRoute.EqualizerPresets -> stringResource(R.string.equalizer_preset)
-                            AppRoute.Feedback, is AppRoute.FeedbackThread -> stringResource(R.string.feedback_page_title)
-                            AppRoute.FeedbackNew -> stringResource(R.string.feedback_new)
-                            AppRoute.Replay -> stringResource(R.string.replay)
-                            null -> when {
-                                detail != null && detailActiveShelf != null -> detailActiveShelf.title.orEmpty()
-                                detail != null -> detail.title
-                                selectedMoodGenre != null -> selectedMoodGenre?.title.orEmpty()
-                                else -> if (selectedTab == TAB_HOME) "" else tabs[selectedTab].let {
-                                    if (it.label == "Play") stringResource(R.string.listen_now) else it.label
-                                }
-                            }
-                        },
                         // Every page, in either material, uses separated floating
                         // circles over the shared gradient — no full-width pane.
                         transparentBackdrop = true,
@@ -5664,7 +5702,7 @@ private fun BitChordApp(
                 ) {
                     ReplayShareSheet(
                         summary = summary,
-                        holder = account?.name.orEmpty(),
+                        holder = resolvedUserName,
                         memberSince = replay.memberSince,
                         page = replaySharePage,
                         onDismiss = { showReplayShare = false },
@@ -5986,6 +6024,10 @@ private fun BitChordApp(
                     browseMenuOrigin = null
                 },
                 startRenaming = browseRenameInSheet,
+                onDismiss = {
+                    browseActions = null
+                    browseRenameInSheet = false
+                },
                 onPlayNext = act(playSongsNext),
                 onAddToQueue = act(addSongsToQueue),
                 // Only on an album: a playlist already is one, and an artist
@@ -6083,6 +6125,15 @@ private fun BitChordApp(
                             ).show()
                         }
                         browseActions = null
+                    }
+                },
+                onEditCover = target.browseId?.takeIf {
+                    target.type == BrowseType.PLAYLIST || target.type == BrowseType.ALBUM ||
+                        it.startsWith(OfflinePlaylists.PREFIX) || it.startsWith("local:playlist:")
+                }?.let { id ->
+                    {
+                        browseActions = null
+                        com.music.bitchord.data.artwork.CustomArtworkStore.requestCoverEdit(id)
                     }
                 },
                 onRename = playlist?.let { p ->
@@ -6187,8 +6238,13 @@ private fun BitChordApp(
             // floating over the page: the menu hands it on, and the form comes up
             // here on a sheet of its own.
             browseActions?.takeIf { browseRenameInSheet }?.let { target ->
+                val editSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
                 ModalBottomSheet(
-                    onDismissRequest = { browseActions = null },
+                    onDismissRequest = {
+                        browseActions = null
+                        browseRenameInSheet = false
+                    },
+                    sheetState = editSheetState,
                     containerColor = com.music.bitchord.ui.theme.pageBackground(),
                 ) {
                     browseMenuBody(target)
@@ -6239,7 +6295,6 @@ private fun BitChordApp(
         OnboardingOverlay(
             onboardingShown = onboardingShown,
             signedIn = signedIn,
-            accountName = account?.name,
             onSignIn = { webSession = WebSessionMode.SIGN_IN },
             onConnectSpotify = { showSpotifyLogin = true },
             onOpenSpotifyTokenSetup = { showSpotifyCanvasAuth = true },

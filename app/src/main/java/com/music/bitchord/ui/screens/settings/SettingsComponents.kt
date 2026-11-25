@@ -6,6 +6,7 @@ import android.media.audiofx.AudioEffect
 import android.os.Build
 import android.widget.Toast
 import androidx.annotation.StringRes
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Spring
@@ -344,9 +345,12 @@ internal fun AccountCard(
         }
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
+            val configuredName = com.music.bitchord.data.settings.AppSettings.userName.collectAsStateWithLifecycle().value.trim().takeIf { it.isNotBlank() }
+            val resolvedName = configuredName
+                ?: account?.name?.trim()?.takeIf { it.isNotBlank() }
+                ?: stringResource(R.string.default_user_name)
             Text(
-                text = account?.name
-                    ?: stringResource(if (signedIn) R.string.signed_in else R.string.not_signed_in),
+                text = resolvedName,
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onBackground,
                 maxLines = 1,

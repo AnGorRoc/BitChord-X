@@ -38,7 +38,7 @@ object OfflineDash {
             }.build()
             val manifest = Http.client.newCall(request(url)).execute().use { response ->
                 if (!response.isSuccessful) error("DASH manifest failed (HTTP ${response.code})")
-                response.body.string() ?: error("Empty DASH manifest")
+                response.body.string()
             }
             val plan = parse(manifest)
             val base = url.toHttpUrlOrNull() ?: error("Invalid DASH URL")
@@ -49,7 +49,7 @@ object OfflineDash {
                 val target = base.resolve(remote)?.toString() ?: error("Invalid DASH segment")
                 Http.client.newCall(request(target)).execute().use { response ->
                     if (!response.isSuccessful) error("DASH segment failed (HTTP ${response.code})")
-                    val body = response.body.byteStream() ?: error("Empty DASH segment")
+                    val body = response.body.byteStream()
                     body.use { input -> File(root, localName(index)).outputStream().use(input::copyTo) }
                 }
                 onProgress((index + 1).toLong(), remotes.size.toLong())

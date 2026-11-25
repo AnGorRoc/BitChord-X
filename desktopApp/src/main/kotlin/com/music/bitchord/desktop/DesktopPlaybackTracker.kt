@@ -1,10 +1,5 @@
 package com.music.bitchord.desktop
 
-import io.ktor.client.HttpClient
-import io.ktor.client.engine.cio.CIO
-import io.ktor.client.request.get
-import io.ktor.client.request.header
-import io.ktor.client.request.parameter
 import com.music.bitchord.data.innertube.Innertube
 import com.music.bitchord.data.innertube.StreamResolver
 import kotlinx.coroutines.CancellationException
@@ -17,11 +12,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.contentOrNull
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
-import kotlin.random.Random
 
 /** Registers plays against the signed-in account's YouTube Music history. */
 internal object DesktopPlaybackTracker {

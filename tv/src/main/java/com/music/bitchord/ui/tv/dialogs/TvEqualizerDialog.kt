@@ -1,16 +1,9 @@
 package com.music.bitchord.ui.tv.dialogs
 
 import android.view.KeyEvent
-import androidx.compose.animation.AnimatedContent
-import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -28,19 +21,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.GraphicEq
-import androidx.compose.material.icons.filled.RestartAlt
-import androidx.compose.material.icons.filled.Tune
-import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -73,7 +60,6 @@ import com.music.bitchord.ui.tv.theme.TvType
 import androidx.compose.foundation.layout.heightIn
 import com.music.bitchord.ui.tv.theme.AppleSpringPreset
 import com.music.bitchord.ui.tv.theme.TvSFProDisplay
-import com.music.bitchord.ui.tv.theme.TvThemeColors
 import com.music.bitchord.ui.tv.theme.appleSpring
 import java.util.Locale
 import kotlin.math.abs
@@ -144,7 +130,6 @@ fun TvEqualizerDialog(
                         TvBandFader(
                             hz = hz,
                             gainDb = bands.getOrElse(index) { 0f },
-                            enabled = enabled,
                             onGainChange = { newDb ->
                                 val updated = bands.toMutableList().also {
                                     while (it.size <= index) it.add(0f)
@@ -211,7 +196,6 @@ fun TvEqualizerDialog(
 private fun TvBandFader(
     hz: Float,
     gainDb: Float,
-    enabled: Boolean,
     onGainChange: (Float) -> Unit,
     onReset: () -> Unit,
 ) {

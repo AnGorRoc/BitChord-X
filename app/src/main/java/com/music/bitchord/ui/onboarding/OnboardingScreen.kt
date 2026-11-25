@@ -188,9 +188,8 @@ fun OnboardingScreen(
                     PAGE_NAME -> NamePage(
                         name = name,
                         onNameChange = { name = it.take(NAME_LIMIT) },
-                        onNext = next@{
+                        onNext = {
                             val chosen = name.trim()
-                            if (chosen.isEmpty()) return@next
                             focusManager.clearFocus()
                             onNameChosen(chosen)
                             if (signedIn) {
@@ -292,7 +291,7 @@ private fun ColumnScope.NamePage(
     PillButton(
         label = stringResource(R.string.onboarding_next),
         onClick = onNext,
-        enabled = name.isNotBlank(),
+        enabled = true,
         primary = true,
     )
     Spacer(Modifier.height(16.dp))

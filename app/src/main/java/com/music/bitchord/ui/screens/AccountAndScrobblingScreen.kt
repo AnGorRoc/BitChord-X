@@ -21,9 +21,15 @@ import androidx.compose.material.icons.rounded.SwitchAccount
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.MaterialTheme
 import com.music.bitchord.ui.components.IosSwitch
+import com.music.bitchord.ui.components.FrostAlertDialog
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
@@ -89,6 +95,47 @@ fun AccountAndScrobblingScreen(
                 onClick = onSwitchChannel,
                 grouped = true,
             )
+            val currentUserName by AppSettings.userName.collectAsStateWithLifecycle()
+            val defaultUserLabel = stringResource(R.string.default_user_name)
+            val fallbackName = account?.name?.trim()?.takeIf { it.isNotBlank() } ?: defaultUserLabel
+            var editingUserName by remember { mutableStateOf(false) }
+            FullWidthDivider()
+            SettingsRow(
+                icon = SfIcons.Person,
+                title = stringResource(R.string.onboarding_name_hint),
+                subtitle = currentUserName.ifBlank { fallbackName },
+                onClick = { editingUserName = true },
+            )
+            if (editingUserName) {
+                var newName by remember { mutableStateOf(currentUserName) }
+                FrostAlertDialog(
+                    onDismissRequest = { editingUserName = false },
+                    title = { Text(stringResource(R.string.onboarding_name_prompt)) },
+                    text = {
+                        OutlinedTextField(
+                            value = newName,
+                            onValueChange = { newName = it.take(80) },
+                            singleLine = true,
+                            placeholder = { Text(stringResource(R.string.onboarding_name_hint)) },
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(
+                            onClick = {
+                                AppSettings.setUserName(newName.trim())
+                                editingUserName = false
+                            },
+                        ) {
+                            Text(stringResource(R.string.save))
+                        }
+                    },
+                    dismissButton = {
+                        TextButton(onClick = { editingUserName = false }) {
+                            Text(stringResource(R.string.cancel))
+                        }
+                    },
+                )
+            }
             if (signedIn) {
                 FullWidthDivider()
                 SettingsRow(

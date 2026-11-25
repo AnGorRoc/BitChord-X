@@ -159,4 +159,23 @@ class PlayerSheetMotionTest {
         assertFalse(player.motion.laidOut)
         assertEquals(0, player.dismissals)
     }
+
+    @Test
+    fun `a fast downward fling dismisses as soon as it reaches the bottom`() = runTest {
+        val player = Player(this)
+        // Pulled up 100px, then flung down hard enough to overshoot sheetTravel.
+        player.motion.drag(-100f)
+        // Let the upward pull average drop below the downward release velocity.
+        Thread.sleep(30)
+        player.motion.flingVelocity = 500f
+        player.motion.release(velocity = 20_000f)
+
+        // Should have crossed sheetTravel and dismissed well before a normal
+        // spring tail (~750ms) would settle.
+        advanceTimeBy(150)
+        runCurrent()
+
+        assertFalse(player.shown)
+        assertEquals(1, player.dismissals)
+    }
 }

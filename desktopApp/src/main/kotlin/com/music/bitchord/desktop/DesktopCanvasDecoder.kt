@@ -10,7 +10,6 @@ import org.bytedeco.ffmpeg.global.avcodec.av_packet_free
 import org.bytedeco.ffmpeg.global.avcodec.av_packet_unref
 import org.bytedeco.ffmpeg.global.avcodec.avcodec_alloc_context3
 import org.bytedeco.ffmpeg.global.avcodec.avcodec_find_decoder
-import org.bytedeco.ffmpeg.global.avcodec.avcodec_flush_buffers
 import org.bytedeco.ffmpeg.global.avcodec.avcodec_free_context
 import org.bytedeco.ffmpeg.global.avcodec.avcodec_open2
 import org.bytedeco.ffmpeg.global.avcodec.avcodec_parameters_to_context
@@ -18,10 +17,8 @@ import org.bytedeco.ffmpeg.global.avcodec.avcodec_receive_frame
 import org.bytedeco.ffmpeg.global.avcodec.avcodec_send_packet
 import org.bytedeco.ffmpeg.global.avformat.av_find_best_stream
 import org.bytedeco.ffmpeg.global.avformat.av_read_frame
-import org.bytedeco.ffmpeg.global.avformat.av_seek_frame
 import org.bytedeco.ffmpeg.global.avformat.avformat_close_input
 import org.bytedeco.ffmpeg.global.avformat.avformat_find_stream_info
-import org.bytedeco.ffmpeg.global.avformat.AVSEEK_FLAG_BACKWARD
 import org.bytedeco.ffmpeg.global.avformat.avformat_open_input
 import org.bytedeco.ffmpeg.global.avutil.AVMEDIA_TYPE_VIDEO
 import org.bytedeco.ffmpeg.global.avutil.AV_PIX_FMT_BGRA

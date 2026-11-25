@@ -18,12 +18,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.tv.material3.ColorScheme
 import androidx.tv.material3.MaterialTheme
 import androidx.tv.material3.Typography
 import androidx.tv.material3.darkColorScheme
 import com.music.bitchord.R
-import com.music.bitchord.data.settings.AppSettings
 import com.music.bitchord.data.settings.TvSettings
 
 // ─────────────────────────────────────────────────────────────────────────────

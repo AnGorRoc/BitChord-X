@@ -572,7 +572,13 @@ fun AudioPipelineDialog(
             // it anything, so the reader can tell "answered" from "never asked".
             val resolutionStorage = resolutionState.storage
             val providerConfigs by SourceRegistry.configs.collectAsStateWithLifecycle()
-            val ceiling = AppSettings.effectiveAudioQuality
+            val wifiQuality by AppSettings.audioQualityWifi.collectAsStateWithLifecycle()
+            val cellularQuality by AppSettings.audioQualityCellular.collectAsStateWithLifecycle()
+            val meteredConnection by AppSettings.meteredConnection.collectAsStateWithLifecycle()
+            val ceilingOverride by AppSettings.streamCeilingOverride.collectAsStateWithLifecycle()
+            val ceiling = remember(wifiQuality, cellularQuality, meteredConnection, ceilingOverride) {
+                AppSettings.effectiveAudioQuality
+            }
             val notAsked = SourceResolutionTracker.text(R.string.pipeline_status_not_asked)
             val sourceRows = remember(providerConfigs, resolutionReports, resolutionStorage, ceiling) {
                 sourceInspectionRows(

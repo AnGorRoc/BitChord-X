@@ -53,13 +53,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil3.compose.AsyncImage
-import coil3.request.ImageRequest
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.ui.theme.HideSystemBars
 import kotlinx.coroutines.delay
@@ -78,7 +75,6 @@ private const val VIDEO_CONTROLS_IDLE_MS = 3_500L
 internal fun FullscreenVideoPlayer(
     song: Song,
     isPlaying: Boolean,
-    artRequest: ImageRequest,
     onRenderedChanged: (Boolean) -> Unit,
     rendered: Boolean,
     onExitFullscreen: () -> Unit,

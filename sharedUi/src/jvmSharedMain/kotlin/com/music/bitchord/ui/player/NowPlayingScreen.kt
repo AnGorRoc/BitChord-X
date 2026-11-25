@@ -1,6 +1,5 @@
 package com.music.bitchord.ui.player
 
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.unit.constrainHeight
 import androidx.compose.ui.unit.constrainWidth
 import androidx.compose.ui.unit.offset
@@ -16,16 +15,10 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInVertically
-import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.core.Animatable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.channels.Channel
-import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.VectorConverter
-import androidx.compose.animation.core.CubicBezierEasing
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animate
 import androidx.compose.animation.core.animateDpAsState
@@ -77,9 +70,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.State
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
-import androidx.compose.runtime.MutableFloatState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
@@ -88,7 +79,6 @@ import androidx.compose.runtime.movableContentOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.snapshots.Snapshot
 import kotlinx.coroutines.flow.collectLatest
@@ -112,25 +102,18 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.geometry.lerp
-import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.graphicsLayer
-import androidx.compose.ui.input.pointer.AwaitPointerEventScope
 import androidx.compose.ui.input.pointer.PointerEventPass
-import androidx.compose.ui.input.pointer.PointerInputChange
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.input.pointer.positionChange
-import androidx.compose.ui.input.pointer.util.VelocityTracker
-import androidx.compose.ui.input.pointer.util.addPointerInputChange
 import androidx.compose.ui.util.lerp
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.LayoutCoordinates
@@ -175,7 +158,6 @@ import com.music.bitchord.data.settings.LastPlayerScreen
 import com.music.bitchord.data.settings.PlayerTheme
 import com.music.bitchord.data.model.LikeStatus
 import com.music.bitchord.data.model.PlaybackSourceType
-import com.music.bitchord.data.model.PLAYER_ART_PX
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.playback.BACK_RESTARTS_AFTER_MS
 import dev.chrisbanes.haze.HazeState
@@ -1209,7 +1191,6 @@ fun NowPlayingScreen(
             onCycleRepeat = onCycleRepeat,
             onToggleAutoplay = onToggleAutoplay,
             onOpenOutput = openAudioOutput,
-            onListenTogether = onListenTogether,
             onOpenListenTogetherMembers = openListenTogetherMembers,
         )
         // Keep the current output caption visible in every state.

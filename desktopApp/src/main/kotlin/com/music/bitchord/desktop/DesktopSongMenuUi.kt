@@ -1,7 +1,6 @@
 package com.music.bitchord.desktop
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -28,7 +27,7 @@ import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
 import androidx.compose.material.icons.automirrored.rounded.Undo
 import androidx.compose.material.icons.rounded.Album
-import androidx.compose.material.icons.rounded.ArrowBack
+import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.DownloadDone
 import androidx.compose.material.icons.rounded.HighQuality
@@ -704,7 +703,7 @@ private fun DesktopMenuHeader(title: String, onBack: () -> Unit) {
             .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(Icons.Rounded.ArrowBack, DesktopStrings["back", "Back"], tint = DesktopSecondary, modifier = Modifier.size(15.dp))
+        Icon(Icons.AutoMirrored.Rounded.ArrowBack, DesktopStrings["back", "Back"], tint = DesktopSecondary, modifier = Modifier.size(15.dp))
         Spacer(Modifier.width(10.dp))
         Text(
             title,

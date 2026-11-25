@@ -71,8 +71,12 @@ itself, because Windows expects it to be a system component.
 - **Closing the window quits the app.** This is the default. To keep the music going after the window is
   closed, turn on **Keep running in background when closed** in Settings: BitChord then stays in the system
   tray, and turning the option on also turns the tray icon on.
-- **Keyboard shortcuts.** `Ctrl` (`Cmd` on macOS) with `,` opens Settings, with `F` focuses search and with
-  `W` closes the window. The window remembers its size and position, and has a sensible minimum size.
+- **Keyboard shortcuts.** BitChord includes common PC keyboard shortcuts (Ctrl on Windows/Linux, Cmd on macOS):
+  - **Playback:** Space (Play/Pause), Ctrl + → (Next track), Ctrl + ← (Previous track), ← / → (Seek 5s), Shift + ← / → (Seek 15s).
+  - **Volume & Modes:** Ctrl + ↑ / ↓ (Volume up/down 5%), Ctrl + M (Mute/Unmute, Cmd + Shift + M on macOS), Ctrl + Shift + ↓ (Mute), Ctrl + Shift + ↑ (Max volume), Ctrl + S (Toggle shuffle), Ctrl + R (Cycle repeat mode).
+  - **Views & Panels:** Ctrl + L (Toggle lyrics panel), Ctrl + Q / Ctrl + J (Toggle queue panel), Ctrl + N / Ctrl + P (Toggle now playing overlay), Ctrl + D (Like/Unlike track), Ctrl + O (Audio output dialog), Ctrl + F / Ctrl + K (Search), Ctrl + , (Settings).
+  - **Window & Navigation:** Alt + ← (Back), F11 (Fullscreen), Esc (Close active overlay), Ctrl + W (Close active panel/window), F1 or Ctrl + / (Open keyboard shortcuts sheet).
+  The window remembers its size and position, and has a sensible minimum size.
 
 ## Building the packages yourself
 

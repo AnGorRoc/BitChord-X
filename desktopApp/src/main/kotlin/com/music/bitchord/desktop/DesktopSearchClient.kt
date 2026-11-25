@@ -95,7 +95,6 @@ object DesktopSearchClient {
     /** The rows after a collection's first page, and the token after those. */
     suspend fun moreCollectionSongs(
         token: String,
-        @Suppress("UNUSED_PARAMETER") artistFallback: String? = null,
     ): Result<Pair<List<Song>, String?>> =
         YtMusicRepository.moreSongs(token).map { it.songs to it.continuation }
 

@@ -745,6 +745,7 @@
     <string name="close_replay">Close Replay</string>
     <string name="couldnt_draw_picture">Could not create the picture</string>
     <string name="default_replay_holder">BitChord listener</string>
+    <string name="default_user_name">User</string>
     <string name="different_albums">Different albums</string>
     <string name="genres_pending">Genres will appear as your listening history grows</string>
     <string name="hour_am">%1$d AM</string>
@@ -883,6 +884,17 @@
     <string name="pin">Pin</string>
     <string name="unpin">Unpin</string>
     <string name="rename">Rename</string>
+    <string name="edit_cover">Edit cover</string>
+    <string name="restore_original_cover">Restore original</string>
+    <string name="edit_playlist">Edit playlist</string>
+    <string name="change_cover">Change cover</string>
+    <string name="name_label">Name</string>
+    <string name="title_logo">Title logo (PNG)</string>
+    <string name="title_logo_description">Displays the official typographic logo with transparent background</string>
+    <string name="change_logo">Change logo</string>
+    <string name="select_logo">Select PNG logo</string>
+    <string name="restore_original_title">Restore text title</string>
+    <string name="no_logo_set">No logo (using text title)</string>
     <string name="downloading">Downloading</string>
     <string name="delete_playlist">Delete playlist</string>
     <string name="delete_download">Delete download</string>
@@ -1550,7 +1562,7 @@
     <string name="telemetry_level_off">Off</string>
     <string name="telemetry_level_off_desc">Nothing is sent.</string>
     <string name="telemetry_notice_title">Help us fix what we can\'t see</string>
-    <string name="telemetry_notice_body">BitChord-X is a small project and we can\'t test every phone and system. When something fails, an anonymous report tells us what and where: for example, “player error, Pixel 7, Android 15, version 1.10.0”. That is all it holds. Never your account, IP address, listening history or playlists. You can change it any time in Settings.</string>
+    <string name="telemetry_notice_body">BitChord-X is a small project and we can\'t test every phone and system. When something fails, an anonymous report tells us what and where: for example, “player error, Pixel 7, Android 15, version 1.10.1”. That is all it holds. Never your account, IP address, listening history or playlists. You can change it any time in Settings.</string>
     <string name="telemetry_notice_ok">Got it</string>
     <string name="telemetry_notice_choose">Choose what is sent</string>
     <string name="telemetry_plea_title">Before you turn this off</string>
@@ -1787,6 +1799,8 @@
     <string name="replay_year_summary_minutes">Minutes listened</string>
     <string name="replay_year_mute">Mute the story</string>
     <string name="replay_year_unmute">Unmute the story</string>
+
+    <string name="sign_in_discord">Sign in to Discord</string>
     <string name="about_app">About</string>
     <string name="about_app_summary">BitChord X %1$s · the team and credits</string>
     <string name="about_app_version">Version %1$s</string>

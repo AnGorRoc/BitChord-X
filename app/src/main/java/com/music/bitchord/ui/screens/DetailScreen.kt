@@ -1,11 +1,25 @@
 package com.music.bitchord.ui.screens
 
-import com.music.bitchord.ui.components.FrostAlertDialog
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Spring
+import coil3.request.CachePolicy
+import java.io.File
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.launch
+import com.music.bitchord.data.artwork.CustomArtworkStore
+import com.music.bitchord.ui.components.SquareImageCropperDialog
 import com.music.bitchord.ui.components.FastScroller
 import com.music.bitchord.ui.components.SectionIndexer
 
 import com.music.bitchord.ui.components.trackArtSize
-import android.os.Build
 import com.music.bitchord.R
 
 import androidx.compose.animation.AnimatedContent
@@ -39,6 +53,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -49,7 +64,6 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.GridItemSpan
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
@@ -62,14 +76,12 @@ import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Check
-import androidx.compose.material.icons.rounded.Delete
 import com.music.bitchord.download.Downloads
 import com.music.bitchord.data.model.LibraryState
 import com.music.bitchord.data.settings.SongSwipeAction
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.GraphicEq
-import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.Folder
@@ -78,7 +90,6 @@ import androidx.compose.material.icons.rounded.StarBorder
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -95,7 +106,6 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.BlurredEdgeTreatment
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.shadow
@@ -118,7 +128,6 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextOverflow
@@ -133,9 +142,13 @@ import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import coil3.compose.AsyncImagePainter
 import coil3.request.ImageRequest
+import coil3.request.crossfade
 import coil3.request.transformations
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.material.icons.automirrored.rounded.QueueMusic
@@ -147,6 +160,8 @@ import com.music.bitchord.data.sortedForLibrary
 import com.music.bitchord.data.useTrackTags
 import com.music.bitchord.ui.components.CoverPlaceholder
 import com.music.bitchord.data.canvas.AppleArtistArt
+import com.music.bitchord.data.canvas.AppleAlbumArtRepository
+import com.music.bitchord.data.canvas.AppleAlbumLogo
 import com.music.bitchord.data.DebugLog as Log
 import com.music.bitchord.data.canvas.AppleArtistArtRepository
 import com.music.bitchord.data.canvas.appleCatalogue
@@ -154,8 +169,6 @@ import com.music.bitchord.data.canvas.ArtistSignature
 import com.music.bitchord.data.canvas.ArtistSignatureRepository
 import com.music.bitchord.data.canvas.SignatureInkTransformation
 import com.music.bitchord.data.canvas.keyColors
-import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
-import dev.chrisbanes.haze.materials.HazeMaterials
 import com.music.bitchord.data.canvas.CanvasArtwork
 import com.music.bitchord.data.canvas.CanvasSource
 import com.music.bitchord.data.canvas.CanvasRepository
@@ -414,13 +427,24 @@ fun DetailScreen(
     // confirmed by a shared title in both catalogues — so it waits for the
     // page's songs. Null until (and unless) it arrives; the YouTube header
     // stands in meanwhile.
+    val appleArtVersion by AppleArtistArtRepository.updates.collectAsStateWithLifecycle()
     var appleArt by remember(page.browseId) {
         mutableStateOf(if (isArtist) AppleArtistArtRepository.cached(page.browseId) else null)
     }
+    LaunchedEffect(page.browseId, appleArtVersion) {
+        if (isArtist) {
+            AppleArtistArtRepository.cached(page.browseId)?.let { appleArt = it }
+        }
+    }
     val songsLoading = page.songs is UiState.Loading
     LaunchedEffect(page.browseId, page.title, songsLoading) {
-        if (isArtist && !songsLoading) {
-            appleArt = AppleArtistArtRepository.artFor(page.browseId, page.title) { page.appleCatalogue() } ?: appleArt
+        if (isArtist) {
+            val cached = AppleArtistArtRepository.cached(page.browseId)
+            if (cached != null) {
+                appleArt = cached
+            } else if (!songsLoading || page.sections.isNotEmpty()) {
+                appleArt = AppleArtistArtRepository.artFor(page.browseId, page.title) { page.appleCatalogue() } ?: appleArt
+            }
         }
     }
     // Secondary provider: handwritten signature from the user's own
@@ -531,6 +555,48 @@ fun DetailScreen(
         // pass comes back empty.
         canvas = CanvasRepository.canvasForAlbum(page.title, credit) ?: canvas
     }
+
+    val context = LocalPlatformContext.current
+    val customArtUpdates by CustomArtworkStore.updates.collectAsStateWithLifecycle()
+
+    val customAlbumLogoPath = remember(page.browseId, page.title, credit, customArtUpdates) {
+        CustomArtworkStore.getLogoPath(context, page.browseId, page.title, credit)
+    }
+
+    var appleAlbumLogo by remember(page.browseId) {
+        mutableStateOf(AppleAlbumArtRepository.cached(page.title, credit))
+    }
+    LaunchedEffect(page.browseId, page.title, credit) {
+        if (isArtist || page.type != BrowseType.ALBUM || credit.isBlank()) return@LaunchedEffect
+        withContext(Dispatchers.IO) {
+            val found = AppleAlbumArtRepository.logoFor(page.title, credit)
+            if (found != null) {
+                appleAlbumLogo = found
+            }
+        }
+    }
+
+    val effectiveAlbumLogo = remember(customAlbumLogoPath, appleAlbumLogo) {
+        if (customAlbumLogoPath != null) {
+            AppleAlbumLogo(url = "file://$customAlbumLogoPath", isTransparent = true)
+        } else {
+            appleAlbumLogo
+        }
+    }
+
+    var artistLogo by remember(credit) {
+        mutableStateOf(AppleAlbumArtRepository.cachedArtistLogo(credit))
+    }
+    LaunchedEffect(credit) {
+        if (credit.isBlank()) return@LaunchedEffect
+        withContext(Dispatchers.IO) {
+            val found = AppleAlbumArtRepository.artistLogoFor(credit)
+            if (found != null) {
+                artistLogo = found
+            }
+        }
+    }
+
     // An artist's clip comes with the same Apple lookup as its photograph.
     val artistVideo = appleArt?.videoUrl
     LaunchedEffect(artistVideo, canvasEnabled) {
@@ -648,6 +714,9 @@ fun DetailScreen(
                         sleeveSize = sleeveSize,
                         fullBleed = fullBleedSleeve,
                         canvas = visibleCanvas,
+                        albumLogo = effectiveAlbumLogo,
+                        isCustomAlbumLogo = customAlbumLogoPath != null,
+                        artistLogo = artistLogo,
                         songs = songs,
                         onPlay = { (onPlayAll ?: { onSongClick(it, 0) })(songs) },
                         onShuffle = { onShuffle(songs) },
@@ -669,7 +738,6 @@ fun DetailScreen(
                         autoFocus = focusSearch,
                         onFocused = { focusSearch = false },
                         palette = palette,
-                        type = page.type,
                     )
                 }
             }
@@ -1004,6 +1072,9 @@ private fun ReleaseHeader(
     sleeveSize: Dp,
     fullBleed: Boolean = false,
     canvas: CanvasArtwork?,
+    albumLogo: AppleAlbumLogo? = null,
+    isCustomAlbumLogo: Boolean = false,
+    artistLogo: AppleAlbumLogo? = null,
     songs: List<Song>,
     onPlay: () -> Unit,
     onShuffle: () -> Unit,
@@ -1027,6 +1098,7 @@ private fun ReleaseHeader(
     val isOfflinePlaylist = remember(page.browseId) {
         OfflinePlaylists.isOfflinePlaylist(page.browseId) && !OfflinePlaylists.isLikedPage(page.browseId)
     }
+    val isPlaylist = page.type == BrowseType.PLAYLIST || isLocalStorePlaylist || isOfflinePlaylist
     val padsCollage = isOfflineMusicPage || isLocalStorePlaylist || isOfflinePlaylist
     val top4Artworks = remember(page.songs, padsCollage) {
         val list = (page.songs as? UiState.Success)?.data.orEmpty()
@@ -1044,7 +1116,119 @@ private fun ReleaseHeader(
             (page.browseId.startsWith("topic:") && page.thumbnailUrl == null)
         ) && top4Artworks.size >= 4
     var artFailed by remember(page.thumbnailUrl) { mutableStateOf(false) }
-    val bleed = fullBleed && page.thumbnailUrl != null && !artFailed && !isGridCover
+
+    val context = LocalPlatformContext.current
+    val scope = rememberCoroutineScope()
+    val customArtUpdates by CustomArtworkStore.updates.collectAsStateWithLifecycle()
+    val canEditCover = isPlaylist || page.type == BrowseType.ALBUM || isOfflineMusicPage
+    val customCoverPath = remember(page.browseId, customArtUpdates) {
+        if (canEditCover) CustomArtworkStore.getCoverPath(context, page.browseId) else null
+    }
+
+    var showCoverOverlay by remember { mutableStateOf(false) }
+    var showAlbumLogoMenu by remember { mutableStateOf(false) }
+
+    var cropperUri by remember { mutableStateOf<Uri?>(null) }
+    val coverPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia(),
+    ) { uri ->
+        if (uri != null) {
+            cropperUri = uri
+        }
+    }
+
+    val coverEditRequests by CustomArtworkStore.coverEditRequests.collectAsStateWithLifecycle(initialValue = null)
+    LaunchedEffect(coverEditRequests) {
+        if (coverEditRequests == page.browseId) {
+            coverPicker.launch(
+                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+            )
+        }
+    }
+
+    val albumLogoPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia(),
+    ) { uri ->
+        if (uri != null) {
+            scope.launch {
+                CustomArtworkStore.saveLogo(context, page.browseId, page.title, credit, uri)
+            }
+        }
+    }
+
+    cropperUri?.let { uri ->
+        SquareImageCropperDialog(
+            imageUri = uri,
+            onDismiss = { cropperUri = null },
+            onCropConfirmed = { cropped ->
+                scope.launch {
+                    CustomArtworkStore.saveCover(context, page.browseId, cropped)
+                    cropperUri = null
+                }
+            },
+        )
+    }
+
+    if (showAlbumLogoMenu) {
+        AlertDialog(
+            onDismissRequest = { showAlbumLogoMenu = false },
+            title = { Text(text = stringResource(R.string.title_logo)) },
+            text = {
+                Text(
+                    text = stringResource(R.string.title_logo_description)
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showAlbumLogoMenu = false
+                        albumLogoPicker.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        )
+                    }
+                ) {
+                    Text(if (isCustomAlbumLogo) stringResource(R.string.change_logo) else stringResource(R.string.select_logo))
+                }
+            },
+            dismissButton = {
+                Row {
+                    if (isCustomAlbumLogo) {
+                        TextButton(
+                            onClick = {
+                                showAlbumLogoMenu = false
+                                scope.launch {
+                                    CustomArtworkStore.removeLogo(context, page.browseId, page.title, credit)
+                                }
+                            }
+                        ) {
+                            Text(stringResource(R.string.restore_original_title))
+                        }
+                    }
+                    TextButton(onClick = { showAlbumLogoMenu = false }) {
+                        Text(stringResource(R.string.cancel))
+                    }
+                }
+            }
+        )
+    }
+
+    val effectiveCoverModel = if (customCoverPath != null) {
+        customCoverPath
+    } else {
+        page.thumbnailUrl.artworkAt(HEADER_ART_PX)
+    }
+    val bleed = fullBleed && effectiveCoverModel != null && !artFailed && !isGridCover && customCoverPath == null
+
+    val coverBlur by animateDpAsState(
+        targetValue = if (showCoverOverlay) 16.dp else 0.dp,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "coverBlur",
+    )
+    val scrimAlpha by animateFloatAsState(
+        targetValue = if (showCoverOverlay) 0.35f else 0f,
+        animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
+        label = "coverScrim",
+    )
 
     Column(
         modifier = Modifier
@@ -1065,45 +1249,139 @@ private fun ReleaseHeader(
                         val height = (placeable.height - FULL_BLEED_TITLE_OVERLAP.roundToPx()).coerceAtLeast(0)
                         layout(placeable.width, height) { placeable.place(0, 0) }
                     }
-                    .aspectRatio(1f),
+                    .aspectRatio(1f)
+                    .then(
+                        if (canEditCover) {
+                            Modifier.clickable {
+                                showCoverOverlay = !showCoverOverlay
+                            }
+                        } else Modifier
+                    ),
             ) {
-                AsyncImage(
-                    model = page.thumbnailUrl.artworkAt(HEADER_ART_PX),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    onState = { artFailed = it is AsyncImagePainter.State.Error },
+                Box(
                     modifier = Modifier
                         .matchParentSize()
-                        // The mask below erases part of what this layer drew,
-                        // which it can only do in a buffer of its own.
-                        .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
-                        .drawWithContent {
-                            drawContent()
-                            // The player banner's dissolve, along smootherstep so
-                            // neither end of it shows as a line.
-                            drawRect(
-                                brush = Brush.verticalGradient(
-                                    colorStops = Array(FADE_CURVE_STOPS + 1) { i ->
-                                        val t = i / FADE_CURVE_STOPS.toFloat()
-                                        t to Color.Black.copy(alpha = 1f - smootherStep(t))
-                                    },
-                                    startY = size.height * (1f - FULL_BLEED_FADE_FRACTION),
-                                    endY = size.height,
+                        .then(if (coverBlur > 0.dp) Modifier.blur(coverBlur) else Modifier),
+                ) {
+                    AsyncImage(
+                        model = effectiveCoverModel,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        onState = { artFailed = it is AsyncImagePainter.State.Error },
+                        modifier = Modifier
+                            .matchParentSize()
+                            // The mask below erases part of what this layer drew,
+                            // which it can only do in a buffer of its own.
+                            .graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+                            .drawWithContent {
+                                drawContent()
+                                // The player banner's dissolve, along smootherstep so
+                                // neither end of it shows as a line.
+                                drawRect(
+                                    brush = Brush.verticalGradient(
+                                        colorStops = Array(FADE_CURVE_STOPS + 1) { i ->
+                                            val t = i / FADE_CURVE_STOPS.toFloat()
+                                            t to Color.Black.copy(alpha = 1f - smootherStep(t))
+                                        },
+                                        startY = size.height * (1f - FULL_BLEED_FADE_FRACTION),
+                                        endY = size.height,
+                                    ),
+                                    blendMode = BlendMode.DstIn,
+                                )
+                            }
+                            .background(palette.elevated),
+                    )
+                    // Beside the still rather than inside its layer: a clip's
+                    // TextureView takes no Compose mask, so it dissolves itself.
+                    canvas?.let { clip ->
+                        CanvasArtworkPlayer(
+                            canvas = clip,
+                            isPlaying = true,
+                            bottomFade = FULL_BLEED_FADE_FRACTION,
+                            modifier = Modifier.matchParentSize(),
+                        )
+                    }
+                }
+                if (scrimAlpha > 0.01f) {
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .background(Color.Black.copy(alpha = scrimAlpha)),
+                    )
+                }
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = showCoverOverlay,
+                    enter = fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) +
+                        scaleIn(initialScale = 0.85f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow)),
+                    exit = fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) +
+                        scaleOut(targetScale = 0.85f, animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
+                    modifier = Modifier.align(Alignment.Center),
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.Center,
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .shadow(8.dp, RoundedCornerShape(26.dp))
+                                .clip(RoundedCornerShape(26.dp))
+                                .background(Color.Black.copy(alpha = 0.74f))
+                                .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(26.dp))
+                                .clickable {
+                                    showCoverOverlay = false
+                                    coverPicker.launch(
+                                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                    )
+                                }
+                                .padding(horizontal = 20.dp, vertical = 13.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center,
+                            ) {
+                                Icon(
+                                    imageVector = SfIcons.Pencil,
+                                    contentDescription = null,
+                                    tint = Color.White,
+                                    modifier = Modifier.size(17.dp),
+                                )
+                                Spacer(Modifier.width(8.dp))
+                                Text(
+                                    text = stringResource(R.string.edit_cover),
+                                    color = Color.White,
+                                    fontSize = 14.5.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                            }
+                        }
+
+                        if (customCoverPath != null) {
+                            Spacer(Modifier.height(10.dp))
+                            Text(
+                                text = stringResource(R.string.restore_original_cover),
+                                color = Color.White,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    shadow = androidx.compose.ui.graphics.Shadow(
+                                        color = Color.Black.copy(alpha = 0.85f),
+                                        offset = Offset(0f, 2f),
+                                        blurRadius = 6f,
+                                    ),
                                 ),
-                                blendMode = BlendMode.DstIn,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .clickable {
+                                        showCoverOverlay = false
+                                        scope.launch {
+                                            CustomArtworkStore.removeCover(context, page.browseId)
+                                        }
+                                    }
+                                    .padding(horizontal = 12.dp, vertical = 6.dp),
                             )
                         }
-                        .background(palette.elevated),
-                )
-                // Beside the still rather than inside its layer: a clip's
-                // TextureView takes no Compose mask, so it dissolves itself.
-                canvas?.let { clip ->
-                    CanvasArtworkPlayer(
-                        canvas = clip,
-                        isPlaying = true,
-                        bottomFade = FULL_BLEED_FADE_FRACTION,
-                        modifier = Modifier.matchParentSize(),
-                    )
+                    }
                 }
             }
         } else Box(
@@ -1111,122 +1389,334 @@ private fun ReleaseHeader(
                 .size(sleeveSize)
                 .shadow(SLEEVE_SHADOW, SLEEVE_SHAPE)
                 .background(palette.elevated)
-                .thumbnailBorder(SLEEVE_SHAPE),
+                .thumbnailBorder(SLEEVE_SHAPE)
+                .clip(SLEEVE_SHAPE)
+                .then(
+                    if (canEditCover) {
+                        Modifier.clickable {
+                            showCoverOverlay = !showCoverOverlay
+                        }
+                    } else Modifier
+                ),
         ) {
-            if (isGridCover) {
-                Column(Modifier.matchParentSize()) {
-                    Row(Modifier.weight(1f)) {
-                        AsyncImage(
-                            model = top4Artworks[0].artworkAt(HEADER_ART_PX / 2),
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.weight(1f).fillMaxHeight(),
-                        )
-                        AsyncImage(
-                            model = top4Artworks[1].artworkAt(HEADER_ART_PX / 2),
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.weight(1f).fillMaxHeight(),
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .then(if (coverBlur > 0.dp) Modifier.blur(coverBlur) else Modifier),
+            ) {
+                if (customCoverPath != null) {
+                    val coverRequest = remember(customCoverPath, customArtUpdates) {
+                        ImageRequest.Builder(context)
+                            .data(File(customCoverPath))
+                            .memoryCacheKey("$customCoverPath-$customArtUpdates")
+                            .diskCachePolicy(CachePolicy.DISABLED)
+                            .build()
+                    }
+                    AsyncImage(
+                        model = coverRequest,
+                        contentDescription = page.title,
+                        contentScale = ContentScale.Crop,
+                        modifier = Modifier.matchParentSize(),
+                    )
+                } else if (isGridCover) {
+                    Column(Modifier.matchParentSize()) {
+                        Row(Modifier.weight(1f)) {
+                            AsyncImage(
+                                model = top4Artworks[0].artworkAt(HEADER_ART_PX / 2),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                            )
+                            AsyncImage(
+                                model = top4Artworks[1].artworkAt(HEADER_ART_PX / 2),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                            )
+                        }
+                        Row(Modifier.weight(1f)) {
+                            AsyncImage(
+                                model = top4Artworks[2].artworkAt(HEADER_ART_PX / 2),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                            )
+                            AsyncImage(
+                                model = top4Artworks[3].artworkAt(HEADER_ART_PX / 2),
+                                contentDescription = null,
+                                contentScale = ContentScale.Crop,
+                                modifier = Modifier.weight(1f).fillMaxHeight(),
+                            )
+                        }
+                    }
+                    if (isOfflineMusicPage) {
+                        Box(
+                            modifier = Modifier
+                                .matchParentSize()
+                                .background(Color.Black.copy(alpha = 0.30f)),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.CloudOff,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(56.dp),
+                            )
+                        }
+                    }
+                } else {
+                    // A cover that isn't there, or wouldn't load — a device folder, a
+                    // playlist with nothing on it yet, files with no picture — gets a
+                    // placeholder sleeve rather than an empty square. Not shown while a
+                    // real one is still on its way, so a loading cover doesn't flash
+                    // a glyph first.
+                    if (page.thumbnailUrl == null || artFailed) {
+                        CoverPlaceholder(
+                            icon = page.placeholderIcon(),
+                            base = palette.elevated,
+                            tint = palette.onBackgroundVariant,
+                            modifier = Modifier.matchParentSize(),
                         )
                     }
-                    Row(Modifier.weight(1f)) {
-                        AsyncImage(
-                            model = top4Artworks[2].artworkAt(HEADER_ART_PX / 2),
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.weight(1f).fillMaxHeight(),
-                        )
-                        AsyncImage(
-                            model = top4Artworks[3].artworkAt(HEADER_ART_PX / 2),
-                            contentDescription = null,
-                            contentScale = ContentScale.Crop,
-                            modifier = Modifier.weight(1f).fillMaxHeight(),
-                        )
-                    }
-                }
-                if (isOfflineMusicPage) {
-                    Box(
-                        modifier = Modifier
-                            .matchParentSize()
-                            .background(Color.Black.copy(alpha = 0.30f)),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Icon(
-                            imageVector = Icons.Rounded.CloudOff,
-                            contentDescription = null,
-                            tint = Color.White,
-                            modifier = Modifier.size(56.dp),
-                        )
-                    }
-                }
-            } else {
-                // A cover that isn't there, or wouldn't load — a device folder, a
-                // playlist with nothing on it yet, files with no picture — gets a
-                // placeholder sleeve rather than an empty square. Not shown while a
-                // real one is still on its way, so a loading cover doesn't flash
-                // a glyph first.
-                if (page.thumbnailUrl == null || artFailed) {
-                    CoverPlaceholder(
-                        icon = page.placeholderIcon(),
-                        base = palette.elevated,
-                        tint = palette.onBackgroundVariant,
+                    AsyncImage(
+                        model = effectiveCoverModel,
+                        contentDescription = null,
+                        contentScale = ContentScale.Crop,
+                        onState = { artFailed = it is AsyncImagePainter.State.Error },
                         modifier = Modifier.matchParentSize(),
                     )
                 }
-                AsyncImage(
-                    model = page.thumbnailUrl.artworkAt(HEADER_ART_PX),
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    onState = { artFailed = it is AsyncImagePainter.State.Error },
-                    modifier = Modifier.matchParentSize(),
+                // Animated cover art, inside the same frame. Only when custom cover is not set.
+                if (customCoverPath == null) {
+                    canvas?.let { clip ->
+                        CanvasArtworkPlayer(
+                            canvas = clip,
+                            isPlaying = true,
+                            modifier = Modifier.matchParentSize(),
+                        )
+                    }
+                }
+            }
+
+            if (scrimAlpha > 0.01f) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(Color.Black.copy(alpha = scrimAlpha)),
                 )
             }
-            // Animated cover art, inside the same frame. Always running:
-            // unlike the player's sleeve there is no transport here to follow,
-            // and the page is only up while it's being read.
-            canvas?.let { clip ->
-                CanvasArtworkPlayer(
-                    canvas = clip,
-                    isPlaying = true,
-                    modifier = Modifier.matchParentSize(),
-                )
+
+            androidx.compose.animation.AnimatedVisibility(
+                visible = showCoverOverlay,
+                enter = fadeIn(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) +
+                    scaleIn(initialScale = 0.85f, animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow)),
+                exit = fadeOut(animationSpec = spring(stiffness = Spring.StiffnessMediumLow)) +
+                    scaleOut(targetScale = 0.85f, animationSpec = spring(stiffness = Spring.StiffnessMediumLow)),
+                modifier = Modifier.align(Alignment.Center),
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .shadow(8.dp, RoundedCornerShape(26.dp))
+                            .clip(RoundedCornerShape(26.dp))
+                            .background(Color.Black.copy(alpha = 0.74f))
+                            .border(1.dp, Color.White.copy(alpha = 0.25f), RoundedCornerShape(26.dp))
+                            .clickable {
+                                showCoverOverlay = false
+                                coverPicker.launch(
+                                    PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                                )
+                            }
+                            .padding(horizontal = 20.dp, vertical = 13.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center,
+                        ) {
+                            Icon(
+                                imageVector = SfIcons.Pencil,
+                                contentDescription = null,
+                                tint = Color.White,
+                                modifier = Modifier.size(17.dp),
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = stringResource(R.string.edit_cover),
+                                color = Color.White,
+                                fontSize = 14.5.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                        }
+                    }
+
+                    if (customCoverPath != null) {
+                        Spacer(Modifier.height(10.dp))
+                        Text(
+                            text = stringResource(R.string.restore_original_cover),
+                            color = Color.White,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.Medium,
+                            style = MaterialTheme.typography.bodyMedium.copy(
+                                shadow = androidx.compose.ui.graphics.Shadow(
+                                    color = Color.Black.copy(alpha = 0.85f),
+                                    offset = Offset(0f, 2f),
+                                    blurRadius = 6f,
+                                ),
+                            ),
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .clickable {
+                                    showCoverOverlay = false
+                                    scope.launch {
+                                        CustomArtworkStore.removeCover(context, page.browseId)
+                                    }
+                                }
+                                .padding(horizontal = 12.dp, vertical = 6.dp),
+                        )
+                    }
+                }
             }
         }
 
         Spacer(Modifier.height(20.dp))
-        Text(
-            text = page.title,
-            style = MaterialTheme.typography.headlineMedium,
-            color = palette.onBackground,
-            textAlign = TextAlign.Center,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-            modifier = Modifier.padding(horizontal = HEADER_GUTTER),
-        )
+        val canEditLogo = page.type == BrowseType.ALBUM || isPlaylist
+        val titleClickModifier = if (canEditLogo) {
+            Modifier
+                .clip(RoundedCornerShape(8.dp))
+                .clickable { showAlbumLogoMenu = true }
+        } else {
+            Modifier
+        }
+
+        var logoShown by remember(albumLogo?.url) { mutableStateOf(false) }
+
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                modifier = titleClickModifier,
+            ) {
+                if (albumLogo != null) {
+                    val request = remember(albumLogo.url) {
+                        ImageRequest.Builder(context)
+                            .data(albumLogo.url)
+                            .size(coil3.size.Size.ORIGINAL)
+                            .build()
+                    }
+                    AsyncImage(
+                        model = request,
+                        contentDescription = page.title,
+                        contentScale = ContentScale.Fit,
+                        onState = { state ->
+                            when (state) {
+                                is AsyncImagePainter.State.Success -> logoShown = true
+                                else -> Unit
+                            }
+                        },
+                        modifier = Modifier
+                            .padding(horizontal = HEADER_GUTTER)
+                            .padding(bottom = 8.dp)
+                            .heightIn(min = 40.dp, max = 76.dp)
+                            .fillMaxWidth(0.85f),
+                    )
+                }
+                if (!logoShown) {
+                    Text(
+                        text = page.title,
+                        style = MaterialTheme.typography.headlineMedium,
+                        color = palette.onBackground,
+                        textAlign = TextAlign.Center,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.padding(horizontal = HEADER_GUTTER),
+                    )
+                }
+            }
+        }
+
         if (credit.isNotBlank()) {
-            Spacer(Modifier.height(2.dp))
-            Text(
-                text = credit,
-                style = MaterialTheme.typography.titleLarge.copy(
-                    fontWeight = FontWeight.Normal,
-                    fontSize = 19.sp,
-                ),
-                color = palette.onBackgroundVariant,
-                textAlign = TextAlign.Center,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier
-                    .padding(horizontal = HEADER_GUTTER)
-                    .let { m ->
-                        val id = artist?.artistId
-                        if (id == null || onArtistClick == null) {
-                            m
-                        } else {
-                            m.clip(RoundedCornerShape(6.dp))
-                                .clickable { onArtistClick(id, artist.artist) }
-                        }
-                    },
-            )
+            Spacer(Modifier.height(4.dp))
+            val artistClickModifier = Modifier
+                .padding(horizontal = HEADER_GUTTER)
+                .let { m ->
+                    val id = artist?.artistId
+                    val clickTarget = artist?.artist?.takeIf { it.isNotBlank() } ?: credit
+                    if (id == null || onArtistClick == null) {
+                        m
+                    } else {
+                        m.clip(RoundedCornerShape(6.dp))
+                            .clickable { onArtistClick(id, clickTarget) }
+                    }
+                }
+
+            if (logoShown) {
+                // When title logo is displayed (Mono / Apple Music style):
+                // Artist name is rendered below in elegant, letter-spaced uppercase text
+                Text(
+                    text = credit.uppercase(),
+                    style = MaterialTheme.typography.labelLarge.copy(
+                        fontWeight = FontWeight.SemiBold,
+                        letterSpacing = 1.6.sp,
+                        fontSize = 13.sp,
+                    ),
+                    color = palette.onBackgroundVariant,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = artistClickModifier,
+                )
+            } else {
+                // Standard view: try artist logo from API, or fall back to title text
+                var artistLogoShown by remember(artistLogo?.url) { mutableStateOf(false) }
+                if (artistLogo != null) {
+                    val isAlbum = page.type == BrowseType.ALBUM
+                    val minHeight = if (isAlbum) 12.dp else 16.dp
+                    val maxHeight = if (isAlbum) 18.dp else 24.dp
+                    val maxWidthFraction = if (isAlbum) 0.35f else 0.50f
+                    val aspect = artistLogo.aspect.coerceIn(1.5f, 6.5f)
+                    val request = remember(artistLogo.url) {
+                        ImageRequest.Builder(context)
+                            .data(artistLogo.url)
+                            .size(coil3.size.Size.ORIGINAL)
+                            .build()
+                    }
+                    AsyncImage(
+                        model = request,
+                        contentDescription = credit,
+                        contentScale = ContentScale.Fit,
+                        onState = { state ->
+                            if (state is AsyncImagePainter.State.Success) {
+                                artistLogoShown = true
+                            }
+                        },
+                        modifier = artistClickModifier
+                            .heightIn(min = minHeight, max = maxHeight)
+                            .fillMaxWidth(maxWidthFraction)
+                            .aspectRatio(aspect, matchHeightConstraintsFirst = true)
+                            .alpha(if (isAlbum) 0.88f else 0.95f),
+                    )
+                }
+                if (!artistLogoShown) {
+                    Text(
+                        text = credit,
+                        style = MaterialTheme.typography.titleLarge.copy(
+                            fontWeight = FontWeight.Normal,
+                            fontSize = 19.sp,
+                        ),
+                        color = palette.onBackgroundVariant,
+                        textAlign = TextAlign.Center,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = artistClickModifier,
+                    )
+                }
+            }
         }
         if (meta.isNotBlank()) {
             Spacer(Modifier.height(4.dp))
@@ -1367,7 +1857,6 @@ private fun DetailSearchField(
     autoFocus: Boolean,
     onFocused: () -> Unit,
     palette: ArtworkPalette,
-    type: BrowseType,
 ) {
     // Opened by a tap on a button, which is as clear a statement of intent as
     // the keyboard is going to get — so it comes up with the field rather than
@@ -1656,6 +2145,7 @@ private fun PageBackground(
     modifier: Modifier = Modifier,
 ) {
     val art = heroUrl ?: page.thumbnailUrl.artworkAt(HEADER_ART_PX)
+    var videoCover by remember(canvas?.url) { mutableFloatStateOf(0f) }
 
     Box(modifier.clipToBounds()) {
         Box(
@@ -1666,12 +2156,19 @@ private fun PageBackground(
                 .clipToBounds(),
         ) {
             AsyncImage(
-                model = art,
+                model = ImageRequest.Builder(LocalPlatformContext.current)
+                    .data(art)
+                    .crossfade(true)
+                    .crossfade(400)
+                    .build(),
                 contentDescription = null,
                 contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .matchParentSize()
-                    .background(palette.elevated),
+                    .background(palette.elevated)
+                    .graphicsLayer {
+                        alpha = if (videoCover >= 1f) 0f else 1f
+                    },
             )
 
             // Above the still art but below the scrim, so the scrim that
@@ -1680,6 +2177,7 @@ private fun PageBackground(
                 CanvasArtworkPlayer(
                     canvas = clip,
                     isPlaying = true,
+                    onCoverChanged = { videoCover = it },
                     modifier = Modifier.matchParentSize(),
                 )
             }

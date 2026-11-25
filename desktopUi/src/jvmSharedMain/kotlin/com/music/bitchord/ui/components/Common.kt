@@ -93,7 +93,6 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -105,9 +104,6 @@ import com.music.bitchord.data.model.isMatchMissing
 import androidx.compose.ui.draw.alpha
 import androidx.compose.material3.CircularProgressIndicator
 import com.music.bitchord.data.model.artworkAt
-import androidx.compose.foundation.isSystemInDarkTheme
-import androidx.compose.ui.composed
-import androidx.compose.ui.graphics.Shape
 import androidx.compose.foundation.border
 
 /**

@@ -1,6 +1,6 @@
 name: Release
 
-# Pushing a tag such as v1.10.0 builds the signed phone/TV APKs, the Desktop
+# Pushing a tag such as v1.10.1 builds the signed phone/TV APKs, the Desktop
 # packages (Windows, Linux, macOS) and publishes them as a GitHub release.
 # The in-app updater (Android & Desktop) reads releases/latest and its assets.
 on:
@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version to stamp (e.g. 1.10.0 or v1.10.0)'
+        description: 'Version to stamp (e.g. 1.10.1 or v1.10.1)'
         required: false
 
 permissions:

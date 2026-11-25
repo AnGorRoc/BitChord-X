@@ -39,7 +39,7 @@
   <string name="listen_together_away">Away — their slot is held</string>
   <string name="listen_together_host">Host</string>
   <string name="listen_together_in_party">In a party · %1$s</string>
-  <string name="listen_together_jam">%1$s’s Jam</string>
+  <string name="listen_together_jam">%1$s’s Party</string>
   <string name="listen_together_jam_unnamed">Listening together</string>
   <string name="listen_together_manage">Manage</string>
   <string name="listen_together_open">Listen together</string>
@@ -197,6 +197,7 @@
   <string name="your_replay">Your Replay</string>
   <string name="your_listening_experience">Your listening experience</string>
   <string name="default_replay_holder">BitChord listener</string>
+  <string name="default_user_name">User</string>
   <string name="member_since">Member since</string>
   <string name="import_spotify">Import Spotify</string>
   <string name="import_spotify_subtitle">From a playlist link</string>
@@ -354,6 +355,15 @@
     <string name="live_on_air">On the air</string>
     <string name="live_broadcast">Live broadcast</string>
     <string name="live_tune_in">Tune in</string>
+    <string name="search_filter_dj_sets">DJ Sets</string>
+    <string name="dj_sets_title">DJ Sets &amp; Mixes</string>
+    <string name="dj_sets_subtitle">Non-stop continuous mixes and live club sessions</string>
+    <string name="dj_sets_badge">DJ SET</string>
+    <string name="dj_set_cat_featured">Featured</string>
+    <string name="dj_set_cat_electronic">Electronic</string>
+    <string name="dj_set_cat_cumbia_rkt">Cumbia &amp; RKT</string>
+    <string name="dj_set_cat_reggaeton">Reggaeton</string>
+    <string name="dj_set_cat_club">Club &amp; Party</string>
     <string name="daily_theme_monday_title">Motivation &amp; Energy</string>
     <string name="daily_theme_monday_subtitle">Kick off the week at full power</string>
     <string name="daily_theme_tuesday_title">Time Capsules</string>
@@ -372,4 +382,7 @@
     <string name="daily_topic_reggaeton_duro">Heavy Reggaeton</string>
     <string name="daily_topic_hiphop_clasico">Classic Hip-Hop</string>
     <string name="daily_topic_previa_bailable">Pre-Party Beats</string>
+
+    <string name="featured_badge">FEATURED</string>
+    <string name="special_mix">Special mix</string>
 </resources>

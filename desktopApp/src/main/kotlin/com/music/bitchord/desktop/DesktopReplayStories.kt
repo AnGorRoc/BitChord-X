@@ -4,7 +4,6 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -24,7 +23,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.IosShare
-import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -35,7 +33,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -54,8 +51,6 @@ import androidx.compose.ui.window.DialogProperties
 import coil3.compose.AsyncImage
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.model.artworkAt
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 private const val STORY_PAGES_COUNT = 8
 private const val STORY_DURATION_MS = 6000
@@ -66,7 +61,6 @@ fun DesktopReplayStoriesDialog(
     holder: String,
     memberSince: String?,
     onDismiss: () -> Unit,
-    onPlaySong: (Song) -> Unit,
     onSharePoster: () -> Unit,
 ) {
     var currentPage by remember { mutableIntStateOf(0) }
@@ -121,7 +115,6 @@ fun DesktopReplayStoriesDialog(
                         summary = summary,
                         holder = holder,
                         memberSince = memberSince,
-                        onPlaySong = onPlaySong,
                     )
                 }
 
@@ -160,7 +153,7 @@ fun DesktopReplayStoriesDialog(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
-                            "BITCHORD REPLAY",
+                            DesktopStrings["d_replay_bitchord_replay", "BITCHORD REPLAY"],
                             style = MaterialTheme.typography.labelSmall,
                             fontWeight = FontWeight.Bold,
                             color = Color.White.copy(alpha = 0.7f),
@@ -244,7 +237,6 @@ private fun StoryPageContent(
     summary: DesktopReplaySummary,
     holder: String,
     memberSince: String?,
-    onPlaySong: (Song) -> Unit,
 ) {
     Box(
         Modifier
@@ -255,7 +247,7 @@ private fun StoryPageContent(
         when (page) {
             0 -> StoryIntro(summary, holder, memberSince)
             1 -> StoryMinutes(summary)
-            2 -> StoryTopSong(summary, onPlaySong)
+            2 -> StoryTopSong(summary)
             3 -> StoryTopArtist(summary)
             4 -> StoryTopAlbum(summary)
             5 -> StoryTopGenre(summary)
@@ -285,7 +277,7 @@ private fun StoryIntro(summary: DesktopReplaySummary, holder: String, memberSinc
         if (!memberSince.isNullOrBlank()) {
             Spacer(Modifier.height(24.dp))
             Text(
-                "MEMBER SINCE $memberSince",
+                DesktopStrings.format("d_replay_member_since", memberSince, fallback = "MEMBER SINCE $memberSince"),
                 style = MaterialTheme.typography.labelMedium,
                 fontWeight = FontWeight.Bold,
                 color = Color.White.copy(alpha = 0.5f),
@@ -299,7 +291,7 @@ private fun StoryIntro(summary: DesktopReplaySummary, holder: String, memberSinc
 private fun StoryMinutes(summary: DesktopReplaySummary) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Text(
-            "You spent",
+            DesktopStrings["d_replay_you_spent", "You spent"],
             style = MaterialTheme.typography.titleLarge,
             color = Color.White.copy(alpha = 0.7f),
         )
@@ -311,13 +303,13 @@ private fun StoryMinutes(summary: DesktopReplaySummary) {
             color = Color.White,
         )
         Text(
-            "minutes listening to music",
+            DesktopStrings["d_replay_minutes_listening", "minutes listening to music"],
             style = MaterialTheme.typography.titleLarge,
             color = Color.White.copy(alpha = 0.7f),
         )
         Spacer(Modifier.height(24.dp))
         Text(
-            "Across ${summary.totalPlays} plays",
+            DesktopStrings.format("d_replay_across_plays", summary.totalPlays, fallback = "Across ${summary.totalPlays} plays"),
             style = MaterialTheme.typography.bodyMedium,
             color = Color.White.copy(alpha = 0.5f),
         )
@@ -325,11 +317,11 @@ private fun StoryMinutes(summary: DesktopReplaySummary) {
 }
 
 @Composable
-private fun StoryTopSong(summary: DesktopReplaySummary, onPlaySong: (Song) -> Unit) {
+private fun StoryTopSong(summary: DesktopReplaySummary) {
     val top = summary.songs.firstOrNull()
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Text(
-            "Your #1 Song",
+            DesktopStrings["d_replay_top_song", "Your #1 Song"],
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = Color.White.copy(alpha = 0.6f),
@@ -375,7 +367,7 @@ private fun StoryTopSong(summary: DesktopReplaySummary, onPlaySong: (Song) -> Un
                 color = Color(0xFFE25555),
             )
         } else {
-            Text("No song plays yet", color = Color.White.copy(alpha = 0.5f))
+            Text(DesktopStrings["d_replay_no_songs", "No song plays yet"], color = Color.White.copy(alpha = 0.5f))
         }
     }
 }
@@ -385,7 +377,7 @@ private fun StoryTopArtist(summary: DesktopReplaySummary) {
     val top = summary.artists.firstOrNull()
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Text(
-            "Your Top Artist",
+            DesktopStrings["d_replay_top_artist", "Your Top Artist"],
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = Color.White.copy(alpha = 0.6f),
@@ -422,7 +414,7 @@ private fun StoryTopArtist(summary: DesktopReplaySummary) {
                 color = Color.White.copy(alpha = 0.7f),
             )
         } else {
-            Text("No artist stats yet", color = Color.White.copy(alpha = 0.5f))
+            Text(DesktopStrings["d_replay_no_artists", "No artist stats yet"], color = Color.White.copy(alpha = 0.5f))
         }
     }
 }
@@ -432,7 +424,7 @@ private fun StoryTopAlbum(summary: DesktopReplaySummary) {
     val top = summary.albums.firstOrNull()
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Text(
-            "Your Top Album",
+            DesktopStrings["d_replay_top_album", "Your Top Album"],
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = Color.White.copy(alpha = 0.6f),
@@ -470,7 +462,7 @@ private fun StoryTopAlbum(summary: DesktopReplaySummary) {
                 color = Color.White.copy(alpha = 0.7f),
             )
         } else {
-            Text("No album stats yet", color = Color.White.copy(alpha = 0.5f))
+            Text(DesktopStrings["d_replay_no_albums", "No album stats yet"], color = Color.White.copy(alpha = 0.5f))
         }
     }
 }
@@ -480,7 +472,7 @@ private fun StoryTopGenre(summary: DesktopReplaySummary) {
     val top = summary.genres.firstOrNull()
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
         Text(
-            "Your Top Genre",
+            DesktopStrings["d_replay_top_genre", "Your Top Genre"],
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = Color.White.copy(alpha = 0.6f),
@@ -511,7 +503,7 @@ private fun StoryTopGenre(summary: DesktopReplaySummary) {
                 )
             }
         } else {
-            Text("Diverse taste! No single genre dominated.", color = Color.White.copy(alpha = 0.7f), textAlign = TextAlign.Center)
+            Text(DesktopStrings["d_replay_diverse_taste", "Diverse taste! No single genre dominated."], color = Color.White.copy(alpha = 0.7f), textAlign = TextAlign.Center)
         }
     }
 }

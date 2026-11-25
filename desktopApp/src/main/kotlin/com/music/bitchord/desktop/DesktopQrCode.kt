@@ -136,7 +136,7 @@ private fun DesktopEnlargedQrDialog(
             codeText?.takeIf { it.isNotBlank() }?.let { code ->
                 Spacer(Modifier.height(18.dp))
                 Text(
-                    "PARTY CODE",
+                    DesktopStrings["d_qr_party_code", "PARTY CODE"],
                     color = DesktopSecondary,
                     style = MaterialTheme.typography.labelSmall,
                     fontWeight = FontWeight.SemiBold,

@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -39,9 +38,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toComposeImageBitmap
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.music.bitchord.ui.player.LyricsShareRequest
@@ -227,7 +224,7 @@ fun DesktopLyricsShareDialog(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Text(
-                        "Share Lyrics",
+                        DesktopStrings["d_lyrics_share_title", "Share Lyrics"],
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
                         color = Color.White,
@@ -255,7 +252,7 @@ fun DesktopLyricsShareDialog(
                             modifier = Modifier.fillMaxSize(),
                         )
                     } else {
-                        Text("Rendering...", color = Color.White.copy(alpha = 0.5f))
+                        Text(DesktopStrings["d_lyrics_share_rendering", "Rendering..."], color = Color.White.copy(alpha = 0.5f))
                     }
                 }
 
@@ -295,7 +292,7 @@ fun DesktopLyricsShareDialog(
                     ) {
                         Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(16.dp))
                         Spacer(Modifier.width(6.dp))
-                        Text("Save PNG")
+                        Text(DesktopStrings["d_lyrics_share_save_png", "Save PNG"])
                     }
                 }
             }

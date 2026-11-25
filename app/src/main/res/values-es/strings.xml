@@ -521,6 +521,7 @@
     <string name="close_replay">Cerrar Replay</string>
     <string name="couldnt_draw_picture">No se pudo crear la imagen</string>
     <string name="default_replay_holder">Oyente de BitChord</string>
+    <string name="default_user_name">Usuario</string>
     <string name="different_albums">Álbumes diferentes</string>
     <string name="genres_pending">Los géneros aparecerán cuando aumente tu historial de reproducción</string>
     <string name="hour_am">%1$d a. m.</string>
@@ -641,6 +642,17 @@
     <string name="pin">Fijar</string>
     <string name="unpin">Desfijar</string>
     <string name="rename">Cambiar nombre</string>
+    <string name="edit_cover">Editar portada</string>
+    <string name="restore_original_cover">Restaurar original</string>
+    <string name="edit_playlist">Editar playlist</string>
+    <string name="change_cover">Cambiar portada</string>
+    <string name="name_label">Nombre</string>
+    <string name="title_logo">Logo del título (PNG)</string>
+    <string name="title_logo_description">Muestra el logo tipográfico oficial con fondo transparente</string>
+    <string name="change_logo">Cambiar logo</string>
+    <string name="select_logo">Seleccionar logo PNG</string>
+    <string name="restore_original_title">Restaurar título original</string>
+    <string name="no_logo_set">Sin logo (se usará texto)</string>
     <string name="downloading">Descargando</string>
     <string name="delete_playlist">Eliminar playlist</string>
     <string name="delete_download">Eliminar descarga</string>
@@ -1674,7 +1686,7 @@
     <string name="telemetry_level_off">Desactivada</string>
     <string name="telemetry_level_off_desc">No se envía nada.</string>
     <string name="telemetry_notice_title">Ayúdanos a corregir lo que no vemos</string>
-    <string name="telemetry_notice_body">BitChord-X es un proyecto pequeño y no podemos probar todos los teléfonos y sistemas. Cuando algo falla, un informe anónimo nos dice qué y dónde: por ejemplo, “error del reproductor, Pixel 7, Android 15, versión 1.10.0”. Eso es todo lo que contiene. Nunca tu cuenta, dirección IP, historial de reproducción ni playlists. Puedes cambiarlo cuando quieras en Ajustes.</string>
+    <string name="telemetry_notice_body">BitChord-X es un proyecto pequeño y no podemos probar todos los teléfonos y sistemas. Cuando algo falla, un informe anónimo nos dice qué y dónde: por ejemplo, “error del reproductor, Pixel 7, Android 15, versión 1.10.1”. Eso es todo lo que contiene. Nunca tu cuenta, dirección IP, historial de reproducción ni playlists. Puedes cambiarlo cuando quieras en Ajustes.</string>
     <string name="telemetry_notice_ok">Entendido</string>
     <string name="telemetry_notice_choose">Elegir qué se envía</string>
     <string name="telemetry_plea_title">Antes de desactivarlo</string>
@@ -1917,6 +1929,8 @@
     <string name="replay_year_summary_minutes">Minutos escuchados</string>
     <string name="replay_year_mute">Silenciar la historia</string>
     <string name="replay_year_unmute">Activar sonido de la historia</string>
+
+    <string name="sign_in_discord">Iniciar sesión en Discord</string>
     <string name="about_app">Acerca de</string>
     <string name="about_app_summary">BitChord X %1$s · el equipo y los créditos</string>
     <string name="about_app_version">Versión %1$s</string>

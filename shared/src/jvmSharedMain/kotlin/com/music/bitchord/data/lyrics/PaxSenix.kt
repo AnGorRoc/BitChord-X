@@ -42,7 +42,6 @@ object PaxSenix {
         title: String,
         artist: String,
         durationMs: Long,
-        album: String? = null,
     ): List<LyricLine>? = withContext(Dispatchers.IO) {
         val id = searchPublicAppleTrackId(title, artist, durationMs)
             ?: return@withContext null

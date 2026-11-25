@@ -24,7 +24,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -409,20 +408,6 @@ fun PlaylistRowSkeleton(index: Int = 0, modifier: Modifier = Modifier) {
 fun LazyListScope.playlistRowsSkeleton(count: Int = 6, keyPrefix: String = "skeleton:playlist") {
     items(count, key = { "$keyPrefix:$it" }) { index ->
         PlaylistRowSkeleton(index = index)
-    }
-}
-
-/**
- * Wraps content in a stable container without re-triggering entrance animations on scroll.
- */
-@Composable
-fun CleanSectionEntrance(
-    index: Int = 0,
-    modifier: Modifier = Modifier,
-    content: @Composable () -> Unit,
-) {
-    Box(modifier = modifier) {
-        content()
     }
 }
 

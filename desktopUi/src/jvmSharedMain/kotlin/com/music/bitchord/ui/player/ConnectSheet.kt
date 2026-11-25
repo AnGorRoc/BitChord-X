@@ -18,11 +18,8 @@ import androidx.compose.ui.draw.shadow
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -32,7 +29,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.VolumeDown
 import androidx.compose.material.icons.automirrored.rounded.VolumeOff
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
@@ -55,7 +51,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -83,8 +78,6 @@ import com.music.bitchord.sharedui.resources.*
 import com.music.bitchord.ui.haptics.Haptic
 import com.music.bitchord.ui.haptics.rememberHaptics
 import com.music.bitchord.ui.icons.BitChordIcons
-import com.music.bitchord.ui.components.liveMenuFrost
-import dev.chrisbanes.haze.HazeState
 import org.jetbrains.compose.resources.stringResource
 
 /**
@@ -105,7 +98,6 @@ val LocalConnectSheetDismiss = compositionLocalOf<((() -> Unit)?) -> Unit> { { i
 
 @Composable
 internal fun ConnectSheet(
-    hazeState: HazeState,
     onDismiss: () -> Unit,
     onOpenParty: () -> Unit,
     onStartParty: () -> Unit = onOpenParty,
@@ -169,7 +161,6 @@ internal fun ConnectSheet(
         ) {
             CompositionLocalProvider(LocalConnectSheetDismiss provides close) {
                 ConnectPopover(
-                    onDismiss = { close(null) },
                     onOpenParty = onOpenParty,
                     onStartParty = onStartParty,
                     onJoinParty = onJoinParty,
@@ -204,7 +195,6 @@ val FLOATING_PANEL_GAP = 16.dp
  */
 @Composable
 fun ConnectPopover(
-    onDismiss: () -> Unit,
     onOpenParty: () -> Unit,
     onStartParty: () -> Unit = onOpenParty,
     onJoinParty: () -> Unit = onOpenParty,
@@ -212,25 +202,27 @@ fun ConnectPopover(
     val shape = FloatingPanelShape
     // Made where the panel is drawn, so the glass samples the page behind this very panel.
     val glass = LocalFloatingPanelSurface.current
-    val frame = Modifier.width(400.dp).heightIn(max = 620.dp).clip(shape)
+    // Sized as a menu that hangs from a button, not as a phone drawer: rows a pointer can hit
+    // without filling a third of the screen.
+    val frame = Modifier.width(340.dp).heightIn(max = 560.dp).clip(shape)
     Column(
         frame.glass()
             .verticalScroll(rememberScrollState())
-            .padding(16.dp),
+            .padding(start = 12.dp, end = 12.dp, top = 14.dp, bottom = 12.dp),
     ) {
         Text(
             text = stringResource(Res.string.connect_title),
-            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+            style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
             color = Color.White,
+            modifier = Modifier.padding(start = 4.dp),
         )
-        Spacer(Modifier.height(12.dp))
-        ConnectContent(onDismiss, onOpenParty, onStartParty, onJoinParty)
+        Spacer(Modifier.height(10.dp))
+        ConnectContent(onOpenParty, onStartParty, onJoinParty)
     }
 }
 
 @Composable
 internal fun ConnectContent(
-    onDismiss: () -> Unit,
     onOpenParty: () -> Unit,
     onStartParty: () -> Unit,
     onJoinParty: () -> Unit,
@@ -264,7 +256,7 @@ internal fun ConnectContent(
     }
 
     run {
-        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             val sounding = account.soundingDevice ?: account.self
             sounding?.let {
                 SoundingCard(
@@ -274,7 +266,7 @@ internal fun ConnectContent(
                 )
             }
 
-            Spacer(Modifier.height(6.dp))
+            Spacer(Modifier.height(4.dp))
             SectionLabel(stringResource(Res.string.connect_your_devices))
 
             val thisDevice = account.self
@@ -334,15 +326,20 @@ internal fun ConnectContent(
                 )
             }
 
-            Spacer(Modifier.height(10.dp))
+            Spacer(Modifier.height(6.dp))
             SectionLabel(stringResource(Res.string.connect_party))
             if (party.inParty) {
-                ActionRow(
-                    title = stringResource(Res.string.connect_view_party),
-                    subtitle = party.hostName?.let { stringResource(Res.string.connect_in_party_of, it) }
-                        ?: party.code?.let { stringResource(Res.string.listen_together_in_party, it) },
-                    onClick = { drawerDismiss { onOpenParty() } },
-                )
+                // Whose party, then the way in: the same filled capsule as Start a party, so the
+                // party's one action looks like one whether or not there is a party yet.
+                (party.hostName?.let { stringResource(Res.string.connect_in_party_of, it) }
+                    ?: party.code?.let { stringResource(Res.string.listen_together_in_party, it) })
+                    ?.let { Hint(it) }
+                ActionPill(
+                    text = stringResource(Res.string.connect_view_party),
+                    icon = BitChordIcons.PartyStart,
+                    filled = true,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { drawerDismiss { onOpenParty() } }
             } else {
                 // Starting a party is the way in, so it is the filled one; joining is for somebody who
                 // already has a code, and says so in words instead of an unlabelled circle.
@@ -395,27 +392,27 @@ private fun SoundingCard(
             .clip(CARD_SHAPE)
             .background(accent.copy(alpha = 0.22f))
             .border(1.dp, accent.copy(alpha = 0.45f), CARD_SHAPE)
-            .padding(14.dp),
+            .padding(12.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             // Device Information (Left - compact against the left)
-            Column(modifier = Modifier.widthIn(max = 160.dp)) {
+            Column(modifier = Modifier.widthIn(max = 120.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(iconFor(device.type), null, tint = accent, modifier = Modifier.size(15.dp))
-                    Spacer(Modifier.width(6.dp))
+                    Icon(iconFor(device.type), null, tint = accent, modifier = Modifier.size(13.dp))
+                    Spacer(Modifier.width(5.dp))
                     Text(
                         text = stringResource(Res.string.connect_sounding_label).uppercase(),
-                        style = MaterialTheme.typography.labelSmall.copy(letterSpacing = 1.1.sp),
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 10.sp, letterSpacing = 0.8.sp),
                         color = accent,
                     )
                 }
                 Spacer(Modifier.height(4.dp))
                 Text(
                     text = if (isSelf) stringResource(Res.string.connect_this_device) else device.name,
-                    style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
                     color = Color.White,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -431,7 +428,7 @@ private fun SoundingCard(
                 }
             }
 
-            Spacer(Modifier.width(16.dp))
+            Spacer(Modifier.width(10.dp))
 
             // Song Information (Recuadro: fills all remaining width, stretches to the right)
             Row(
@@ -440,13 +437,13 @@ private fun SoundingCard(
                     .clip(RoundedCornerShape(12.dp))
                     .background(Color.White.copy(alpha = 0.07f))
                     .border(1.dp, Color.White.copy(alpha = 0.09f), RoundedCornerShape(12.dp))
-                    .padding(horizontal = 8.dp, vertical = 7.dp),
+                    .padding(horizontal = 6.dp, vertical = 6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Box(
                     modifier = Modifier
-                        .size(40.dp)
-                        .clip(RoundedCornerShape(8.dp))
+                        .size(34.dp)
+                        .clip(RoundedCornerShape(7.dp))
                         .background(Color.White.copy(alpha = 0.08f)),
                     contentAlignment = Alignment.Center,
                 ) {
@@ -470,7 +467,7 @@ private fun SoundingCard(
                 Column(Modifier.weight(1f)) {
                     Text(
                         text = np?.title ?: stringResource(Res.string.connect_nothing_playing),
-                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                        style = MaterialTheme.typography.bodySmall.copy(fontWeight = FontWeight.Medium),
                         color = Color.White.copy(alpha = if (np != null) 0.95f else 0.55f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -488,7 +485,7 @@ private fun SoundingCard(
             }
         }
         if (!isSelf) {
-            Spacer(Modifier.height(14.dp))
+            Spacer(Modifier.height(10.dp))
             Row(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 2.dp),
                 verticalAlignment = Alignment.CenterVertically,
@@ -589,7 +586,7 @@ private fun DeviceRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(ROW_SHAPE)
+            .clip(DESKTOP_ROW_SHAPE)
             .background(Color.White.copy(alpha = if (device.connected) 0.14f else 0.07f))
             .clickable(
                 enabled = enabled,
@@ -599,45 +596,43 @@ private fun DeviceRow(
                 haptics.play(Haptic.Select)
                 onClick()
             }
-            .padding(horizontal = 14.dp, vertical = 14.dp),
+            .padding(horizontal = 10.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         val alpha = if (enabled) 1f else 0.4f
         Box(
-            modifier = Modifier.size(40.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.08f)),
+            modifier = Modifier.size(32.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.08f)),
             contentAlignment = Alignment.Center,
         ) {
-            Icon(iconFor(device.type), null, tint = Color.White.copy(alpha = 0.8f * alpha), modifier = Modifier.size(22.dp))
+            Icon(iconFor(device.type), null, tint = Color.White.copy(alpha = 0.8f * alpha), modifier = Modifier.size(18.dp))
         }
-        Spacer(Modifier.width(13.dp))
+        Spacer(Modifier.width(10.dp))
         Column(Modifier.weight(1f)) {
             Text(
                 text = if (isSelf) stringResource(Res.string.connect_this_device) else device.name,
-                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.SemiBold),
                 color = Color.White.copy(alpha = 0.95f * alpha),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (subtitle != null) {
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = if (device.unreachable || device.noControl) {
-                        Color(0xFFFFB454).copy(alpha = alpha)
-                    } else if (device.controlledBy != null || device.controlling != null) {
-                        MaterialTheme.colorScheme.primary.copy(alpha = alpha)
-                    } else {
-                        Color.White.copy(alpha = 0.6f * alpha)
-                    },
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+            Spacer(Modifier.height(1.dp))
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.labelSmall,
+                color = if (device.unreachable || device.noControl) {
+                    Color(0xFFFFB454).copy(alpha = alpha)
+                } else if (device.controlledBy != null || device.controlling != null) {
+                    MaterialTheme.colorScheme.primary.copy(alpha = alpha)
+                } else {
+                    Color.White.copy(alpha = 0.6f * alpha)
+                },
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
         if (connecting) {
             CircularProgressIndicator(
-                modifier = Modifier.size(20.dp),
+                modifier = Modifier.size(18.dp),
                 strokeWidth = 2.dp,
                 color = MaterialTheme.colorScheme.primary,
             )
@@ -647,7 +642,7 @@ private fun DeviceRow(
                     imageVector = Icons.Rounded.MoreVert,
                     contentDescription = stringResource(Res.string.connect_more),
                     tint = Color.White.copy(alpha = 0.6f),
-                    modifier = Modifier.size(22.dp).clickable { menu = true },
+                    modifier = Modifier.size(20.dp).clip(CircleShape).clickable { menu = true },
                 )
                 DropdownMenu(
                     expanded = menu,
@@ -670,39 +665,6 @@ private fun DeviceRow(
     }
 }
 
-@Composable
-private fun ActionRow(title: String, subtitle: String?, leading: ImageVector? = null, onClick: () -> Unit) {
-    val haptics = rememberHaptics()
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(ROW_SHAPE)
-            .background(Color.White.copy(alpha = 0.14f))
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                haptics.play(Haptic.Select)
-                onClick()
-            }
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (leading != null) {
-            Box(
-                modifier = Modifier.size(40.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.10f)),
-                contentAlignment = Alignment.Center,
-            ) { Icon(leading, null, tint = Color.White.copy(alpha = 0.85f), modifier = Modifier.size(20.dp)) }
-            Spacer(Modifier.width(13.dp))
-        }
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge, color = Color.White.copy(alpha = 0.95f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (subtitle != null) {
-                Spacer(Modifier.height(2.dp))
-                Text(subtitle, style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.70f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-        }
-        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = Color.White.copy(alpha = 0.35f), modifier = Modifier.size(20.dp))
-    }
-}
-
 /** A labelled pill under the party heading. Filled is the main way in; the outlined one is the shortcut. */
 @Composable
 private fun ActionPill(text: String, icon: ImageVector, filled: Boolean, modifier: Modifier, onClick: () -> Unit) {
@@ -710,23 +672,23 @@ private fun ActionPill(text: String, icon: ImageVector, filled: Boolean, modifie
     val shape = RoundedCornerShape(50)
     Row(
         modifier = modifier
-            .height(48.dp)
+            .height(36.dp)
             .clip(shape)
             .background(if (filled) Color.White.copy(alpha = 0.92f) else Color.White.copy(alpha = 0.14f))
             .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
                 haptics.play(Haptic.Select)
                 onClick()
             }
-            .padding(horizontal = 12.dp),
+            .padding(horizontal = 10.dp),
         horizontalArrangement = Arrangement.Center,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         val ink = if (filled) Color(0xFF111114) else Color.White.copy(alpha = 0.95f)
-        Icon(icon, null, tint = ink, modifier = Modifier.size(20.dp))
-        Spacer(Modifier.width(8.dp))
+        Icon(icon, null, tint = ink, modifier = Modifier.size(16.dp))
+        Spacer(Modifier.width(6.dp))
         Text(
             text,
-            style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+            style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
             color = ink,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
@@ -738,9 +700,9 @@ private fun ActionPill(text: String, icon: ImageVector, filled: Boolean, modifie
 private fun SectionLabel(text: String) {
     Text(
         text = text,
-        style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.SemiBold),
+        style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
         color = Color.White.copy(alpha = 0.70f),
-        modifier = Modifier.padding(start = 4.dp, top = 6.dp),
+        modifier = Modifier.padding(start = 4.dp, top = 4.dp, bottom = 2.dp),
     )
 }
 
@@ -748,15 +710,18 @@ private fun SectionLabel(text: String) {
 private fun Hint(text: String) {
     Text(
         text = text,
-        style = MaterialTheme.typography.bodyMedium,
+        style = MaterialTheme.typography.bodySmall,
         color = Color.White.copy(alpha = 0.70f),
-        modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
+        modifier = Modifier.padding(horizontal = 4.dp, vertical = 2.dp),
     )
 }
 
 /** A device that has been away longer than this is left out of the list, however long the server remembers it. */
 private const val FORGET_AWAY_MS = 30L * 24 * 60 * 60 * 1000
-private val CARD_SHAPE = RoundedCornerShape(20.dp)
+private val CARD_SHAPE = RoundedCornerShape(14.dp)
+
+/** Rows sized for a pointer: the phone's 16dp corners look swollen at this height. */
+private val DESKTOP_ROW_SHAPE = RoundedCornerShape(12.dp)
 
 private fun iconFor(type: String): ImageVector = when (type) {
     "computer" -> Icons.Rounded.Computer

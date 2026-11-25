@@ -29,9 +29,7 @@ import kotlinx.serialization.json.booleanOrNull
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.intOrNull
-import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.longOrNull
 import kotlinx.serialization.json.put
 import java.io.File
@@ -348,6 +346,7 @@ object BrowseCache {
         opt("moreSongsBrowseId", p.moreSongsBrowseId)
         put("sections", list(p.sections.map(::encodeShelf)))
         opt("thumbnailUrl", p.thumbnailUrl)
+        opt("bannerUrl", p.bannerUrl)
         opt("name", p.name)
         opt("description", p.description)
         opt("subscriberCountText", p.subscriberCountText)
@@ -364,6 +363,7 @@ object BrowseCache {
         moreSongsBrowseId = o.str("moreSongsBrowseId"),
         sections = o.arr("sections").map(::decodeShelf),
         thumbnailUrl = o.str("thumbnailUrl"),
+        bannerUrl = o.str("bannerUrl"),
         name = o.str("name"),
         description = o.str("description"),
         subscriberCountText = o.str("subscriberCountText"),

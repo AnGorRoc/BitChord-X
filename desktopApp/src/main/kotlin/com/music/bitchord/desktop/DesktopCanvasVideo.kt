@@ -69,7 +69,7 @@ internal fun DesktopCanvasVideo(spec: CanvasVideoSpec, modifier: Modifier) {
             var last: Result<Unit> = Result.failure(IllegalStateException("the clip could not be fetched"))
             for (candidate in listOfNotNull(canvas.url, canvas.fallbackUrl)) {
                 val source = DesktopCanvasCache.fileFor(candidate)?.toAbsolutePath()?.toString()
-                    ?: if (isManifest(candidate)) candidate else null
+                    ?: candidate.takeIf { isManifest(it) }
                     ?: continue
                 last = decoder.open(source)
                 if (last.isSuccess) break

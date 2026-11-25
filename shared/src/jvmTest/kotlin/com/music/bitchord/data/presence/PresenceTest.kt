@@ -91,13 +91,13 @@ class PresenceTest {
             platform = PresencePlatform.Pc,
             installId = id,
             endpoint = server.url("/api/presence").toString(),
-            appVersion = "1.10.0",
+            appVersion = "1.10.1",
             packageFormat = "deb",
         )
         presence.setOpen(true)
         val open = nextPing()!!
         assertEquals("deb", open.getValue("packageFormat").jsonPrimitive.content)
-        assertEquals("1.10.0", open.getValue("version").jsonPrimitive.content)
+        assertEquals("1.10.1", open.getValue("version").jsonPrimitive.content)
         assertEquals("pc", open.getValue("platform").jsonPrimitive.content)
     }
 }

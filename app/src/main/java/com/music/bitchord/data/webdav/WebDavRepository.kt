@@ -29,7 +29,7 @@ object WebDavRepository {
         ).getOrNull() ?: return@withContext emptyList()
         val artByDir = listing.images.groupBy { dirKey(it.url) }
         listing.audio.map { entry ->
-            entry.toSong(artworkFor(entry.url, artByDir[dirKey(entry.url)].orEmpty()))
+            entry.toSong(artworkFor(artByDir[dirKey(entry.url)].orEmpty()))
         }
     }
 
@@ -57,7 +57,7 @@ object WebDavRepository {
      * inside the audio itself are not read — that would be a ranged fetch per
      * track at list time. See [RemoteArtwork][com.music.bitchord.data.remote.RemoteArtwork].
      */
-    fun artworkFor(fileUrl: String, siblings: List<WebDavClient.Entry>): String? =
+    fun artworkFor(siblings: List<WebDavClient.Entry>): String? =
         com.music.bitchord.data.remote.RemoteArtwork.pick(siblings.map { it.url })
 
     private fun dirKey(fileUrl: String): String = runCatching {

@@ -73,7 +73,7 @@ internal object DesktopAwtTray {
      * Re-labels the icon, and rebuilds the menu because one of its entries is Play or Pause
      * depending on this.
      */
-    fun update(title: String?, isPlaying: Boolean) {
+    fun update(title: String?) {
         val text = title?.let { "$APP_NAME — $it" } ?: APP_NAME
         EventQueue.invokeLater {
             synchronized(lock) {

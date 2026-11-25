@@ -207,7 +207,6 @@ object VersionAudioAligner {
         context: Context,
         sourceSong: Song,
         targetSong: Song,
-        currentPosMs: Long = 0L,
     ): Long? = withContext(Dispatchers.IO) {
         if (sourceSong.videoId == targetSong.videoId) return@withContext 0L
         val cached = offsetCache[sourceSong.videoId to targetSong.videoId]

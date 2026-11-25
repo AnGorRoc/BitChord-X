@@ -48,6 +48,9 @@ internal val DesktopRowHover = Color(0x1AFFFFFF)
 /** The scrim a modal card sits on. */
 internal val DesktopScrim = Color(0x8C000000)
 
+/** The scrim under a [solid][DesktopDialogPanel] card: no blur to quiet the page, so a deeper dim does it. */
+internal val DesktopSolidScrim = Color(0xB3000000)
+
 /** Card, hairline and all. */
 internal fun Modifier.desktopCard(shape: Shape): Modifier =
     clip(shape).background(DesktopCardFill).border(0.5.dp, DesktopCardEdge, shape)
@@ -138,12 +141,18 @@ internal fun Modifier.desktopRowClickable(enabled: Boolean = true, onClick: () -
  * The dialog shell: the same card the song menu is drawn on — or, inside Settings, a page of it.
  *
  * [popup] keeps it a card even there, for a prompt a page opens over itself.
+ *
+ * [solid] is for a panel that carries a lot of reading — forms, long secondary text: the scrim is a
+ * plain dim with no blur, and the card is the near-opaque card fill rather than the mini player's
+ * glass. Through glass over an unblurred page the page's own text and artwork show behind the
+ * panel's, and grey secondary text on a light blur is hard to read.
  */
 @Composable
 internal fun DesktopDialogPanel(
     onDismiss: () -> Unit,
     maxWidth: Int,
     popup: Boolean = false,
+    solid: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     if (!popup && LocalDesktopPanelIsPage.current) {
@@ -155,7 +164,9 @@ internal fun DesktopDialogPanel(
     }
     val reduceDynamicBlur by DesktopAppearanceSettings.reduceDynamicBlur.collectAsState()
     val haze = LocalDesktopHaze.current
-    val scrimModifier = if (haze != null && !reduceDynamicBlur) {
+    val scrimModifier = if (solid) {
+        Modifier.background(DesktopSolidScrim)
+    } else if (haze != null && !reduceDynamicBlur) {
         Modifier.hazeEffect(state = haze) {
             blurEnabled = true
             backgroundColor = DesktopScrim.copy(alpha = 0.55f)
@@ -180,8 +191,7 @@ internal fun DesktopDialogPanel(
             Modifier
                 .widthIn(max = maxWidth.dp)
                 .fillMaxWidth()
-                .clip(shape)
-                .desktopPlayerGlass(shape),
+                .then(if (solid) Modifier.desktopCard(shape) else Modifier.clip(shape).desktopPlayerGlass(shape)),
         ) {
             // Behind the content rather than around it, so it swallows clicks on the panel's own
             // background without eating the rows' own.

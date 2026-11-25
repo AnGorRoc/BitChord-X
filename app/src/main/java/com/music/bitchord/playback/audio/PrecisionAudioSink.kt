@@ -910,6 +910,34 @@ class PrecisionAudioSink(
         )
     }
 
+    /**
+     * Re-publishes this sink's active format and exactness verdict to
+     * [AudioOutputStatus]. Used when a standby player is promoted to the
+     * audible player after a crossfade or aligned quality swap, since its
+     * `configure()` ran while `isAudible()` was still false.
+     */
+    fun republishTelemetry() {
+        if (!isAudible()) return
+        val inEnc = inputPcmEncoding
+        val outEnc = targetOutputEncoding
+        if (isPrecisionActive && inEnc != null && outEnc != null) {
+            publishTelemetry(inEnc, outEnc)
+            return
+        }
+        val fmt = activeFormat
+        if (fmt != null && !isPrecisionActive) {
+            AudioOutputStatus.publishOutputExactness(
+                exact = false,
+                detail = "${encodingLabel(fmt.pcmEncoding)} is not linear PCM",
+            )
+            AudioOutputStatus.publishDsp(
+                decoderOutputEncoding = null,
+                dspFormat = "Legacy PCM",
+                dspAvailable = false,
+            )
+        }
+    }
+
     private fun logConfig(
         precisionActive: Boolean,
         inputEncoding: String,

@@ -24,7 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.music.bitchord.R
 import com.music.bitchord.data.model.Account
-import com.music.bitchord.data.settings.BitPerfectMode
+import com.music.bitchord.data.settings.AppSettings
 import com.music.bitchord.data.settings.LosslessDataNotice
 import com.music.bitchord.ui.components.MessageState
 import com.music.bitchord.ui.components.SearchField
@@ -44,8 +44,6 @@ fun SettingsScreen(
     windowWidth: Dp,
     signedIn: Boolean,
     account: Account?,
-    onSignIn: () -> Unit,
-    onSignOut: () -> Unit,
     onAccountScrobbling: () -> Unit,
     onEqualizer: () -> Unit,
     onOpenReplay: () -> Unit,
@@ -59,11 +57,6 @@ fun SettingsScreen(
     onSpotifyCanvasAuth: () -> Unit,
     onAppLanguage: () -> Unit,
     onEditSignatureApi: () -> Unit,
-    /**
-     * Asks before [mode] is turned on: it hands volume to the DAC at full
-     * scale. Shown in the app's frosted alert, which needs the app's blur.
-     */
-    onConfirmBitPerfect: (BitPerfectMode) -> Unit,
     /** Asks before a DAC with no settable volume may play at full scale. */
     onConfirmFixedVolume: () -> Unit,
     contentPadding: PaddingValues,
@@ -101,6 +94,13 @@ fun SettingsScreen(
     val searching = section == null && searchQuery.isNotBlank()
     fun shows(category: SettingsCategory) = section == category || searching
     val watchAvailable = remember { WatchInstaller.available(context) }
+    val userName by AppSettings.userName.collectAsStateWithLifecycle()
+    val defaultUserLabel = stringResource(R.string.default_user_name)
+    val resolvedUserName = remember(userName, account?.name, defaultUserLabel) {
+        userName.trim().takeIf { it.isNotBlank() }
+            ?: account?.name?.trim()?.takeIf { it.isNotBlank() }
+            ?: defaultUserLabel
+    }
 
     val scrollState = rememberSaveable(saver = ScrollState.Saver) { ScrollState(0) }
     var isFirstSearchComposition by remember { mutableStateOf(true) }
@@ -242,7 +242,7 @@ fun SettingsScreen(
         }
 
         if (section == null && searchQuery.isBlank()) {
-            FeedbackSettingsGroup(accountName = account?.name, onClick = onFeedback)
+            FeedbackSettingsGroup(accountName = resolvedUserName, onClick = onFeedback)
             SettingsAboutRow(version = version, onClick = { onOpenSection(SettingsCategory.ABOUT) })
             Spacer(Modifier.height(8.dp))
         }

@@ -33,7 +33,6 @@ import com.music.bitchord.data.model.PLAYER_ART_MEMORY_CACHE_KEY_EXTRA
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.model.artworkAt
 import kotlin.math.abs
-import kotlin.math.roundToInt
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch

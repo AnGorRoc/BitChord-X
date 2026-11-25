@@ -12,31 +12,19 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
-import androidx.compose.material.icons.rounded.AutoAwesome
-import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.Close
-import androidx.compose.material.icons.rounded.ElectricBolt
-import androidx.compose.material.icons.rounded.FitnessCenter
-import androidx.compose.material.icons.rounded.GraphicEq
-import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.MoreVert
-import androidx.compose.material.icons.rounded.MusicNote
 import androidx.compose.material.icons.rounded.NewReleases
-import androidx.compose.material.icons.rounded.Nightlife
 import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Public
-import androidx.compose.material.icons.rounded.Radio
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Search
 import androidx.compose.material.icons.rounded.Shuffle
-import androidx.compose.material.icons.rounded.TrendingUp
 import androidx.compose.material.icons.rounded.Whatshot
 import androidx.compose.material3.*
 import androidx.compose.material3.pulltorefresh.PullToRefreshState
@@ -52,7 +40,6 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.Shadow
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.Hyphens
@@ -77,6 +64,7 @@ import com.music.bitchord.data.model.HomeShelf
 import com.music.bitchord.data.model.MoodGenre
 import com.music.bitchord.data.model.MoodGenreSection
 import com.music.bitchord.data.model.ShelfItem
+import com.music.bitchord.data.model.DjSetCategory
 import com.music.bitchord.data.model.LiveStation
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.model.UiState
@@ -579,6 +567,12 @@ fun ExploreScreen(
     onLiveStationChange: (LiveStation) -> Unit = {},
     onBroadcastClick: ((Song) -> Unit)? = null,
     onRetryLive: () -> Unit = {},
+    /** Continuous DJ sets & enganchados; left out when [onDjSetClick] is null. */
+    djSetsState: UiState<List<Song>> = UiState.Loading,
+    djSetCategory: DjSetCategory = DjSetCategory.FEATURED,
+    onDjSetCategoryChange: (DjSetCategory) -> Unit = {},
+    onDjSetClick: ((Song) -> Unit)? = null,
+    onRetryDjSets: () -> Unit = {},
 ) {
     var showChartOptionsModal by remember { mutableStateOf(false) }
 
@@ -1158,6 +1152,17 @@ fun ExploreScreen(
                     )
                 }
 
+                // ---- ENGANCHADOS Y DJ SETS: sesiones continuas de larga duracion ----
+                if (onDjSetClick != null) {
+                    djSetsSection(
+                        state = djSetsState,
+                        category = djSetCategory,
+                        onCategoryChange = onDjSetCategoryChange,
+                        onSetClick = onDjSetClick,
+                        onRetry = onRetryDjSets,
+                    )
+                }
+
                 // ---- SECCIÓN 3: SELECCIÓN DEL DÍA DINÁMICA (CARRUSEL HORIZONTAL GLASS) ----
                 item(key = "daily-theme-header") {
                     Column(
@@ -1460,7 +1465,7 @@ fun DailyTopicGlassCard(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                text = "Mix especial",
+                text = stringResource(Res.string.special_mix),
                 style = MaterialTheme.typography.labelSmall,
                 color = Color.White.copy(alpha = 0.70f),
                 fontWeight = FontWeight.Medium,

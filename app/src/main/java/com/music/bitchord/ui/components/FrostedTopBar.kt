@@ -6,7 +6,6 @@ import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
-import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.snap
 import androidx.compose.animation.core.Animatable
@@ -186,7 +185,6 @@ private enum class TopBarLeadingSlot {
  */
 @Composable
 fun FrostedTopBar(
-    title: String,
     // A lambda, not a value: this flips as a feed leaves its very top, and
     // reading it in the caller would recompose the whole app on that frame of
     // the scroll.

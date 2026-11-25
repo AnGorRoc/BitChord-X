@@ -5,7 +5,6 @@ import com.music.bitchord.data.model.PlaybackSourceType
 import com.music.bitchord.data.model.QueueTier
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.playback.QueueCoordinator
-import com.music.bitchord.playback.QueueCoordinator.asQueueEntry
 import com.music.bitchord.playback.QueueSource
 import com.music.bitchord.ui.screens.matching
 import org.junit.Assert.assertEquals

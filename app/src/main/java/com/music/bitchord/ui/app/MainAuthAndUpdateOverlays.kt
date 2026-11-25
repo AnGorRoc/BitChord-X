@@ -114,7 +114,6 @@ internal fun LyricsLoaderEffect(
 internal fun OnboardingOverlay(
     onboardingShown: MutableTransitionState<Boolean>,
     signedIn: Boolean,
-    accountName: String?,
     onSignIn: () -> Unit,
     onConnectSpotify: () -> Unit,
     onOpenSpotifyTokenSetup: () -> Unit,
@@ -129,13 +128,14 @@ internal fun OnboardingOverlay(
         ) { it },
     ) {
         val spotifySpdcToken by AppSettings.spotifySpdcToken.collectAsStateWithLifecycle()
+        val currentUserName by AppSettings.userName.collectAsStateWithLifecycle()
         OnboardingScreen(
             signedIn = signedIn,
             spotifyConnected = spotifySpdcToken.isNotBlank(),
             initialName = remember {
-                ListenTogether.nickname().ifBlank { accountName.orEmpty() }
+                currentUserName.ifBlank { ListenTogether.nickname() }
             },
-            onNameChosen = ListenTogether::setNickname,
+            onNameChosen = AppSettings::setUserName,
             onSignIn = onSignIn,
             onConnectSpotify = onConnectSpotify,
             onOpenSpotifyTokenSetup = onOpenSpotifyTokenSetup,
@@ -327,7 +327,7 @@ internal fun DiscordSignInWebViewOverlay(
                     )
                 }
                 Text(
-                    "Sign in to Discord",
+                    stringResource(R.string.sign_in_discord),
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onBackground,
                 )

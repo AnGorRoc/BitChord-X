@@ -486,6 +486,25 @@ func TestInviteDeepLinkUsesPublicOrigin(t *testing.T) {
 	}
 }
 
+func TestInviteLandingReadsCodeGluedToShareText(t *testing.T) {
+	ts := setupTestServer()
+	defer ts.Close()
+
+	p, err := store.Create()
+	if err != nil {
+		t.Fatalf("Party creation failed: %v", err)
+	}
+
+	// 1.10.1 shared the link, a blank line and the text; some apps joined them.
+	res, err := http.Get(ts.URL + "/invite/" + p.Code + "Escucha%20conmigo%20en%20BitChord")
+	if err != nil {
+		t.Fatalf("GET failed: %v", err)
+	}
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Expected the party to be found by its first characters, got %d", res.StatusCode)
+	}
+}
+
 func TestInviteLanding(t *testing.T) {
 	ts := setupTestServer()
 	defer ts.Close()
@@ -739,7 +758,7 @@ func TestMinimalTelemetry(t *testing.T) {
 	ts := httptest.NewServer(corsMiddleware(mux))
 	defer ts.Close()
 
-	res := postPresence(t, ts, `{"id":"3f2b8c1e-0d4a-4a55-9f0e-1c2d3e4f5a6b","platform":"android","open":true,"version":"1.10.0","level":"minimal"}`, "")
+	res := postPresence(t, ts, `{"id":"3f2b8c1e-0d4a-4a55-9f0e-1c2d3e4f5a6b","platform":"android","open":true,"version":"1.10.1","level":"minimal"}`, "")
 	if res.StatusCode != http.StatusOK {
 		t.Fatalf("minimal presence: status %d", res.StatusCode)
 	}
@@ -755,13 +774,13 @@ func TestMinimalTelemetry(t *testing.T) {
 		}
 		return res.StatusCode
 	}
-	if code := post(`{"platform":"android","appVersion":"1.10.0","errorType":"uncaught_crash","errorMessage":"uncaught_crash","level":"minimal"}`); code != http.StatusAccepted {
+	if code := post(`{"platform":"android","appVersion":"1.10.1","errorType":"uncaught_crash","errorMessage":"uncaught_crash","level":"minimal"}`); code != http.StatusAccepted {
 		t.Fatalf("a minimal report with only a type should be accepted, got %d", code)
 	}
-	if code := post(`{"platform":"android","appVersion":"1.10.0","level":"minimal"}`); code != http.StatusUnprocessableEntity {
+	if code := post(`{"platform":"android","appVersion":"1.10.1","level":"minimal"}`); code != http.StatusUnprocessableEntity {
 		t.Fatalf("a minimal report still needs its type, got %d", code)
 	}
-	if code := post(`{"platform":"android","appVersion":"1.10.0","errorType":"uncaught_crash"}`); code != http.StatusUnprocessableEntity {
+	if code := post(`{"platform":"android","appVersion":"1.10.1","errorType":"uncaught_crash"}`); code != http.StatusUnprocessableEntity {
 		t.Fatalf("a full report still needs its message, got %d", code)
 	}
 }
@@ -778,7 +797,7 @@ func TestDebianTelemetry(t *testing.T) {
 	defer ts.Close()
 
 	// Deb package presence ping connects and counts toward live active connections
-	res := postPresence(t, ts, `{"id":"a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d","platform":"pc","open":true,"version":"1.10.0","packageFormat":"deb"}`, "")
+	res := postPresence(t, ts, `{"id":"a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d","platform":"pc","open":true,"version":"1.10.1","packageFormat":"deb"}`, "")
 	if res.StatusCode != http.StatusOK {
 		t.Fatalf("deb presence: status %d", res.StatusCode)
 	}
@@ -792,7 +811,7 @@ func TestDebianTelemetry(t *testing.T) {
 	errRes, err := http.Post(ts.URL+"/api/telemetry/error", "application/json", strings.NewReader(`{
 		"id": "a1b2c3d4-e5f6-4a5b-8c9d-0e1f2a3b4c5d",
 		"platform": "pc",
-		"appVersion": "1.10.0",
+		"appVersion": "1.10.1",
 		"errorType": "audio_engine_crash",
 		"errorMessage": "pulse audio sink failure",
 		"packageFormat": "deb"

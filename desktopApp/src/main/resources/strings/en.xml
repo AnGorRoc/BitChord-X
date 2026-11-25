@@ -867,7 +867,7 @@
     <string name="listen_together_reconnecting">Reconnecting…</string>
     <string name="listen_together_syncing_clock">Measuring the clock…</string>
     <string name="listen_together_in_sync">In sync · %1$d ms round trip</string>
-    <string name="listen_together_jam">%1$s’s Jam</string>
+    <string name="listen_together_jam">%1$s’s Party</string>
     <string name="listen_together_jam_unnamed">Listening together</string>
     <string name="listen_together_open">Listen together</string>
     <string name="listen_together_open_count">Listening together · %1$d</string>
@@ -881,7 +881,7 @@
     <string name="telemetry_level_off">Off</string>
     <string name="telemetry_level_off_desc">Nothing is sent.</string>
     <string name="telemetry_notice_title">Help us fix what we can\'t see</string>
-    <string name="telemetry_notice_body">BitChord-X is a small project and we can\'t test every phone and system. When something fails, an anonymous report tells us what and where: for example, “player error, Pixel 7, Android 15, version 1.10.0”. That is all it holds. Never your account, IP address, listening history or playlists. You can change it any time in Settings.</string>
+    <string name="telemetry_notice_body">BitChord-X is a small project and we can\'t test every phone and system. When something fails, an anonymous report tells us what and where: for example, “player error, Pixel 7, Android 15, version 1.10.1”. That is all it holds. Never your account, IP address, listening history or playlists. You can change it any time in Settings.</string>
     <string name="telemetry_notice_ok">Got it</string>
     <string name="telemetry_notice_choose">Choose what is sent</string>
     <string name="telemetry_plea_title">Before you turn this off</string>

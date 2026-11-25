@@ -8,6 +8,7 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowBack
 import androidx.compose.ui.input.key.isAltPressed
 import androidx.compose.ui.input.key.isCtrlPressed
 import androidx.compose.ui.input.key.isMetaPressed
+import androidx.compose.ui.input.key.isShiftPressed
 import androidx.compose.ui.input.pointer.isBackPressed
 import androidx.compose.ui.input.pointer.isSecondaryPressed
 import androidx.compose.ui.input.pointer.PointerEventType
@@ -43,6 +44,8 @@ import com.music.bitchord.data.artwork.ArtworkFileDownload
 import com.music.bitchord.download.DOWNLOAD_PLAYLIST_PREFIX
 import com.music.bitchord.download.DownloadTarget
 import com.music.bitchord.download.downloadPageIdFor
+import com.music.bitchord.data.AppleCatalogue
+import com.music.bitchord.data.canvas.AppleArtistArtRepository
 import com.music.bitchord.data.TopPicks
 import com.music.bitchord.data.model.ArtistRef
 import com.music.bitchord.data.model.TopPick
@@ -81,16 +84,12 @@ import androidx.compose.animation.scaleOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.LinearEasing
-import androidx.compose.animation.core.RepeatMode
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.animateContentSize
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
@@ -99,11 +98,9 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.animateScrollBy
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.gestures.scrollBy
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
@@ -116,9 +113,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.calculateEndPadding
 import androidx.compose.foundation.layout.calculateStartPadding
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -128,11 +123,9 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -149,14 +142,9 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.automirrored.rounded.PlaylistPlay
-import androidx.compose.material.icons.rounded.AccountCircle
 import androidx.compose.material.icons.rounded.Album
-import androidx.compose.material.icons.rounded.ArrowBack
-import androidx.compose.material.icons.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.BarChart
-import androidx.compose.material.icons.rounded.Code
 import androidx.compose.material.icons.rounded.Feedback
 import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.Palette
@@ -175,15 +163,12 @@ import androidx.compose.material.icons.rounded.FastRewind
 import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Folder
-import androidx.compose.material.icons.rounded.Fullscreen
-import androidx.compose.material.icons.rounded.FullscreenExit
 import androidx.compose.material.icons.rounded.GraphicEq
 import androidx.compose.material.icons.rounded.Headphones
 import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.Lock
-import androidx.compose.material.icons.rounded.NorthWest
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.Person
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -192,7 +177,7 @@ import androidx.compose.material.icons.rounded.RemoveCircleOutline
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material.icons.rounded.MoreHoriz
-import androidx.compose.material.icons.rounded.Sort
+import androidx.compose.material.icons.automirrored.rounded.Sort
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material.icons.rounded.VisibilityOff
 import androidx.compose.material.icons.rounded.CloudOff
@@ -202,12 +187,9 @@ import androidx.compose.material.icons.automirrored.rounded.VolumeDown
 import androidx.compose.animation.expandHorizontally
 import androidx.compose.animation.shrinkHorizontally
 import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
@@ -223,7 +205,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Tab
-import androidx.compose.material3.TabRow
+import androidx.compose.material3.PrimaryTabRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Typography
@@ -248,28 +230,17 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.CompositingStrategy
-import androidx.compose.ui.graphics.FilterQuality
-import androidx.compose.ui.graphics.ImageBitmap
-import androidx.compose.ui.graphics.PathFillType
-import androidx.compose.ui.graphics.RectangleShape
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -279,32 +250,25 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.onGloballyPositioned
-import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.layout.positionInWindow
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.LinkAnnotation
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.TextLinkStyles
-import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.rememberTextMeasurer
-import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.withLink
-import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.IntOffset
-import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import bitchord.desktopapp.generated.resources.Res
@@ -320,8 +284,6 @@ import com.music.bitchord.data.model.BrowseItem
 import com.music.bitchord.data.model.BrowseType
 import com.music.bitchord.data.model.albumNeedsArtistShelves
 import com.music.bitchord.data.model.albumShelvesFromArtist
-import com.music.bitchord.data.model.CARD_ART_PX
-import com.music.bitchord.data.model.HEADER_ART_PX
 import com.music.bitchord.data.model.HomeShelf
 import com.music.bitchord.data.model.LibraryPage
 import com.music.bitchord.data.model.LikeStatus
@@ -338,7 +300,6 @@ import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.model.SubscriptionState
 import com.music.bitchord.data.model.UiState
 import com.music.bitchord.data.model.UserPlaylist
-import com.music.bitchord.data.model.artworkAt
 import com.music.bitchord.data.model.durationMillis
 import com.music.bitchord.data.model.isMatchMissing
 import com.music.bitchord.data.model.isMatchPending
@@ -355,18 +316,13 @@ import com.music.bitchord.sharedui.resources.ic_player_pause
 import com.music.bitchord.sharedui.resources.ic_player_play
 import com.music.bitchord.data.model.withoutRepeatsOf
 import com.music.bitchord.data.settings.AutomixPerformanceMode
-import com.music.bitchord.data.settings.LastPlayerScreen
-import com.music.bitchord.data.settings.SmartAnalysis
 import com.music.bitchord.data.settings.TrackAnalysisState
-import com.music.bitchord.data.settings.TransitionWindow
 import com.music.bitchord.ui.icons.BitChordIcons
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.HazeTint
 import dev.chrisbanes.haze.hazeEffect
 import dev.chrisbanes.haze.hazeSource
-import dev.chrisbanes.haze.materials.HazeMaterials
 import java.util.UUID
-import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.system.exitProcess
 import kotlinx.coroutines.CancellationException
@@ -385,7 +341,6 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
-import kotlinx.coroutines.yield
 import org.jetbrains.compose.resources.Font as composeFont
 import org.jetbrains.compose.resources.painterResource
 
@@ -775,6 +730,18 @@ fun BitChordDesktopApp() {
     var playbackSpeed by remember { mutableStateOf(persistence.string("playback_speed", "1.0").toFloatOrNull() ?: 1.0f) }
     var volume by remember { mutableStateOf(persistence.string("volume", "1.0").toFloatOrNull()?.coerceIn(0.0f, 1.0f) ?: 1.0f) }
     var volumeBeforeMute by remember { mutableStateOf<Float?>(null) }
+    fun toggleMute() {
+        if (volume > 0f) {
+            volumeBeforeMute = volume
+            volume = 0f
+            persistence.saveString("volume", "0.0")
+        } else {
+            val restored = (volumeBeforeMute ?: 1.0f).coerceIn(0.05f, 1.0f)
+            volume = restored
+            volumeBeforeMute = null
+            persistence.saveString("volume", restored.toString())
+        }
+    }
     var crossfadeSeconds by remember { mutableStateOf(persistence.string("crossfade_seconds", "0").toIntOrNull()?.coerceIn(0, 12) ?: 0) }
     var downloadQuality by remember { mutableStateOf(persistence.string("download_quality", "LOSSLESS")) }
     var trayIconEnabled by remember { mutableStateOf(persistence.boolean("tray_icon", true)) }
@@ -3071,7 +3038,7 @@ fun BitChordDesktopApp() {
             LibraryLink(
                 item = ShelfItem(
                     title = "WebDAV",
-                    subtitle = "Remote WebDAV music folder",
+                    subtitle = DesktopStrings["d_webdav_folder", "Remote WebDAV music folder"],
                     thumbnailUrl = null,
                     videoId = null,
                     browseId = "remote:webdav",
@@ -3081,7 +3048,7 @@ fun BitChordDesktopApp() {
             LibraryLink(
                 item = ShelfItem(
                     title = "SMB Share",
-                    subtitle = "Network share music folder",
+                    subtitle = DesktopStrings["d_smb_folder", "Network share music folder"],
                     thumbnailUrl = null,
                     videoId = null,
                     browseId = "remote:smb",
@@ -3558,7 +3525,7 @@ fun BitChordDesktopApp() {
         if (collectionLoadingMore) return
         collectionLoadingMore = true
         scope.launch {
-            DesktopSearchClient.moreCollectionSongs(token, collection.songs.firstOrNull()?.artist)
+            DesktopSearchClient.moreCollectionSongs(token)
                 .onSuccess { (songs, next) ->
                     val current = openedCollection
                     if (current != null && current.browseId == collection.browseId) {
@@ -4077,8 +4044,17 @@ fun BitChordDesktopApp() {
                                 playPrevious()
                                 true
                             }
+                            event.key == Key.MediaStop -> {
+                                if (playback.isPlaying) togglePlayPauseFromUser()
+                                playbackEngine.seekTo(0L)
+                                true
+                            }
                             event.key == Key.F11 -> {
                                 DesktopWindowMode.toggle()
+                                true
+                            }
+                            event.key == Key.F1 || (isCmdOrCtrl && event.key == Key.Slash) -> {
+                                overlays.keyboardShortcuts = !overlays.keyboardShortcuts
                                 true
                             }
                             event.key == Key.DirectionLeft && event.isAltPressed && !overlays.nowPlaying -> {
@@ -4095,6 +4071,7 @@ fun BitChordDesktopApp() {
                             }
                             isCmdOrCtrl && event.key == Key.W -> {
                                 when {
+                                    overlays.keyboardShortcuts -> overlays.keyboardShortcuts = false
                                     overlays.nowPlaying -> overlays.nowPlaying = false
                                     overlays.sidePanel != null -> overlays.sidePanel = null
                                     overlays.settingsPage != null -> goBack()
@@ -4102,26 +4079,21 @@ fun BitChordDesktopApp() {
                                 }
                                 true
                             }
-                            isCmdOrCtrl && event.key == Key.M -> {
-                                if (volume > 0f) {
-                                    volumeBeforeMute = volume
-                                    volume = 0f
-                                    persistence.saveString("volume", "0.0")
-                                } else {
-                                    val restored = (volumeBeforeMute ?: 1.0f).coerceIn(0.05f, 1.0f)
-                                    volume = restored
-                                    volumeBeforeMute = null
-                                    persistence.saveString("volume", restored.toString())
-                                }
-                                true
-                            }
-                            DesktopPlatform.isMac && event.isMetaPressed && event.key == Key.M -> {
+                            DesktopPlatform.isMac && event.isMetaPressed && !event.isShiftPressed && event.key == Key.M -> {
                                 windowActions?.minimize?.invoke()
                                 true
                             }
-                            // One layer at a time, innermost first: the player's own side panel, then
+                            (if (DesktopPlatform.isMac) (event.isMetaPressed && event.isShiftPressed) else (isCmdOrCtrl && !event.isShiftPressed)) && event.key == Key.M -> {
+                                toggleMute()
+                                true
+                            }
+                            // One layer at a time, innermost first: the shortcuts dialog, the player's own side panel, then
                             // the player.
                             event.key == Key.Escape -> when {
+                                overlays.keyboardShortcuts -> {
+                                    overlays.keyboardShortcuts = false
+                                    true
+                                }
                                 // The player's own layers first — the lyrics, the queue, a
                                 // drawer — in the order Android's back reaches them.
                                 overlays.nowPlaying && PlayerBack.dispatch() -> true
@@ -4156,27 +4128,105 @@ fun BitChordDesktopApp() {
                                     true
                                 } else false
                             }
+                            // Next track: Ctrl + Right arrow
+                            isCmdOrCtrl && !event.isAltPressed && event.key == Key.DirectionRight -> {
+                                playNext()
+                                true
+                            }
+                            // Previous track: Ctrl + Left arrow
+                            isCmdOrCtrl && !event.isAltPressed && event.key == Key.DirectionLeft -> {
+                                playPrevious()
+                                true
+                            }
+                            // Toggle shuffle: Ctrl + S
+                            isCmdOrCtrl && !event.isShiftPressed && event.key == Key.S -> {
+                                setShuffle(!shuffle)
+                                true
+                            }
+                            // Toggle repeat mode: Ctrl + R
+                            isCmdOrCtrl && !event.isShiftPressed && event.key == Key.R -> {
+                                val nextMode = repeatMode.next()
+                                repeatMode = nextMode
+                                persistence.saveString("repeat_mode", nextMode.name)
+                                true
+                            }
+                            // Toggle lyrics side panel: Ctrl + L
+                            isCmdOrCtrl && !event.isShiftPressed && event.key == Key.L -> {
+                                overlays.toggleSidePanel(DesktopSidePanel.LYRICS)
+                                true
+                            }
+                            // Toggle queue side panel: Ctrl + Q (non-Mac) or Ctrl/Cmd + J
+                            ((!DesktopPlatform.isMac && isCmdOrCtrl && event.key == Key.Q) || (isCmdOrCtrl && event.key == Key.J)) -> {
+                                overlays.toggleSidePanel(DesktopSidePanel.QUEUE)
+                                true
+                            }
+                            // Toggle Now Playing overlay: Ctrl + N or Ctrl + P
+                            isCmdOrCtrl && !event.isShiftPressed && (event.key == Key.N || event.key == Key.P) -> {
+                                overlays.nowPlaying = !overlays.nowPlaying
+                                true
+                            }
+                            // Favorite / Like current track: Ctrl + D
+                            isCmdOrCtrl && !event.isShiftPressed && event.key == Key.D -> {
+                                selectedSong?.let { toggleLike(it) }
+                                true
+                            }
+                            // Toggle audio output dialog: Ctrl + O
+                            isCmdOrCtrl && !event.isShiftPressed && event.key == Key.O -> {
+                                overlays.audioOutput = !overlays.audioOutput
+                                true
+                            }
+                            // Shift + Left / Right arrow keys seek 15s (faster seek)
+                            event.key == Key.DirectionRight && !event.isAltPressed && !isCmdOrCtrl && event.isShiftPressed -> {
+                                val current = playback.positionMs
+                                val duration = playback.durationMs
+                                val nextPos = (current + 15_000L).coerceAtMost(if (duration > 0) duration else current + 15_000L)
+                                playbackEngine.seekTo(nextPos)
+                                true
+                            }
+                            event.key == Key.DirectionLeft && !event.isAltPressed && !isCmdOrCtrl && event.isShiftPressed -> {
+                                val current = playback.positionMs
+                                val nextPos = (current - 15_000L).coerceAtLeast(0L)
+                                playbackEngine.seekTo(nextPos)
+                                true
+                            }
                             // Left / Right arrow keys seek 5s
-                            event.key == Key.DirectionRight && !event.isAltPressed && !isCmdOrCtrl -> {
+                            event.key == Key.DirectionRight && !event.isAltPressed && !isCmdOrCtrl && !event.isShiftPressed -> {
                                 val current = playback.positionMs
                                 val duration = playback.durationMs
                                 val nextPos = (current + 5_000L).coerceAtMost(if (duration > 0) duration else current + 5_000L)
                                 playbackEngine.seekTo(nextPos)
                                 true
                             }
-                            event.key == Key.DirectionLeft && !event.isAltPressed && !isCmdOrCtrl -> {
+                            event.key == Key.DirectionLeft && !event.isAltPressed && !isCmdOrCtrl && !event.isShiftPressed -> {
                                 val current = playback.positionMs
                                 val nextPos = (current - 5_000L).coerceAtLeast(0L)
                                 playbackEngine.seekTo(nextPos)
                                 true
                             }
+                            // Ctrl + Shift + Down: Mute volume (Spotify standard)
+                            isCmdOrCtrl && event.isShiftPressed && event.key == Key.DirectionDown -> {
+                                if (volume > 0f) {
+                                    volumeBeforeMute = volume
+                                    volume = 0f
+                                    persistence.saveString("volume", "0.0")
+                                }
+                                true
+                            }
+                            // Ctrl + Shift + Up: Restore or max volume
+                            isCmdOrCtrl && event.isShiftPressed && event.key == Key.DirectionUp -> {
+                                val restored = (volumeBeforeMute ?: 1.0f).coerceIn(0.05f, 1.0f)
+                                volume = restored
+                                volumeBeforeMute = null
+                                persistence.saveString("volume", restored.toString())
+                                true
+                            }
                             // Ctrl + Up / Down adjusts volume by 5%
-                            isCmdOrCtrl && event.key == Key.DirectionUp -> {
+                            isCmdOrCtrl && !event.isShiftPressed && event.key == Key.DirectionUp -> {
                                 volume = (volume + 0.05f).coerceAtMost(1.0f)
                                 persistence.saveString("volume", volume.toString())
                                 true
                             }
-                            isCmdOrCtrl && event.key == Key.DirectionDown -> {
+                            isCmdOrCtrl && !event.isShiftPressed && event.key == Key.DirectionDown -> {
                                 volume = (volume - 0.05f).coerceAtLeast(0.0f)
                                 persistence.saveString("volume", volume.toString())
                                 true
@@ -4278,7 +4328,6 @@ fun BitChordDesktopApp() {
                             volume = it
                             persistence.saveString("volume", it.toString())
                         },
-                        onOpenAudioOutput = { overlays.audioOutput = true },
                         onOpenLyrics = { overlays.toggleSidePanel(DesktopSidePanel.LYRICS) },
                         onOpenQueue = { overlays.toggleSidePanel(DesktopSidePanel.QUEUE) },
                         sidePanel = overlays.sidePanel,
@@ -4784,6 +4833,9 @@ fun BitChordDesktopApp() {
                             onDismiss = { overlays.pipeline = false },
                         )
                     }
+                    if (overlays.keyboardShortcuts) {
+                        DesktopShortcutsDialog(onDismiss = { overlays.keyboardShortcuts = false })
+                    }
                 },
             ) { contentPadding ->
                 // Desktop pages start at the same top edge as Library. Only preserve space for the
@@ -4974,7 +5026,6 @@ fun BitChordDesktopApp() {
                                         audioQuality = it
                                         persistence.saveAudioQuality(it)
                                     },
-                                    sleepTimerMinutes = sleepTimerMinutes,
                                     sleepAfterTrack = sleepAfterTrack,
                                     sleepRemainingMs = sleepRemainingMs,
                                     onSleepTimerCycle = ::cycleSleepTimer,
@@ -5051,6 +5102,7 @@ fun BitChordDesktopApp() {
                                     onConfigureWebDav = { showWebDavDialog = true },
                                     onConfigureSmb = { showSmbDialog = true },
                                     onOpenFeedback = { overlays.settingsPage = DesktopSettingsPage.FEEDBACK },
+                                    onOpenKeyboardShortcuts = { overlays.keyboardShortcuts = true },
                                 )
                                 DesktopSettingsPage.EQUALIZER -> DesktopEqualizerDialog(onDismiss = ::goBack)
                                 DesktopSettingsPage.AUDIO_OUTPUT -> DesktopAudioOutputDialog(onDismiss = ::goBack)
@@ -5124,6 +5176,7 @@ fun BitChordDesktopApp() {
                             contentPadding = contentPadding,
                         )
                         openedArtist != null -> DesktopArtistPage(
+                            browseId = openedArtist!!.browseId,
                             state = artistState,
                             fallbackName = openedArtist!!.name,
                             onRetry = {
@@ -5504,8 +5557,8 @@ fun BitChordDesktopApp() {
                                 onSongClick = { playSong(it, source = DesktopQueueSource("WebDAV", PlaybackSourceType.BROWSE)) },
                                 contentPadding = contentPadding,
                                 title = "WebDAV",
-                                subtitle = "Remote WebDAV music folder",
-                                emptyTitle = "No WebDAV music found",
+                                subtitle = DesktopStrings["d_webdav_folder", "Remote WebDAV music folder"],
+                                emptyTitle = DesktopStrings["d_webdav_empty", "No WebDAV music found"],
                                 emptyDescription = "Configure your WebDAV server and check the connection.",
                                 persistenceKey = "webdav",
                                 menu = { song -> songMenu(song) },
@@ -5519,9 +5572,9 @@ fun BitChordDesktopApp() {
                                 songs = smbSongs,
                                 onSongClick = { playSong(it, source = DesktopQueueSource("SMB", PlaybackSourceType.BROWSE)) },
                                 contentPadding = contentPadding,
-                                title = "SMB / Windows Share",
-                                subtitle = "Network share music folder",
-                                emptyTitle = "No SMB music found",
+                                title = DesktopStrings["d_remote_library_smb_title", "SMB / Windows Share"],
+                                subtitle = DesktopStrings["d_smb_folder", "Network share music folder"],
+                                emptyTitle = DesktopStrings["d_smb_empty", "No SMB music found"],
                                 emptyDescription = "Configure your SMB network share and check the connection.",
                                 persistenceKey = "smb",
                                 menu = { song -> songMenu(song) },
@@ -5917,7 +5970,6 @@ private fun DesktopPlayerCapsule(
     onRepeatModeChange: (DesktopRepeatMode) -> Unit,
     onOpenNowPlaying: () -> Unit,
     onVolumeChange: (Float) -> Unit,
-    onOpenAudioOutput: () -> Unit,
     onOpenLyrics: () -> Unit,
     onOpenQueue: () -> Unit,
     sidePanel: DesktopSidePanel?,
@@ -6429,7 +6481,7 @@ private fun DesktopSidebar(
                     if (visibleAccount.isEmpty() && visibleLocal.isEmpty()) {
                         item {
                             Text(
-                                "Your playlists will appear here",
+                                DesktopStrings["d_empty_playlists", "Your playlists will appear here"],
                                 modifier = Modifier.padding(horizontal = 9.dp, vertical = 8.dp),
                                 color = DesktopSecondary.copy(alpha = 0.68f),
                                 style = MaterialTheme.typography.bodySmall,
@@ -6813,7 +6865,8 @@ internal fun DesktopSearchField(
                     } else {
                         false
                     }
-                },
+                }
+                .onKeyEvent { it.type == KeyEventType.KeyUp },
             singleLine = true,
             textStyle = MaterialTheme.typography.bodyMedium.copy(color = Color.White),
             cursorBrush = SolidColor(DesktopAccent),
@@ -7033,6 +7086,7 @@ private const val LOCAL_PLAYLIST_PREFIX = "desktop-playlist:"
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun DesktopArtistPage(
+    browseId: String,
     state: UiState<ArtistPage>,
     fallbackName: String,
     onRetry: () -> Unit,
@@ -7056,7 +7110,26 @@ private fun DesktopArtistPage(
             is UiState.Success -> {
                 val artist = state.data
                 val name = artist.name?.takeIf(String::isNotBlank) ?: fallbackName
-                val palette = rememberDesktopArtworkPalette(artist.thumbnailUrl)
+
+                var appleArt by remember(browseId) {
+                    mutableStateOf(AppleArtistArtRepository.cached(browseId))
+                }
+                LaunchedEffect(browseId, name, artist.songs.size) {
+                    if (appleArt == null && artist.songs.isNotEmpty()) {
+                        val loaded = AppleArtistArtRepository.artFor(browseId, name) {
+                            AppleCatalogue.titlesOf(artist)
+                        }
+                        if (loaded != null) {
+                            appleArt = loaded
+                        }
+                    }
+                }
+
+                val bannerUrl = appleArt?.heroUrl ?: artist.bannerUrl
+                val hasBanner = !bannerUrl.isNullOrBlank()
+                val displayArtUrl = if (hasBanner) bannerUrl else artist.thumbnailUrl
+                val palette = rememberDesktopArtworkPalette(displayArtUrl ?: artist.thumbnailUrl)
+
                 // Android caps the top-songs block and pages it sideways so the release shelves are
                 // not buried under a hundred rows.
                 val top = artist.songs.take(MAX_ARTIST_SONGS)
@@ -7066,31 +7139,13 @@ private fun DesktopArtistPage(
                         verticalArrangement = Arrangement.spacedBy(4.dp),
                     ) {
                         item(key = "artist-header") {
-                            DesktopArtistBanner(artist.thumbnailUrl, name, palette)
-                        }
-                        if (artist.subscriberCountText != null || artist.monthlyListenerCount != null) {
-                            item(key = "artist-stats") {
-                                Row(
-                                    Modifier.fillMaxWidth().padding(horizontal = DesktopPageGutter, vertical = 12.dp),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    // YouTube's own text already reads "1.2M subscribers" in full,
-                                    // so only the number is kept and the label re-said in the app's
-                                    // words.
-                                    artist.subscriberCountText?.let {
-                                        DesktopStatChip(Icons.Rounded.Person, "${it.substringBefore(' ')} subscribers")
-                                    }
-                                    artist.monthlyListenerCount?.let {
-                                        DesktopStatChip(Icons.Rounded.GraphicEq, "${it.substringBefore(' ')} monthly listeners")
-                                    }
-                                }
-                            }
+                            DesktopArtistBanner(displayArtUrl, hasBanner, name, palette)
                         }
                         item(key = "artist-actions") {
                             // The phone's artist controls: subscribing first, where saving sits on a
                             // release, then the labelled Play pill and Shuffle.
                             Row(
-                                Modifier.fillMaxWidth().padding(horizontal = DesktopPageGutter, vertical = 6.dp),
+                                Modifier.fillMaxWidth().padding(horizontal = DesktopPageGutter).padding(top = 14.dp, bottom = 6.dp),
                                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
@@ -7111,20 +7166,6 @@ private fun DesktopArtistPage(
                                     onClick = { if (top.isNotEmpty()) onPlaySongs(top, 0) },
                                 )
                                 DesktopCircleButton(BitChordIcons.Shuffle, DesktopStrings["shuffle", "Shuffle"], onClick = { onShuffle(top) })
-                            }
-                        }
-                        artist.description?.takeIf(String::isNotBlank)?.let { blurb ->
-                            item(key = "artist-about") {
-                                Column(Modifier.padding(top = 16.dp)) {
-                                    SectionTitle(DesktopStrings["d_about_artist", "About artist"])
-                                    Spacer(Modifier.height(8.dp))
-                                    Text(
-                                        blurb,
-                                        color = DesktopSecondary,
-                                        style = MaterialTheme.typography.bodyMedium,
-                                        modifier = Modifier.padding(horizontal = DesktopPageGutter),
-                                    )
-                                }
                             }
                         }
                         if (top.isNotEmpty()) {
@@ -7164,7 +7205,24 @@ private fun DesktopArtistPage(
                                 }
                             }
                         }
-                        if (top.isEmpty() && artist.sections.isEmpty()) {
+                        val hasStats = artist.subscriberCountText != null || artist.monthlyListenerCount != null
+                        val showAbout = !artist.description.isNullOrBlank() || hasStats
+                        if (showAbout) {
+                            item(key = "artist-about") {
+                                DesktopArtistAboutCard(
+                                    title = DesktopStrings["about_artist", "About the artist"],
+                                    text = artist.description?.takeIf(String::isNotBlank),
+                                    subscriberCountText = artist.subscriberCountText,
+                                    monthlyListenerCount = artist.monthlyListenerCount,
+                                    palette = palette,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = DesktopPageGutter)
+                                        .padding(top = 28.dp, bottom = 28.dp),
+                                )
+                            }
+                        }
+                        if (top.isEmpty() && artist.sections.isEmpty() && !showAbout) {
                             item {
                                 DesktopEmptyPage(
                                     Icons.Rounded.Person,
@@ -7182,9 +7240,20 @@ private fun DesktopArtistPage(
 
 /** The photograph, and the name across the foot of it. */
 @Composable
-private fun DesktopArtistBanner(url: String?, name: String, palette: DesktopArtworkPalette) {
-    Box(Modifier.fillMaxWidth().height(ARTIST_BANNER_HEIGHT)) {
-        DesktopArtwork(url, Modifier.matchParentSize(), px = HEADER_ART_PX)
+private fun DesktopArtistBanner(
+    url: String?,
+    isBanner: Boolean,
+    name: String,
+    palette: DesktopArtworkPalette,
+) {
+    Box(Modifier.fillMaxWidth().height(ARTIST_BANNER_HEIGHT).clipToBounds()) {
+        DesktopArtwork(
+            url = url,
+            modifier = Modifier.fillMaxWidth().matchParentSize(),
+            contentScale = ContentScale.Crop,
+            alignment = Alignment.Center,
+            px = if (isBanner) null else PLAYER_ART_PX,
+        )
         // Two washes rather than one.
         Box(
             Modifier.matchParentSize().background(
@@ -7218,19 +7287,121 @@ private fun DesktopArtistBanner(url: String?, name: String, palette: DesktopArtw
     }
 }
 
+/**
+ * The artist page's "About the artist" section enclosed within a clean card at the bottom of the page,
+ * matching the mobile design.
+ */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun DesktopStatChip(icon: androidx.compose.ui.graphics.vector.ImageVector, text: String) {
+private fun DesktopArtistAboutCard(
+    title: String,
+    text: String?,
+    subscriberCountText: String?,
+    monthlyListenerCount: String?,
+    palette: DesktopArtworkPalette,
+    modifier: Modifier = Modifier,
+) {
+    val shape = remember { RoundedCornerShape(20.dp) }
+    var expanded by remember(text) { mutableStateOf(false) }
+    var clipped by remember(text) { mutableStateOf(false) }
+    val hasStats = subscriberCountText != null || monthlyListenerCount != null
+
+    Column(
+        modifier = modifier
+            .clip(shape)
+            .background(Color.White.copy(alpha = 0.07f), shape)
+            .border(1.dp, Color.White.copy(alpha = 0.10f), shape)
+            .padding(20.dp),
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = Color.White,
+        )
+
+        if (hasStats) {
+            Spacer(Modifier.height(14.dp))
+            FlowRow(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                subscriberCountText?.let {
+                    DesktopStatChip(
+                        icon = Icons.Rounded.Person,
+                        text = DesktopStrings.format("subscribers", it.substringBefore(' '), fallback = "$it subscribers"),
+                        palette = palette,
+                    )
+                }
+                monthlyListenerCount?.let {
+                    DesktopStatChip(
+                        icon = Icons.Rounded.GraphicEq,
+                        text = DesktopStrings.format("monthly_listeners", it.substringBefore(' '), fallback = "$it monthly listeners"),
+                        palette = palette,
+                    )
+                }
+            }
+        }
+
+        if (text != null) {
+            Spacer(Modifier.height(if (hasStats) 14.dp else 12.dp))
+            Text(
+                text = text,
+                style = MaterialTheme.typography.bodyMedium,
+                color = DesktopSecondary,
+                lineHeight = 22.sp,
+                maxLines = if (expanded) Int.MAX_VALUE else 3,
+                overflow = TextOverflow.Ellipsis,
+                onTextLayout = { result -> if (!expanded) clipped = result.hasVisualOverflow },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .animateContentSize()
+                    .let { m -> if (clipped || expanded) m.clickable { expanded = !expanded } else m },
+            )
+            if (clipped || expanded) {
+                Spacer(Modifier.height(6.dp))
+                Text(
+                    text = if (expanded) DesktopStrings["less", "Less"] else DesktopStrings["more", "More"],
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.SemiBold,
+                    color = palette.primary,
+                    modifier = Modifier
+                        .clickable { expanded = !expanded }
+                        .padding(vertical = 4.dp),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun DesktopStatChip(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    text: String,
+    palette: DesktopArtworkPalette,
+) {
     Row(
-        Modifier
+        modifier = Modifier
             .clip(CircleShape)
-            .background(DesktopGlass.copy(alpha = 0.55f))
-            .border(0.5.dp, Color.White.copy(alpha = 0.10f), CircleShape)
+            .background(Color.White.copy(alpha = 0.08f), CircleShape)
+            .border(0.5.dp, Color.White.copy(alpha = 0.14f), CircleShape)
             .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, null, tint = DesktopSecondary, modifier = Modifier.size(15.dp))
-        Spacer(Modifier.width(7.dp))
-        Text(text, style = MaterialTheme.typography.bodySmall, color = Color.White)
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            tint = palette.primary,
+            modifier = Modifier.size(15.dp),
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(
+            text = text,
+            style = MaterialTheme.typography.labelMedium,
+            fontWeight = FontWeight.Medium,
+            color = Color.White,
+        )
     }
 }
 
@@ -7461,7 +7632,7 @@ private fun DesktopLocalMusicPage(
                 }
             }
             Spacer(Modifier.height(10.dp))
-            TabRow(selectedTabIndex = selectedTab.coerceIn(0, tabs.lastIndex), containerColor = Color.Transparent) {
+            PrimaryTabRow(selectedTabIndex = selectedTab.coerceIn(0, tabs.lastIndex), containerColor = Color.Transparent) {
                 tabs.forEachIndexed { index, label ->
                     Tab(
                         selected = selectedTab == index,
@@ -7482,7 +7653,7 @@ private fun DesktopLocalMusicPage(
                     if (selectedTab == 1) activeGroup.songs.sortedForAlbum() else activeGroup.songs
                 }
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { drillDown = null }) { Icon(Icons.Rounded.ArrowBack, DesktopStrings["back", "Back"]) }
+                    IconButton(onClick = { drillDown = null }) { Icon(Icons.AutoMirrored.Rounded.ArrowBack, DesktopStrings["back", "Back"]) }
                     Column(Modifier.weight(1f)) {
                         Text(activeGroup.title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
                         if (activeGroup.subtitle.isNotBlank()) {
@@ -7743,7 +7914,6 @@ private fun DesktopSettingsScreen(
     onDownloadQualityChange: (String) -> Unit,
     audioQuality: DesktopAudioQuality,
     onAudioQualityChange: (DesktopAudioQuality) -> Unit,
-    sleepTimerMinutes: Int?,
     sleepAfterTrack: Boolean,
     sleepRemainingMs: Long?,
     onSleepTimerCycle: () -> Unit,
@@ -7762,6 +7932,7 @@ private fun DesktopSettingsScreen(
     onConfigureWebDav: () -> Unit = {},
     onConfigureSmb: () -> Unit = {},
     onOpenFeedback: () -> Unit = {},
+    onOpenKeyboardShortcuts: () -> Unit = {},
 ) {
     var editingSource by remember { mutableStateOf<DesktopSourceConfig?>(null) }
     val sourceProbeKey = sourceConfigs
@@ -8749,6 +8920,12 @@ private fun DesktopSettingsScreen(
                             DesktopPresence::openPicker,
                         )
 
+                        SettingsNavigationRow(
+                            DesktopStrings["keyboard_shortcuts", "Keyboard shortcuts"],
+                            DesktopStrings["d_keyboard_shortcuts_subtitle", "View all desktop keyboard shortcuts (F1 or Ctrl+/)"],
+                            onOpenKeyboardShortcuts,
+                        )
+
                         var prioritizeCanvas by remember { mutableStateOf(DesktopPersistence().prioritizeSpotifyCanvas()) }
                         SettingsToggle(
                             "Prioritize Spotify Canvas",
@@ -9437,7 +9614,7 @@ private fun DesktopCollectionPage(
                             if (collection.type == BrowseType.PLAYLIST) {
                                 Box {
                                     DesktopCircleButton(
-                                        Icons.Rounded.Sort,
+                                        Icons.AutoMirrored.Rounded.Sort,
                                         DesktopStrings["sort_playlist", "Sort playlist"],
                                         onClick = { sortOpen = true },
                                     )

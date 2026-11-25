@@ -2,7 +2,6 @@ package com.music.bitchord
 
 import com.music.bitchord.playback.smart.AutomixAnalysisSource
 import com.music.bitchord.playback.QualityUpgrade
-import com.music.bitchord.data.sources.StreamFormat
 import org.junit.Assert.assertTrue
 import org.junit.Assert.assertFalse
 import org.junit.Test

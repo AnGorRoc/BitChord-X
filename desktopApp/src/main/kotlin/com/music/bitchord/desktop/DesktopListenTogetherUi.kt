@@ -3,6 +3,10 @@ package com.music.bitchord.desktop
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,14 +30,10 @@ import androidx.compose.material.icons.rounded.Groups
 import androidx.compose.material.icons.rounded.Lock
 import androidx.compose.material.icons.rounded.LockOpen
 import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material.icons.rounded.RemoveCircleOutline
-import androidx.compose.material.icons.rounded.Pause
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.Settings
-import androidx.compose.material.icons.rounded.SkipNext
-import androidx.compose.material.icons.rounded.SkipPrevious
-import androidx.compose.material.icons.rounded.VolumeOff
-import androidx.compose.material.icons.rounded.VolumeUp
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.automirrored.rounded.VolumeOff
+import androidx.compose.material.icons.automirrored.rounded.VolumeUp
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.spring
@@ -160,22 +160,25 @@ internal fun DesktopListenTogetherDialog(autoplayEnabled: Boolean, onDismiss: ()
         }
     }
 
-    DesktopDialogPanel(onDismiss = onDismiss, maxWidth = 920) {
-        Column(desktopPanelBody(cardMax = 760.dp, cardMin = 560.dp, fill = true)) {
+    // Solid and unblurred: this panel is forms and long grey explanations, which glass over a
+    // blurred page made hard to read. Only a party's room needs the height; the landing and the
+    // join prompt are as tall as what they hold.
+    DesktopDialogPanel(onDismiss = onDismiss, maxWidth = 860, solid = true) {
+        Column(desktopPanelBody(cardMax = 720.dp, cardMin = if (state.inParty) 600.dp else 0.dp, fill = true)) {
             Row(
-                Modifier.fillMaxWidth().padding(start = panelInset(28.dp), end = panelInset(18.dp), top = 22.dp, bottom = 16.dp),
+                Modifier.fillMaxWidth().padding(start = panelInset(24.dp), end = panelInset(14.dp), top = 18.dp, bottom = 14.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
                     Text(
                         DesktopStrings["listen_together", "Listen together"],
-                        style = MaterialTheme.typography.headlineSmall,
+                        style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
                     )
                     Text(
                         if (state.inParty) tr("d_lt_sub_in", "Everyone hears the same song at the same moment")
                         else tr("d_lt_sub_out", "Start a room or join friends with a six-character code"),
-                        color = DesktopSecondary,
+                        color = PartySecondary,
                         style = MaterialTheme.typography.bodyMedium,
                     )
                 }
@@ -246,7 +249,6 @@ internal fun DesktopListenTogetherDialog(autoplayEnabled: Boolean, onDismiss: ()
                     },
                 )
                 else -> PartyLanding(
-                    signedIn = DesktopListenTogether.canJoin(),
                     enabled = DesktopListenTogether.canJoin() && DesktopListenTogether.hasServer,
                     avatarUrl = DesktopListenTogether.myAvatarUrl(),
                     nickname = nickname,
@@ -361,7 +363,6 @@ internal fun DesktopListenTogetherDialog(autoplayEnabled: Boolean, onDismiss: ()
 
 @Composable
 private fun PartyLanding(
-    signedIn: Boolean,
     enabled: Boolean,
     avatarUrl: String?,
     nickname: String,
@@ -381,19 +382,20 @@ private fun PartyLanding(
     onPreview: () -> Unit,
 ) {
     LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = PaddingValues(28.dp),
-        verticalArrangement = Arrangement.spacedBy(18.dp),
+        modifier = Modifier.fillMaxWidth(),
+        contentPadding = PaddingValues(horizontal = panelInset(24.dp), vertical = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         item {
-            Row(horizontalArrangement = Arrangement.spacedBy(18.dp)) {
+            // Same height side by side, so the two buttons sit on one line.
+            Row(Modifier.height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 PartyChoiceCard(
                     title = tr("d_start_title", "Start a party"),
                     subtitle = tr("d_start_sub", "Choose how friends see you. Anyone with the link or code can join."),
                     modifier = Modifier.weight(1f),
                 ) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        PartyAvatar(avatarUrl, 44)
+                        PartyAvatar(avatarUrl, 40)
                         Spacer(Modifier.width(12.dp))
                         OutlinedTextField(
                             value = nickname,
@@ -404,7 +406,7 @@ private fun PartyLanding(
                             modifier = Modifier.weight(1f),
                         )
                     }
-                    Spacer(Modifier.height(20.dp))
+                    Spacer(Modifier.weight(1f).heightIn(min = 16.dp))
                     PrimaryButton(tr("d_start_btn", "Start party"), busy, enabled, onCreate)
                 }
 
@@ -419,13 +421,13 @@ private fun PartyLanding(
                         label = { Text(tr("d_invite_field", "Invite link or code")) },
                         placeholder = { Text("ABC123") },
                         singleLine = true,
-                        textStyle = MaterialTheme.typography.headlineSmall.copy(letterSpacing = 5.sp),
+                        textStyle = MaterialTheme.typography.titleLarge.copy(letterSpacing = 4.sp),
                         colors = fieldColors(),
                         keyboardActions = KeyboardActions(onDone = { if (enabled && code.length == DesktopListenTogether.CODE_LENGTH) onPreview() }),
                         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                         modifier = Modifier.fillMaxWidth().focusRequester(codeFocus).onFocusChanged { onCodeFocusChange(it.isFocused) },
                     )
-                    Spacer(Modifier.height(18.dp))
+                    Spacer(Modifier.weight(1f).heightIn(min = 16.dp))
                     PrimaryButton(
                         label = tr("d_lookup", "Look up party"),
                         busy = busy,
@@ -437,39 +439,67 @@ private fun PartyLanding(
         }
         error?.takeIf(String::isNotBlank)?.let { item { Notice(it, true) } }
         item {
-            Column(Modifier.desktopCardInset(RoundedCornerShape(14.dp)).padding(18.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Rounded.Settings, null, tint = DesktopSecondary, modifier = Modifier.size(20.dp))
+            // Most people never change the server, so it is one line saying whether it is up; the
+            // address and its buttons open from it, and are open already when something needs fixing.
+            val offline = serverStatus.health == DesktopListenTogether.Health.OFFLINE
+            var serverOpen by remember { mutableStateOf(server.isNotBlank() || offline) }
+            LaunchedEffect(offline) { if (offline) serverOpen = true }
+            Column(Modifier.desktopCardInset(RoundedCornerShape(14.dp))) {
+                Row(
+                    Modifier
+                        .fillMaxWidth()
+                        .clickable { serverOpen = !serverOpen }
+                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Box(
+                        Modifier.size(8.dp).clip(CircleShape).background(
+                            when (serverStatus.health) {
+                                DesktopListenTogether.Health.ONLINE -> Color(0xFF34C759)
+                                DesktopListenTogether.Health.CHECKING -> PartySecondary
+                                DesktopListenTogether.Health.OFFLINE -> DesktopDestructive
+                            },
+                        ),
+                    )
+                    Spacer(Modifier.width(12.dp))
+                    Text(tr("d_server_title", "Party server"), fontWeight = FontWeight.Medium)
                     Spacer(Modifier.width(10.dp))
-                    Column(Modifier.weight(1f)) {
-                        Text(tr("d_server_title", "Party server"), fontWeight = FontWeight.Medium)
-                        Text(tr("d_server_sub", "Leave blank to use the server included with this build."), color = DesktopSecondary, style = MaterialTheme.typography.bodySmall)
-                    }
-                }
-                Spacer(Modifier.height(12.dp))
-                DesktopSearchField(
-                    query = server,
-                    onQueryChange = onServerChange,
-                    onSearch = {},
-                    placeholder = tr("d_server_field", "Custom server address"),
-                )
-                Spacer(Modifier.height(10.dp))
-                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         serverStatusLine(serverStatus),
-                        color = when (serverStatus.health) {
-                            DesktopListenTogether.Health.ONLINE -> DesktopSecondary
-                            DesktopListenTogether.Health.CHECKING -> DesktopSecondary
-                            DesktopListenTogether.Health.OFFLINE -> DesktopDestructive
-                        },
+                        color = if (offline) DesktopDestructive else PartySecondary,
                         style = MaterialTheme.typography.bodySmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
                     )
-                    TextButton(onClick = onRefreshServer) { Text(tr("d_test", "Test")) }
-                    Button(
-                        onClick = onSaveServer,
-                        colors = ButtonDefaults.buttonColors(containerColor = DesktopCardInsetFill),
-                    ) { Text(if (server.isBlank()) tr("d_use_builtin", "Use built-in") else tr("d_save", "Save")) }
+                    Icon(
+                        if (serverOpen) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                        null,
+                        tint = PartySecondary,
+                        modifier = Modifier.size(20.dp),
+                    )
+                }
+                AnimatedVisibility(visible = serverOpen, enter = expandVertically() + fadeIn(), exit = shrinkVertically() + fadeOut()) {
+                    Column(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 14.dp)) {
+                        Text(tr("d_server_sub", "Leave blank to use the server included with this build."), color = PartySecondary, style = MaterialTheme.typography.bodySmall)
+                        Spacer(Modifier.height(10.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.weight(1f)) {
+                                DesktopSearchField(
+                                    query = server,
+                                    onQueryChange = onServerChange,
+                                    onSearch = {},
+                                    placeholder = tr("d_server_field", "Custom server address"),
+                                )
+                            }
+                            Spacer(Modifier.width(8.dp))
+                            TextButton(onClick = onRefreshServer) { Text(tr("d_test", "Test")) }
+                            Button(
+                                onClick = onSaveServer,
+                                colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.12f), contentColor = Color.White),
+                            ) { Text(if (server.isBlank()) tr("d_use_builtin", "Use built-in") else tr("d_save", "Save")) }
+                        }
+                    }
                 }
             }
         }
@@ -485,11 +515,11 @@ private fun fieldColors() = OutlinedTextFieldDefaults.colors(
 
 @Composable
 private fun PartyChoiceCard(title: String, subtitle: String, modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    Column(modifier.desktopCardInset(RoundedCornerShape(24.dp)).padding(20.dp)) {
-        Text(title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+    Column(modifier.fillMaxHeight().desktopCardInset(RoundedCornerShape(16.dp)).padding(18.dp)) {
+        Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
         Spacer(Modifier.height(4.dp))
-        Text(subtitle, color = DesktopSecondary, style = MaterialTheme.typography.bodyMedium)
-        Spacer(Modifier.height(20.dp))
+        Text(subtitle, color = PartySecondary, style = MaterialTheme.typography.bodySmall)
+        Spacer(Modifier.height(16.dp))
         content()
     }
 }
@@ -507,31 +537,31 @@ private fun JoinConfirmation(
     onJoin: () -> Unit,
 ) {
     Column(
-        Modifier.fillMaxSize().padding(horizontal = panelInset(36.dp), vertical = 36.dp),
+        Modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = panelInset(32.dp), vertical = 28.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
-        Icon(Icons.Rounded.Groups, null, tint = DesktopAccent, modifier = Modifier.size(54.dp))
-        Spacer(Modifier.height(14.dp))
+        Icon(Icons.Rounded.Groups, null, tint = DesktopAccent, modifier = Modifier.size(44.dp))
+        Spacer(Modifier.height(12.dp))
         Text(
             if (preview.hostName.isBlank()) tr("d_join_q", "Join this party?") else tr("d_join_q_host", "Join %1\$s’s party?", preview.hostName),
-            style = MaterialTheme.typography.headlineSmall,
+            style = MaterialTheme.typography.titleLarge,
             fontWeight = FontWeight.Bold,
         )
-        Text(tr("d_join_count", "%1\$d of %2\$d people · %3\$s", preview.memberCount, preview.maxMembers, preview.code), color = DesktopSecondary)
+        Text(tr("d_join_count", "%1\$d of %2\$d people · %3\$s", preview.memberCount, preview.maxMembers, preview.code), color = PartySecondary)
         foreignServerHost?.let { host ->
             Spacer(Modifier.height(6.dp))
             Text(
                 tr("d_join_foreign", "Hosted on %1\$s. Your name and avatar will be shared with that server.", host),
-                color = DesktopSecondary,
+                color = PartySecondary,
                 style = MaterialTheme.typography.bodySmall,
             )
         }
         Spacer(Modifier.height(20.dp))
         Row(horizontalArrangement = Arrangement.spacedBy((-10).dp)) {
-            preview.members.take(5).forEach { PartyAvatar(it.avatarUrl, 50, it.displayName) }
+            preview.members.take(5).forEach { PartyAvatar(it.avatarUrl, 42, it.displayName) }
         }
-        Spacer(Modifier.height(24.dp))
+        Spacer(Modifier.height(20.dp))
         PlayHereChoice(playHere, onPlayHereChange, Modifier.width(360.dp), enabled = !busy)
         error?.let { Spacer(Modifier.height(10.dp)); Text(it, color = DesktopDestructive) }
         Spacer(Modifier.height(20.dp))
@@ -544,14 +574,14 @@ private fun JoinConfirmation(
 
 @Composable
 private fun PartyRoom(state: DesktopListenTogether.State, activity: List<PartyActivity>, busy: Boolean, onLeave: () -> Unit) {
-    Row(Modifier.fillMaxSize().padding(horizontal = panelInset(24.dp), vertical = 24.dp), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
-        LazyColumn(Modifier.weight(1.15f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Row(Modifier.fillMaxSize().padding(horizontal = panelInset(20.dp), vertical = 20.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+        LazyColumn(Modifier.weight(1.15f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item { RoomHero(state) }
             item { NowPlayingCard(state) }
             item { PlayHereCard() }
             item { QueueCard(state) }
         }
-        LazyColumn(Modifier.weight(.85f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        LazyColumn(Modifier.weight(.85f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             item { MembersCard(state) }
             if (state.you?.isHost == true) item { HostControls(state) }
             if (activity.isNotEmpty()) item { ActivityCard(activity) }
@@ -570,7 +600,7 @@ private fun PartyRoom(state: DesktopListenTogether.State, activity: List<PartyAc
                 }
                 Text(
                     tr("d_leave_sub", "The others carry on listening"),
-                    color = DesktopSecondary,
+                    color = PartySecondary,
                     style = MaterialTheme.typography.bodySmall,
                     textAlign = TextAlign.Center,
                     modifier = Modifier.fillMaxWidth().padding(top = 6.dp),
@@ -587,8 +617,8 @@ private fun RoomHero(state: DesktopListenTogether.State) {
     Column(
         Modifier
             .fillMaxWidth()
-            .desktopCardInset(RoundedCornerShape(24.dp))
-            .padding(vertical = 24.dp, horizontal = 20.dp),
+            .desktopCardInset(RoundedCornerShape(16.dp))
+            .padding(vertical = 20.dp, horizontal = 18.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -598,14 +628,14 @@ private fun RoomHero(state: DesktopListenTogether.State) {
             Spacer(Modifier.width(12.dp))
             Text(
                 if (state.members.size == 1) tr("d_people_one", "1 person listening") else tr("d_people_many", "%1\$d people listening", state.members.size),
-                color = DesktopSecondary,
+                color = PartySecondary,
                 style = MaterialTheme.typography.bodyMedium,
             )
         }
         Spacer(Modifier.height(18.dp))
         Text(
             tr("d_party_code", "Party code").uppercase(),
-            color = DesktopSecondary,
+            color = PartySecondary,
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.SemiBold,
             letterSpacing = 1.5.sp,
@@ -613,14 +643,14 @@ private fun RoomHero(state: DesktopListenTogether.State) {
         Spacer(Modifier.height(4.dp))
         Text(
             state.code.orEmpty(),
-            fontSize = 38.sp,
+            fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
-            letterSpacing = 8.sp,
+            letterSpacing = 6.sp,
             textAlign = TextAlign.Center,
         )
         Text(
             tr("d_code_hint", "Tell people this code, or share the link"),
-            color = DesktopSecondary,
+            color = PartySecondary,
             style = MaterialTheme.typography.bodySmall,
             textAlign = TextAlign.Center,
             modifier = Modifier.padding(top = 4.dp),
@@ -649,7 +679,7 @@ private fun RoomHero(state: DesktopListenTogether.State) {
                 ),
         ) {
             Column(Modifier.padding(top = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-                DesktopQrCode(invite, size = 160.dp, clickableToEnlarge = true, codeText = state.code)
+                DesktopQrCode(invite, size = 140.dp, clickableToEnlarge = true, codeText = state.code)
             }
         }
         Spacer(Modifier.height(18.dp))
@@ -676,7 +706,7 @@ private fun RoomHero(state: DesktopListenTogether.State) {
             }
         }
         TextButton(onClick = { showQr = !showQr }, modifier = Modifier.padding(top = 4.dp)) {
-            Text(if (showQr) tr("d_hide_qr", "Hide QR code") else tr("d_show_qr", "Show QR code"), color = DesktopSecondary)
+            Text(if (showQr) tr("d_hide_qr", "Hide QR code") else tr("d_show_qr", "Show QR code"), color = PartySecondary)
         }
     }
 }
@@ -697,19 +727,19 @@ private fun NowPlayingCard(state: DesktopListenTogether.State) {
     val duration = track?.durationMs?.takeIf { it > 0 }
     val healthy = state.connection == DesktopListenTogether.Connection.LIVE && state.clockSynced
     fun clock(ms: Long) = (ms / 1000).coerceAtLeast(0).let { "%d:%02d".format(it / 60, it % 60) }
-    Column(Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(24.dp)).padding(18.dp)) {
+    Column(Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(16.dp)).padding(16.dp)) {
         CardTitle(tr("d_now_playing", "Now playing"))
         if (track == null) {
-            Text(tr("d_nothing_yet", "Nothing playing yet"), color = DesktopSecondary)
-            if (state.you?.isHost == true) Text(tr("d_nothing_hint", "Play a song and it will appear for everyone."), color = DesktopSecondary, style = MaterialTheme.typography.bodySmall)
+            Text(tr("d_nothing_yet", "Nothing playing yet"), color = PartySecondary)
+            if (state.you?.isHost == true) Text(tr("d_nothing_hint", "Play a song and it will appear for everyone."), color = PartySecondary, style = MaterialTheme.typography.bodySmall)
         } else {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 DesktopArtwork(track.thumbnailUrl, Modifier.size(62.dp).clip(RoundedCornerShape(12.dp)), px = 160)
                 Spacer(Modifier.width(14.dp))
                 Column(Modifier.weight(1f)) {
                     Text(track.title, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(track.artist, color = DesktopSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    state.playback.startedByName?.let { Text(tr("d_started_by", "Started by %1\$s", it), color = DesktopSecondary, style = MaterialTheme.typography.bodySmall) }
+                    Text(track.artist, color = PartySecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    state.playback.startedByName?.let { Text(tr("d_started_by", "Started by %1\$s", it), color = PartySecondary, style = MaterialTheme.typography.bodySmall) }
                 }
             }
             if (duration != null) {
@@ -721,9 +751,9 @@ private fun NowPlayingCard(state: DesktopListenTogether.State) {
                     trackColor = Color.White.copy(alpha = 0.12f),
                 )
                 Row(Modifier.fillMaxWidth().padding(top = 6.dp)) {
-                    Text(clock(positionMs), color = DesktopSecondary, style = MaterialTheme.typography.labelSmall)
+                    Text(clock(positionMs), color = PartySecondary, style = MaterialTheme.typography.labelSmall)
                     Spacer(Modifier.weight(1f))
-                    Text(clock(duration), color = DesktopSecondary, style = MaterialTheme.typography.labelSmall)
+                    Text(clock(duration), color = PartySecondary, style = MaterialTheme.typography.labelSmall)
                 }
             }
         }
@@ -731,7 +761,7 @@ private fun NowPlayingCard(state: DesktopListenTogether.State) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(8.dp).clip(CircleShape).background(if (healthy) Color(0xFF34C759) else Color(0xFFFF9F0A)))
             Spacer(Modifier.width(8.dp))
-            Text(connectionLine(state), color = DesktopSecondary, style = MaterialTheme.typography.bodySmall)
+            Text(connectionLine(state), color = PartySecondary, style = MaterialTheme.typography.bodySmall)
         }
     }
 }
@@ -744,10 +774,10 @@ private fun CardTitle(text: String, trailing: String? = null) {
             text,
             style = MaterialTheme.typography.titleSmall,
             fontWeight = FontWeight.SemiBold,
-            color = DesktopSecondary,
+            color = PartySecondary,
             modifier = Modifier.weight(1f),
         )
-        if (trailing != null) Text(trailing, color = DesktopSecondary, style = MaterialTheme.typography.bodySmall)
+        if (trailing != null) Text(trailing, color = PartySecondary, style = MaterialTheme.typography.bodySmall)
     }
 }
 
@@ -756,7 +786,7 @@ private fun CardTitle(text: String, trailing: String? = null) {
 private fun Tag(text: String) {
     Text(
         text,
-        color = DesktopSecondary,
+        color = PartySecondary,
         style = MaterialTheme.typography.labelSmall,
         fontWeight = FontWeight.SemiBold,
         modifier = Modifier.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.10f)).padding(horizontal = 8.dp, vertical = 2.dp),
@@ -765,17 +795,17 @@ private fun Tag(text: String) {
 
 @Composable
 private fun QueueCard(state: DesktopListenTogether.State) {
-    Column(Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(24.dp)).padding(18.dp)) {
+    Column(Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(16.dp)).padding(16.dp)) {
         CardTitle(tr("d_up_next", "Up next"))
         val upcoming = state.queue.items.drop((state.queue.index + 1).coerceAtLeast(0)).take(5)
-        if (upcoming.isEmpty()) Text(tr("d_queue_empty", "The shared queue is empty"), color = DesktopSecondary)
+        if (upcoming.isEmpty()) Text(tr("d_queue_empty", "The shared queue is empty"), color = PartySecondary)
         upcoming.forEachIndexed { index, track ->
             if (index > 0 && !LocalDesktopPanelIsPage.current) HorizontalDivider(color = DesktopCardEdge)
             Row(Modifier.fillMaxWidth().padding(vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text("${index + 1}", color = DesktopSecondary, modifier = Modifier.width(28.dp))
+                Text("${index + 1}", color = PartySecondary, modifier = Modifier.width(28.dp))
                 Column(Modifier.weight(1f)) {
                     Text(track.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(track.artist, color = DesktopSecondary, style = MaterialTheme.typography.bodySmall, maxLines = 1)
+                    Text(track.artist, color = PartySecondary, style = MaterialTheme.typography.bodySmall, maxLines = 1)
                 }
             }
         }
@@ -785,7 +815,7 @@ private fun QueueCard(state: DesktopListenTogether.State) {
 @Composable
 private fun MembersCard(state: DesktopListenTogether.State) {
     val people = state.members.byPerson()
-    Column(Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(24.dp)).padding(18.dp)) {
+    Column(Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(16.dp)).padding(16.dp)) {
         CardTitle(tr("d_people", "People"), "${people.size} / ${state.maxMembers}")
         people.forEachIndexed { index, person ->
             if (index > 0 && !LocalDesktopPanelIsPage.current) HorizontalDivider(color = DesktopCardEdge)
@@ -803,14 +833,14 @@ private fun MembersCard(state: DesktopListenTogether.State) {
 @Composable
 private fun PlayHereRow(playHere: Boolean, onChange: (Boolean) -> Unit, modifier: Modifier = Modifier, enabled: Boolean = true) {
     Row(modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Icon(if (playHere) Icons.Rounded.VolumeUp else Icons.Rounded.VolumeOff, null, tint = DesktopAccent, modifier = Modifier.size(20.dp))
+        Icon(if (playHere) Icons.AutoMirrored.Rounded.VolumeUp else Icons.AutoMirrored.Rounded.VolumeOff, null, tint = DesktopAccent, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
-            Text("Play on this computer", fontWeight = FontWeight.SemiBold)
+            Text(tr("d_listen_together_play_on_pc", "Play on this computer"), fontWeight = FontWeight.SemiBold)
             Text(
                 if (playHere) tr("d_play_here_on", "You hear it here, and everyone else on theirs.")
                 else tr("d_play_here_off", "Sound comes only from the host. You still see and control the party."),
-                color = DesktopSecondary,
+                color = PartySecondary,
                 style = MaterialTheme.typography.bodySmall,
             )
         }
@@ -821,7 +851,7 @@ private fun PlayHereRow(playHere: Boolean, onChange: (Boolean) -> Unit, modifier
 @Composable
 private fun PlayHereCard() {
     val playHere by DesktopListenTogether.listenHere.collectAsState()
-    Column(Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(24.dp)).padding(18.dp)) {
+    Column(Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(16.dp)).padding(16.dp)) {
         PlayHereRow(playHere, DesktopListenTogether::setListenHere)
     }
 }
@@ -831,14 +861,14 @@ private const val DEFAULT_PARTY_SIZE = 10
 
 @Composable
 private fun HostControls(state: DesktopListenTogether.State) {
-    Column(Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(24.dp)).padding(18.dp)) {
+    Column(Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(16.dp)).padding(16.dp)) {
         CardTitle(tr("d_room_settings", "Room settings"))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Icon(if (state.hostOnlyControl) Icons.Rounded.Lock else Icons.Rounded.LockOpen, null, tint = DesktopAccent, modifier = Modifier.size(20.dp))
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text(tr("d_host_only", "Only I can control playback"), fontWeight = FontWeight.SemiBold)
-                Text(tr("d_host_only_sub", "Guests can still pause on their own device."), color = DesktopSecondary, style = MaterialTheme.typography.bodySmall)
+                Text(tr("d_host_only_sub", "Guests can still pause on their own device."), color = PartySecondary, style = MaterialTheme.typography.bodySmall)
             }
             Switch(state.hostOnlyControl, onCheckedChange = DesktopListenTogether::setHostOnlyControl)
         }
@@ -861,7 +891,7 @@ private fun HostControls(state: DesktopListenTogether.State) {
 @Composable
 private fun ActivityCard(entries: List<PartyActivity>) {
     val clock = remember { SimpleDateFormat("HH:mm", Locale.getDefault()) }
-    Column(Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(24.dp)).padding(18.dp)) {
+    Column(Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(16.dp)).padding(16.dp)) {
         CardTitle(tr("d_activity", "Activity"))
         // The same thing said twice in a row (two reports of one song change) is one line.
         entries.distinctBy { "${it.by}|${it.detail.ifBlank { it.action }}|${it.atMs / 60_000}" }.take(8).forEach { entry ->
@@ -893,7 +923,7 @@ private fun MemberRow(member: PartyMember, devices: List<PartyMember>, isYou: Bo
                 if (isYou) { Spacer(Modifier.width(8.dp)); Tag(tr("d_you", "You")) }
                 if (!member.playsAudio) {
                     Spacer(Modifier.width(8.dp))
-                    Icon(Icons.Rounded.VolumeOff, tr("d_not_playing_here", "Not playing on this device"), tint = DesktopSecondary, modifier = Modifier.size(16.dp))
+                    Icon(Icons.AutoMirrored.Rounded.VolumeOff, tr("d_not_playing_here", "Not playing on this device"), tint = PartySecondary, modifier = Modifier.size(16.dp))
                 }
             }
             // "Away" rather than offline: the seat is still theirs while a connection comes back.
@@ -903,7 +933,7 @@ private fun MemberRow(member: PartyMember, devices: List<PartyMember>, isYou: Bo
                 else -> null
             }
             if (line != null) {
-                Text(line, color = DesktopSecondary, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(line, color = PartySecondary, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
         if (member.isHost) {
@@ -924,7 +954,7 @@ private fun PartyAvatar(url: String?, size: Int, fallback: String = "") {
             contentAlignment = Alignment.Center,
         ) {
             if (fallback.isNotBlank()) Text(fallback.take(1).uppercase(), fontWeight = FontWeight.Bold)
-            else Icon(Icons.Rounded.Person, null, tint = DesktopSecondary, modifier = Modifier.size((size * .55f).dp))
+            else Icon(Icons.Rounded.Person, null, tint = PartySecondary, modifier = Modifier.size((size * .55f).dp))
         }
     }
 }
@@ -934,7 +964,7 @@ private fun Stepper(label: String, enabled: Boolean, onClick: () -> Unit) {
     Box(
         Modifier.size(32.dp).clip(CircleShape).background(DesktopCardInsetFill).clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
-    ) { Text(label, color = if (enabled) Color.White else DesktopSecondary) }
+    ) { Text(label, color = if (enabled) Color.White else PartySecondary) }
 }
 
 @Composable
@@ -961,7 +991,7 @@ private fun PrimaryButton(
 private fun Notice(text: String, destructive: Boolean) {
     Text(
         text,
-        color = if (destructive) DesktopDestructive else DesktopSecondary,
+        color = if (destructive) DesktopDestructive else PartySecondary,
         style = MaterialTheme.typography.bodyMedium,
         modifier = Modifier.fillMaxWidth().desktopCardInset(RoundedCornerShape(12.dp)).padding(14.dp),
     )
@@ -1005,9 +1035,15 @@ private fun PlayHereOption(selected: Boolean, title: String, subtitle: String, e
             .padding(horizontal = 16.dp, vertical = 12.dp),
     ) {
         Text(title, fontWeight = FontWeight.SemiBold, color = if (selected) DesktopAccent else MaterialTheme.colorScheme.onSurface)
-        Text(subtitle, style = MaterialTheme.typography.bodySmall, color = DesktopSecondary)
+        Text(subtitle, style = MaterialTheme.typography.bodySmall, color = PartySecondary)
     }
 }
+
+/**
+ * Secondary text on this panel's solid card: a step lighter than the app's grey, which reads well on
+ * a glass bar but is faint on the inset blocks this panel is made of.
+ */
+private val PartySecondary = Color(0xFFAEAEB4)
 
 /** The desktop's own words in the language in force; a key with no translation reads as the English given. */
 private fun tr(key: String, fallback: String, vararg args: Any?): String =

@@ -22,15 +22,19 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import kotlinx.serialization.json.putJsonArray
 import kotlinx.serialization.json.putJsonObject
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.CancellationException
 import java.security.MessageDigest
 import kotlin.math.min
+
+/** One shared parser: building a `Json` per call is wasteful. */
+private val LenientJson = Json { ignoreUnknownKeys = true }
 
 /**
  * Scrobbling to Last.fm and ListenBrainz.
@@ -44,9 +48,12 @@ object DesktopScrobbling {
     private const val LISTENBRAINZ_ENDPOINT = "https://api.listenbrainz.org/1/submit-listens"
 
     private val client = HttpClient(CIO) {
-        install(ContentNegotiation) { json(Json { ignoreUnknownKeys = true }) }
+        install(ContentNegotiation) { json(LenientJson) }
     }
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
+        System.err.println("DesktopScrobbling uncaught coroutine error: ${throwable.message}")
+    }
+    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO + exceptionHandler)
     private var activeSongId: String? = null
     private var activeStartedAtMs = 0L
     private var timerStartedAtMs = 0L
@@ -90,8 +97,12 @@ object DesktopScrobbling {
             ?: env("BITCHORD_LASTFM_SESSION_KEY")
 
     private fun listenBrainzToken(): String? =
-        DesktopScrobbleSettings.listenBrainzToken.value.takeIf(String::isNotBlank)
-            ?: env("BITCHORD_LISTENBRAINZ_TOKEN")
+        (DesktopScrobbleSettings.listenBrainzToken.value.takeIf(String::isNotBlank)
+            ?: env("BITCHORD_LISTENBRAINZ_TOKEN"))
+            ?.trim()
+            ?.removePrefix("Token ")
+            ?.trim()
+            ?.takeIf(String::isNotBlank)
 
     /**
      * Signs in with a username and password, the way Android's login alert
@@ -107,7 +118,7 @@ object DesktopScrobbling {
             "username" to username,
         )
         val body = postLastFm(values)
-        val session = Json { ignoreUnknownKeys = true }
+        val session = LenientJson
             .parseToJsonElement(body).jsonObject["session"]?.jsonObject
             ?: error("Last.fm did not return a session")
         val name = session["name"]?.jsonPrimitive?.contentOrNull ?: username
@@ -168,7 +179,11 @@ object DesktopScrobbling {
                     }
                 }
                 if (shouldSend && lastFmConfigured) {
-                    submitLastFm(song, activeStartedAtMs / 1_000L)
+                    runCatching {
+                        submitLastFm(song, activeStartedAtMs / 1_000L)
+                    }.onFailure { ex ->
+                        System.err.println("Last.fm scrobble failed: ${ex.message}")
+                    }
                 }
             }
         }
@@ -185,13 +200,23 @@ object DesktopScrobbling {
             try {
                 val minDurationMs = DesktopScrobbleSettings.minDuration.value * 1_000L
                 if (!lastFmScrobbled && lastFmConfigured && song.durationMillis() > minDurationMs) {
-                    submitLastFm(song, startedAt / 1_000L)
+                    runCatching {
+                        submitLastFm(song, startedAt / 1_000L)
+                    }.onFailure { ex ->
+                        System.err.println("Last.fm playback-ended scrobble failed: ${ex.message}")
+                    }
                 }
                 if (listenBrainzConfigured) {
-                    submitListenBrainz(song, "single", startedAt, song.durationMillis(), System.currentTimeMillis() / 1_000L)
+                    runCatching {
+                        submitListenBrainz(song, "single", startedAt, song.durationMillis(), System.currentTimeMillis() / 1_000L)
+                    }.onFailure { ex ->
+                        System.err.println("ListenBrainz playback-ended scrobble failed: ${ex.message}")
+                    }
                 }
-            } catch (_: CancellationException) {
-                throw CancellationException()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (t: Throwable) {
+                System.err.println("DesktopScrobbling onPlaybackEnded unexpected error: ${t.message}")
             }
         }
     }
@@ -250,7 +275,7 @@ object DesktopScrobbling {
             // Last.fm answers a wrong password with a 403 and a message worth
             // showing, so the body is what the login dialog reports.
             runCatching {
-                Json { ignoreUnknownKeys = true }
+                LenientJson
                     .parseToJsonElement(body).jsonObject["message"]?.jsonPrimitive?.contentOrNull
             }.getOrNull() ?: "Last.fm returned HTTP ${response.status.value}"
         }

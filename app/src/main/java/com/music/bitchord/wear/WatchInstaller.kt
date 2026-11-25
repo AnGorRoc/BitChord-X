@@ -7,7 +7,6 @@ import android.net.nsd.NsdServiceInfo
 import android.os.Build
 import android.util.Log
 import com.google.android.gms.tasks.Tasks
-import com.google.android.gms.wearable.CapabilityClient
 import com.google.android.gms.wearable.ChannelClient
 import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.PutDataRequest

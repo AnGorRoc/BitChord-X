@@ -12,10 +12,8 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Button
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -41,7 +39,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.luminance
@@ -60,7 +57,6 @@ import com.music.bitchord.data.AppUpdateChecker
 import com.music.bitchord.data.settings.AppSettings
 import dev.chrisbanes.haze.HazeState
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
-import dev.chrisbanes.haze.materials.HazeMaterials
 import kotlinx.coroutines.launch
 
 /** UIAlertController's own metrics: fixed narrow width, 14pt corner, 44pt rows. */

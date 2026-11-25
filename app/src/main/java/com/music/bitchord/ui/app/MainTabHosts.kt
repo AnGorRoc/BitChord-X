@@ -156,7 +156,6 @@ internal fun ExploreTabHost(
     pullState: PullToRefreshState,
     contentPadding: PaddingValues,
     shelfSong: (ShelfItem) -> Song?,
-    onPlayRadio: (Song, QueueSource) -> Unit,
     onPlayFromShelf: (ShelfItem, List<ShelfItem>?, QueueSource) -> Unit,
     onPlayFrom: (List<Song>, Int, QueueSource) -> Unit,
     onAddToQueue: (Song) -> Unit,
@@ -200,6 +199,8 @@ internal fun ExploreTabHost(
         val newReleasesState by viewModel.newReleases.collectAsStateWithLifecycle()
         val liveState by viewModel.live.collectAsStateWithLifecycle()
         val liveStation by viewModel.liveStation.collectAsStateWithLifecycle()
+        val djSetsState by viewModel.djSets.collectAsStateWithLifecycle()
+        val djSetCategory by viewModel.djSetCategory.collectAsStateWithLifecycle()
 
         ExploreScreen(
             state = exploreState,
@@ -293,6 +294,19 @@ internal fun ExploreTabHost(
             onLiveStationChange = viewModel::selectLiveStation,
             onBroadcastClick = onPlayBroadcast,
             onRetryLive = { viewModel.loadLive(force = true) },
+            djSetsState = djSetsState,
+            djSetCategory = djSetCategory,
+            onDjSetCategoryChange = viewModel::selectDjSetCategory,
+            onDjSetClick = { setSong ->
+                val list = (djSetsState as? UiState.Success)?.data.orEmpty()
+                val idx = list.indexOfFirst { it.videoId == setSong.videoId }.coerceAtLeast(0)
+                if (list.isNotEmpty()) {
+                    onPlayFrom(list, idx, QueueSource("DJ Sets", PlaybackSourceType.EXPLORE))
+                } else {
+                    onPlayFrom(listOf(setSong), 0, QueueSource("DJ Sets", PlaybackSourceType.EXPLORE))
+                }
+            },
+            onRetryDjSets = { viewModel.loadDjSets(force = true) },
         )
     }
 }
@@ -317,7 +331,6 @@ internal fun SearchTabHost(
     onSongSwipe: (Song) -> Unit,
     onSongSwipeAction: (Song, SongSwipeAction) -> Unit,
     onSongHoldPlaylist: (Song) -> Unit,
-    onSetPlaylistTarget: (Song) -> Unit,
     onOpenBrowseMenu: (BrowseTarget) -> Unit,
     onBlockedAddonSongClick: (Song) -> Unit,
 ) {
@@ -339,6 +352,7 @@ internal fun SearchTabHost(
     val addonHistory by viewModel.addonSearchHistory.collectAsStateWithLifecycle()
     val searchLoadingMore by viewModel.searchLoadingMore.collectAsStateWithLifecycle()
     val searchScrollReset by viewModel.searchScrollReset.collectAsStateWithLifecycle()
+    val djSetsAvailable by viewModel.djSetsAvailable.collectAsStateWithLifecycle()
 
     SearchScreen(
         query = query,
@@ -347,6 +361,7 @@ internal fun SearchTabHost(
         currentSong = currentSong,
         isPlaying = isPlaying,
         onFilterChange = viewModel::onFilterChange,
+        showDjSetsFilter = djSetsAvailable,
         results = results,
         loadingMore = searchLoadingMore,
         onLoadMore = viewModel::loadMoreSearchResults,

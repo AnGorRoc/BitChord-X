@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.SwitchColors
 import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -64,9 +63,7 @@ fun IosSwitch(
     checked: Boolean,
     onCheckedChange: ((Boolean) -> Unit)?,
     modifier: Modifier = Modifier,
-    @Suppress("UNUSED_PARAMETER") thumbContent: (@Composable () -> Unit)? = null,
     enabled: Boolean = true,
-    @Suppress("UNUSED_PARAMETER") colors: SwitchColors? = null,
 ) {
     val dark = MaterialTheme.colorScheme.background.luminance() < 0.5f
     val interaction = remember { MutableInteractionSource() }

@@ -15,6 +15,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -37,15 +39,53 @@ jobs:
               check=True
           )
           pages = json.loads(res.stdout)
-          users = []
+          ai_exclude = {
+              'claude', 'copilot', 'chatgpt', 'gemini', 'cursor',
+              'antigravity', 'deepseek', 'openai', 'openbot', 'openbotgit',
+              'hermes-agent', 'github-actions', 'dependabot', 'sourcery',
+              'coderabbit', 'allcontributors'
+          }
+          bitchordx_contributors = [
+              'AnGorRoc', 'fvkinGordo', 'Galaxyyss', 'ArekatlaNishanthchowdary',
+              'Hitomatito', 'jhojhocraazy', 'uveshm003', 'VictorZanelo',
+              'markandreydc', 'peledson11', 'Om-anand-0', 'stuntsnakee'
+          ]
+          def is_ai_or_bot(login):
+              l = login.lower()
+              return '[bot]' in l or l.endswith('-bot') or l.endswith('_bot') or any(k in l for k in ai_exclude)
+
+          bx_logins = {u.lower() for u in bitchordx_contributors}
+          try:
+              out = subprocess.check_output(
+                  ['git', 'log', '04f64c9f11bd2714d01bbc6da401f146f3d9399f..HEAD', '--format=%ae %an'],
+                  stderr=subprocess.DEVNULL
+              ).decode('utf-8', errors='ignore')
+              for line in out.splitlines():
+                  line = line.strip().lower()
+                  if 'noreply.github.com' in line:
+                      user = line.split()[0].split('@')[0].split('+')[-1]
+                      if not is_ai_or_bot(user):
+                          bx_logins.add(user)
+          except Exception:
+              pass
+
+          bx_priority = {u.lower(): i for i, u in enumerate(bitchordx_contributors)}
+          bx_users = []
+          upstream_users = []
+
           for page in pages:
               for c in page:
                   login = c.get('login', '')
-                  if c.get('type') == 'User' and not login.endswith('[bot]'):
-                      users.append(login)
+                  if c.get('type') == 'User' and not is_ai_or_bot(login):
+                      if login.lower() in bx_logins:
+                          bx_users.append(login)
+                      else:
+                          upstream_users.append(login)
 
-          contributor_lines = [f'- [@{u}](https://github.com/{u})' for u in users]
-          new_section = '\n'.join(contributor_lines)
+          bx_users.sort(key=lambda u: bx_priority.get(u.lower(), 999))
+
+          new_section = '### BitChord-X Contributors\n\n' + '\n'.join(f'- [@{u}](https://github.com/{u})' for u in bx_users)
+          new_section += '\n\n### Original BitChord Contributors\n\n' + '\n'.join(f'- [@{u}](https://github.com/{u})' for u in upstream_users)
 
           with open('MAINTAINERS.md', 'r', encoding='utf-8') as f:
               content = f.read()
@@ -53,7 +93,7 @@ jobs:
           pattern = re.compile(r'(<!-- BEGIN CONTRIBUTORS -->\n)(.*?)(<!-- END CONTRIBUTORS -->)', re.DOTALL)
           updated = pattern.sub(lambda m: m.group(1) + new_section + '\n' + m.group(3), content)
 
-          with open('MAINTAINERS.md', 'w', encoding='utf-8') as f:
+          with open('MAINTAINERS.md', 'w', encoding='utf-8', newline='\n') as f:
               f.write(updated)
           "
 

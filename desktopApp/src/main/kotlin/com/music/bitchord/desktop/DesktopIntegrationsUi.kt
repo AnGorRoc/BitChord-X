@@ -256,8 +256,9 @@ internal fun DesktopListenBrainzTokenDialog(onDismiss: () -> Unit) {
     LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
 
     fun save() {
-        DesktopScrobbleSettings.setListenBrainzToken(token.trim())
-        DesktopScrobbleSettings.setListenBrainzEnabled(token.isNotBlank())
+        val sanitized = token.trim().removePrefix("Token ").trim()
+        DesktopScrobbleSettings.setListenBrainzToken(sanitized)
+        DesktopScrobbleSettings.setListenBrainzEnabled(sanitized.isNotBlank())
         onDismiss()
     }
 

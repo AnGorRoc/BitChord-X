@@ -68,8 +68,9 @@ internal object DesktopScrobbleSettings {
         write(_listenBrainzPrimaryArtistOnly, KEY_LISTENBRAINZ_PRIMARY_ARTIST, value)
 
     fun setListenBrainzToken(value: String) {
-        persistence.saveString(KEY_LISTENBRAINZ_TOKEN, value)
-        _listenBrainzToken.value = value
+        val sanitized = value.trim().removePrefix("Token ").trim()
+        persistence.saveString(KEY_LISTENBRAINZ_TOKEN, sanitized)
+        _listenBrainzToken.value = sanitized
     }
 
     fun setLastfmApiKey(value: String) {

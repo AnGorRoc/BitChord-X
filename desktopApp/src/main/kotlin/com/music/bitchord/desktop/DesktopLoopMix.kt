@@ -3,9 +3,6 @@ package com.music.bitchord.desktop
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlin.math.abs
-import kotlin.math.max
-import kotlin.math.roundToLong
 
 /**
  * Desktop LoopMix integration: renders synchronized loop mixes and provides

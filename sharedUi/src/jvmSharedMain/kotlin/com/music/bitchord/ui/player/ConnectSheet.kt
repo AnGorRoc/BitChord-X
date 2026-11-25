@@ -1,7 +1,6 @@
 package com.music.bitchord.ui.player
 
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -12,11 +11,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -27,7 +23,6 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.rounded.VolumeDown
 import androidx.compose.material.icons.automirrored.rounded.VolumeOff
 import androidx.compose.material.icons.automirrored.rounded.VolumeUp
@@ -48,7 +43,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -206,12 +200,17 @@ internal fun ConnectSheet(
             Spacer(Modifier.height(10.dp))
             SectionLabel(stringResource(Res.string.connect_party))
             if (party.inParty) {
-                ActionRow(
-                    title = stringResource(Res.string.connect_view_party),
-                    subtitle = party.hostName?.let { stringResource(Res.string.connect_in_party_of, it) }
-                        ?: party.code?.let { stringResource(Res.string.listen_together_in_party, it) },
-                    onClick = { drawerDismiss { onOpenParty() } },
-                )
+                // Whose party, then the way in: the same filled capsule as Start a party, so the
+                // party's one action looks like one whether or not there is a party yet.
+                (party.hostName?.let { stringResource(Res.string.connect_in_party_of, it) }
+                    ?: party.code?.let { stringResource(Res.string.listen_together_in_party, it) })
+                    ?.let { Hint(it) }
+                ActionPill(
+                    text = stringResource(Res.string.connect_view_party),
+                    icon = BitChordIcons.PartyStart,
+                    filled = true,
+                    modifier = Modifier.fillMaxWidth(),
+                ) { drawerDismiss { onOpenParty() } }
             } else {
                 // Starting a party is the way in, so it is the filled one; joining is for somebody who
                 // already has a code, and says so in words instead of an unlabelled circle.
@@ -487,22 +486,20 @@ private fun DeviceRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
-            if (subtitle != null) {
-                Spacer(Modifier.height(2.dp))
-                Text(
-                    text = subtitle,
-                    style = MaterialTheme.typography.labelMedium,
-                    color = if (device.unreachable || device.noControl) {
-                        Color(0xFFFFB454).copy(alpha = alpha)
-                    } else if (device.controlledBy != null || device.controlling != null) {
-                        MaterialTheme.colorScheme.primary.copy(alpha = alpha)
-                    } else {
-                        Color.White.copy(alpha = 0.6f * alpha)
-                    },
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.labelMedium,
+                color = if (device.unreachable || device.noControl) {
+                    Color(0xFFFFB454).copy(alpha = alpha)
+                } else if (device.controlledBy != null || device.controlling != null) {
+                    MaterialTheme.colorScheme.primary.copy(alpha = alpha)
+                } else {
+                    Color.White.copy(alpha = 0.6f * alpha)
+                },
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
         if (connecting) {
             CircularProgressIndicator(
@@ -536,39 +533,6 @@ private fun DeviceRow(
                 }
             }
         }
-    }
-}
-
-@Composable
-private fun ActionRow(title: String, subtitle: String?, leading: ImageVector? = null, onClick: () -> Unit) {
-    val haptics = rememberHaptics()
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(ROW_SHAPE)
-            .background(Color.White.copy(alpha = 0.14f))
-            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
-                haptics.play(Haptic.Select)
-                onClick()
-            }
-            .padding(horizontal = 14.dp, vertical = 12.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (leading != null) {
-            Box(
-                modifier = Modifier.size(40.dp).clip(CircleShape).background(Color.White.copy(alpha = 0.10f)),
-                contentAlignment = Alignment.Center,
-            ) { Icon(leading, null, tint = Color.White.copy(alpha = 0.85f), modifier = Modifier.size(20.dp)) }
-            Spacer(Modifier.width(13.dp))
-        }
-        Column(Modifier.weight(1f)) {
-            Text(title, style = MaterialTheme.typography.bodyLarge, color = Color.White.copy(alpha = 0.95f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            if (subtitle != null) {
-                Spacer(Modifier.height(2.dp))
-                Text(subtitle, style = MaterialTheme.typography.labelMedium, color = Color.White.copy(alpha = 0.70f), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            }
-        }
-        Icon(Icons.AutoMirrored.Rounded.KeyboardArrowRight, null, tint = Color.White.copy(alpha = 0.35f), modifier = Modifier.size(20.dp))
     }
 }
 

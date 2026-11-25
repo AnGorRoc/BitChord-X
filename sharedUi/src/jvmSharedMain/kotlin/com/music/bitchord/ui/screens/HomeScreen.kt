@@ -11,7 +11,6 @@ import com.music.bitchord.ui.AppUi
 import com.music.bitchord.sharedui.resources.*
 import org.jetbrains.compose.resources.painterResource
 import org.jetbrains.compose.resources.DrawableResource
-import androidx.compose.foundation.Image
 import org.jetbrains.compose.resources.stringResource
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -45,7 +44,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshState
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
@@ -72,7 +70,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Cached
 import androidx.compose.material.icons.rounded.Folder
 import androidx.compose.material.icons.rounded.LibraryMusic
-import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Storage
 import com.music.bitchord.ui.icons.BitChordIcons
@@ -275,7 +272,7 @@ fun HomeScreen(
             },
         ) {
             if (title != null) {
-                item { HomeTitle(title, replayYear) }
+                item { HomeTitle(replayYear) }
             }
             if (!signedIn && onSignIn != null) {
                 item {
@@ -346,7 +343,6 @@ fun HomeScreen(
                             HeroBillboardSpotlight(
                                 item = spotlightItem,
                                 onClick = { onItemClick(spotlightItem, "Spotlight") },
-                                onLongPress = onItemLongPress?.let { { it(spotlightItem) } },
                                 modifier = Modifier
                                     .animateItem()
                                     .padding(start = PAGE_GUTTER, end = PAGE_GUTTER, bottom = SPOTLIGHT_GAP),
@@ -682,7 +678,6 @@ fun CompactTrackRow(
  */
 @Composable
 private fun HomeTitle(
-    title: String,
     replayYear: ReplayYearBadge? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -709,12 +704,6 @@ private fun HomeTitle(
                 ReplayYearButton(replayYear, height = logoHeight * 0.68f)
             }
         }
-        // "Listen now" is hidden for now; the wordmark above stays.
-        // Text(
-        //     text = title,
-        //     style = style,
-        //     color = MaterialTheme.colorScheme.onBackground,
-        // )
     }
 }
 
@@ -986,7 +975,6 @@ private fun HeroShelf(
 private fun HeroBillboardSpotlight(
     item: ShelfItem,
     onClick: () -> Unit,
-    onLongPress: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
     val offlineBlocked = AppUi.host.unplayableOffline(videoId = item.videoId, browseId = item.browseId)
@@ -1033,7 +1021,7 @@ private fun HeroBillboardSpotlight(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(
-                text = "DESTACADO",
+                text = stringResource(Res.string.featured_badge),
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = FontWeight.Bold,
                 color = Color.White,
@@ -1084,7 +1072,7 @@ private fun HeroBillboardSpotlight(
                     modifier = Modifier.size(18.dp),
                 )
                 Text(
-                    text = "Reproducir",
+                    text = stringResource(Res.string.play),
                     style = MaterialTheme.typography.labelMedium,
                     fontWeight = FontWeight.Bold,
                     color = Color.Black,

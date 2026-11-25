@@ -1,6 +1,5 @@
 package com.music.bitchord.desktop
 
-import com.music.bitchord.data.model.SearchFilter
 import com.music.bitchord.data.model.SearchResult
 import com.music.bitchord.data.model.Song
 import io.ktor.client.HttpClient

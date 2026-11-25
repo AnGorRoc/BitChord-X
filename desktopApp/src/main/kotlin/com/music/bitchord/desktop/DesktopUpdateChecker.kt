@@ -11,7 +11,6 @@ import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 
 /**
@@ -35,7 +34,7 @@ internal object DesktopUpdateChecker {
     private const val LATEST_RELEASE_URL =
         "https://api.github.com/repos/AnGorRoc/BitChord-X/releases/latest"
 
-    val currentVersion: String = System.getProperty("bitchord.version") ?: "1.10.0"
+    val currentVersion: String = System.getProperty("bitchord.version") ?: "1.10.1"
 
     private val json = Json { ignoreUnknownKeys = true }
 

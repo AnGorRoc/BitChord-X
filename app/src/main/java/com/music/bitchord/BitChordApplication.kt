@@ -43,6 +43,7 @@ import com.music.bitchord.data.sources.SourceRegistry
 import com.music.bitchord.data.tidal.TidalInstances
 import com.music.bitchord.data.stats.ArtistFacts
 import com.music.bitchord.data.stats.ListeningStats
+import com.music.bitchord.data.stats.routeStatsWarningsToLogcat
 import com.music.bitchord.download.Downloads
 import androidx.work.Configuration
 import kotlinx.coroutines.CoroutineScope
@@ -208,6 +209,7 @@ class BitChordApplication : Application(), SingletonImageLoader.Factory, Configu
         // The device's own listening record. Opened here rather than in
         // PlaybackService because the Replay page reads it from the UI side and
         // both live in this process — one owner, one directory.
+        routeStatsWarningsToLogcat()
         ListeningStats.init(this)
         // After AppSettings, whose switch decides whether half of it runs.
         ArtistFacts.apiKeyProvider = { BuildConfig.LASTFM_API_KEY }

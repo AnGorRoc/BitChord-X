@@ -83,7 +83,7 @@ private const val REPAINT_TIMEOUT_MS = 700L
 private const val DEFERRED_RELEASE_MS = 1_000L
 
 /** Duration of the smooth fade-in when a clip's first transformed frame lands. */
-private const val CANVAS_FADE_DURATION_MS = 320
+private const val CANVAS_FADE_DURATION_MS = 500
 
 /** Maximum longest edge for synchronous transition still captures. */
 private const val STILL_CAPTURE_MAX_PX = 720

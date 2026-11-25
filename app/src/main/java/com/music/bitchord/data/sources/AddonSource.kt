@@ -2,7 +2,6 @@ package com.music.bitchord.data.sources
 
 import com.music.bitchord.data.TrackLog
 import com.music.bitchord.data.model.Song
-import com.music.bitchord.data.settings.AppSettings
 import com.music.bitchord.data.sources.addon.AddonClient
 import com.music.bitchord.data.sources.addon.AddonException
 import com.music.bitchord.data.sources.addon.AddonManifest

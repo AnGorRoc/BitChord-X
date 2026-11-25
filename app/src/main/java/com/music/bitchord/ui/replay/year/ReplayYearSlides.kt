@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -28,7 +27,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.CompositingStrategy
@@ -53,7 +51,6 @@ import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
@@ -98,7 +95,7 @@ fun YearSlideContent(slide: YearSlide, year: ReplayYear, palette: MeshPalette) {
             .padding(top = CHROME_HEIGHT + 6.dp, bottom = 72.dp),
     ) {
         when (slide) {
-            YearSlide.OPENER -> Opener(year, accent, confetti)
+            YearSlide.OPENER -> Opener(year, confetti)
             YearSlide.MINUTES -> Minutes(year, accent, confetti)
             YearSlide.BUSIEST_DAY -> BusiestDay(year, accent)
             YearSlide.CLOCK -> Clock(year, accent)
@@ -147,7 +144,7 @@ private fun SetupLine(text: String, start: Long = 120) {
 // ── Cards ───────────────────────────────────────────────────────────────────
 
 @Composable
-private fun ColumnScope.Opener(year: ReplayYear, accent: Color, confetti: List<Color>) {
+private fun ColumnScope.Opener(year: ReplayYear, confetti: List<Color>) {
     val clock = LocalSlideClock.current
     val reveal = YearSlide.OPENER.revealAtMs
     // The title first, set and timed like every other card's opening line.

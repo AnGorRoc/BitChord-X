@@ -1,7 +1,6 @@
 package com.music.bitchord.data.sources
 
 import android.net.Uri
-import android.util.Log
 import com.music.bitchord.R
 import com.music.bitchord.data.TrackLog
 import com.music.bitchord.data.model.Song

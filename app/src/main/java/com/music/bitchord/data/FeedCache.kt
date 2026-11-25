@@ -138,6 +138,8 @@ object FeedCache {
                     .forEach(::remove)
             }
         }
+        // Explore saved before it was kept per language; no key reads it any more.
+        if (sp.contains(KEY_EXPLORE)) homeWriter.write { remove(KEY_EXPLORE) }
         pendingContext = null
         prefs = sp
     }

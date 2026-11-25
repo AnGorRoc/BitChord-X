@@ -53,23 +53,16 @@ import androidx.compose.material.icons.rounded.CloudOff
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.Dns
 import androidx.compose.material.icons.rounded.Lock
-import androidx.compose.material.icons.rounded.Login
 import androidx.compose.material.icons.rounded.Logout
 import androidx.compose.material.icons.rounded.MusicNote
-import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.Person
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.rounded.SkipNext
-import androidx.compose.material.icons.rounded.SkipPrevious
 import androidx.compose.material.icons.rounded.Share
 import androidx.compose.material3.Button
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.ui.res.pluralStringResource
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Surface
@@ -200,8 +193,6 @@ private fun NameDialog(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ListenTogetherScreen(
-    signedIn: Boolean,
-    onSignIn: () -> Unit,
     contentPadding: PaddingValues,
     /**
      * Opens the server editor, which is mounted at the root rather than here.
@@ -341,9 +332,11 @@ fun ListenTogetherScreen(
     /** The system chooser, with the link and the spoken-aloud code together. */
     val shareInvite: () -> Unit = {
         state.code?.let { partyCode ->
-            val message = inviteLinkFor(partyCode) +
+            // The link goes last, alone on its line: some apps drop the line breaks and glue
+            // whatever follows the link onto its code.
+            val message = context.getString(R.string.listen_together_share_text, partyCode) +
                 System.lineSeparator() + System.lineSeparator() +
-                context.getString(R.string.listen_together_share_text, partyCode)
+                inviteLinkFor(partyCode)
             context.startActivity(
                 Intent.createChooser(
                     Intent(Intent.ACTION_SEND).apply {

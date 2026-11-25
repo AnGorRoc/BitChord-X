@@ -825,10 +825,20 @@ object ListenTogether {
         return job.await()
     }
 
-    fun nickname(): String = prefs.getString(KEY_NICKNAME, null).orEmpty()
+    fun nickname(): String {
+        val configured = com.music.bitchord.data.settings.AppSettings.userName.value.takeIf { it.isNotBlank() }
+        if (configured != null) return configured
+        return if (this::prefs.isInitialized) prefs.getString(KEY_NICKNAME, null).orEmpty() else ""
+    }
 
     fun setNickname(value: String) {
-        prefs.edit().putString(KEY_NICKNAME, value.trim().take(80)).apply()
+        val trimmed = value.trim().take(80)
+        if (this::prefs.isInitialized) {
+            prefs.edit().putString(KEY_NICKNAME, trimmed).apply()
+        }
+        if (com.music.bitchord.data.settings.AppSettings.userName.value != trimmed) {
+            com.music.bitchord.data.settings.AppSettings.userName.value = trimmed
+        }
     }
 
     /**
@@ -1787,10 +1797,13 @@ object ListenTogether {
      */
     private fun guestIdentity(nickname: String): Identity {
         val device = deviceId()
+        val name = nickname.trim().takeIf { it.isNotBlank() }
+            ?: com.music.bitchord.data.settings.AppSettings.userName.value.trim().takeIf { it.isNotBlank() }
+            ?: com.music.bitchord.data.settings.AppSettings.defaultUserName()
         return Identity(
             userId = "guest-" + sha256("guest:$device").take(32),
             deviceId = device,
-            name = nickname.trim().takeIf { it.isNotBlank() } ?: "Guest",
+            name = name,
             avatar = null,
         )
     }
@@ -1803,10 +1816,11 @@ object ListenTogether {
         val profile = account.profiles.firstOrNull { it.profileId == account.activeProfileId }
             ?: account.profiles.firstOrNull()
         val name = nickname.trim().takeIf { it.isNotBlank() }
-            ?: profile?.name?.takeIf { it.isNotBlank() }
-            ?: account.name.takeIf { it.isNotBlank() }
-            ?: account.email.substringBefore('@').takeIf { it.isNotBlank() }
-            ?: return null
+            ?: com.music.bitchord.data.settings.AppSettings.userName.value.trim().takeIf { it.isNotBlank() }
+            ?: profile?.name?.trim()?.takeIf { it.isNotBlank() }
+            ?: account.name.trim().takeIf { it.isNotBlank() }
+            ?: account.email.substringBefore('@').trim().takeIf { it.isNotBlank() }
+            ?: com.music.bitchord.data.settings.AppSettings.defaultUserName()
         return Identity(
             userId = sha256("${account.accountId}:${profile?.profileId.orEmpty()}").take(32),
             deviceId = deviceId(),

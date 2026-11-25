@@ -23,7 +23,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import com.music.bitchord.ui.components.PillSegmentedControl
 import com.music.bitchord.ui.components.longPressMenuClickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -45,17 +44,11 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.History
-import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.NorthWest
-import androidx.compose.material.icons.rounded.PlayArrow
-import androidx.compose.material.icons.automirrored.rounded.PlaylistAdd
 import androidx.compose.material.icons.rounded.Search
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -70,7 +63,6 @@ import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
@@ -89,7 +81,6 @@ import com.music.bitchord.data.model.SearchHistoryEntity
 import com.music.bitchord.data.model.EntityType
 import com.music.bitchord.ui.components.MessageState
 import com.music.bitchord.ui.components.PAGE_GUTTER
-import com.music.bitchord.ui.components.RowMoreButton
 import com.music.bitchord.ui.components.ROW_DIVIDER_INSET
 import com.music.bitchord.ui.components.SearchField
 import com.music.bitchord.ui.components.SongRow
@@ -107,6 +98,7 @@ fun SearchScreen(
     currentSong: Song?,
     isPlaying: Boolean,
     onFilterChange: (SearchFilter) -> Unit,
+    showDjSetsFilter: Boolean = false,
     results: UiState<List<SearchResult>>?,
     loadingMore: Boolean,
     onLoadMore: () -> Unit,
@@ -279,10 +271,18 @@ fun SearchScreen(
                         }
                     }
                 }
+                val visibleFilters = remember(showDjSetsFilter, filter) {
+                    SearchFilter.entries.filter {
+                        it != SearchFilter.DJ_SETS || showDjSetsFilter || filter == SearchFilter.DJ_SETS
+                    }
+                }
+                val djSetsLabel = stringResource(Res.string.search_filter_dj_sets)
                 PillSegmentedControl(
-                    options = SearchFilter.entries.map { it.label },
-                    selectedIndex = filter.ordinal,
-                    onSelect = { onFilterChange(SearchFilter.entries[it]) },
+                    options = visibleFilters.map {
+                        if (it == SearchFilter.DJ_SETS) djSetsLabel else it.label
+                    },
+                    selectedIndex = visibleFilters.indexOf(filter).coerceAtLeast(0),
+                    onSelect = { onFilterChange(visibleFilters[it]) },
                     modifier = Modifier.padding(start = PAGE_GUTTER, end = PAGE_GUTTER, bottom = 6.dp),
                 )
             }
@@ -460,11 +460,6 @@ fun SearchScreen(
         }
     }
 }
-
-private data class SearchSection(
-    val title: String?,
-    val rows: List<SearchResult>,
-)
 
 /**
  * The Library source's page: the Local Music folder's tracks that match, as

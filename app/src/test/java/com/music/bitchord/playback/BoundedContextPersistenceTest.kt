@@ -6,7 +6,6 @@ import com.music.bitchord.data.model.PlaybackSourceType
 import com.music.bitchord.data.model.QueueTier
 import com.music.bitchord.data.model.Song
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -92,7 +91,6 @@ class BoundedContextPersistenceTest {
                 requireNotNull(
                     BoundedContextPersistence.encode(
                         state(
-                            canonical,
                             source,
                             window,
                             entries = listOf(entry("current", QueueTier.CONTEXT, 0, 0L)),
@@ -119,7 +117,6 @@ class BoundedContextPersistenceTest {
             entry("old-3", QueueTier.CONTEXT, 2, 0L),
         )
         val state = state(
-            canonical = canonical,
             source = source,
             window = window.snapshot(),
             entries = history + listOf(
@@ -148,7 +145,6 @@ class BoundedContextPersistenceTest {
         val canonical = List(4) { song("track-$it") }
         val window = QueueWindow(4).startAt(1)
         val state = state(
-            canonical = canonical,
             source = source,
             window = window.snapshot(),
             entries = listOf(
@@ -176,7 +172,6 @@ class BoundedContextPersistenceTest {
         val canonical = List(3) { song("track-$it") }
         val window = QueueWindow(3).startAt(1)
         val state = state(
-            canonical,
             source,
             window.snapshot(),
             entries = listOf(
@@ -205,7 +200,6 @@ class BoundedContextPersistenceTest {
             entry("current-auto-tail", QueueTier.AUTOPLAY),
         )
         val userCurrent = state(
-            canonical = canonical,
             source = source,
             window = window.snapshot(),
             entries = entries,
@@ -232,7 +226,6 @@ class BoundedContextPersistenceTest {
         assertEquals(1L, current.cycleId)
 
         val state = state(
-            canonical = canonical,
             source = source,
             window = window.snapshot(),
             entries = listOf(
@@ -254,7 +247,6 @@ class BoundedContextPersistenceTest {
         val canonical = List(3) { song("track-$it") }
         val window = QueueWindow(3).startAt(1)
         val valid = state(
-            canonical,
             source,
             window.snapshot(),
             entries = listOf(entry("current", QueueTier.CONTEXT, 1, 0L)),
@@ -278,7 +270,6 @@ class BoundedContextPersistenceTest {
         val canonical = List(2) { song("track-$it") }
         val window = QueueWindow(2).startAt(0)
         val state = state(
-            canonical,
             source,
             window.snapshot(),
             entries = listOf(entry("current", QueueTier.CONTEXT, 0, 0L)),
@@ -305,7 +296,6 @@ class BoundedContextPersistenceTest {
             val window = QueueWindow(size, shuffleSeed = 55L).startAt(size / 2, shuffle = true)
             val logical = window.upcoming(25)
             val state = state(
-                canonical,
                 source,
                 window.snapshot(),
                 entries = listOf(entry("current", QueueTier.CONTEXT, size / 2, 0L)) +
@@ -347,7 +337,6 @@ class BoundedContextPersistenceTest {
     )
 
     private fun state(
-        canonical: List<Song>,
         source: QueueSource,
         window: QueueWindowSnapshot,
         entries: List<BoundedContextPersistence.Entry>,

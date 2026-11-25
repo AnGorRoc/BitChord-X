@@ -52,6 +52,15 @@ object DeviceLink {
     /** Whether the app's UI is active in the foreground on this device. */
     val appInForeground: StateFlow<Boolean> = _appInForeground.asStateFlow()
 
+    private val _remoteActive = MutableStateFlow(false)
+
+    /** Whether another of the person's devices is the speaker and this phone is its remote. */
+    val remoteActive: StateFlow<Boolean> = _remoteActive.asStateFlow()
+
+    fun setRemoteActive(active: Boolean) {
+        _remoteActive.value = active
+    }
+
     fun setServiceRunning(running: Boolean) {
         _serviceRunning.value = running
     }

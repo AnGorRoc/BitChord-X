@@ -10,6 +10,7 @@ import com.music.bitchord.data.model.isExactArtistMatch
 import com.music.bitchord.data.model.normalizedArtistName
 import com.music.bitchord.data.model.ArtistPage
 import com.music.bitchord.data.model.BrowseType
+import com.music.bitchord.data.model.DjSetCategory
 import com.music.bitchord.data.model.HomeFeed
 import com.music.bitchord.data.model.HomeShelf
 import com.music.bitchord.data.model.LibraryPage
@@ -25,6 +26,7 @@ import com.music.bitchord.data.model.ShelfItem
 import com.music.bitchord.data.model.ShelfLayout
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.model.SongMenu
+import com.music.bitchord.data.model.TrackFilter
 import com.music.bitchord.data.model.UserPlaylist
 import com.music.bitchord.data.model.VersionTimeMap
 import com.music.bitchord.data.model.WatchTarget
@@ -49,7 +51,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.add
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.putJsonArray
-import java.util.Locale
 import java.util.concurrent.ConcurrentHashMap
 
 /** Suspend API over Innertube. Every call returns a Result so the UI can show a real error. */
@@ -438,6 +439,35 @@ object YtMusicRepository {
     private val liveCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Long, List<Song>>>()
     private const val LIVE_CACHE_MS = 5 * 60_000L
 
+    /**
+     * Continuous DJ sets and enganchados for Explore's DJ Sets section — see [DjSetCategory].
+     * Strictly filtered by [TrackFilter.isDjSetOrEnganchado] so individual remixes,
+     * single tracks, podcasts, and 1-hour loops never appear.
+     */
+    suspend fun djSets(category: DjSetCategory, force: Boolean = false): Result<List<Song>> {
+        val now = System.currentTimeMillis()
+        if (!force) {
+            djSetCache[category.id]?.takeIf { now - it.first < DJ_SET_CACHE_MS }?.let { return Result.success(it.second) }
+        }
+        return call("djsets:${category.id}") {
+            val page = InnertubeParser.parseSearchPage(
+                Innertube.search(category.query, SearchFilter.VIDEOS.params, true),
+                includeVideos = true,
+            )
+            page.rows.mapNotNull { row ->
+                when (row) {
+                    is SearchResult.TopTrack -> row.song
+                    is SearchResult.Track -> row.song
+                    is SearchResult.Browse -> null
+                }
+            }.filter { TrackFilter.isDjSetOrEnganchado(it) }
+                .distinctBy { it.videoId }
+        }.also { result -> result.getOrNull()?.let { djSetCache[category.id] = now to it } }
+    }
+
+    private val djSetCache = java.util.concurrent.ConcurrentHashMap<String, Pair<Long, List<Song>>>()
+    private const val DJ_SET_CACHE_MS = 10 * 60_000L
+
     /** The server-defined mood and genre categories used by Explore. */
     suspend fun moodAndGenres(): Result<List<MoodGenreSection>> = call("moods-and-genres") {
         InnertubeParser.parseMoodAndGenres(Innertube.browse("FEmusic_moods_and_genres"))
@@ -477,21 +507,61 @@ object YtMusicRepository {
      */
     suspend fun searchPage(query: String, filter: SearchFilter, anonymous: Boolean = true): Result<SearchPage> =
         call("search:${filter.name}") {
+            val effectiveQuery = if (filter == SearchFilter.DJ_SETS) {
+                TrackFilter.djSetSearchQuery(query)
+            } else {
+                query
+            }
+            val includeVideos = filter == SearchFilter.VIDEOS || filter == SearchFilter.DJ_SETS
+            val includeMatchingSetVideos = filter == SearchFilter.ALL && TrackFilter.queryRequestsDjSet(query)
             InnertubeParser.parseSearchPage(
-                Innertube.search(query, filter.params, anonymous),
-                includeVideos = filter == SearchFilter.VIDEOS,
+                Innertube.search(effectiveQuery, filter.params, anonymous),
+                includeVideos = includeVideos,
+                includeMatchingSetVideos = includeMatchingSetVideos,
             ).let { page ->
-                SearchPage(page.rows.distinctBy { it.identityKey() }, page.continuation)
+                val deduped = page.rows.distinctBy { it.identityKey() }
+                val refined = when (filter) {
+                    SearchFilter.DJ_SETS -> deduped.filter { row ->
+                        val song = when (row) {
+                            is SearchResult.TopTrack -> row.song
+                            is SearchResult.Track -> row.song
+                            is SearchResult.Browse -> null
+                        }
+                        song != null && TrackFilter.isDjSetOrEnganchado(song)
+                    }
+                    else -> TrackFilter.prioritizeAndFilterSearchResults(deduped, query, filter)
+                }
+                SearchPage(refined, page.continuation)
             }
         }
 
     /** Fetches the next page of a search only when the result list needs it. */
-    suspend fun searchContinuation(token: String, filter: SearchFilter, anonymous: Boolean = true): Result<SearchPage> = call("search:continuation") {
+    suspend fun searchContinuation(
+        token: String,
+        filter: SearchFilter,
+        anonymous: Boolean = true,
+        query: String = "",
+    ): Result<SearchPage> = call("search:continuation") {
+        val includeVideos = filter == SearchFilter.VIDEOS || filter == SearchFilter.DJ_SETS
+        val includeMatchingSetVideos = filter == SearchFilter.ALL && TrackFilter.queryRequestsDjSet(query)
         InnertubeParser.parseSearchPage(
             Innertube.searchContinuation(token, anonymous),
-            includeVideos = filter == SearchFilter.VIDEOS,
+            includeVideos = includeVideos,
+            includeMatchingSetVideos = includeMatchingSetVideos,
         ).let { page ->
-            SearchPage(page.rows.distinctBy { it.identityKey() }, page.continuation)
+            val deduped = page.rows.distinctBy { it.identityKey() }
+            val refined = when (filter) {
+                SearchFilter.DJ_SETS -> deduped.filter { row ->
+                    val song = when (row) {
+                        is SearchResult.TopTrack -> row.song
+                        is SearchResult.Track -> row.song
+                        is SearchResult.Browse -> null
+                    }
+                    song != null && TrackFilter.isDjSetOrEnganchado(song)
+                }
+                else -> TrackFilter.prioritizeAndFilterSearchResults(deduped, query, filter)
+            }
+            SearchPage(refined, page.continuation)
         }
     }
 

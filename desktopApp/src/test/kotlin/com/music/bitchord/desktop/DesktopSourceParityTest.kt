@@ -8,11 +8,6 @@ import kotlin.test.assertNull
 import kotlinx.coroutines.runBlocking
 import com.sun.net.httpserver.HttpServer
 import java.net.InetSocketAddress
-import java.net.URI
-import java.net.http.HttpClient
-import java.net.http.HttpRequest
-import java.net.http.HttpResponse
-import java.util.concurrent.atomic.AtomicReference
 
 class DesktopSourceParityTest {
     @Test

@@ -132,13 +132,13 @@ fun DesktopWebDavDialog(
             modifier = Modifier.widthIn(min = 400.dp, max = 500.dp),
         ) {
             Column(modifier = Modifier.padding(24.dp)) {
-                Text("WebDAV Server Setup", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text(DesktopStrings["d_remote_library_webdav_title", "WebDAV Server Setup"], fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 Spacer(Modifier.height(16.dp))
 
                 OutlinedTextField(
                     value = url,
                     onValueChange = { url = it },
-                    label = { Text("Server URL (e.g. https://dav.box.com/dav)") },
+                    label = { Text(DesktopStrings["d_remote_library_webdav_url", "Server URL (e.g. https://dav.box.com/dav)"]) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -146,7 +146,7 @@ fun DesktopWebDavDialog(
                 OutlinedTextField(
                     value = user,
                     onValueChange = { user = it },
-                    label = { Text("Username") },
+                    label = { Text(DesktopStrings["d_remote_library_username", "Username"]) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -154,7 +154,7 @@ fun DesktopWebDavDialog(
                 OutlinedTextField(
                     value = pass,
                     onValueChange = { pass = it },
-                    label = { Text("Password") },
+                    label = { Text(DesktopStrings["d_remote_library_password", "Password"]) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -186,11 +186,11 @@ fun DesktopWebDavDialog(
                         },
                         enabled = !testing && url.isNotBlank(),
                     ) {
-                        Text("Test Connection")
+                        Text(DesktopStrings["d_remote_library_test", "Test Connection"])
                     }
 
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TextButton(onClick = onDismiss) { Text("Cancel") }
+                        TextButton(onClick = onDismiss) { Text(DesktopStrings["d_remote_library_cancel", "Cancel"]) }
                         Button(
                             onClick = {
                                 persistence.saveWebdavUrl(url)
@@ -200,7 +200,7 @@ fun DesktopWebDavDialog(
                                 onDismiss()
                             },
                         ) {
-                            Text("Save")
+                            Text(DesktopStrings["d_remote_library_save", "Save"])
                         }
                     }
                 }
@@ -231,13 +231,13 @@ fun DesktopSmbDialog(
             modifier = Modifier.widthIn(min = 400.dp, max = 500.dp),
         ) {
             Column(modifier = Modifier.padding(24.dp)) {
-                Text("SMB / Windows Share Setup", fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text(DesktopStrings["d_remote_library_smb_title", "SMB / Windows Share Setup"], fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
                 Spacer(Modifier.height(16.dp))
 
                 OutlinedTextField(
                     value = host,
                     onValueChange = { host = it },
-                    label = { Text("Server / Host (e.g. 192.168.1.50 or nas.local)") },
+                    label = { Text(DesktopStrings["d_remote_library_smb_host", "Server / Host (e.g. 192.168.1.50 or nas.local)"]) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -245,7 +245,7 @@ fun DesktopSmbDialog(
                 OutlinedTextField(
                     value = share,
                     onValueChange = { share = it },
-                    label = { Text("Share Name (e.g. Music)") },
+                    label = { Text(DesktopStrings["d_remote_library_smb_share", "Share Name (e.g. Music)"]) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -253,7 +253,7 @@ fun DesktopSmbDialog(
                 OutlinedTextField(
                     value = basePath,
                     onValueChange = { basePath = it },
-                    label = { Text("Subfolder (optional, e.g. FLAC)") },
+                    label = { Text(DesktopStrings["d_remote_library_smb_subfolder", "Subfolder (optional, e.g. FLAC)"]) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -261,7 +261,7 @@ fun DesktopSmbDialog(
                 OutlinedTextField(
                     value = user,
                     onValueChange = { user = it },
-                    label = { Text("Username") },
+                    label = { Text(DesktopStrings["d_remote_library_username", "Username"]) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -269,7 +269,7 @@ fun DesktopSmbDialog(
                 OutlinedTextField(
                     value = pass,
                     onValueChange = { pass = it },
-                    label = { Text("Password") },
+                    label = { Text(DesktopStrings["d_remote_library_password", "Password"]) },
                     singleLine = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
@@ -301,11 +301,11 @@ fun DesktopSmbDialog(
                         },
                         enabled = !testing && host.isNotBlank() && share.isNotBlank(),
                     ) {
-                        Text("Test Connection")
+                        Text(DesktopStrings["d_remote_library_test", "Test Connection"])
                     }
 
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        TextButton(onClick = onDismiss) { Text("Cancel") }
+                        TextButton(onClick = onDismiss) { Text(DesktopStrings["d_remote_library_cancel", "Cancel"]) }
                         Button(
                             onClick = {
                                 persistence.saveSmbHost(host)
@@ -317,7 +317,7 @@ fun DesktopSmbDialog(
                                 onDismiss()
                             },
                         ) {
-                            Text("Save")
+                            Text(DesktopStrings["d_remote_library_save", "Save"])
                         }
                     }
                 }

@@ -127,7 +127,7 @@ object ArtistFacts {
 
     var apiKeyProvider: () -> String = { "" }
     var replayGenresEnabledProvider: () -> Boolean = { true }
-    var userAgentProvider: () -> String = { "BitChord/1.10.0" }
+    var userAgentProvider: () -> String = { "BitChord/1.10.1" }
     var logWarning: (String, Throwable?) -> Unit = { msg, tr ->
         System.err.println("ArtistFacts: " + msg)
         tr?.printStackTrace()
@@ -249,7 +249,7 @@ object ArtistFacts {
         val body = Http.client.newCall(request).execute().use { response ->
             if (!response.isSuccessful) return
             response.body.string()
-        } ?: return
+        }
 
         val tags = runCatching {
             Json.parseToJsonElement(body).jsonObject["toptags"]

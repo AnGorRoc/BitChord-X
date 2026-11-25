@@ -1041,10 +1041,10 @@ internal object DesktopListenTogether {
         val profile = account.profiles.firstOrNull { it.profileId == active }
             ?: account.profiles.firstOrNull()
         val name = nickname.trim().takeIf { it.isNotBlank() }
-            ?: profile?.name?.takeIf { it.isNotBlank() }
-            ?: account.name.takeIf { it.isNotBlank() }
-            ?: account.email.substringBefore('@').takeIf { it.isNotBlank() }
-            ?: return null
+            ?: profile?.name?.trim()?.takeIf { it.isNotBlank() }
+            ?: account.name.trim().takeIf { it.isNotBlank() }
+            ?: account.email.substringBefore('@').trim().takeIf { it.isNotBlank() }
+            ?: "User"
         return Identity(
             userId = sha256("$accountId:${profile?.profileId.orEmpty()}").take(32),
             deviceId = deviceId(),
