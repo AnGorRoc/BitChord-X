@@ -3885,9 +3885,16 @@ fun BitChordDesktopApp() {
         }
     }
 
-    // The engine's measured stream, as the player's quality badge and stats line read it.
-    LaunchedEffect(playback.streamFormat, playback.streamSourceId) {
-        NerdStats.current.value = playback.streamFormat?.nerdSnapshot(playback.streamSourceId)
+    // The engine's measured stream, as the player's quality badge and stats line read it — with
+    // the source named the way the badge shows it: a configured source by its own name, and a
+    // stream from no source at all as a file on this computer (a download or the listener's own
+    // copy), which the badge describes by its own figures.
+    LaunchedEffect(playback.streamFormat, playback.streamSourceId, sourceConfigs) {
+        val sourceName = when (val id = playback.streamSourceId) {
+            null -> NerdStats.LOCAL_SOURCE.takeIf { playback.song?.isLive != true }
+            else -> sourceConfigs.firstOrNull { it.id == id }?.displayName ?: id
+        }
+        NerdStats.current.value = playback.streamFormat?.nerdSnapshot(sourceName)
     }
     LaunchedEffect(playback.searchingBetter, selectedSong?.videoId) {
         NerdStats.racingLossless.value = selectedSong?.videoId
