@@ -1191,6 +1191,7 @@ object AppSettings {
         com.music.bitchord.data.spotify.SpotifyCache.init(context)
         com.music.bitchord.data.FeedCache.init(context)
         com.music.bitchord.data.spotify.YouTubeExportLedger.init(context, authStore)
+        com.music.bitchord.data.spotify.SpotifySync.init(context)
         com.music.bitchord.data.OfflinePlaylists.init(
             context,
             likedTitle = context.getString(com.music.bitchord.R.string.auto_liked),

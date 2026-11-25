@@ -752,6 +752,12 @@
             android:exported="false"
             android:foregroundServiceType="dataSync" />
 
+        <!-- Holds a Spotify library import alive, with its progress, while the app is away. -->
+        <service
+            android:name=".data.spotify.SpotifySyncService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
         <!--
           Feedback: sends queued reports once there is a network and checks for the
           developer's answers while one may still come. Only JobScheduler binds it.

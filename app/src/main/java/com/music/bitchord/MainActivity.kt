@@ -1229,6 +1229,7 @@ private fun BitChordApp(
     LaunchedEffect(Unit) {
         com.music.bitchord.data.spotify.YouTubeExportLedger.changes.collect { (localId, entry) ->
             val title = com.music.bitchord.data.spotify.LocalPlaylistStore.getPlaylist(localId)?.title
+                ?: com.music.bitchord.data.spotify.SpotifySync.uploadTitle(localId)
                 ?: return@collect
             viewModel.upsertExportedPlaylist(entry.youtubeId, title, entry.exported.size)
         }
@@ -3675,32 +3676,9 @@ private fun BitChordApp(
                                 },
                                 onOpenLogin = { showSpotifyLogin = true },
                                 onOpenTokenSetup = { showSpotifyCanvasAuth = true },
-                                onImportToYouTube = { playlists ->
-                                    scope.launch {
-                                        playlists.forEach { playlist ->
-                                            try {
-                                                val tracks = SpotifyLibrary.tracks(playlist.id)
-                                                val (songs, _) = SpotifyImporter.resolveToSongs(
-                                                    tracks = tracks.map { SpotifyImportTrack(title = it.title, artist = it.artist) },
-                                                ) { _, _ -> }
-                                                if (songs.isNotEmpty()) {
-                                                    viewModel.createPlaylistWithVideoIds(
-                                                        title = playlist.name,
-                                                        privacy = PlaylistPrivacy.PRIVATE,
-                                                        videoIds = songs.map { it.videoId },
-                                                        songs = songs,
-                                                        forceLocal = false,
-                                                    ) { _, pTitle, _ ->
-                                                        showQueueNotice(context.getString(R.string.spotify_import_done, pTitle))
-                                                    }
-                                                }
-                                            } catch (e: CancellationException) {
-                                                throw e
-                                            } catch (e: Exception) {
-                                                showQueueNotice(context.getString(R.string.spotify_import_failed, e.message.orEmpty()))
-                                            }
-                                        }
-                                    }
+                                onOpenYouTubeSignIn = {
+                                    navigator.clear()
+                                    webSession = WebSessionMode.SIGN_IN
                                 },
                                 contentPadding = listPadding,
                             )
@@ -5907,6 +5885,15 @@ private fun BitChordApp(
                 onDestinationChange = { spotifyLibraryState.destination = it },
                 onStartSelecting = spotifyLibraryState::startSelecting,
                 onDismiss = spotifyLibraryState::dismissIntroModal,
+            )
+        }
+
+        if (spotifyLibraryState.pendingLikedChoice != null) {
+            BackHandler { spotifyLibraryState.dismissLikedChoice() }
+            com.music.bitchord.ui.screens.SpotifyLikedChoiceDialog(
+                hazeState = hazeState,
+                onChoose = spotifyLibraryState::resolveLikedChoice,
+                onDismiss = spotifyLibraryState::dismissLikedChoice,
             )
         }
 
