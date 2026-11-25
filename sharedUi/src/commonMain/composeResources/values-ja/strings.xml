@@ -383,4 +383,11 @@
     <string name="featured_badge">注目</string>
     <string name="special_mix">スペシャルミックス</string>
     <string name="from_cache">キャッシュ</string>
+    <string name="badge_info_source">ソース</string>
+    <string name="badge_info_format">形式</string>
+    <string name="badge_info_bit_depth">ビット深度</string>
+    <string name="badge_info_sample_rate">サンプルレート</string>
+    <string name="badge_info_bitrate">ビットレート</string>
+    <string name="badge_info_channels">チャンネル</string>
+    <string name="badge_info_your_copy">自分のコピー</string>
 </resources>

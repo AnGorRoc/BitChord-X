@@ -62,6 +62,14 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.ui.unit.IntRect
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.window.Popup
+import androidx.compose.ui.window.PopupPositionProvider
+import androidx.compose.ui.window.PopupProperties
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -1970,6 +1978,130 @@ private fun formatTime(ms: Long): String {
  */
 @Composable
 private fun LosslessOrStats(
+    isLoading: Boolean,
+    stillRacing: Boolean,
+    losslessRequested: Boolean,
+    nerdStats: NerdStats.Snapshot?,
+    modifier: Modifier = Modifier,
+) {
+    // A tap on the badge opens a compact card of what is playing, as Apple
+    // Music does on its Lossless badge: where it comes from, the codec, the
+    // bitrate, the depth and the rate. Nothing to show before it is measured.
+    var infoOpen by remember { mutableStateOf(false) }
+    val haptics = rememberHaptics()
+    Box(
+        modifier = modifier.then(
+            if (nerdStats != null) {
+                Modifier.clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                ) {
+                    haptics.play(Haptic.Tap)
+                    infoOpen = true
+                }
+            } else {
+                Modifier
+            },
+        ),
+        contentAlignment = Alignment.Center,
+    ) {
+        LosslessBadge(isLoading, stillRacing, losslessRequested, nerdStats)
+        if (infoOpen && nerdStats != null) {
+            Popup(
+                popupPositionProvider = remember { AboveAnchor() },
+                onDismissRequest = { infoOpen = false },
+                properties = PopupProperties(focusable = true),
+            ) {
+                BadgeInfoCard(nerdStats, onClose = { infoOpen = false })
+            }
+        }
+    }
+}
+
+/** Places a popup centred over its anchor, just above it, kept inside the window. */
+private class AboveAnchor : PopupPositionProvider {
+    override fun calculatePosition(
+        anchorBounds: IntRect,
+        windowSize: IntSize,
+        layoutDirection: LayoutDirection,
+        popupContentSize: IntSize,
+    ): IntOffset {
+        val gap = 12
+        val x = (anchorBounds.center.x - popupContentSize.width / 2)
+            .coerceIn(0, (windowSize.width - popupContentSize.width).coerceAtLeast(0))
+        val above = anchorBounds.top - popupContentSize.height - gap
+        val y = if (above >= 0) above else anchorBounds.bottom + gap
+        return IntOffset(x, y)
+    }
+}
+
+/**
+ * What the badge stands for, spelled out: the source (and whether it is the
+ * listener's own file or the cache), the codec, depth, rate, bitrate and
+ * channels — the stats-for-nerds line, compacted, for whoever asks.
+ */
+@Composable
+private fun BadgeInfoCard(stats: NerdStats.Snapshot, onClose: () -> Unit) {
+    val name = stats.sourceName
+    val source = when {
+        name == NerdStats.LOCAL_SOURCE -> stringResource(Res.string.badge_info_your_copy)
+        name.isNullOrBlank() || name == "Unknown" -> null
+        name.startsWith("YouTube", ignoreCase = true) -> "YouTube"
+        else -> name
+    }?.let { if (stats.fromCache) "$it · ${stringResource(Res.string.from_cache)}" else it }
+    val rows = buildList {
+        source?.let { add(stringResource(Res.string.badge_info_source) to it) }
+        (codecLabel(stats.mimeType)?.let { codec -> stats.container?.let { "$codec ($it)" } ?: codec })
+            ?.let { add(stringResource(Res.string.badge_info_format) to it) }
+        stats.bitDepth?.takeIf { it > 1 }?.let { add(stringResource(Res.string.badge_info_bit_depth) to stringResource(Res.string.bit_depth, it)) }
+        stats.sampleRateHz?.let {
+            add(
+                stringResource(Res.string.badge_info_sample_rate) to
+                    (NerdStats.megahertzLabel(it) ?: "%.1f kHz".format(Locale.ROOT, it / 1000f).replace(".0 kHz", " kHz")),
+            )
+        }
+        (stats.bitrateKbps ?: stats.pcmDataRateKbps)?.let { add(stringResource(Res.string.badge_info_bitrate) to "$it kbps") }
+        stats.channels?.let {
+            add(
+                stringResource(Res.string.badge_info_channels) to when (it) {
+                    1 -> stringResource(Res.string.mono)
+                    2 -> stringResource(Res.string.stereo)
+                    else -> stringResource(Res.string.channel_count, it)
+                },
+            )
+        }
+    }
+    Column(
+        modifier = Modifier
+            .widthIn(min = 200.dp, max = 300.dp)
+            .shadow(16.dp, RoundedCornerShape(18.dp))
+            .background(Color(0xF2202024), RoundedCornerShape(18.dp))
+            .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClose)
+            .padding(horizontal = 18.dp, vertical = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        rows.forEach { (label, value) ->
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelMedium,
+                    color = Color.White.copy(alpha = 0.55f),
+                    modifier = Modifier.weight(1f),
+                )
+                Spacer(Modifier.width(16.dp))
+                Text(
+                    text = value,
+                    style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.Medium),
+                    color = Color.White,
+                    maxLines = 1,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LosslessBadge(
     isLoading: Boolean,
     stillRacing: Boolean,
     losslessRequested: Boolean,

@@ -383,4 +383,11 @@
     <string name="featured_badge">ÖNE ÇIKAN</string>
     <string name="special_mix">Özel miks</string>
     <string name="from_cache">Önbellek</string>
+    <string name="badge_info_source">Kaynak</string>
+    <string name="badge_info_format">Biçim</string>
+    <string name="badge_info_bit_depth">Bit derinliği</string>
+    <string name="badge_info_sample_rate">Örnekleme hızı</string>
+    <string name="badge_info_bitrate">Bit hızı</string>
+    <string name="badge_info_channels">Kanallar</string>
+    <string name="badge_info_your_copy">Senin kopyan</string>
 </resources>

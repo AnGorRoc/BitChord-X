@@ -384,4 +384,11 @@
     <string name="featured_badge">추천</string>
     <string name="special_mix">스페셜 믹스</string>
     <string name="from_cache">캐시</string>
+    <string name="badge_info_source">소스</string>
+    <string name="badge_info_format">형식</string>
+    <string name="badge_info_bit_depth">비트 심도</string>
+    <string name="badge_info_sample_rate">샘플링 속도</string>
+    <string name="badge_info_bitrate">비트레이트</string>
+    <string name="badge_info_channels">채널</string>
+    <string name="badge_info_your_copy">내 사본</string>
 </resources>

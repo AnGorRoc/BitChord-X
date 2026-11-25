@@ -383,4 +383,11 @@
     <string name="featured_badge">UNGGULAN</string>
     <string name="special_mix">Mix spesial</string>
     <string name="from_cache">Cache</string>
+    <string name="badge_info_source">Sumber</string>
+    <string name="badge_info_format">Format</string>
+    <string name="badge_info_bit_depth">Kedalaman bit</string>
+    <string name="badge_info_sample_rate">Laju sampel</string>
+    <string name="badge_info_bitrate">Bitrate</string>
+    <string name="badge_info_channels">Saluran</string>
+    <string name="badge_info_your_copy">Salinanmu</string>
 </resources>
