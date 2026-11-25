@@ -392,4 +392,18 @@
     <string name="badge_info_bitrate">บิตเรต</string>
     <string name="badge_info_channels">ช่องสัญญาณ</string>
     <string name="badge_info_your_copy">สำเนาของคุณ</string>
+    <string name="greeting_morning">อรุณสวัสดิ์</string>
+    <string name="greeting_morning_named">อรุณสวัสดิ์ %1$s</string>
+    <string name="greeting_afternoon">สวัสดีตอนบ่าย</string>
+    <string name="greeting_afternoon_named">สวัสดีตอนบ่าย %1$s</string>
+    <string name="greeting_evening">สวัสดีตอนเย็น</string>
+    <string name="greeting_evening_named">สวัสดีตอนเย็น %1$s</string>
+    <string name="greeting_late_night">นอนไม่หลับเหรอ?</string>
+    <string name="greeting_late_night_named">นอนไม่หลับเหรอ %1$s?</string>
+    <string name="greeting_friday">วันศุกร์ วันเพลงใหม่</string>
+    <string name="greeting_sunday">วันอาทิตย์สบายๆ</string>
+    <string name="greeting_welcome_back">ยินดีต้อนรับกลับมา!</string>
+    <string name="greeting_welcome_back_named">ยินดีต้อนรับกลับมา %1$s!</string>
+    <string name="greeting_continue_artist">ฟัง %1$s ต่อไหม?</string>
+    <string name="greeting_hello_named">สวัสดี %1$s</string>
 </resources>

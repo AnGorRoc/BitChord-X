@@ -201,6 +201,13 @@ fun HomeScreen(
             if (title != null) {
                 item { HomeTitle() }
             }
+            // The greeting leads the PC's Home, as its heading.
+            item(key = "home-greeting") {
+                HomeGreetingLine(
+                    name = listenerName,
+                    modifier = Modifier.padding(start = PAGE_GUTTER, end = PAGE_GUTTER, top = 4.dp, bottom = 16.dp),
+                )
+            }
             if (!signedIn && onSignIn != null) {
                 item {
                     // Read in this item, so a scroll starting or ending

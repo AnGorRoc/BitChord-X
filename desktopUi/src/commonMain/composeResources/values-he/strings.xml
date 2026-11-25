@@ -392,4 +392,18 @@
     <string name="badge_info_bitrate">קצב סיביות</string>
     <string name="badge_info_channels">ערוצים</string>
     <string name="badge_info_your_copy">העותק שלך</string>
+    <string name="greeting_morning">בוקר טוב</string>
+    <string name="greeting_morning_named">בוקר טוב, %1$s</string>
+    <string name="greeting_afternoon">צהריים טובים</string>
+    <string name="greeting_afternoon_named">צהריים טובים, %1$s</string>
+    <string name="greeting_evening">ערב טוב</string>
+    <string name="greeting_evening_named">ערב טוב, %1$s</string>
+    <string name="greeting_late_night">לא נרדם?</string>
+    <string name="greeting_late_night_named">לא נרדם, %1$s?</string>
+    <string name="greeting_friday">שישי, יום של שחרורים חדשים</string>
+    <string name="greeting_sunday">ראשון רגוע</string>
+    <string name="greeting_welcome_back">ברוך שובך!</string>
+    <string name="greeting_welcome_back_named">ברוך שובך, %1$s!</string>
+    <string name="greeting_continue_artist">עוד %1$s?</string>
+    <string name="greeting_hello_named">היי, %1$s</string>
 </resources>

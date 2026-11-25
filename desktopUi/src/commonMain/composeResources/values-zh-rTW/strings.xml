@@ -392,4 +392,18 @@
     <string name="badge_info_bitrate">位元率</string>
     <string name="badge_info_channels">聲道</string>
     <string name="badge_info_your_copy">你的副本</string>
+    <string name="greeting_morning">早安</string>
+    <string name="greeting_morning_named">早安,%1$s</string>
+    <string name="greeting_afternoon">午安</string>
+    <string name="greeting_afternoon_named">午安,%1$s</string>
+    <string name="greeting_evening">晚安</string>
+    <string name="greeting_evening_named">晚安,%1$s</string>
+    <string name="greeting_late_night">睡不著嗎?</string>
+    <string name="greeting_late_night_named">睡不著嗎,%1$s?</string>
+    <string name="greeting_friday">週五,新歌上架日</string>
+    <string name="greeting_sunday">悠閒的週日</string>
+    <string name="greeting_welcome_back">歡迎回來!</string>
+    <string name="greeting_welcome_back_named">歡迎回來,%1$s!</string>
+    <string name="greeting_continue_artist">繼續聽 %1$s?</string>
+    <string name="greeting_hello_named">嗨,%1$s</string>
 </resources>
