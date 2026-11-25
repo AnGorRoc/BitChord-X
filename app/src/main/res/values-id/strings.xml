@@ -1978,4 +1978,6 @@
     <string name="spotify_sync_notification_partial">Impor Spotify selesai dengan kesalahan</string>
     <string name="spotify_sync_notification_cancelled">Impor Spotify dihentikan</string>
     <string name="spotify_sync_notification_stopped">Impor Spotify tidak dapat dilanjutkan</string>
+    <string name="spotify_sync_notifications_off">Notifikasi nonaktif, jadi kamu tidak bisa memantau impor di luar aplikasi</string>
+    <string name="spotify_sync_notifications_enable">Aktifkan</string>
 </resources>

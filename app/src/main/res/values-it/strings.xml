@@ -1938,4 +1938,6 @@
     <string name="spotify_sync_notification_partial">Importazione da Spotify completata con errori</string>
     <string name="spotify_sync_notification_cancelled">Importazione da Spotify interrotta</string>
     <string name="spotify_sync_notification_stopped">Impossibile continuare l\'importazione da Spotify</string>
+    <string name="spotify_sync_notifications_off">Le notifiche sono disattivate, quindi non potrai seguire l\'importazione fuori dall\'app</string>
+    <string name="spotify_sync_notifications_enable">Attiva</string>
 </resources>

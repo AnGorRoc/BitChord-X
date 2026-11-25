@@ -1978,4 +1978,6 @@
     <string name="spotify_sync_notification_partial">Spotify 导入完成,但有错误</string>
     <string name="spotify_sync_notification_cancelled">Spotify 导入已停止</string>
     <string name="spotify_sync_notification_stopped">Spotify 导入无法继续</string>
+    <string name="spotify_sync_notifications_off">通知已关闭,你无法在应用外查看导入进度</string>
+    <string name="spotify_sync_notifications_enable">开启</string>
 </resources>

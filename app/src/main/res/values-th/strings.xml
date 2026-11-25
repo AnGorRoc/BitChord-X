@@ -1984,4 +1984,6 @@
     <string name="spotify_sync_notification_partial">นำเข้าจาก Spotify เสร็จแล้วแต่มีข้อผิดพลาด</string>
     <string name="spotify_sync_notification_cancelled">หยุดการนำเข้าจาก Spotify แล้ว</string>
     <string name="spotify_sync_notification_stopped">การนำเข้าจาก Spotify ดำเนินการต่อไม่ได้</string>
+    <string name="spotify_sync_notifications_off">การแจ้งเตือนปิดอยู่ จึงติดตามการนำเข้านอกแอปไม่ได้</string>
+    <string name="spotify_sync_notifications_enable">เปิด</string>
 </resources>

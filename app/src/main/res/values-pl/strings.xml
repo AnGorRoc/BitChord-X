@@ -2039,4 +2039,6 @@
     <string name="spotify_sync_notification_partial">Import ze Spotify zakończony z błędami</string>
     <string name="spotify_sync_notification_cancelled">Import ze Spotify zatrzymany</string>
     <string name="spotify_sync_notification_stopped">Import ze Spotify nie mógł być kontynuowany</string>
+    <string name="spotify_sync_notifications_off">Powiadomienia są wyłączone, więc nie śledzisz importu poza aplikacją</string>
+    <string name="spotify_sync_notifications_enable">Włącz</string>
 </resources>

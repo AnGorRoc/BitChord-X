@@ -1918,4 +1918,6 @@
     <string name="spotify_sync_notification_partial">Đã nhập xong từ Spotify nhưng có lỗi</string>
     <string name="spotify_sync_notification_cancelled">Đã dừng nhập từ Spotify</string>
     <string name="spotify_sync_notification_stopped">Không thể tiếp tục nhập từ Spotify</string>
+    <string name="spotify_sync_notifications_off">Thông báo đang tắt, nên bạn không thể theo dõi việc nhập bên ngoài ứng dụng</string>
+    <string name="spotify_sync_notifications_enable">Bật</string>
 </resources>

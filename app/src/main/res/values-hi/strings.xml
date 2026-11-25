@@ -1999,4 +1999,6 @@
     <string name="spotify_sync_notification_partial">Spotify इंपोर्ट त्रुटियों के साथ पूरा हुआ</string>
     <string name="spotify_sync_notification_cancelled">Spotify इंपोर्ट रोका गया</string>
     <string name="spotify_sync_notification_stopped">Spotify इंपोर्ट जारी नहीं रह सका</string>
+    <string name="spotify_sync_notifications_off">सूचनाएँ बंद हैं, इसलिए आप ऐप के बाहर इंपोर्ट नहीं देख पाएँगे</string>
+    <string name="spotify_sync_notifications_enable">चालू करें</string>
 </resources>

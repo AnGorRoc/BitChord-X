@@ -1978,4 +1978,6 @@
     <string name="spotify_sync_notification_partial">Spotify 匯入完成,但有錯誤</string>
     <string name="spotify_sync_notification_cancelled">Spotify 匯入已停止</string>
     <string name="spotify_sync_notification_stopped">Spotify 匯入無法繼續</string>
+    <string name="spotify_sync_notifications_off">通知已關閉,你無法在應用程式外查看匯入進度</string>
+    <string name="spotify_sync_notifications_enable">開啟</string>
 </resources>

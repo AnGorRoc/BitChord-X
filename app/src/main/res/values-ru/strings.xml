@@ -2028,4 +2028,6 @@
     <string name="spotify_sync_notification_partial">Импорт из Spotify завершён с ошибками</string>
     <string name="spotify_sync_notification_cancelled">Импорт из Spotify остановлен</string>
     <string name="spotify_sync_notification_stopped">Импорт из Spotify не удалось продолжить</string>
+    <string name="spotify_sync_notifications_off">Уведомления выключены, поэтому следить за импортом вне приложения не получится</string>
+    <string name="spotify_sync_notifications_enable">Включить</string>
 </resources>

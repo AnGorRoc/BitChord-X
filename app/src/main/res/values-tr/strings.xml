@@ -1956,4 +1956,6 @@
     <string name="spotify_sync_notification_partial">Spotify içe aktarma hatalarla bitti</string>
     <string name="spotify_sync_notification_cancelled">Spotify içe aktarma durduruldu</string>
     <string name="spotify_sync_notification_stopped">Spotify içe aktarma devam edemedi</string>
+    <string name="spotify_sync_notifications_off">Bildirimler kapalı, bu yüzden içe aktarmayı uygulama dışından takip edemezsin</string>
+    <string name="spotify_sync_notifications_enable">Aç</string>
 </resources>

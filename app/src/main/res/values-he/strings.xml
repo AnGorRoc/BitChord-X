@@ -2005,4 +2005,6 @@
     <string name="spotify_sync_notification_partial">הייבוא מ-Spotify הסתיים עם שגיאות</string>
     <string name="spotify_sync_notification_cancelled">הייבוא מ-Spotify נעצר</string>
     <string name="spotify_sync_notification_stopped">הייבוא מ-Spotify לא הצליח להמשיך</string>
+    <string name="spotify_sync_notifications_off">ההתראות כבויות, ולכן לא תוכלו לעקוב אחרי הייבוא מחוץ לאפליקציה</string>
+    <string name="spotify_sync_notifications_enable">הפעלה</string>
 </resources>

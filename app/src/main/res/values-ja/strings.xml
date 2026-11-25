@@ -1979,4 +1979,6 @@
     <string name="spotify_sync_notification_partial">Spotify インポートはエラーありで完了しました</string>
     <string name="spotify_sync_notification_cancelled">Spotify インポートを停止しました</string>
     <string name="spotify_sync_notification_stopped">Spotify インポートを続行できませんでした</string>
+    <string name="spotify_sync_notifications_off">通知がオフのため、アプリの外ではインポートの状況を確認できません</string>
+    <string name="spotify_sync_notifications_enable">オンにする</string>
 </resources>

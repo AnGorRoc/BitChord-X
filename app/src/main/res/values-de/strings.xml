@@ -1999,4 +1999,6 @@
     <string name="spotify_sync_notification_partial">Spotify-Import mit Fehlern abgeschlossen</string>
     <string name="spotify_sync_notification_cancelled">Spotify-Import gestoppt</string>
     <string name="spotify_sync_notification_stopped">Spotify-Import konnte nicht fortgesetzt werden</string>
+    <string name="spotify_sync_notifications_off">Benachrichtigungen sind aus, daher kannst du den Import außerhalb der App nicht verfolgen</string>
+    <string name="spotify_sync_notifications_enable">Einschalten</string>
 </resources>

@@ -2000,4 +2000,6 @@
     <string name="spotify_sync_notification_partial">Import Spotify terminé avec des erreurs</string>
     <string name="spotify_sync_notification_cancelled">Import Spotify arrêté</string>
     <string name="spotify_sync_notification_stopped">L\'import Spotify n\'a pas pu continuer</string>
+    <string name="spotify_sync_notifications_off">Les notifications sont désactivées : vous ne pourrez pas suivre l\'import en dehors de l\'app</string>
+    <string name="spotify_sync_notifications_enable">Activer</string>
 </resources>

@@ -1834,4 +1834,6 @@
     <string name="spotify_sync_notification_partial">Spotify 가져오기가 오류와 함께 완료됨</string>
     <string name="spotify_sync_notification_cancelled">Spotify 가져오기 중지됨</string>
     <string name="spotify_sync_notification_stopped">Spotify 가져오기를 계속할 수 없음</string>
+    <string name="spotify_sync_notifications_off">알림이 꺼져 있어 앱 밖에서는 가져오기 진행 상황을 볼 수 없습니다</string>
+    <string name="spotify_sync_notifications_enable">켜기</string>
 </resources>
