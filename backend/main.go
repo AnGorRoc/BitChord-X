@@ -561,6 +561,7 @@ func handlePresence(w http.ResponseWriter, r *http.Request) {
 // force-killing the app drops the live count immediately via TCP close.
 func handlePresenceWS(w http.ResponseWriter, r *http.Request) {
 	if !presenceLimiter.Allow(clientIP(r)) {
+		w.Header().Set("Retry-After", "30")
 		jsonError(w, http.StatusTooManyRequests, "rate_limited", "Too many presence connections from this address.")
 		return
 	}

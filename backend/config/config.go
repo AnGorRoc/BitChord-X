@@ -241,6 +241,9 @@ var (
 	PresenceIntervalSec     = getInt("JAM_PRESENCE_INTERVAL_SEC", 60)
 	PresenceGraceSec        = getInt("JAM_PRESENCE_GRACE_SEC", 30)
 	PresenceMaxEntries      = getInt("JAM_PRESENCE_MAX_ENTRIES", 200000)
-	PresencePingsPerMinute  = getInt("JAM_PRESENCE_PINGS_PER_MINUTE", 20)
+	// Per IP, and mobile carriers put many phones behind one. The 1.10.1 apps
+	// reconnect every 5 s (12 a minute each) with no backoff, so 20 locked out any
+	// address shared by two of them.
+	PresencePingsPerMinute  = getInt("JAM_PRESENCE_PINGS_PER_MINUTE", 120)
 	PresenceRateLimitMaxIPs = getInt("JAM_PRESENCE_RATE_LIMIT_MAX_IPS", 100000)
 )
