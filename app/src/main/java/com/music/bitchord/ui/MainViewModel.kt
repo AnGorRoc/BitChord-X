@@ -1879,7 +1879,10 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         _refreshing.value = _refreshing.value + feed
         viewModelScope.launch {
             when (feed) {
-                Feed.HOME -> refreshHome(identity)
+                Feed.HOME -> {
+                    loadPersonalShelves()
+                    refreshHome(identity)
+                }
                 Feed.EXPLORE -> {
                     coroutineScope {
                         launch { fetchExplore() }
@@ -2310,7 +2313,26 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         navigator.onDetailStackShrunk(0)
     }
 
+    /**
+     * Home's own shelves (Continue listening, Listen again, Because you
+     * listened to X, New from your artists), built from this device's history
+     * beside the feed rather than in it, so a revalidated feed never drops them.
+     */
+    private val _personalShelves = MutableStateFlow<List<HomeShelf>>(emptyList())
+    val personalShelves: StateFlow<List<HomeShelf>> = _personalShelves.asStateFlow()
+    private var personalShelvesJob: Job? = null
+
+    private fun loadPersonalShelves() {
+        if (AppSettings.effectiveOffline.value && _personalShelves.value.isNotEmpty()) return
+        personalShelvesJob?.cancel()
+        personalShelvesJob = viewModelScope.launch(Dispatchers.IO) {
+            runCatching { com.music.bitchord.data.PersonalShelves.build() }
+                .onSuccess { _personalShelves.value = it }
+        }
+    }
+
     fun loadHome() {
+        loadPersonalShelves()
         val identity = listenerKey()
         val generation = homeLoadGeneration.incrementAndGet()
         homePagedThisGeneration = false

@@ -405,4 +405,7 @@
     <string name="greeting_welcome_back_named">다시 오셨네요, %1$s님!</string>
     <string name="greeting_continue_artist">%1$s 계속 들을까요?</string>
     <string name="greeting_hello_named">안녕하세요, %1$s님</string>
+    <string name="shelf_continue_listening">이어서 듣기</string>
+    <string name="shelf_because_you_listened">%1$s 음악을 들으셨기 때문에</string>
+    <string name="shelf_new_from_your_artists">내 아티스트의 신곡</string>
 </resources>

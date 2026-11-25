@@ -404,4 +404,7 @@
     <string name="greeting_welcome_back_named">おかえりなさい、%1$sさん!</string>
     <string name="greeting_continue_artist">%1$sの続きを聴きますか?</string>
     <string name="greeting_hello_named">こんにちは、%1$sさん</string>
+    <string name="shelf_continue_listening">続きを聴く</string>
+    <string name="shelf_because_you_listened">%1$sを聴いたあなたに</string>
+    <string name="shelf_new_from_your_artists">お気に入りアーティストの新作</string>
 </resources>

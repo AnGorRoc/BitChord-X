@@ -404,4 +404,7 @@
     <string name="greeting_welcome_back_named">¡Volviste, %1$s!</string>
     <string name="greeting_continue_artist">¿Seguimos con %1$s?</string>
     <string name="greeting_hello_named">Hola, %1$s</string>
+    <string name="shelf_continue_listening">Seguir escuchando</string>
+    <string name="shelf_because_you_listened">Porque escuchaste a %1$s</string>
+    <string name="shelf_new_from_your_artists">Lo nuevo de tus artistas</string>
 </resources>

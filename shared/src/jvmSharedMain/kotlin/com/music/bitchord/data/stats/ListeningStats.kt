@@ -405,6 +405,39 @@ object ListeningStats {
     }
 
     /**
+     * Tracks played at least [minPlays] times on this device, all time, whose
+     * last play is more than [quietDays] ago — Home's "Listen again": what the
+     * listener loved and has not put on lately. Most played first.
+     */
+    suspend fun lovedButQuiet(minPlays: Int = 3, quietDays: Int = 21, limit: Int = 20): List<Song> =
+        withContext(Dispatchers.IO) {
+            flushAndAwait()
+            val cutoff = System.currentTimeMillis() - quietDays * 24L * 3_600_000
+            val byId = HashMap<String, TrackEntry>()
+            months().forEach { month ->
+                read(month.toString())?.tracks.orEmpty().forEach { entry ->
+                    val held = byId[entry.id]
+                    if (held == null) byId[entry.id] = entry.copy(days = mutableMapOf()) else held.absorb(entry)
+                }
+            }
+            byId.values
+                .filter { it.plays >= minPlays && it.last in 1 until cutoff && it.title.isNotBlank() }
+                .sortedByDescending { it.plays }
+                .take(limit)
+                .map {
+                    Song(
+                        videoId = it.id,
+                        title = it.title,
+                        artist = it.artist,
+                        thumbnailUrl = it.art,
+                        artistId = it.artistId,
+                        albumId = it.albumId,
+                        albumName = it.album,
+                    )
+                }
+        }
+
+    /**
      * One calendar [year] in full, for the Replay year story.
      *
      * Apart from [summary] because it needs a year the periods can't name: from

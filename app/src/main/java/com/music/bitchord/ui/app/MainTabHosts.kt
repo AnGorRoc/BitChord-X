@@ -80,6 +80,7 @@ internal fun HomeTabHost(
     val homeRecentlyPlayedLoading by viewModel.homeRecentlyPlayedLoading.collectAsStateWithLifecycle()
     val topPicks by viewModel.topPicks.collectAsStateWithLifecycle()
     val topPicksLoading by viewModel.topPicksLoading.collectAsStateWithLifecycle()
+    val personalShelves by viewModel.personalShelves.collectAsStateWithLifecycle()
 
     HomeScreen(
         state = visibleHomeState,
@@ -98,8 +99,8 @@ internal fun HomeTabHost(
             when {
                 song != null -> onPlayFromShelf(
                     item,
-                    (visibleHomeState as? UiState.Success)?.data
-                        ?.firstOrNull { shelf -> item in shelf.items }?.items,
+                    ((visibleHomeState as? UiState.Success)?.data.orEmpty() + personalShelves)
+                        .firstOrNull { shelf -> item in shelf.items }?.items,
                     QueueSource(shelfTitle, PlaybackSourceType.HOME),
                 )
                 browseId != null -> viewModel.openDetail(
@@ -122,6 +123,7 @@ internal fun HomeTabHost(
         topPicks = topPicks,
         topPicksLoading = topPicksLoading,
         listenerName = accountName,
+        personalShelves = personalShelves,
         // Neither shelf is drawn without its callback.
         onTopPickClick = onOpenTopPick.takeUnless { hideTopPicks },
         onMoodClick = onPlayMood.takeUnless { hideHomeMoods },

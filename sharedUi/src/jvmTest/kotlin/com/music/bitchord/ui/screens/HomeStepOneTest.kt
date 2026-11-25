@@ -86,6 +86,40 @@ class HomeStepOneTest {
         assertEquals(listOf("Quick picks", "Mixed for you", "Trending", "Albums & singles"), ordered)
     }
 
+    // ---- Our own shelves (step 2) ---------------------------------------------
+
+    private fun mine(title: String) = HomeShelf(title, listOf(ShelfItem(title, "", null, "v$title", null)), personal = true)
+
+    @Test
+    fun `two of ours lead after Recents, the rest every third feed shelf, borrowed ones last`() {
+        val feed = listOf(
+            shelf("Recents", "r"),
+            shelf("F1", "1"), shelf("F2", "2"), shelf("F3", "3"), shelf("F4", "4"),
+            shelf("Trending", "t", tail = true),
+        )
+        val order = feed.homeOrder(listOf(mine("P1"), mine("P2"), mine("P3"), mine("P4"))).map { it.title }
+
+        assertEquals(listOf("Recents", "P1", "P2", "F1", "F2", "F3", "P3", "F4", "P4", "Trending"), order)
+    }
+
+    @Test
+    fun `without shelves of ours the order is the feed's`() {
+        val feed = listOf(shelf("F1", "1"), shelf("Trending", "t", tail = true), shelf("F2", "2"))
+        assertEquals(listOf("F1", "F2", "Trending"), feed.homeOrder(emptyList()).map { it.title })
+    }
+
+    @Test
+    fun `continue listening is the albums of the last plays, newest first, once each`() {
+        fun song(id: String, album: String?) = com.music.bitchord.data.model.Song(
+            videoId = id, title = id, artist = "A", thumbnailUrl = null, albumId = album?.let { "MPRE$it" }, albumName = album,
+        )
+        val shelf = com.music.bitchord.data.PersonalShelves.continueListening(
+            listOf(song("1", "Bad"), song("2", "Bad"), song("3", null), song("4", "Thriller")),
+        )
+        assertEquals(listOf("Bad", "Thriller"), shelf?.items?.map { it.title })
+        assertTrue(shelf?.personal == true)
+    }
+
     // ---- The spotlight -------------------------------------------------------
 
     @Test

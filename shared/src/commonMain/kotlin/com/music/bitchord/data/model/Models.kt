@@ -632,6 +632,12 @@ data class HomeShelf(
      * shows, so it follows the listener's own feed rather than interrupting it.
      */
     val tail: Boolean = false,
+    /**
+     * Built by this app from the listener's own history rather than fetched
+     * from YouTube — see `PersonalShelves`. Home leads with at most two of them
+     * and works the rest in among the feed.
+     */
+    val personal: Boolean = false,
 )
 
 /** These shelves without their music videos, and without any shelf that leaves empty. */

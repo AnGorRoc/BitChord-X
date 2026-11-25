@@ -207,6 +207,8 @@ fun HomeScreen(
     onOpenDownloads: (() -> Unit)? = null,
     /** The Replay year story's button beside the wordmark, or null for none. See [ReplayYearButton]. */
     replayYear: ReplayYearBadge? = null,
+    /** Home's own shelves, from the listener's history — see `PersonalShelves`. */
+    personalShelves: List<HomeShelf> = emptyList(),
 ) {
     val isOffline = AppUi.host.isOffline()
     // The billboard keeps the card it opened with while the feed still holds
@@ -363,15 +365,19 @@ fun HomeScreen(
                     // The loading skeleton already owns the hero slot. Until
                     // Recently Played lands, every real shelf must retain its
                     // compact-card layout instead of briefly becoming a hero.
+                    val ordered = state.data.homeOrder(personalShelves)
                     itemsIndexedShelves(
-                        shelves = state.data.tailLast(),
+                        shelves = ordered,
                         onMoodClick = onMoodClick,
                         onMoodsShowAll = onMoodsShowAll,
                         onItemClick = onItemClick,
                         onItemLongPress = onItemLongPress,
                         currentSong = currentSong,
                         isPlaying = isPlaying,
-                        firstIsHero = leadHero && (!recentlyPlayedLoading || isOffline),
+                        // The full-bleed lead is YouTube's to fill: one of our own
+                        // shelves at the top keeps its ordinary cards.
+                        firstIsHero = leadHero && (!recentlyPlayedLoading || isOffline) &&
+                            ordered.firstOrNull()?.personal != true,
                     )
                     if (loadingMore && !isOffline) feedMoreSkeleton()
                 }
@@ -394,10 +400,10 @@ fun HomeScreen(
             (if (spotlightItem != null) 1 else 0) +
             (if (recentlyPlayedLoading && !isOffline) 1 else 0)
         val hasMoods = onMoodClick != null
-        val artworkByItem = remember(state.data, leadingItems, hasMoods) {
+        val artworkByItem = remember(state.data, personalShelves, leadingItems, hasMoods) {
             buildList {
                 repeat(leadingItems) { add(emptyList()) }
-                state.data.tailLast().forEachIndexed { index, shelf ->
+                state.data.homeOrder(personalShelves).forEachIndexed { index, shelf ->
                     if (index == 1 && hasMoods) add(emptyList())
                     add(shelf.items.take(6).map { item -> shelfArtwork(shelf, index, item) })
                 }
@@ -439,6 +445,37 @@ fun HomeScreen(
 internal fun List<HomeShelf>.tailLast(): List<HomeShelf> =
     if (none { it.tail }) this else filterNot { it.tail } + filter { it.tail }
 
+/**
+ * The whole of Home's feed in the order it is drawn: Recents first when the
+ * feed leads with it, then at most two of the [personal] shelves, then the
+ * feed with the rest of them worked in every third shelf, and the borrowed
+ * shelves ([tailLast]) at the very end. Two of our own above YouTube's feed
+ * and no more, so Home stays Home.
+ */
+internal fun List<HomeShelf>.homeOrder(personal: List<HomeShelf>): List<HomeShelf> {
+    val ordered = tailLast()
+    if (personal.isEmpty()) return ordered
+    val tail = ordered.filter { it.tail }
+    val feed = ordered.filterNot { it.tail }
+    val out = ArrayList<HomeShelf>(size + personal.size)
+    val startsWithRecents = feed.firstOrNull()?.title.equals(RECENTS_TITLE, ignoreCase = true)
+    if (startsWithRecents) out += feed.first()
+    out += personal.take(PERSONAL_LEAD)
+    val rest = ArrayDeque(personal.drop(PERSONAL_LEAD))
+    feed.drop(if (startsWithRecents) 1 else 0).forEachIndexed { index, shelf ->
+        out += shelf
+        if ((index + 1) % PERSONAL_EVERY == 0) rest.removeFirstOrNull()?.let(out::add)
+    }
+    out += rest
+    out += tail
+    return out
+}
+
+/** How many of our own shelves may come before YouTube's feed. */
+private const val PERSONAL_LEAD = 2
+
+/** Past those, one of ours after every this many of the feed's. */
+private const val PERSONAL_EVERY = 3
 
 /**
  * Recents mirrors the artist page's top-tracks pager. Any other lead shelf keeps
@@ -476,7 +513,10 @@ private fun androidx.compose.foundation.lazy.LazyListScope.itemsIndexedShelves(
         }
         item(key = keys[index]) {
             Box(Modifier.animateItem()) {
-            val openItem: (ShelfItem) -> Unit = remember(shelf.title, onItemClick) { { item -> onItemClick(item, shelf.title) } }
+            // Our own shelves are named by a key; what plays is "from" their
+            // title as shown, not the key.
+            val sourceTitle = if (shelf.personal) localizeShelfTitle(shelf.title) else shelf.title
+            val openItem: (ShelfItem) -> Unit = remember(sourceTitle, onItemClick) { { item -> onItemClick(item, sourceTitle) } }
             // Listen again and Quick picks are lists on the web player, as
             // Recents is here: one pager for all three.
             if (shelf.layout == ShelfLayout.LIST ||
@@ -779,6 +819,20 @@ internal fun SectionHeader(title: String, subtitle: String = "", onShowAll: (() 
 @Composable
 internal fun localizeShelfTitle(title: String): String {
     val trimmed = title.trim()
+    // Home's own shelves carry a key, not a title — see PersonalShelves.
+    when {
+        trimmed == com.music.bitchord.data.PersonalShelves.CONTINUE ->
+            return stringResource(Res.string.shelf_continue_listening)
+        trimmed == com.music.bitchord.data.PersonalShelves.LISTEN_AGAIN ->
+            return stringResource(Res.string.shelf_listen_again)
+        trimmed == com.music.bitchord.data.PersonalShelves.NEW_FROM_ARTISTS ->
+            return stringResource(Res.string.shelf_new_from_your_artists)
+        trimmed.startsWith(com.music.bitchord.data.PersonalShelves.BECAUSE) ->
+            return stringResource(
+                Res.string.shelf_because_you_listened,
+                trimmed.removePrefix(com.music.bitchord.data.PersonalShelves.BECAUSE),
+            )
+    }
     return when {
         trimmed.equals("Recents", ignoreCase = true) ||
             trimmed.equals("Recently played", ignoreCase = true) ||
