@@ -1258,8 +1258,11 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         videoIds: List<String>,
         songs: List<Song> = emptyList(),
         forceLocal: Boolean = false,
-        /** [savedLocally] is true when the playlist went to this device, not YouTube Music. */
-        onResult: ((browseId: String?, title: String, savedLocally: Boolean) -> Unit)? = null,
+        /**
+         * [savedLocally] is true when the playlist went to this device, not YouTube Music.
+         * [missing] songs were left out because YouTube Music refused every try to add them.
+         */
+        onResult: ((browseId: String?, title: String, savedLocally: Boolean, missing: Int) -> Unit)? = null,
     ) {
         val name = title.trim().ifBlank { text(R.string.new_playlist) }
         viewModelScope.launch {
@@ -1271,17 +1274,19 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     videoIds = initialBatch,
                 ).fold(
                     onSuccess = { playlistId ->
-                        if (videoIds.size > 50) {
-                            videoIds.drop(50).chunked(50).forEach { chunk ->
-                                YtMusicRepository.addToPlaylist(playlistId, chunk)
-                            }
+                        // Each later batch is its own request; one that fails is
+                        // tried again after a pause, and what still doesn't land is
+                        // counted and said, not dropped without a word.
+                        var missing = 0
+                        videoIds.drop(50).chunked(50).forEach { chunk ->
+                            if (!addBatchWithRetry(playlistId, chunk)) missing += chunk.size
                         }
                         setPlaylistOwned("VL$playlistId", true)
                         libraryStale = true
                         val created = UserPlaylist(
                             playlistId = playlistId,
                             title = name,
-                            subtitle = songCountText(videoIds.size),
+                            subtitle = songCountText(videoIds.size - missing),
                             thumbnailUrl = null,
                         )
                         _playlists.value = listOf(created) +
@@ -1297,18 +1302,45 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                                 ),
                             ) + items.filterNot { it.browseId == created.browseId }
                         }
-                        onResult?.invoke(created.browseId, created.title, false)
+                        onResult?.invoke(created.browseId, created.title, false, missing)
                     },
                     onFailure = {
                         val local = com.music.bitchord.data.spotify.LocalPlaylistStore.savePlaylist(name, songs)
-                        onResult?.invoke(local.browseId, local.title, true)
+                        onResult?.invoke(local.browseId, local.title, true, 0)
                     },
                 )
             } else {
                 val local = com.music.bitchord.data.spotify.LocalPlaylistStore.savePlaylist(name, songs)
-                onResult?.invoke(local.browseId, local.title, true)
+                onResult?.invoke(local.browseId, local.title, true, 0)
             }
         }
+    }
+
+    /**
+     * Adds [videoIds] to [playlistId], trying again after a pause when the
+     * connection drops or YouTube asks to slow down. Before a retry the playlist
+     * is asked what it holds, so an add whose answer was lost isn't sent twice.
+     * Returns whether the batch is there.
+     */
+    private suspend fun addBatchWithRetry(playlistId: String, videoIds: List<String>): Boolean {
+        var pending = videoIds
+        for ((attempt, wait) in (listOf(0L) + ADD_RETRY_WAITS_MS).withIndex()) {
+            if (wait > 0) kotlinx.coroutines.delay(wait)
+            if (attempt > 0) {
+                val held = YtMusicRepository.playlistEntries("VL$playlistId").getOrNull()
+                    ?.mapTo(HashSet()) { it.videoId }
+                if (held != null) pending = pending.filter { it !in held }
+                if (pending.isEmpty()) return true
+            }
+            val error = YtMusicRepository.addToPlaylist(playlistId, pending).exceptionOrNull() ?: return true
+            val kind = com.music.bitchord.data.spotify.exportErrorKind(error)
+            if (kind != com.music.bitchord.data.spotify.ExportErrorKind.NETWORK &&
+                kind != com.music.bitchord.data.spotify.ExportErrorKind.RATE_LIMITED
+            ) {
+                return false
+            }
+        }
+        return false
     }
 
     /**
@@ -3488,6 +3520,9 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
     }
 
     companion object {
+        /** Pauses before each new try of a playlist batch that failed to add. */
+        private val ADD_RETRY_WAITS_MS = listOf(3_000L, 10_000L)
+
         /** Today's Top Picks row, kept so the next launch paints it before any request. */
         private const val TOP_PICKS_FILE = "top_picks_v4.json"
 

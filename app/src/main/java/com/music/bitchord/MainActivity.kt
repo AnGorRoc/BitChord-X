@@ -5803,13 +5803,13 @@ private fun BitChordApp(
                             privacy = privacy,
                             videoIds = targetSongs.map { it.videoId },
                             songs = targetSongs,
-                        ) { browseId, pTitle, savedLocally ->
+                        ) { browseId, pTitle, savedLocally, missing ->
                             showQueueNotice(
-                                context.getString(
-                                    if (savedLocally && signedIn) R.string.spotify_import_local_fallback
-                                    else R.string.playlist_created,
-                                    pTitle,
-                                ),
+                                when {
+                                    missing > 0 -> context.getString(R.string.playlist_created_some_missing, pTitle, missing)
+                                    savedLocally && signedIn -> context.getString(R.string.spotify_import_local_fallback, pTitle)
+                                    else -> context.getString(R.string.playlist_created, pTitle)
+                                },
                             )
                             browseId?.let { id ->
                                 viewModel.openDetail(id, pTitle, "${targetSongs.size} songs", targetSongs.firstOrNull()?.thumbnailUrl)
@@ -5909,13 +5909,14 @@ private fun BitChordApp(
                         videoIds = songs.map { it.videoId },
                         songs = songs,
                         forceLocal = saveLocally,
-                    ) { browseId, pTitle, savedLocally ->
+                    ) { browseId, pTitle, savedLocally, missing ->
                         showQueueNotice(
-                            context.getString(
-                                if (savedLocally && signedIn && !saveLocally) R.string.spotify_import_local_fallback
-                                else R.string.spotify_import_done,
-                                pTitle,
-                            ),
+                            when {
+                                missing > 0 -> context.getString(R.string.playlist_created_some_missing, pTitle, missing)
+                                savedLocally && signedIn && !saveLocally ->
+                                    context.getString(R.string.spotify_import_local_fallback, pTitle)
+                                else -> context.getString(R.string.spotify_import_done, pTitle)
+                            },
                         )
                         browseId?.let { id ->
                             viewModel.openDetail(id, pTitle, "${songs.size} songs", songs.firstOrNull()?.thumbnailUrl)
