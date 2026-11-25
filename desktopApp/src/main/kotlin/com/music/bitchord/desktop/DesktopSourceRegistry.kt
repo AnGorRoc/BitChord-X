@@ -704,4 +704,18 @@ internal object DesktopSourceRegistry {
         } ?: DesktopPersistence().audioQuality()
 
     private fun youtubeCeiling(qualityOverride: String?): Int = ceiling(qualityOverride).maxKbps
+
+    /**
+     * The best streaming could bring a track now, for a file of the listener's own to be weighed
+     * against — the same three rungs the phone uses (see [com.music.bitchord.data.LocalCopies]).
+     */
+    internal fun streamingLevel(qualityOverride: String? = null): com.music.bitchord.data.LocalCopies.Streaming {
+        val kinds = runCatching { playbackAdapters(qualityOverride).map { it.config.kind } }.getOrDefault(emptyList())
+        return when {
+            ceiling(qualityOverride) == DesktopAudioQuality.LOSSLESS && kinds.any { it.supportsLossless } ->
+                com.music.bitchord.data.LocalCopies.Streaming.LOSSLESS
+            DesktopSourceKind.JIOSAAVN in kinds -> com.music.bitchord.data.LocalCopies.Streaming.HIGH
+            else -> com.music.bitchord.data.LocalCopies.Streaming.STANDARD
+        }
+    }
 }

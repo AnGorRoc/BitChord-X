@@ -266,7 +266,7 @@ class DesktopPlaybackEngine(
             // so a URI for "Justin Bieber - Peaches (feat. …).m4a" sent it looking for a file
             // literally named "Justin%20Bieber%20-%20…" and it answered ENOENT for a file that was
             // sitting right there.
-            val localUrl = DesktopDownloadManager.savedFile(song)?.toAbsolutePath()?.toString()
+            val localUrl = localFileFor(song)
             val resolved = localUrl?.let { Result.success(DesktopLiveResolution(DesktopStream(it))) }
                 ?: if (song.isLive || song.durationText == "LIVE") {
                     runCatching {
@@ -543,6 +543,23 @@ class DesktopPlaybackEngine(
         return true
     }
 
+    /**
+     * The file [song] plays from instead of a stream, as a plain path: its download, or else the
+     * listener's own copy of the same recording in Local Music when that copy is at least as good
+     * as what the enabled sources would bring — see [com.music.bitchord.data.LocalCopies].
+     */
+    private fun localFileFor(song: Song): String? {
+        DesktopDownloadManager.savedFile(song)?.let { return it.toAbsolutePath().toString() }
+        val copy = com.music.bitchord.data.LocalCopies.find(song) ?: return null
+        if (!com.music.bitchord.data.LocalCopies.shouldPlay(copy.quality, online = true) {
+                DesktopSourceRegistry.streamingLevel(audioQuality)
+            }
+        ) return null
+        val path = copy.path?.takeIf { java.nio.file.Files.isRegularFile(java.nio.file.Path.of(it)) } ?: return null
+        DesktopTrackLog.log("own copy: '${song.title}' from $path (${copy.format.summary})")
+        return path
+    }
+
     /** Resolves and prepares the next queue item without starting it. */
     fun prepareNext(song: Song?) {
         // Past the midpoint of a blend the player already shows the incoming song, and the app
@@ -562,7 +579,7 @@ class DesktopPlaybackEngine(
         nextSong = song
         // A download plays from its file, here as in [loadInternal] — never from whichever source
         // would have answered for it.
-        val local = DesktopDownloadManager.savedFile(song)?.toAbsolutePath()?.toString()?.let { DesktopStream(it) }
+        val local = localFileFor(song)?.let { DesktopStream(it) }
         nextLocalStream = local
         // Measured on YouTube Opus (or the file) whatever will end up serving it, so Automix has
         // its analysis without anything being fetched from the source that will play it.

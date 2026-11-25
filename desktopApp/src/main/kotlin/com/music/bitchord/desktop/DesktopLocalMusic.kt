@@ -26,6 +26,8 @@ object DesktopLocalMusic {
             .flatMap { scanDirectory(it, filterNonMusic) }
             .distinctBy(Song::localPath)
             .sortedBy { it.title.lowercase() }
+            // Every scan also refreshes what a catalogue track can be played from.
+            .also(com.music.bitchord.data.LocalCopies::update)
     }
 
     internal fun roots(): List<Path> {

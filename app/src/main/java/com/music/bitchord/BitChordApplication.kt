@@ -175,7 +175,10 @@ class BitChordApplication : Application(), SingletonImageLoader.Factory, Configu
         AppSettings.init(this, authStore)
         // After AppSettings (the scan reads the Local Music folder and filter):
         // which catalogue tracks the listener already has on the phone.
-        CoroutineScope(Dispatchers.IO).launch { com.music.bitchord.data.LocalCopies.refresh(this@BitChordApplication) }
+        // The scan feeds LocalCopies itself.
+        CoroutineScope(Dispatchers.IO).launch {
+            runCatching { com.music.bitchord.data.LocalMediaRepository.getLocalMusic(this@BitChordApplication) }
+        }
         // Before anything resolves a track: an addon with `checkValidLossless`
         // is gated on this, and the gate reads "no" until it has looked.
         com.music.bitchord.playback.audio.LosslessOutput.init(this)
