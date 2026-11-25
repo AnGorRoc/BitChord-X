@@ -56,6 +56,8 @@ class Presence(
     @Volatile private var announced = false
     @Volatile private var intervalSec = DEFAULT_INTERVAL_SEC
     @Volatile private var activeSocket: WebSocket? = null
+    /** Set by a refused upgrade that sent `Retry-After`; read once by the reconnect loop. */
+    @Volatile private var retryAfterMs = 0L
 
     init {
         val exceptionHandler = CoroutineExceptionHandler { _, throwable ->
@@ -70,13 +72,21 @@ class Presence(
             open.collectLatest { isOpen ->
                 if (isOpen) {
                     var wsUnsupported = !useWebSocket
+                    var failures = 0
                     while (true) {
                         if (!wsUnsupported) {
+                            val startedAt = System.nanoTime()
                             val supported = runWebSocketSession()
                             if (!supported) {
                                 wsUnsupported = true
                             } else {
-                                delay(WS_RECONNECT_DELAY_MS)
+                                // A socket that lived a while resets the backoff; one that
+                                // dropped (or was refused) right away makes the next wait longer.
+                                val livedMs = (System.nanoTime() - startedAt) / 1_000_000L
+                                failures = if (livedMs >= STABLE_SESSION_MS) 0 else failures + 1
+                                val serverAsked = retryAfterMs
+                                retryAfterMs = 0L
+                                delay(maxOf(reconnectDelayMs(failures), serverAsked))
                                 continue
                             }
                         }
@@ -151,6 +161,9 @@ class Presence(
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
                 val code = response?.code
                 val unsupported = code == 404 || code == 405 || code == 501
+                // 429 with Retry-After: seconds, capped so a bad value cannot park the client.
+                retryAfterMs = response?.header("Retry-After")?.trim()?.toLongOrNull()
+                    ?.coerceIn(0L, 300L)?.times(1000L) ?: 0L
                 DebugLog.d(TAG, "presence ws closed/failed (HTTP $code): ${t.message}")
                 closed.complete(!unsupported)
             }
@@ -170,6 +183,17 @@ class Presence(
     /** The install's own ID, or at [TelemetryLevel.MINIMAL] one that changes every UTC day. */
     private fun idFor(level: TelemetryLevel): String =
         TelemetryLevel.idFor(level, installId, TelemetryLevel.today())
+
+    /**
+     * Wait before reopening the socket: [WS_RECONNECT_DELAY_MS] after a long
+     * session, then doubling up to [WS_RECONNECT_MAX_MS] while it keeps failing.
+     * Jitter keeps clients that lost the same server from coming back together.
+     */
+    internal fun reconnectDelayMs(failures: Int): Long {
+        val shift = (failures - 1).coerceIn(0, 6)
+        val base = (WS_RECONNECT_DELAY_MS shl shift).coerceAtMost(WS_RECONNECT_MAX_MS)
+        return base / 2 + Random.nextLong(base / 2 + 1)
+    }
 
     private fun nextDelayMs(): Long {
         val base = intervalSec.coerceIn(MIN_INTERVAL_SEC, MAX_INTERVAL_SEC) * 1000L
@@ -222,6 +246,8 @@ class Presence(
         private const val MAX_INTERVAL_SEC = 3600
         private const val CLOSE_DEBOUNCE_MS = 2_000L
         private const val WS_RECONNECT_DELAY_MS = 5_000L
+        private const val WS_RECONNECT_MAX_MS = 60_000L
+        private const val STABLE_SESSION_MS = 30_000L
         private val JSON = "application/json".toMediaType()
     }
 }
