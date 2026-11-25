@@ -534,6 +534,18 @@ class AudioPipelineTest {
     }
 
     @Test
+    fun `a file the player opened replaces a winner an earlier lookup left behind`() {
+        SourceResolutionTracker.resetForTrack("vidOwn", "Own")
+        SourceResolutionTracker.setWinner("tidal", "Playing", mediaId = "vidOwn")
+
+        SourceResolutionTracker.markPlaying("vidOwn", "Own", com.music.bitchord.playback.PlayingSource.Storage("Your copy", sounding = true))
+
+        val state = SourceResolutionTracker.playing.value
+        assertEquals("Your copy", state.storage)
+        assertTrue(state.reports.none { it.isWinner })
+    }
+
+    @Test
     fun `markPlaying enriches generic winner status once summary is available`() {
         SourceResolutionTracker.markPlaying(
             "vidSummary",

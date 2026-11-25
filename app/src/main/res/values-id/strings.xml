@@ -1465,6 +1465,7 @@
     <string name="pipeline_status_queued">Dalam antrean</string>
     <string name="pipeline_storage_cache">Cache</string>
     <string name="pipeline_storage_local">Lokal</string>
+    <string name="pipeline_storage_own_copy">Salinanmu</string>
     <string name="pipeline_status_skipped_data">Dilewati karena batas data (%1$s)</string>
     <string name="pipeline_status_skipped_lossless_first">Dilewati (mengutamakan Lossless langsung)</string>
     <string name="pipeline_status_skipped_better_source">Dilewati (mengutamakan sumber berkualitas lebih tinggi)</string>

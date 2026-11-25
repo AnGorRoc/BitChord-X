@@ -1523,6 +1523,7 @@
     <string name="pipeline_status_queued">W kolejce</string>
     <string name="pipeline_storage_cache">Pamięć podręczna</string>
     <string name="pipeline_storage_local">Lokalnie</string>
+    <string name="pipeline_storage_own_copy">Twoja kopia</string>
     <string name="pipeline_status_skipped_data">Pominięto z powodu limitu danych (%1$s)</string>
     <string name="pipeline_status_skipped_lossless_first">Pominięto (preferowany bezpośredni Lossless)</string>
     <string name="pipeline_status_skipped_better_source">Pominięto (wybrano źródło wyższej jakości)</string>

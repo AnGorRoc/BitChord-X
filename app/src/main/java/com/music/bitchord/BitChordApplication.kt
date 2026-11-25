@@ -173,6 +173,9 @@ class BitChordApplication : Application(), SingletonImageLoader.Factory, Configu
         // Before AppSettings: its init may start a model download, which needs a directory.
         com.music.bitchord.playback.smart.AutomixModels.init(this)
         AppSettings.init(this, authStore)
+        // After AppSettings (the scan reads the Local Music folder and filter):
+        // which catalogue tracks the listener already has on the phone.
+        CoroutineScope(Dispatchers.IO).launch { com.music.bitchord.data.LocalCopies.refresh(this@BitChordApplication) }
         // Before anything resolves a track: an addon with `checkValidLossless`
         // is gated on this, and the gate reads "no" until it has looked.
         com.music.bitchord.playback.audio.LosslessOutput.init(this)

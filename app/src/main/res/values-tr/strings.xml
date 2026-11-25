@@ -1442,6 +1442,7 @@
     <string name="pipeline_status_queued">Kuyrukta</string>
     <string name="pipeline_storage_cache">Önbellek</string>
     <string name="pipeline_storage_local">Yerel</string>
+    <string name="pipeline_storage_own_copy">Senin kopyan</string>
     <string name="pipeline_status_skipped_data">Veri sınırı nedeniyle atlandı (%1$s)</string>
     <string name="pipeline_status_skipped_lossless_first">Atlandı (doğrudan Lossless tercih edildi)</string>
     <string name="pipeline_status_skipped_better_source">Atlandı (daha yüksek kaliteli kaynak tercih edildi)</string>

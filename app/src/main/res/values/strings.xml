@@ -1501,6 +1501,7 @@
     <string name="pipeline_detail_below_youtube" translatable="false">Worse than YouTube’s own copy</string>
     <string name="pipeline_storage_cache" translatable="false">Cache</string>
     <string name="pipeline_storage_local" translatable="false">Local</string>
+    <string name="pipeline_storage_own_copy">Your copy</string>
     <string name="pipeline_status_skipped_data" translatable="false">Skipped by data limit (%1$s)</string>
     <string name="pipeline_status_skipped_lossless_first" translatable="false">Skipped (direct Lossless preferred)</string>
     <string name="pipeline_status_skipped_better_source" translatable="false">Skipped (higher-quality source preferred)</string>

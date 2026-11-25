@@ -1466,6 +1466,7 @@
     <string name="pipeline_status_queued">キュー追加済</string>
     <string name="pipeline_storage_cache">キャッシュ</string>
     <string name="pipeline_storage_local">ローカル</string>
+    <string name="pipeline_storage_own_copy">自分のコピー</string>
     <string name="pipeline_status_skipped_data">データ制限のためスキップ（%1$s）</string>
     <string name="pipeline_status_skipped_lossless_first">スキップ（直接ロスレスを優先）</string>
     <string name="pipeline_status_skipped_better_source">スキップ（より高品質なソースを優先）</string>

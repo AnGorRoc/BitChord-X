@@ -1321,6 +1321,7 @@
     <string name="pipeline_status_queued">대기열에 추가됨</string>
     <string name="pipeline_storage_cache">캐시</string>
     <string name="pipeline_storage_local">로컬</string>
+    <string name="pipeline_storage_own_copy">내 사본</string>
     <string name="pipeline_status_skipped_data">데이터 한도로 인해 건너뜀(%1$s)</string>
     <string name="pipeline_status_skipped_lossless_first">건너뜀(직접 무손실 우선)</string>
     <string name="pipeline_status_skipped_better_source">건너뜀(더 높은 품질의 소스 우선)</string>

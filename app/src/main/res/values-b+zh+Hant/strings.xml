@@ -1465,6 +1465,7 @@
     <string name="pipeline_status_queued">已排隊</string>
     <string name="pipeline_storage_cache">快取</string>
     <string name="pipeline_storage_local">本機</string>
+    <string name="pipeline_storage_own_copy">你的副本</string>
     <string name="pipeline_status_skipped_data">因數據用量限制而略過（%1$s）</string>
     <string name="pipeline_status_skipped_lossless_first">已略過（優先直連無損）</string>
     <string name="pipeline_status_skipped_better_source">已略過（優先更高品質來源）</string>

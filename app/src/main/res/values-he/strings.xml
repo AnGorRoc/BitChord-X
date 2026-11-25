@@ -1490,6 +1490,7 @@
     <string name="pipeline_status_queued">בתור</string>
     <string name="pipeline_storage_cache">מטמון</string>
     <string name="pipeline_storage_local">מקומי</string>
+    <string name="pipeline_storage_own_copy">העותק שלך</string>
     <string name="pipeline_status_skipped_data">דולג עקב מגבלת נתונים (%1$s)</string>
     <string name="pipeline_status_skipped_lossless_first">דולג (עדיפות ל-Lossless ישיר)</string>
     <string name="pipeline_status_skipped_better_source">דולג (עדיפות למקור באיכות גבוהה יותר)</string>

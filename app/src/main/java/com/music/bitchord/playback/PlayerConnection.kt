@@ -37,6 +37,9 @@ import com.music.bitchord.data.settings.AppSettings
 import com.music.bitchord.data.sources.SourceRegistry
 import com.music.bitchord.data.sources.SourceResolver
 import com.music.bitchord.data.sources.TrackMatcher
+import com.music.bitchord.data.sources.StreamRequest
+import com.music.bitchord.data.LocalCopies
+import com.music.bitchord.data.TrackLog
 import com.music.bitchord.download.Downloads
 import com.music.bitchord.ui.rememberIsForeground
 import kotlinx.coroutines.Dispatchers
@@ -763,14 +766,21 @@ internal fun Song.streamUri(sourceTrack: Pair<String, String>? = SourceRegistry.
         else -> "bitchord://watch?v=$videoId${matchQuery()}"
     }
 
-internal fun shouldPlayLocalFile(hasLocalFile: Boolean, canStream: Boolean): Boolean =
-    hasLocalFile && !canStream
-
-internal fun shouldPlayLocalFile(hasLocalFile: Boolean): Boolean =
-    shouldPlayLocalFile(
-        hasLocalFile = hasLocalFile,
-        canStream = !AppSettings.effectiveOffline.value,
-    )
+/**
+ * The best streaming could bring a track right now, for a lossy file on the
+ * phone to be weighed against: lossless when it is asked for on this
+ * connection and a source that serves it is on, JioSaavn's 320 kbps when that
+ * is on, else YouTube's Opus.
+ */
+private fun streamingNow(): LocalCopies.Streaming = runCatching {
+    val active = SourceRegistry.activeForPlayback()
+    when {
+        SourceResolver.requestForNow() == StreamRequest.Lossless && active.any { it.kind.canServeLossless } ->
+            LocalCopies.Streaming.LOSSLESS
+        active.any { it.kind == SourceKind.JIOSAAVN } -> LocalCopies.Streaming.HIGH
+        else -> LocalCopies.Streaming.STANDARD
+    }
+}.getOrDefault(LocalCopies.Streaming.STANDARD)
 
 fun Song.toMediaItem(): MediaItem {
     if (isLive) return toLiveMediaItem()
@@ -801,14 +811,30 @@ fun Song.toMediaItem(): MediaItem {
     // leaves that path unguarded.
     val offlineUri = localUri?.takeUnless(Downloads::isMissingLocalFile)
         ?: Downloads.verifiedSavedUri(videoId)
-    val playFile = shouldPlayLocalFile(hasLocalFile = offlineUri != null)
-    val offlineFormat: String? = if (playFile) Downloads.savedFormat(videoId) else null
-    val formatBadge: String? = downloadFormat ?: offlineFormat
-    val playUri = offlineUri?.takeIf { playFile }
+    // A copy on the phone plays instead of a stream whenever it is at least as
+    // good as what streaming would bring, not only offline — see
+    // [LocalCopies.shouldPlay]. Without a download, the listener's own files
+    // are asked too, in any format: the album they copied on plays when the
+    // same track is found in search.
+    val online = !AppSettings.effectiveOffline.value
+    val streaming = { streamingNow() }
+    val playFile = offlineUri != null && LocalCopies.shouldPlay(
+        LocalCopies.qualityOfDownload(
+            Downloads.savedFormat(videoId) ?: downloadFormat,
+            localPath,
+            TrackMatcher.secondsOf(durationText),
+        ),
+        online,
+        streaming,
+    )
+    val ownCopy = if (playFile) null else LocalCopies.find(this)
+        ?.takeIf { LocalCopies.shouldPlay(it.quality, online, streaming) }
+        ?.also { TrackLog.d("BitChord", "own copy: '$title' from ${it.path} (${it.format.summary})") }
+    val playUri = offlineUri?.takeIf { playFile } ?: ownCopy?.uri
     val uriString = playUri ?: streamUri(sourceTrack)
     return MediaItem.Builder()
         .setMediaId(videoId)
-        .setUri(resolvePlaybackUri(uriString, localPath))
+        .setUri(resolvePlaybackUri(uriString, if (ownCopy != null) ownCopy.path else localPath))
     .setMediaMetadata(
         MediaMetadata.Builder()
             .setTitle(title)

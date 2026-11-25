@@ -50,7 +50,15 @@ sealed interface PlayingSource {
     ) : PlayingSource
 
     /** The bytes come off the device (the disk cache or a local file), from no provider known to this process. */
-    data class Storage(val label: String) : PlayingSource
+    data class Storage(
+        val label: String,
+        /**
+         * A file on the device is what the player opened, so any provider
+         * marked as the winner by an earlier lookup for the same track — a
+         * read-ahead, a previous play — is not what is sounding now.
+         */
+        val sounding: Boolean = false,
+    ) : PlayingSource
 }
 
 /**
@@ -307,7 +315,19 @@ object SourceResolutionTracker {
                 is PlayingSource.Storage -> {
                     // From the device, by a provider this process never saw
                     // chosen: the store is what is sounding.
-                    if (track.attempts.values.none { it.isWinner }) track.storage = source.label
+                    if (source.sounding) {
+                        for ((id, attempt) in track.attempts) {
+                            if (attempt.isWinner) {
+                                track.attempts[id] = attempt.copy(
+                                    isWinner = false,
+                                    status = text(R.string.pipeline_status_replaced_by, source.label),
+                                )
+                            }
+                        }
+                        track.storage = source.label
+                    } else if (track.attempts.values.none { it.isWinner }) {
+                        track.storage = source.label
+                    }
                 }
                 null -> Unit
             }

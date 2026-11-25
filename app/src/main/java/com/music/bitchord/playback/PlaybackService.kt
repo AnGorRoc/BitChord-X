@@ -8169,7 +8169,14 @@ class PlaybackService : MediaLibraryService() {
     private fun playingSourceOf(item: MediaItem): PlayingSource? {
         val mediaId = item.mediaId
         if (isLocalPlayback(mediaId, item)) {
-            return PlayingSource.Storage(SourceResolutionTracker.text(R.string.pipeline_storage_local))
+            // A catalogue track playing off a file of the listener's own (see
+            // LocalCopies) — not a download, not a Local Music row — is named
+            // as theirs; the badge under the seek bar only says how good it is.
+            val ownCopy = !mediaId.startsWith("content://") && !mediaId.startsWith("file://") &&
+                item.mediaMetadata.extras?.getString(EXTRA_LOCAL_URI).isNullOrBlank() &&
+                Downloads.verifiedSavedUri(mediaId) == null
+            val label = if (ownCopy) R.string.pipeline_storage_own_copy else R.string.pipeline_storage_local
+            return PlayingSource.Storage(SourceResolutionTracker.text(label), sounding = true)
         }
         fun provider(configId: String?, summary: String?): PlayingSource? {
             val id = configId ?: return null

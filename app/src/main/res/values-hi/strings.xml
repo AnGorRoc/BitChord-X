@@ -1485,6 +1485,7 @@
     <string name="pipeline_status_queued">कतार में</string>
     <string name="pipeline_storage_cache">कैश</string>
     <string name="pipeline_storage_local">स्थानीय</string>
+    <string name="pipeline_storage_own_copy">आपकी कॉपी</string>
     <string name="pipeline_status_skipped_data">डेटा सीमा के कारण छोड़ा गया (%1$s)</string>
     <string name="pipeline_status_skipped_lossless_first">छोड़ा गया (सीधा Lossless प्राथमिकता)</string>
     <string name="pipeline_status_skipped_better_source">छोड़ा गया (उच्च गुणवत्ता स्रोत प्राथमिकता)</string>

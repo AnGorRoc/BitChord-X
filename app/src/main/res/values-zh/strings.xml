@@ -1465,6 +1465,7 @@
     <string name="pipeline_status_queued">已排队</string>
     <string name="pipeline_storage_cache">缓存</string>
     <string name="pipeline_storage_local">本地</string>
+    <string name="pipeline_storage_own_copy">你的副本</string>
     <string name="pipeline_status_skipped_data">因流量限制而跳过（%1$s）</string>
     <string name="pipeline_status_skipped_lossless_first">已跳过（优先直连无损）</string>
     <string name="pipeline_status_skipped_better_source">已跳过（优先更高品质来源）</string>

@@ -1471,6 +1471,7 @@
     <string name="pipeline_status_queued">อยู่ในคิว</string>
     <string name="pipeline_storage_cache">แคช</string>
     <string name="pipeline_storage_local">ในเครื่อง</string>
+    <string name="pipeline_storage_own_copy">สำเนาของคุณ</string>
     <string name="pipeline_status_skipped_data">ข้ามเนื่องจากขีดจำกัดข้อมูล (%1$s)</string>
     <string name="pipeline_status_skipped_lossless_first">ข้าม (ต้องการ Lossless โดยตรงก่อน)</string>
     <string name="pipeline_status_skipped_better_source">ข้าม (ต้องการแหล่งที่มีคุณภาพสูงกว่า)</string>

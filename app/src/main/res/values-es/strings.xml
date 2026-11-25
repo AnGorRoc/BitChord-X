@@ -1543,6 +1543,7 @@
     <string name="pipeline_detail_below_youtube">Peor que la copia de YouTube</string>
     <string name="pipeline_storage_cache">Caché</string>
     <string name="pipeline_storage_local">Local</string>
+    <string name="pipeline_storage_own_copy">Tu copia</string>
     <string name="pipeline_status_skipped_data">Omitido por límite de datos (%1$s)</string>
     <string name="pipeline_status_skipped_lossless_first">Omitido (se prefirió Lossless directo)</string>
     <string name="pipeline_status_skipped_better_source">Omitido (se prefirió fuente de mayor calidad)</string>

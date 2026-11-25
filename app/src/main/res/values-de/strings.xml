@@ -1485,6 +1485,7 @@
     <string name="pipeline_status_queued">In Warteschlange</string>
     <string name="pipeline_storage_cache">Cache</string>
     <string name="pipeline_storage_local">Lokal</string>
+    <string name="pipeline_storage_own_copy">Deine Kopie</string>
     <string name="pipeline_status_skipped_data">Wegen Datenlimit übersprungen (%1$s)</string>
     <string name="pipeline_status_skipped_lossless_first">Übersprungen (direktes Lossless bevorzugt)</string>
     <string name="pipeline_status_skipped_better_source">Übersprungen (Quelle mit höherer Qualität bevorzugt)</string>

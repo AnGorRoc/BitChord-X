@@ -1405,6 +1405,7 @@
     <string name="pipeline_status_queued">Trong hàng đợi</string>
     <string name="pipeline_storage_cache">Bộ nhớ đệm</string>
     <string name="pipeline_storage_local">Cục bộ</string>
+    <string name="pipeline_storage_own_copy">Bản của bạn</string>
     <string name="pipeline_status_skipped_data">Bỏ qua do giới hạn dữ liệu (%1$s)</string>
     <string name="pipeline_status_skipped_lossless_first">Bỏ qua (ưu tiên Lossless trực tiếp)</string>
     <string name="pipeline_status_skipped_better_source">Bỏ qua (ưu tiên nguồn chất lượng cao hơn)</string>

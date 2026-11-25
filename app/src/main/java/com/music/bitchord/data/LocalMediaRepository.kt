@@ -266,6 +266,8 @@ object LocalMediaRepository {
             }
         }.onFailure { Log.w(TAG, "Failed scanning device local music: ${it.message}") }
 
+        // Every scan also refreshes what a catalogue track can be played from.
+        LocalCopies.update(songs)
         extraLocalMusic?.invoke(context, songs) ?: songs
     }
 

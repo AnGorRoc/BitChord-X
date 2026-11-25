@@ -1486,6 +1486,7 @@
     <string name="pipeline_status_queued">En file d’attente</string>
     <string name="pipeline_storage_cache">Cache</string>
     <string name="pipeline_storage_local">Local</string>
+    <string name="pipeline_storage_own_copy">Ta copie</string>
     <string name="pipeline_status_skipped_data">Ignoré par limite de données (%1$s)</string>
     <string name="pipeline_status_skipped_lossless_first">Ignoré (Lossless direct préféré)</string>
     <string name="pipeline_status_skipped_better_source">Ignoré (source de meilleure qualité préférée)</string>
