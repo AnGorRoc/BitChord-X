@@ -385,4 +385,11 @@
     <string name="dj_set_cat_reggaeton">Reggaeton</string>
     <string name="featured_badge">HIGHLIGHT</string>
     <string name="special_mix">Spezialmix</string>
+    <string name="badge_info_source">Quelle</string>
+    <string name="badge_info_format">Format</string>
+    <string name="badge_info_bit_depth">Bittiefe</string>
+    <string name="badge_info_sample_rate">Abtastrate</string>
+    <string name="badge_info_bitrate">Bitrate</string>
+    <string name="badge_info_channels">Kanäle</string>
+    <string name="badge_info_your_copy">Deine Kopie</string>
 </resources>
