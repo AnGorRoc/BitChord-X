@@ -523,3 +523,17 @@ object SpotifySync {
     }
 }
 
+/**
+ * Whether [browseId] is a copy of Spotify's Liked Songs: the one kept on this
+ * device, or the separate playlist written to the account. Those are drawn
+ * with the green liked cover.
+ */
+fun isSpotifyLikedCopy(browseId: String?): Boolean {
+    if (browseId.isNullOrBlank()) return false
+    if (browseId.startsWith("local:playlist:")) {
+        return LocalPlaylistStore.getPlaylist(browseId)?.spotifyId == SpotifyLibrary.LIKED_ID
+    }
+    val youtubeId = YouTubeExportLedger.get(SpotifySync.ledgerKey(SpotifyLibrary.LIKED_ID))?.youtubeId
+        ?: return false
+    return browseId == youtubeId || browseId == "VL$youtubeId"
+}

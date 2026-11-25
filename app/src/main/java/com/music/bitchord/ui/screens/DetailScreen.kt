@@ -1115,6 +1115,9 @@ private fun ReleaseHeader(
             page.browseId.startsWith("charts:trending") ||
             (page.browseId.startsWith("topic:") && page.thumbnailUrl == null)
         ) && top4Artworks.size >= 4
+    // A copy of Spotify's Liked Songs kept apart from the account's likes wears
+    // the green liked cover rather than a collage of its songs.
+    val greenLikedCover = com.music.bitchord.ui.AppUi.host.isGreenLikedCover(page.browseId)
     var artFailed by remember(page.thumbnailUrl) { mutableStateOf(false) }
 
     val context = LocalPlatformContext.current
@@ -1417,6 +1420,11 @@ private fun ReleaseHeader(
                         contentDescription = page.title,
                         contentScale = ContentScale.Crop,
                         modifier = Modifier.matchParentSize(),
+                    )
+                } else if (greenLikedCover) {
+                    com.music.bitchord.ui.components.GreenLikedCover(
+                        modifier = Modifier.matchParentSize(),
+                        iconSize = 72.dp,
                     )
                 } else if (isGridCover) {
                     Column(Modifier.matchParentSize()) {

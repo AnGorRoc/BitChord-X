@@ -104,6 +104,17 @@ object AndroidAppUiHost : AppUiHost {
         }
     }
 
+    @Composable
+    override fun isGreenLikedCover(browseId: String?): Boolean {
+        if (browseId.isNullOrBlank()) return false
+        // Read so the cover follows an import that lands while the card is up.
+        val playlists by com.music.bitchord.data.spotify.LocalPlaylistStore.playlists.collectAsStateWithLifecycle()
+        val sync by com.music.bitchord.data.spotify.SpotifySync.state.collectAsStateWithLifecycle()
+        return remember(playlists, sync is com.music.bitchord.data.spotify.SpotifySyncState.Running, browseId) {
+            com.music.bitchord.data.spotify.isSpotifyLikedCopy(browseId)
+        }
+    }
+
     override suspend fun releaseMotion(album: String, artist: String): CanvasArtwork? {
         if (!AppSettings.animatedCanvas.value || album.isBlank() || artist.isBlank()) return null
         return CanvasRepository.canvasForAlbum(album, artist)

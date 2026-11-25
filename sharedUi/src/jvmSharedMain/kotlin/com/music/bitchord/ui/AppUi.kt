@@ -77,6 +77,14 @@ interface AppUiHost {
     fun localPlaylistCoverArtworks(browseId: String): List<String> = emptyList()
 
     /**
+     * Whether [browseId] is a copy of Spotify's Liked Songs kept apart from the
+     * account's own likes — on the device or as a playlist of its own — and so
+     * drawn with [GreenLikedCover][com.music.bitchord.ui.components.GreenLikedCover].
+     */
+    @Composable
+    fun isGreenLikedCover(browseId: String?): Boolean = false
+
+    /**
      * A release's motion cover, for Home's Top Picks — the same lookup the
      * album page makes. Null is the normal answer, and the only one where the
      * user has animated artwork off or the platform has no lookup.
