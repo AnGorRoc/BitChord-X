@@ -406,4 +406,7 @@
     <string name="greeting_welcome_back_named">ברוך שובך, %1$s!</string>
     <string name="greeting_continue_artist">עוד %1$s?</string>
     <string name="greeting_hello_named">היי, %1$s</string>
+    <string name="shelf_continue_listening">להמשיך להאזין</string>
+    <string name="shelf_because_you_listened">כי האזנת ל-%1$s</string>
+    <string name="shelf_new_from_your_artists">חדש מהאמנים שלך</string>
 </resources>

@@ -66,7 +66,7 @@ import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import com.music.bitchord.ui.components.PrefetchVerticalArtworkAhead
 import com.music.bitchord.ui.components.prefetchArtwork
-import com.music.bitchord.data.tailLast
+import com.music.bitchord.data.homeOrder
 import com.music.bitchord.data.model.CARD_ART_PX
 import com.music.bitchord.data.model.HEADER_ART_PX
 import com.music.bitchord.data.model.HomeShelf
@@ -167,6 +167,8 @@ fun HomeScreen(
     /** Whether the Top Picks and mood artwork may animate — see [LocalArtworkMotion]. */
     artworkMotion: Boolean = true,
     onOpenDownloads: (() -> Unit)? = null,
+    /** Home's own shelves, from the listener's history — see `PersonalShelves`. */
+    personalShelves: List<HomeShelf> = emptyList(),
 ) {
     val recentsViewType by AppUi.host.homeRecentsViewType.collectAsStateWithLifecycle()
     // Top Picks' pictures and motion wait for the feed — see LocalArtworkImages.
@@ -262,8 +264,9 @@ fun HomeScreen(
                     // Recently Played lands, every real shelf must retain its
                     // compact-card layout instead of briefly becoming a hero.
                     itemsIndexedShelves(
-                        // Explore's borrowed shelves after the listener's own feed.
-                        shelves = state.data.tailLast(),
+                        // At most two of our own shelves above the feed, the rest
+                        // worked in, and Explore's borrowed shelves last.
+                        shelves = state.data.homeOrder(personalShelves),
                         onMoodClick = onMoodClick,
                         onMoodsShowAll = onMoodsShowAll,
                         onItemClick = onItemClick,
@@ -292,8 +295,8 @@ fun HomeScreen(
     }
 
     if (state is UiState.Success) {
-        val verticalShelvesArtwork = remember(state.data) {
-            state.data.tailLast().map { shelf ->
+        val verticalShelvesArtwork = remember(state.data, personalShelves) {
+            state.data.homeOrder(personalShelves).map { shelf ->
                 val count = minOf(shelf.items.size, 6)
                 shelf.items.take(count).map { item ->
                     if (shelf.layout == ShelfLayout.VIDEO) item.thumbnailUrl
@@ -357,7 +360,10 @@ private fun androidx.compose.foundation.lazy.LazyListScope.itemsIndexedShelves(
             item(key = "find-your-mood") { FindYourMoodShelf(onMoodClick, onMoodsShowAll) }
         }
         item(key = shelf.title + index) {
-            val openItem: (ShelfItem) -> Unit = remember(shelf) { { item -> onItemClick(item, shelf.title) } }
+            // Our own shelves are named by a key; what plays is "from" their
+            // title as shown, not the key.
+            val sourceTitle = if (shelf.personal) localizeShelfTitle(shelf.title) else shelf.title
+            val openItem: (ShelfItem) -> Unit = remember(shelf, sourceTitle) { { item -> onItemClick(item, sourceTitle) } }
             val isRecents = index == 0 && shelf.title.equals(RECENTS_TITLE, ignoreCase = true)
             // Listen again and Quick picks are lists on the web player, as
             // Recents is here: one pager for all three.
@@ -697,6 +703,20 @@ internal fun SectionHeader(title: String, subtitle: String = "", onShowAll: (() 
 @Composable
 internal fun localizeShelfTitle(title: String): String {
     val trimmed = title.trim()
+    // Home's own shelves carry a key, not a title — see PersonalShelves.
+    when {
+        trimmed == com.music.bitchord.data.PersonalShelves.CONTINUE ->
+            return stringResource(Res.string.shelf_continue_listening)
+        trimmed == com.music.bitchord.data.PersonalShelves.LISTEN_AGAIN ->
+            return stringResource(Res.string.shelf_listen_again)
+        trimmed == com.music.bitchord.data.PersonalShelves.NEW_FROM_ARTISTS ->
+            return stringResource(Res.string.shelf_new_from_your_artists)
+        trimmed.startsWith(com.music.bitchord.data.PersonalShelves.BECAUSE) ->
+            return stringResource(
+                Res.string.shelf_because_you_listened,
+                trimmed.removePrefix(com.music.bitchord.data.PersonalShelves.BECAUSE),
+            )
+    }
     return when {
         trimmed.equals("Recents", ignoreCase = true) ||
             trimmed.equals("Recently played", ignoreCase = true) ||

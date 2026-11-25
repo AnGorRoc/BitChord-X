@@ -594,6 +594,9 @@ fun BitChordDesktopApp() {
     // Recently Played has its own request and its own skeleton at the head of the page, as on the
     // phone; it is only asked for with an account to have played on.
     var homeRecentsLoading by remember { mutableStateOf(false) }
+    // Home's own shelves, from this computer's history — see PersonalShelves. Kept beside the
+    // feed rather than in it, so a reloaded feed never drops them.
+    var personalShelves by remember { mutableStateOf<List<HomeShelf>>(emptyList()) }
     var topPicks by remember {
         val currentHour = LocalDateTime.now().let { "${it.toLocalDate()}T${it.hour}" }
         mutableStateOf(
@@ -2750,6 +2753,8 @@ fun BitChordDesktopApp() {
     /** The shelf of [shelves] that holds [item], so a tap can queue its neighbours. */
     fun shelfOf(item: ShelfItem, shelves: UiState<List<HomeShelf>>): List<ShelfItem>? =
         (shelves as? UiState.Success)?.data?.firstOrNull { shelf -> item in shelf.items }?.items
+            // Home's own shelves live beside the feed, not in it.
+            ?: personalShelves.firstOrNull { shelf -> item in shelf.items }?.items
 
     fun openShelfItem(item: ShelfItem, shelfTitle: String? = null, siblings: List<ShelfItem>? = null) {
         val videoId = item.videoId
@@ -3260,6 +3265,10 @@ fun BitChordDesktopApp() {
         homeLoadingMore = false
         // Signed out as well: Recents is then read from this computer's own history.
         homeRecentsLoading = true
+        scope.launch {
+            runCatching { withContext(Dispatchers.IO) { com.music.bitchord.data.PersonalShelves.build() } }
+                .onSuccess { if (generation == homeGeneration) personalShelves = it }
+        }
         scope.launch {
             launch {
                 DesktopSearchClient.home().fold(
@@ -5295,6 +5304,7 @@ fun BitChordDesktopApp() {
                             onMoodsShowAll = { selectDestination(DesktopDestination.EXPLORE) },
                             artworkMotion = animatedCanvas,
                             onOpenDownloads = { selectDestination(DesktopDestination.DOWNLOADS) },
+                            personalShelves = personalShelves,
                         )
                         destination == DesktopDestination.EXPLORE && selectedMoodGenre != null -> Column(Modifier.fillMaxSize()) {
                             MoodGenrePlaylistsScreen(

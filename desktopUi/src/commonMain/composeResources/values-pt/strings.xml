@@ -406,4 +406,7 @@
     <string name="greeting_welcome_back_named">Que bom te ver de volta, %1$s!</string>
     <string name="greeting_continue_artist">Mais %1$s?</string>
     <string name="greeting_hello_named">Oi, %1$s</string>
+    <string name="shelf_continue_listening">Continuar ouvindo</string>
+    <string name="shelf_because_you_listened">Porque você ouviu %1$s</string>
+    <string name="shelf_new_from_your_artists">Novidades dos seus artistas</string>
 </resources>

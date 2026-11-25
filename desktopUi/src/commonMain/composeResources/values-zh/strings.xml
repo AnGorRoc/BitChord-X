@@ -406,4 +406,7 @@
     <string name="greeting_welcome_back_named">欢迎回来,%1$s!</string>
     <string name="greeting_continue_artist">继续听 %1$s?</string>
     <string name="greeting_hello_named">你好,%1$s</string>
+    <string name="shelf_continue_listening">继续收听</string>
+    <string name="shelf_because_you_listened">因为你听过 %1$s</string>
+    <string name="shelf_new_from_your_artists">你喜爱的艺人新作</string>
 </resources>

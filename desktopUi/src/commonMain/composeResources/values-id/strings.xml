@@ -406,4 +406,7 @@
     <string name="greeting_welcome_back_named">Selamat datang kembali, %1$s!</string>
     <string name="greeting_continue_artist">Lanjut %1$s?</string>
     <string name="greeting_hello_named">Hai, %1$s</string>
+    <string name="shelf_continue_listening">Lanjutkan mendengarkan</string>
+    <string name="shelf_because_you_listened">Karena kamu mendengarkan %1$s</string>
+    <string name="shelf_new_from_your_artists">Baru dari artismu</string>
 </resources>

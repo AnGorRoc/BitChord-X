@@ -406,4 +406,7 @@
     <string name="greeting_welcome_back_named">Tekrar hoş geldin, %1$s!</string>
     <string name="greeting_continue_artist">Biraz daha %1$s?</string>
     <string name="greeting_hello_named">Merhaba, %1$s</string>
+    <string name="shelf_continue_listening">Dinlemeye devam et</string>
+    <string name="shelf_because_you_listened">%1$s dinlediğin için</string>
+    <string name="shelf_new_from_your_artists">Sanatçılarından yeni</string>
 </resources>

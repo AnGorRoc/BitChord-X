@@ -406,4 +406,7 @@
     <string name="greeting_welcome_back_named">Chào mừng trở lại, %1$s!</string>
     <string name="greeting_continue_artist">Nghe tiếp %1$s nhé?</string>
     <string name="greeting_hello_named">Chào %1$s</string>
+    <string name="shelf_continue_listening">Nghe tiếp</string>
+    <string name="shelf_because_you_listened">Vì bạn đã nghe %1$s</string>
+    <string name="shelf_new_from_your_artists">Mới từ nghệ sĩ của bạn</string>
 </resources>
