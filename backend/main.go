@@ -1336,6 +1336,11 @@ func requestOrigin(r *http.Request) string {
 
 func handleInviteLanding(w http.ResponseWriter, r *http.Request) {
 	code := codes.Normalise(r.PathValue("code"))
+	// Older apps shared the code glued to the message text that followed it, so a
+	// longer path is read by its first characters.
+	if runes := []rune(code); len(runes) > codes.CodeLength {
+		code = string(runes[:codes.CodeLength])
+	}
 	origin := requestOrigin(r)
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'")

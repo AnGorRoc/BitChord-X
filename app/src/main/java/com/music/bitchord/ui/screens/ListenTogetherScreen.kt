@@ -332,9 +332,11 @@ fun ListenTogetherScreen(
     /** The system chooser, with the link and the spoken-aloud code together. */
     val shareInvite: () -> Unit = {
         state.code?.let { partyCode ->
-            val message = inviteLinkFor(partyCode) +
+            // The link goes last, alone on its line: some apps drop the line breaks and glue
+            // whatever follows the link onto its code.
+            val message = context.getString(R.string.listen_together_share_text, partyCode) +
                 System.lineSeparator() + System.lineSeparator() +
-                context.getString(R.string.listen_together_share_text, partyCode)
+                inviteLinkFor(partyCode)
             context.startActivity(
                 Intent.createChooser(
                     Intent(Intent.ACTION_SEND).apply {

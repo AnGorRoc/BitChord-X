@@ -486,6 +486,25 @@ func TestInviteDeepLinkUsesPublicOrigin(t *testing.T) {
 	}
 }
 
+func TestInviteLandingReadsCodeGluedToShareText(t *testing.T) {
+	ts := setupTestServer()
+	defer ts.Close()
+
+	p, err := store.Create()
+	if err != nil {
+		t.Fatalf("Party creation failed: %v", err)
+	}
+
+	// 1.10.1 shared the link, a blank line and the text; some apps joined them.
+	res, err := http.Get(ts.URL + "/invite/" + p.Code + "Escucha%20conmigo%20en%20BitChord")
+	if err != nil {
+		t.Fatalf("GET failed: %v", err)
+	}
+	if res.StatusCode != http.StatusOK {
+		t.Errorf("Expected the party to be found by its first characters, got %d", res.StatusCode)
+	}
+}
+
 func TestInviteLanding(t *testing.T) {
 	ts := setupTestServer()
 	defer ts.Close()
