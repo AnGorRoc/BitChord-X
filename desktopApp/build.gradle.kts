@@ -8,12 +8,22 @@ import NativeTools.cmakeBinary
 import NativeTools.findOnPath
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 
-/** What the packages, the launcher and the settings footer all say. */
+/**
+ * What the packages, the launcher, the settings footer and the telemetry all
+ * say. A release passes the tag's version; a build without one takes the root
+ * build file's, beta marker included, so a local beta build names itself one.
+ */
 val appVersion: String = providers.gradleProperty("bitchordVersionName").orNull
-    ?: providers.gradleProperty("bitchord.version").orNull
     ?.removePrefix("v")
     ?.takeIf { it.isNotBlank() }
-    ?: (rootProject.extra["bitchordVersionName"] as? String ?: "1.10.2")
+    ?: providers.gradleProperty("bitchord.version").orNull
+        ?.removePrefix("v")
+        ?.takeIf { it.isNotBlank() }
+    ?: run {
+        val name = rootProject.extra["bitchordVersionName"] as? String ?: "1.10.2"
+        val beta = rootProject.extra["bitchordBetaSuffix"] as? String ?: ""
+        if (beta.isNotEmpty()) "$name-$beta" else name
+    }
 
 /** Which platform this build is *for*, which is the host unless told otherwise. */
 val hostIsWindows = System.getProperty("os.name").contains("Windows", ignoreCase = true)

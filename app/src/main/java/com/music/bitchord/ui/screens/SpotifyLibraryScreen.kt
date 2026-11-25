@@ -43,6 +43,19 @@ import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.ErrorOutline
 import androidx.compose.material.icons.rounded.Favorite
 import androidx.compose.material.icons.rounded.LibraryMusic
+import androidx.compose.material.icons.rounded.NotificationsOff
+import android.Manifest
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import android.provider.Settings
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.app.NotificationManagerCompat
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.Sync
@@ -325,6 +338,25 @@ fun SpotifyLibraryScreen(
         }.associateBy { it.playlist.id }
     }
     val activeId = (sync as? SpotifySyncState.Running)?.playlist?.id
+
+    // The import goes on with the app away, and the notification is how it is
+    // followed there; without the permission Android posts it nowhere. Asked
+    // when an import starts, and offered again from the bar while one runs.
+    var notificationsOn by remember { mutableStateOf(notificationsEnabled(context)) }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { notificationsOn = notificationsEnabled(context) }
+    val notifyPermission = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { notificationsOn = notificationsEnabled(context) }
+    val askForNotifications = {
+        if (!notificationsEnabled(context)) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) !=
+                PackageManager.PERMISSION_GRANTED
+            ) {
+                notifyPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
+        }
+    }
     var unmatchedDialogTracks by remember { mutableStateOf<List<SpotifyTrack>?>(null) }
 
     BackHandler(enabled = state.selecting) {
@@ -436,15 +468,30 @@ fun SpotifyLibraryScreen(
         }
 
         if (!state.selecting && sync !is SpotifySyncState.Idle) {
-            SyncBar(
-                sync = sync,
-                onSignIn = onOpenLogin,
-                onYouTubeSignIn = onOpenYouTubeSignIn,
-                onViewUnmatched = { unmatchedDialogTracks = it },
+            Column(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
                     .padding(top = topBarContentPadding(), start = PAGE_GUTTER, end = PAGE_GUTTER),
-            )
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                SyncBar(
+                    sync = sync,
+                    onSignIn = onOpenLogin,
+                    onYouTubeSignIn = onOpenYouTubeSignIn,
+                    onViewUnmatched = { unmatchedDialogTracks = it },
+                )
+                if (sync is SpotifySyncState.Running && !notificationsOn) {
+                    FloatingBar(Modifier) {
+                        BarText(
+                            title = stringResource(R.string.spotify_sync_notifications_off),
+                            leadingIcon = Icons.Rounded.NotificationsOff,
+                        )
+                        TextButton(onClick = { openNotificationSettings(context) }) {
+                            Text(stringResource(R.string.spotify_sync_notifications_enable))
+                        }
+                    }
+                }
+            }
         }
 
         unmatchedDialogTracks?.let { tracks ->
@@ -488,6 +535,7 @@ fun SpotifyLibraryScreen(
                 enabled = count > 0,
                 onClick = {
                     haptics.play(Haptic.Resume)
+                    askForNotifications()
                     state.importSelected(signedIn)
                 },
                 modifier = Modifier
@@ -929,6 +977,17 @@ private fun CloseButton() {
     }
 }
 
+
+private fun notificationsEnabled(context: Context): Boolean =
+    NotificationManagerCompat.from(context).areNotificationsEnabled()
+
+/** The app's own notification settings, where a refused permission can be turned back on. */
+private fun openNotificationSettings(context: Context) {
+    val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+        .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    runCatching { context.startActivity(intent) }
+}
 
 /** How long after an automatic sync the next one waits, however often the page is opened. */
 private const val AUTO_SYNC_MIN_INTERVAL_MS = 6L * 60 * 60 * 1000

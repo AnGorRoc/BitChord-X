@@ -174,7 +174,15 @@ object SpotifyImporter {
      * than answered with null, so that "no such song" and "could not ask" stay
      * apart.
      */
-    suspend fun lookUp(track: SpotifyTrack): Song? {
+    suspend fun lookUp(track: SpotifyTrack, pacer: RequestPacer? = null): Song? {
+        // Every search goes through the import's pacer when it has one, so a
+        // whole library is asked for at a pace YouTube Music will answer.
+        suspend fun search(query: String, filter: SearchFilter) =
+            if (pacer == null) {
+                YtMusicRepository.search(query, filter)
+            } else {
+                pacer.run { YtMusicRepository.search(query, filter) }
+            }
         val target = TrackMatcher.Target(
             title = track.title,
             artist = track.artist,
@@ -187,7 +195,7 @@ object SpotifyImporter {
 
         // Primary search using SONGS filter (must throw on network failure)
         val firstQuery = queries.firstOrNull() ?: directQuery
-        val firstCandidates = YtMusicRepository.search(firstQuery, SearchFilter.SONGS).getOrThrow()
+        val firstCandidates = search(firstQuery, SearchFilter.SONGS).getOrThrow()
             .mapNotNull {
                 when (it) {
                     is SearchResult.Track -> it.song
@@ -200,11 +208,14 @@ object SpotifyImporter {
             if (best != null) return best
         }
 
-        // Try clean/alternative queries if primary search didn't yield a match
+        // Try clean/alternative queries if primary search didn't yield a match.
+        // Paced, a failure here is YouTube not answering, not "no such song":
+        // it is thrown so the track is tried again rather than given up on.
         for (query in queries.drop(1)) {
-            val candidates = runCatching {
-                YtMusicRepository.search(query, SearchFilter.SONGS).getOrThrow()
-            }.getOrNull().orEmpty().mapNotNull {
+            val candidates = (
+                if (pacer != null) search(query, SearchFilter.SONGS).getOrThrow()
+                else runCatching { search(query, SearchFilter.SONGS).getOrThrow() }.getOrNull().orEmpty()
+                ).mapNotNull {
                 when (it) {
                     is SearchResult.Track -> it.song
                     is SearchResult.TopTrack -> it.song
@@ -218,9 +229,10 @@ object SpotifyImporter {
         }
 
         // Fallback: search ALL without restrictions in case it's categorized as music video / top result
-        val allCandidates = runCatching {
-            YtMusicRepository.search(firstQuery, SearchFilter.ALL).getOrThrow()
-        }.getOrNull().orEmpty().mapNotNull {
+        val allCandidates = (
+            if (pacer != null) search(firstQuery, SearchFilter.ALL).getOrThrow()
+            else runCatching { search(firstQuery, SearchFilter.ALL).getOrThrow() }.getOrNull().orEmpty()
+            ).mapNotNull {
             when (it) {
                 is SearchResult.Track -> it.song
                 is SearchResult.TopTrack -> it.song
