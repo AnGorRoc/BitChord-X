@@ -5,6 +5,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.material.icons.rounded.CloudOff
 import com.music.bitchord.ui.components.ArtworkGrid
+import com.music.bitchord.ui.components.GreenLikedCover
 import com.music.bitchord.ui.components.trackArtSize
 import com.music.bitchord.ui.components.contextClick
 import com.music.bitchord.ui.AppUi
@@ -1515,6 +1516,7 @@ internal fun ShelfCard(
                 val gridTiles = item.browseId?.takeIf { it.startsWith("local:playlist:") || it.startsWith("local:offline:") }
                     ?.let { AppUi.host.localPlaylistCoverArtworks(it) }
                     .orEmpty()
+                val greenLiked = AppUi.host.isGreenLikedCover(item.browseId)
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -1523,7 +1525,9 @@ internal fun ShelfCard(
                         .thumbnailBorder(cardShape)
                         .background(MaterialTheme.colorScheme.surfaceVariant),
                 ) {
-                    if (gridTiles.isNotEmpty()) {
+                    if (greenLiked) {
+                        GreenLikedCover(Modifier.fillMaxSize())
+                    } else if (gridTiles.isNotEmpty()) {
                         ArtworkGrid(List(4) { gridTiles[it % gridTiles.size] }, Modifier.fillMaxSize())
                     } else {
                         AsyncImage(
@@ -1614,6 +1618,7 @@ internal fun ShelfListRow(
         val gridTiles = item.browseId?.takeIf { it.startsWith("local:playlist:") || it.startsWith("local:offline:") }
             ?.let { AppUi.host.localPlaylistCoverArtworks(it) }
             .orEmpty()
+        val greenLiked = AppUi.host.isGreenLikedCover(item.browseId)
         Box(
             modifier = Modifier
                 .size(LIST_COVER_SIZE)
@@ -1621,7 +1626,9 @@ internal fun ShelfListRow(
                 .thumbnailBorder(shape)
                 .background(MaterialTheme.colorScheme.surfaceVariant),
         ) {
-            if (gridTiles.isNotEmpty()) {
+            if (greenLiked) {
+                GreenLikedCover(Modifier.fillMaxSize(), iconSize = 24.dp)
+            } else if (gridTiles.isNotEmpty()) {
                 ArtworkGrid(
                     tiles = List(4) { gridTiles[it % gridTiles.size] },
                     modifier = Modifier.fillMaxSize(),

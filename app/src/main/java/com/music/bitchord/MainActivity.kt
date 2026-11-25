@@ -1229,6 +1229,7 @@ private fun BitChordApp(
     LaunchedEffect(Unit) {
         com.music.bitchord.data.spotify.YouTubeExportLedger.changes.collect { (localId, entry) ->
             val title = com.music.bitchord.data.spotify.LocalPlaylistStore.getPlaylist(localId)?.title
+                ?: com.music.bitchord.data.spotify.SpotifySync.uploadTitle(localId)
                 ?: return@collect
             viewModel.upsertExportedPlaylist(entry.youtubeId, title, entry.exported.size)
         }
@@ -3675,32 +3676,9 @@ private fun BitChordApp(
                                 },
                                 onOpenLogin = { showSpotifyLogin = true },
                                 onOpenTokenSetup = { showSpotifyCanvasAuth = true },
-                                onImportToYouTube = { playlists ->
-                                    scope.launch {
-                                        playlists.forEach { playlist ->
-                                            try {
-                                                val tracks = SpotifyLibrary.tracks(playlist.id)
-                                                val (songs, _) = SpotifyImporter.resolveToSongs(
-                                                    tracks = tracks.map { SpotifyImportTrack(title = it.title, artist = it.artist) },
-                                                ) { _, _ -> }
-                                                if (songs.isNotEmpty()) {
-                                                    viewModel.createPlaylistWithVideoIds(
-                                                        title = playlist.name,
-                                                        privacy = PlaylistPrivacy.PRIVATE,
-                                                        videoIds = songs.map { it.videoId },
-                                                        songs = songs,
-                                                        forceLocal = false,
-                                                    ) { _, pTitle, _ ->
-                                                        showQueueNotice(context.getString(R.string.spotify_import_done, pTitle))
-                                                    }
-                                                }
-                                            } catch (e: CancellationException) {
-                                                throw e
-                                            } catch (e: Exception) {
-                                                showQueueNotice(context.getString(R.string.spotify_import_failed, e.message.orEmpty()))
-                                            }
-                                        }
-                                    }
+                                onOpenYouTubeSignIn = {
+                                    navigator.clear()
+                                    webSession = WebSessionMode.SIGN_IN
                                 },
                                 contentPadding = listPadding,
                             )
@@ -5825,13 +5803,13 @@ private fun BitChordApp(
                             privacy = privacy,
                             videoIds = targetSongs.map { it.videoId },
                             songs = targetSongs,
-                        ) { browseId, pTitle, savedLocally ->
+                        ) { browseId, pTitle, savedLocally, missing ->
                             showQueueNotice(
-                                context.getString(
-                                    if (savedLocally && signedIn) R.string.spotify_import_local_fallback
-                                    else R.string.playlist_created,
-                                    pTitle,
-                                ),
+                                when {
+                                    missing > 0 -> context.getString(R.string.playlist_created_some_missing, pTitle, missing)
+                                    savedLocally && signedIn -> context.getString(R.string.spotify_import_local_fallback, pTitle)
+                                    else -> context.getString(R.string.playlist_created, pTitle)
+                                },
                             )
                             browseId?.let { id ->
                                 viewModel.openDetail(id, pTitle, "${targetSongs.size} songs", targetSongs.firstOrNull()?.thumbnailUrl)
@@ -5910,6 +5888,15 @@ private fun BitChordApp(
             )
         }
 
+        if (spotifyLibraryState.pendingLikedChoice != null) {
+            BackHandler { spotifyLibraryState.dismissLikedChoice() }
+            com.music.bitchord.ui.screens.SpotifyLikedChoiceDialog(
+                hazeState = hazeState,
+                onChoose = spotifyLibraryState::resolveLikedChoice,
+                onDismiss = spotifyLibraryState::dismissLikedChoice,
+            )
+        }
+
         if (showSpotifyImportDialog) {
             BackHandler { showSpotifyImportDialog = false }
             SpotifyImportAlert(
@@ -5922,13 +5909,14 @@ private fun BitChordApp(
                         videoIds = songs.map { it.videoId },
                         songs = songs,
                         forceLocal = saveLocally,
-                    ) { browseId, pTitle, savedLocally ->
+                    ) { browseId, pTitle, savedLocally, missing ->
                         showQueueNotice(
-                            context.getString(
-                                if (savedLocally && signedIn && !saveLocally) R.string.spotify_import_local_fallback
-                                else R.string.spotify_import_done,
-                                pTitle,
-                            ),
+                            when {
+                                missing > 0 -> context.getString(R.string.playlist_created_some_missing, pTitle, missing)
+                                savedLocally && signedIn && !saveLocally ->
+                                    context.getString(R.string.spotify_import_local_fallback, pTitle)
+                                else -> context.getString(R.string.spotify_import_done, pTitle)
+                            },
                         )
                         browseId?.let { id ->
                             viewModel.openDetail(id, pTitle, "${songs.size} songs", songs.firstOrNull()?.thumbnailUrl)

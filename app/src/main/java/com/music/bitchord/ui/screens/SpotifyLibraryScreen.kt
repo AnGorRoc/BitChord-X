@@ -40,6 +40,9 @@ import androidx.compose.material.icons.automirrored.rounded.ArrowForward
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.Cloud
+import androidx.compose.material.icons.rounded.ErrorOutline
+import androidx.compose.material.icons.rounded.Favorite
+import androidx.compose.material.icons.rounded.LibraryMusic
 import androidx.compose.material.icons.rounded.PhoneAndroid
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.Sync
@@ -97,6 +100,8 @@ import com.music.bitchord.data.spotify.SpotifyTrack
 import com.music.bitchord.data.spotify.SpotifySync
 import com.music.bitchord.data.spotify.SpotifySyncState
 import com.music.bitchord.data.spotify.SyncErrorKind
+import com.music.bitchord.data.spotify.SyncPhase
+import com.music.bitchord.data.spotify.SyncTarget
 import com.music.bitchord.data.spotify.syncErrorKind
 import kotlinx.coroutines.CancellationException
 import androidx.compose.ui.platform.LocalContext
@@ -147,10 +152,22 @@ class SpotifyLibraryState {
         showIntroModal = false
     }
 
-    /** Starts choosing, with what is not on the device yet already ticked. */
+    /**
+     * The playlists waiting on the Liked Songs question: set when an import to
+     * YouTube Music includes Liked Songs, which can go there as likes or as a
+     * playlist of their own.
+     */
+    var pendingLikedChoice by mutableStateOf<List<SpotifyPlaylist>?>(null)
+        private set
+
+    /** Starts choosing, with what is not at the chosen destination yet already ticked. */
     fun startSelecting() {
         showIntroModal = false
-        val imported = LocalPlaylistStore.playlists.value.mapNotNull { it.spotifyId }.toSet()
+        val imported = if (destination == SpotifyImportDestination.YOUTUBE) {
+            playlists.map { it.id }.filter { SpotifySync.isOnYouTube(it) }.toSet()
+        } else {
+            LocalPlaylistStore.playlists.value.mapNotNull { it.spotifyId }.toSet()
+        }
         selectedIds = playlists.map { it.id }.filter { it !in imported }.toSet()
         selecting = true
     }
@@ -174,16 +191,40 @@ class SpotifyLibraryState {
         showIntroModal = false
     }
 
-    /** Imports what is ticked and leaves the choosing. */
-    fun importSelected(onYouTubeImport: ((List<SpotifyPlaylist>) -> Unit)? = null) {
+    /**
+     * Imports what is ticked and leaves the choosing. An import to YouTube
+     * Music that holds Liked Songs first asks where those go
+     * ([pendingLikedChoice]); [signedIn] false always imports to the device.
+     */
+    fun importSelected(signedIn: Boolean) {
         val selected = playlists.filter { it.id in selectedIds }
-        if (destination == SpotifyImportDestination.YOUTUBE && onYouTubeImport != null) {
-            onYouTubeImport(selected)
-        } else {
-            SpotifySync.dismiss()
-            SpotifySync.start(selected)
-        }
         clear()
+        if (selected.isEmpty()) return
+        if (destination == SpotifyImportDestination.YOUTUBE && signedIn) {
+            if (selected.any { it.id == SpotifyLibrary.LIKED_ID }) {
+                pendingLikedChoice = selected
+            } else {
+                launch(selected, SyncTarget.YouTube())
+            }
+        } else {
+            launch(selected, SyncTarget.Device)
+        }
+    }
+
+    /** Answers the Liked Songs question and starts the import it was holding. */
+    fun resolveLikedChoice(asLikes: Boolean) {
+        val selected = pendingLikedChoice ?: return
+        pendingLikedChoice = null
+        launch(selected, SyncTarget.YouTube(likedAsLikes = asLikes))
+    }
+
+    fun dismissLikedChoice() {
+        pendingLikedChoice = null
+    }
+
+    private fun launch(selected: List<SpotifyPlaylist>, target: SyncTarget) {
+        SpotifySync.dismiss()
+        SpotifySync.start(selected, target)
     }
 }
 
@@ -207,7 +248,7 @@ fun SpotifyLibraryScreen(
     modifier: Modifier = Modifier,
     signedIn: Boolean = false,
     bottomBarsHeight: Dp = 0.dp,
-    onImportToYouTube: ((List<SpotifyPlaylist>) -> Unit)? = null,
+    onOpenYouTubeSignIn: () -> Unit = {},
 ) {
     val cookie by AppSettings.spotifySpdcToken.collectAsStateWithLifecycle()
     val context = LocalContext.current
@@ -246,7 +287,7 @@ fun SpotifyLibraryScreen(
                 error = when (syncErrorKind(e)) {
                     SyncErrorKind.SIGNED_OUT -> context.getString(R.string.spotify_sync_error_signed_out)
                     SyncErrorKind.NETWORK -> context.getString(R.string.spotify_sync_error_network)
-                    SyncErrorKind.OTHER -> context.getString(R.string.spotify_sync_error_other, e.message.orEmpty())
+                    else -> context.getString(R.string.spotify_sync_error_other, e.message.orEmpty())
                 }
             }
         } finally {
@@ -271,6 +312,11 @@ fun SpotifyLibraryScreen(
     val sync by SpotifySync.state.collectAsStateWithLifecycle()
     val local by LocalPlaylistStore.playlists.collectAsStateWithLifecycle()
     val importedIds = remember(local) { local.mapNotNull { it.spotifyId }.toSet() }
+    // Copies on the account are recorded as each one lands, so a finished run
+    // is what makes the list read them again.
+    val onYouTubeIds = remember(state.playlists, sync is SpotifySyncState.Running) {
+        state.playlists.map { it.id }.filter { SpotifySync.isOnYouTube(it) }.toSet()
+    }
     val failures = remember(sync) {
         when (val s = sync) {
             is SpotifySyncState.Running -> s.failures
@@ -369,9 +415,10 @@ fun SpotifyLibraryScreen(
                         title = item.name,
                         subtitle = when {
                             failure != null -> syncErrorText(failure.kind, failure.detail)
-                            item.id in importedIds -> listOfNotNull(
+                            item.id in importedIds || item.id in onYouTubeIds -> listOfNotNull(
                                 item.owner?.takeIf { it.isNotBlank() },
-                                stringResource(R.string.spotify_sync_imported),
+                                stringResource(R.string.spotify_sync_imported).takeIf { item.id in importedIds },
+                                stringResource(R.string.spotify_sync_on_youtube).takeIf { item.id in onYouTubeIds },
                             ).joinToString(" · ")
                             else -> item.owner.orEmpty()
                         },
@@ -392,6 +439,7 @@ fun SpotifyLibraryScreen(
             SyncBar(
                 sync = sync,
                 onSignIn = onOpenLogin,
+                onYouTubeSignIn = onOpenYouTubeSignIn,
                 onViewUnmatched = { unmatchedDialogTracks = it },
                 modifier = Modifier
                     .align(Alignment.TopCenter)
@@ -440,7 +488,7 @@ fun SpotifyLibraryScreen(
                 enabled = count > 0,
                 onClick = {
                     haptics.play(Haptic.Resume)
-                    state.importSelected(onImportToYouTube)
+                    state.importSelected(signedIn)
                 },
                 modifier = Modifier
                     .shadow(12.dp, CircleShape)
@@ -576,6 +624,8 @@ private fun SelectionHeader(
 @Composable
 private fun syncErrorText(kind: SyncErrorKind, detail: String): String = when (kind) {
     SyncErrorKind.SIGNED_OUT -> stringResource(R.string.spotify_sync_error_signed_out)
+    SyncErrorKind.YOUTUBE_SIGNED_OUT -> stringResource(R.string.spotify_sync_error_youtube_signed_out)
+    SyncErrorKind.RATE_LIMITED -> stringResource(R.string.spotify_sync_error_rate_limited)
     SyncErrorKind.NETWORK -> stringResource(R.string.spotify_sync_error_network)
     SyncErrorKind.OTHER -> stringResource(R.string.spotify_sync_error_other, detail)
 }
@@ -674,41 +724,57 @@ private fun BarPill(
 private fun SyncBar(
     sync: SpotifySyncState,
     onSignIn: () -> Unit,
+    onYouTubeSignIn: () -> Unit,
     onViewUnmatched: (List<SpotifyTrack>) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     when (sync) {
         is SpotifySyncState.Running -> FloatingBar(
             modifier = modifier,
-            progress = if (sync.songsTotal > 0) ({ sync.fraction }) else null,
-            indeterminate = sync.songsTotal == 0,
+            progress = if (sync.songsTotal > 0 && !sync.throttled) ({ sync.fraction }) else null,
+            indeterminate = sync.songsTotal == 0 || sync.throttled,
         ) {
             BarText(
                 title = sync.playlist.name,
-                subtitle = if (sync.songsTotal > 0) {
-                    stringResource(
+                subtitle = when {
+                    sync.throttled -> stringResource(R.string.spotify_sync_step_throttled, sync.index, sync.total)
+                    sync.songsTotal == 0 || sync.phase == SyncPhase.READING ->
+                        stringResource(R.string.spotify_sync_step_reading, sync.index, sync.total)
+                    sync.phase == SyncPhase.MATCHING -> stringResource(
                         R.string.spotify_sync_step_matching,
                         sync.index, sync.total, sync.songsDone, sync.songsTotal,
                     )
-                } else {
-                    stringResource(R.string.spotify_sync_step_reading, sync.index, sync.total)
+                    sync.phase == SyncPhase.UPLOADING -> stringResource(
+                        R.string.spotify_sync_step_uploading,
+                        sync.index, sync.total, sync.songsDone, sync.songsTotal,
+                    )
+                    else -> stringResource(
+                        R.string.spotify_sync_step_liking,
+                        sync.index, sync.total, sync.songsDone, sync.songsTotal,
+                    )
                 },
+                leadingIcon = if (sync.target is SyncTarget.YouTube) Icons.Rounded.Cloud else Icons.Rounded.PhoneAndroid,
             )
             TextButton(onClick = SpotifySync::cancel) {
                 Text(stringResource(R.string.cancel), color = DestructiveRed)
             }
         }
         is SpotifySyncState.Finished -> FloatingBar(modifier) {
+            val toYouTube = sync.target is SyncTarget.YouTube
             BarText(
-                title = if (sync.cancelled) {
-                    stringResource(R.string.spotify_sync_cancelled, sync.imported)
-                } else {
-                    stringResource(R.string.spotify_sync_done, sync.imported, sync.added, sync.unmatched)
+                title = when {
+                    sync.cancelled -> stringResource(R.string.spotify_sync_cancelled, sync.imported)
+                    toYouTube -> stringResource(R.string.spotify_sync_done_youtube, sync.imported, sync.added, sync.unmatched)
+                    else -> stringResource(R.string.spotify_sync_done, sync.imported, sync.added, sync.unmatched)
                 },
                 subtitle = sync.failures.takeIf { it.isNotEmpty() }?.let {
                     stringResource(R.string.spotify_sync_some_failed, it.size)
+                } ?: sync.liked.takeIf { it > 0 }?.let {
+                    stringResource(R.string.spotify_sync_liked_count, it)
                 },
-                subtitleIsError = true,
+                subtitleIsError = sync.failures.isNotEmpty(),
+                leadingIcon = if (sync.failures.isEmpty()) Icons.Rounded.CheckCircle else Icons.Rounded.ErrorOutline,
+                leadingIsError = sync.failures.isNotEmpty(),
             )
             if (sync.unmatchedTracks.isNotEmpty()) {
                 TextButton(onClick = { onViewUnmatched(sync.unmatchedTracks) }) {
@@ -723,14 +789,29 @@ private fun SyncBar(
             CloseButton()
         }
         is SpotifySyncState.Aborted -> FloatingBar(modifier) {
-            BarText(title = syncErrorText(sync.kind, sync.detail), titleIsError = true)
-            if (sync.kind == SyncErrorKind.SIGNED_OUT) {
-                TextButton(
+            BarText(
+                title = syncErrorText(sync.kind, sync.detail),
+                titleIsError = true,
+                subtitle = sync.imported.takeIf { it > 0 }?.let {
+                    stringResource(R.string.spotify_sync_aborted_saved, it)
+                },
+                leadingIcon = Icons.Rounded.ErrorOutline,
+                leadingIsError = true,
+            )
+            when (sync.kind) {
+                SyncErrorKind.SIGNED_OUT -> TextButton(
                     onClick = {
                         SpotifySync.dismiss()
                         onSignIn()
                     },
                 ) { Text(stringResource(R.string.spotify_sign_in)) }
+                SyncErrorKind.YOUTUBE_SIGNED_OUT -> TextButton(
+                    onClick = {
+                        SpotifySync.dismiss()
+                        onYouTubeSignIn()
+                    },
+                ) { Text(stringResource(R.string.spotify_sync_youtube_sign_in)) }
+                else -> Unit
             }
             CloseButton()
         }
@@ -799,19 +880,29 @@ private fun RowScope.BarText(
     subtitle: String? = null,
     titleIsError: Boolean = false,
     subtitleIsError: Boolean = false,
+    leadingIcon: ImageVector? = null,
+    leadingIsError: Boolean = false,
 ) {
     val dark = isSystemInDarkTheme()
     val ink = if (dark) Color.White else MaterialTheme.colorScheme.onSurfaceVariant
+    if (leadingIcon != null) {
+        Icon(
+            imageVector = leadingIcon,
+            contentDescription = null,
+            tint = if (leadingIsError) MaterialTheme.colorScheme.error else ink.copy(alpha = 0.8f),
+            modifier = Modifier.padding(start = 10.dp).size(20.dp),
+        )
+    }
     Column(
         Modifier
             .weight(1f)
-            .padding(start = 12.dp, top = 6.dp, bottom = 6.dp),
+            .padding(start = if (leadingIcon != null) 10.dp else 12.dp, top = 6.dp, bottom = 6.dp),
     ) {
         Text(
             text = title,
             style = MaterialTheme.typography.titleSmall,
             color = if (titleIsError) MaterialTheme.colorScheme.error else ink,
-            maxLines = 2,
+            maxLines = 3,
             overflow = TextOverflow.Ellipsis,
         )
         if (subtitle != null) {
@@ -1071,6 +1162,128 @@ internal fun SpotifyLibraryIntroDialog(
                 onClick = onDismiss,
                 modifier = Modifier.fillMaxWidth(),
             ) {
+                Text(
+                    text = stringResource(R.string.spotify_import_cancel),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = dialogInk().copy(alpha = 0.60f),
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Asked when an import to YouTube Music holds Liked Songs: they can become
+ * likes on the account, landing in its Liked Music, or a playlist of their
+ * own, drawn with the green liked cover.
+ */
+@OptIn(ExperimentalHazeMaterialsApi::class)
+@Composable
+internal fun SpotifyLikedChoiceDialog(
+    hazeState: HazeState?,
+    onChoose: (asLikes: Boolean) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
+    val dialogShape = RoundedCornerShape(26.dp)
+    val isDark = MaterialTheme.colorScheme.background.luminance() < 0.5f
+    val dialogFill = com.music.bitchord.ui.components.dialogCardFill()
+    var asLikes by remember { mutableStateOf(true) }
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(Color.Black.copy(alpha = if (isDark) 0.55f else 0.28f))
+            .clickable(
+                indication = null,
+                interactionSource = remember { MutableInteractionSource() },
+                onClick = onDismiss,
+            ),
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(horizontal = 24.dp)
+                .widthIn(min = 300.dp, max = 360.dp)
+                .fillMaxWidth()
+                .dialogFrostBackground(
+                    hazeState = hazeState,
+                    reduceDynamicBlur = reduceDynamicBlur,
+                    shape = dialogShape,
+                    fill = dialogFill,
+                    borderColor = if (isDark) DIALOG_EDGE_COLOR else DIALOG_LIGHT_EDGE_COLOR,
+                    alpha = if (isDark) DIALOG_FROST_ALPHA else DIALOG_LIGHT_FROST_ALPHA,
+                )
+                .clickable(
+                    indication = null,
+                    interactionSource = remember { MutableInteractionSource() },
+                    onClick = {},
+                )
+                .padding(horizontal = 22.dp, vertical = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            com.music.bitchord.ui.components.GreenLikedCover(
+                modifier = Modifier
+                    .size(56.dp)
+                    .clip(RoundedCornerShape(12.dp)),
+                iconSize = 26.dp,
+            )
+            Spacer(Modifier.height(14.dp))
+            Text(
+                text = stringResource(R.string.spotify_liked_choice_title),
+                style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold, fontSize = 20.sp),
+                color = dialogInk(),
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                text = stringResource(R.string.spotify_liked_choice_desc),
+                style = MaterialTheme.typography.bodyMedium.copy(fontSize = 13.sp, lineHeight = 17.sp),
+                color = dialogInk().copy(alpha = 0.70f),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.padding(top = 6.dp, bottom = 16.dp),
+            )
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                DestinationOptionCard(
+                    title = stringResource(R.string.spotify_liked_choice_likes_title),
+                    subtitle = stringResource(R.string.spotify_liked_choice_likes_desc),
+                    icon = Icons.Rounded.Favorite,
+                    selected = asLikes,
+                    enabled = true,
+                    onClick = { asLikes = true },
+                    subtitleMaxLines = 2,
+                )
+                DestinationOptionCard(
+                    title = stringResource(R.string.spotify_liked_choice_playlist_title),
+                    subtitle = stringResource(R.string.spotify_liked_choice_playlist_desc),
+                    icon = Icons.Rounded.LibraryMusic,
+                    selected = !asLikes,
+                    enabled = true,
+                    onClick = { asLikes = false },
+                    subtitleMaxLines = 2,
+                )
+            }
+            Spacer(Modifier.height(20.dp))
+            Button(
+                onClick = { onChoose(asLikes) },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+                shape = RoundedCornerShape(percent = 50),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = dialogInk(),
+                    contentColor = dialogInkInverse(),
+                ),
+            ) {
+                Text(
+                    text = stringResource(R.string.spotify_liked_choice_import),
+                    style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Bold, fontSize = 14.sp),
+                )
+            }
+            Spacer(Modifier.height(4.dp))
+            TextButton(onClick = onDismiss, modifier = Modifier.fillMaxWidth()) {
                 Text(
                     text = stringResource(R.string.spotify_import_cancel),
                     style = MaterialTheme.typography.labelMedium,
