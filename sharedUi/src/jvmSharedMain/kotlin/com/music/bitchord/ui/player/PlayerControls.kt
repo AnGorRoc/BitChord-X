@@ -1976,6 +1976,15 @@ private fun LosslessOrStats(
     nerdStats: NerdStats.Snapshot?,
     modifier: Modifier = Modifier,
 ) {
+    // A file on the phone is described by what it is — "24-bit · 96 kHz" —
+    // since "Hi-Res" would be a claim about a file nobody vouched for.
+    val fromDevice = nerdStats?.sourceName == NerdStats.LOCAL_SOURCE
+    val deviceQuality = if (fromDevice) nerdStats?.qualityLine() else null
+    // Who is serving a lossy stream (or, out of the cache, who first did),
+    // named the way the listener knows it: "YouTube", not "YouTube Music".
+    val lossySource = nerdStats?.sourceName
+        ?.takeUnless { it.isBlank() || it == NerdStats.LOCAL_SOURCE || it == "Unknown" }
+        ?.let { if (it.startsWith("YouTube", ignoreCase = true)) "YouTube" else it }
     when {
         // Still resolving — either the player itself is buffering, or a
         // module is still racing YouTube for this track in the background
@@ -2008,10 +2017,20 @@ private fun LosslessOrStats(
             animated = false,
             modifier = modifier,
         )
+        deviceQuality != null -> LosslessLabel(
+            text = deviceQuality,
+            iconPainter = painterResource(Res.drawable.ic_lossless),
+            animated = nerdStats?.isLossless == true,
+            modifier = modifier,
+        )
         nerdStats?.isLossless == true -> LosslessLabel(
             // Same line Tidal, Qobuz and Apple Music draw it at — see
             // [NerdStats.Snapshot.isHiRes].
-            text = stringResource(if (nerdStats.isHiRes) Res.string.hi_res_lossless else Res.string.lossless),
+            // The industry's own words in every language, as Apple Music
+            // shows them: 24-bit is Hi-Res, 16-bit is Lossless. Only when the
+            // depth is unknown does the sample rate decide. DSD reads as 1-bit
+            // and is hi-res by any measure.
+            text = if (nerdStats.bitDepth?.let { it > 16 || it == 1 } ?: nerdStats.isHiRes) "Hi-Res Lossless" else "Lossless",
             iconPainter = painterResource(Res.drawable.ic_lossless),
             // Shimmer is reserved for the thing that was asked for and
             // confirmed. It is what makes the badge read as an achievement
@@ -2025,15 +2044,12 @@ private fun LosslessOrStats(
             iconPainter = painterResource(Res.drawable.ic_dolby_atmos),
             modifier = modifier,
         )
-        // Lossy, but the good end of lossy — a module's 320kbps tier, which
-        // for a great many tracks is the best copy that exists anywhere the
-        // app can reach. See [NerdStats.Snapshot.isHiQuality].
-        nerdStats?.isHiQuality == true -> LosslessLabel(
-            text = stringResource(Res.string.high_quality),
+        // Lossy: say who is serving it — YouTube, JioSaavn, an addon — with the
+        // same glyph, without the shimmer lossless earns.
+        lossySource != null -> LosslessLabel(
+            text = lossySource,
             animated = false,
-            iconPainter = rememberVectorPainter(Icons.Rounded.Headphones),
-            // A Material glyph's own size is 24dp; the badge's are drawn small.
-            iconSize = 13.dp,
+            iconPainter = painterResource(Res.drawable.ic_lossless),
             modifier = modifier,
         )
         // Below that, no badge: "Medium Quality" and "Data Saver" are gone.
@@ -2192,6 +2208,9 @@ private fun ShimmerText(
 @Composable
 private fun NerdStats.Snapshot.describe(): String? {
     val parts = buildList {
+        // Read back off disk rather than streamed: worth saying, since the
+        // badge under the seek bar names who first served it.
+        if (fromCache) add(stringResource(Res.string.from_cache))
         codecLabel(mimeType)?.let(::add)
         bitDepth?.let { add(stringResource(Res.string.bit_depth, it)) }
         sampleRateHz?.let { add(NerdStats.megahertzLabel(it) ?: "%.1f kHz".format(Locale.ROOT, it / 1000f)) }
@@ -2205,6 +2224,24 @@ private fun NerdStats.Snapshot.describe(): String? {
                 },
             )
         }
+    }
+    return parts.joinToString(" · ").takeIf { it.isNotEmpty() }
+}
+
+/**
+ * A file's own quality for the badge under the seek bar: "24-bit · 96 kHz"
+ * when it is lossless, "MP3 · 320 kbps" when it is not, null while the
+ * decoder has not said.
+ */
+@Composable
+private fun NerdStats.Snapshot.qualityLine(): String? {
+    val parts = if (isLossless) {
+        listOfNotNull(
+            bitDepth?.takeIf { it > 1 }?.let { stringResource(Res.string.bit_depth, it) } ?: container,
+            sampleRateHz?.let { NerdStats.megahertzLabel(it) ?: "%.1f kHz".format(Locale.ROOT, it / 1000f).replace(".0 kHz", " kHz") },
+        )
+    } else {
+        listOfNotNull(codecLabel(mimeType), bitrateKbps?.let { "$it kbps" })
     }
     return parts.joinToString(" · ").takeIf { it.isNotEmpty() }
 }

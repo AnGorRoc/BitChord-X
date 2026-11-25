@@ -74,6 +74,11 @@ object NerdStats {
          * step (~275ms) — this is clock drift, not a content measurement.
          */
         val syncDriftMs: Long? = null,
+        /**
+         * The bytes are being read back out of the disk cache; [sourceName]
+         * still names whoever first served them.
+         */
+        val fromCache: Boolean = false,
     ) {
         /** The compensation worth showing, or null when there is none: 0 ms is "no compensation". */
         val shownAlignmentOffsetMs: Long?
@@ -343,6 +348,14 @@ object NerdStats {
             sources[trackId] = source
         }
     }
+
+    /**
+     * [Snapshot.sourceName] for a track playing off a file on the device — a
+     * download, a Local Music row, or the listener's own copy of a catalogue
+     * track. The player names it, since the quality badge alone reads the same
+     * as a lossless stream.
+     */
+    const val LOCAL_SOURCE = "Local Storage"
 
     fun recordSource(mediaId: String?, source: String?) {
         if (mediaId.isNullOrBlank() || source.isNullOrBlank()) return

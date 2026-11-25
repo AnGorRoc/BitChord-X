@@ -382,4 +382,5 @@
     <string name="dj_set_cat_reggaeton">रेगेटन</string>
     <string name="featured_badge">विशेष</string>
     <string name="special_mix">विशेष मिक्स</string>
+    <string name="from_cache">कैश</string>
 </resources>

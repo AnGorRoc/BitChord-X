@@ -383,4 +383,5 @@
     <string name="dj_set_cat_reggaeton">레게톤</string>
     <string name="featured_badge">추천</string>
     <string name="special_mix">스페셜 믹스</string>
+    <string name="from_cache">캐시</string>
 </resources>

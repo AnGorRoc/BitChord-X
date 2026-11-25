@@ -8018,7 +8018,7 @@ class PlaybackService : MediaLibraryService() {
     ): String? {
         val id = mediaId ?: return null
         if (isLocalPlayback(id, mediaItem)) {
-            return "Local Storage"
+            return NerdStats.LOCAL_SOURCE
         }
 
         // Derive from the exact same authority as Source Inspection so Track Info
@@ -8029,7 +8029,19 @@ class PlaybackService : MediaLibraryService() {
                 val incompatibleYouTube = playing.kind == SourceKind.YOUTUBE && (isLossless || isDolbyAtmos)
                 if (!incompatibleYouTube) return playing.displayName
             }
-            is PlayingSource.Storage -> return playing.label
+            // The disk cache holds some provider's bytes: name that provider,
+            // from what the cache recorded when it wrote them (it survives a
+            // restart, which the stream choice does not). The stats line says
+            // "cache" separately — see NerdStats.Snapshot.fromCache.
+            is PlayingSource.Storage -> {
+                val origin = mediaItem?.localConfiguration?.uri?.let(AudioCache::originOf)
+                when (origin) {
+                    AudioCache.Origin.YOUTUBE -> return "YouTube"
+                    AudioCache.Origin.JIOSAAVN -> return "JioSaavn"
+                    AudioCache.Origin.MONOCHROME -> return "Monochrome"
+                    AudioCache.Origin.OTHER, null -> Unit
+                }
+            }
             null -> Unit
         }
 
@@ -8279,6 +8291,9 @@ class PlaybackService : MediaLibraryService() {
             mediaId = mediaId,
             alignmentOffsetMs = NerdStats.getAlignmentOffset(mediaId),
             syncDriftMs = NerdStats.getSyncDrift(mediaId),
+            fromCache = currentItem?.let { item ->
+                !isLocalPlayback(item.mediaId, item) && playingSourceOf(item) is PlayingSource.Storage
+            } == true,
         ), expectedGeneration = generation)
     }
 

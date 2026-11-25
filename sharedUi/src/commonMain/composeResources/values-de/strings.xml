@@ -382,4 +382,5 @@
     <string name="dj_set_cat_reggaeton">Reggaeton</string>
     <string name="featured_badge">HIGHLIGHT</string>
     <string name="special_mix">Spezialmix</string>
+    <string name="from_cache">Cache</string>
 </resources>

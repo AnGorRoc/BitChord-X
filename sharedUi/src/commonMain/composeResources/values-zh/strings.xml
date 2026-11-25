@@ -382,4 +382,5 @@
     <string name="dj_set_cat_reggaeton">雷鬼动</string>
     <string name="featured_badge">精选</string>
     <string name="special_mix">特别混音</string>
+    <string name="from_cache">缓存</string>
 </resources>

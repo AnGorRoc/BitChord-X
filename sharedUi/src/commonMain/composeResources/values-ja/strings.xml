@@ -382,4 +382,5 @@
     <string name="dj_set_cat_reggaeton">レゲトン</string>
     <string name="featured_badge">注目</string>
     <string name="special_mix">スペシャルミックス</string>
+    <string name="from_cache">キャッシュ</string>
 </resources>

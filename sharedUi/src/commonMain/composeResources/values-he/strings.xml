@@ -382,4 +382,5 @@
     <string name="dj_set_cat_reggaeton">רגאטון</string>
     <string name="featured_badge">מומלץ</string>
     <string name="special_mix">מיקס מיוחד</string>
+    <string name="from_cache">מטמון</string>
 </resources>

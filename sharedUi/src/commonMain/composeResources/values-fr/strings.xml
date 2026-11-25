@@ -382,4 +382,5 @@
     <string name="dj_set_cat_reggaeton">Reggaeton</string>
     <string name="featured_badge">EN VEDETTE</string>
     <string name="special_mix">Mix spécial</string>
+    <string name="from_cache">Cache</string>
 </resources>

@@ -382,4 +382,5 @@
     <string name="dj_set_cat_reggaeton">เรเกตอน</string>
     <string name="featured_badge">แนะนำ</string>
     <string name="special_mix">มิกซ์พิเศษ</string>
+    <string name="from_cache">แคช</string>
 </resources>
