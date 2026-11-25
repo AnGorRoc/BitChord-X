@@ -27,8 +27,6 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import java.io.IOException
 import java.util.concurrent.atomic.AtomicInteger
-import kotlinx.coroutines.sync.Semaphore
-import kotlinx.coroutines.sync.withPermit
 import kotlin.random.Random
 
 /**
@@ -264,6 +262,13 @@ object SpotifySync {
         // One uploader for the run, so a slow-down YouTube asked for carries
         // over to the next playlist rather than starting at full pace again.
         val uploader = (target as? SyncTarget.YouTube)?.let { youTubeUploader(it.privacy) }
+        // Likewise one pace for every search of the run, across playlists.
+        val pacer = RequestPacer()
+        val matcher = SpotifyTrackMatcher(
+            lookUp = { track -> SpotifyImporter.lookUp(track, pacer) },
+            parallelism = MATCH_PARALLELISM,
+            waitsMs = MATCH_RETRY_WAITS_MS,
+        )
         try {
             playlists.forEachIndexed { index, playlist ->
                 _state.value = SpotifySyncState.Running(
@@ -276,7 +281,7 @@ object SpotifySync {
                     target = target,
                 )
                 try {
-                    val result = syncPlaylist(playlist, target, uploader)
+                    val result = syncPlaylist(playlist, target, uploader, matcher, pacer)
                     imported++
                     added += result.added
                     unmatched += result.unmatched
@@ -337,27 +342,41 @@ object SpotifySync {
         val liked: Int = 0,
     )
 
-    private const val MAX_CONCURRENT_MATCHES = 5
-    private const val LEDGER_PREFIX = "spotify:"
+    /**
+     * Lookups in flight at once. The pace is the [RequestPacer]'s; this only
+     * lets a slow answer overlap the next request rather than set the rate.
+     */
+    private const val MATCH_PARALLELISM = 3
 
-    private val matcher = SpotifyTrackMatcher(SpotifyImporter::lookUp)
+    /** A failed lookup is tried again after these, while the pacer cools every other search down too. */
+    private val MATCH_RETRY_WAITS_MS = listOf(5_000L, 20_000L, 60_000L)
+    private const val LEDGER_PREFIX = "spotify:"
 
     private suspend fun syncPlaylist(
         playlist: SpotifyPlaylist,
         target: SyncTarget,
         uploader: PlaylistUploader?,
+        matcher: SpotifyTrackMatcher,
+        pacer: RequestPacer,
     ): Result {
         val tracks = SpotifyLibrary.tracks(playlist.id)
         val known = LocalPlaylistStore.findBySpotifyId(playlist.id)?.matchedSongs().orEmpty()
         publishProgress(playlist, SyncPhase.MATCHING, 0, tracks.size)
         val done = AtomicInteger(0)
-        val semaphore = Semaphore(MAX_CONCURRENT_MATCHES)
         val outcomes: List<TrackMatch> = coroutineScope {
             tracks.map { track ->
                 async {
                     val outcome = (known[track.id] ?: SpotifyCache.getMatch(track.id))
                         ?.let { TrackMatch.Found(it) }
-                        ?: semaphore.withPermit { matcher.match(track) }
+                        ?: matcher.match(track)
+                    // YouTube has stopped answering altogether: asking on for
+                    // every remaining track would only keep it that way.
+                    if (outcome is TrackMatch.Failed && pacer.exhausted) {
+                        throw YouTubeWriteException(
+                            SyncErrorKind.RATE_LIMITED,
+                            outcome.cause.message ?: "YouTube Music stopped answering",
+                        )
+                    }
                     if (outcome is TrackMatch.Found && !outcome.song.isUnresolvedSpotify) {
                         SpotifyCache.putMatch(track.id, outcome.song)
                     }
@@ -502,7 +521,7 @@ object SpotifySync {
     )
 
     /** Pause between two likes; doubled whenever YouTube pushes back. */
-    private const val LIKE_GAP_MS = 700L
+    private const val LIKE_GAP_MS = 1_500L
 
     private fun publishProgress(
         playlist: SpotifyPlaylist,
