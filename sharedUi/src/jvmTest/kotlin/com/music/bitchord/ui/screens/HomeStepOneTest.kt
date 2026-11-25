@@ -1,6 +1,8 @@
 package com.music.bitchord.ui.screens
 
 import com.music.bitchord.data.HomeGreeting
+import com.music.bitchord.data.homeOrder
+import com.music.bitchord.data.tailLast
 import com.music.bitchord.data.model.HomeShelf
 import com.music.bitchord.data.model.ShelfItem
 import com.music.bitchord.data.model.selectSpotlightSong

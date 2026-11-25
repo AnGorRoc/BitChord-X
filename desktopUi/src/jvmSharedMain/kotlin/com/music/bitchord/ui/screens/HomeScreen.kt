@@ -66,6 +66,7 @@ import coil3.compose.AsyncImage
 import coil3.compose.LocalPlatformContext
 import com.music.bitchord.ui.components.PrefetchVerticalArtworkAhead
 import com.music.bitchord.ui.components.prefetchArtwork
+import com.music.bitchord.data.tailLast
 import com.music.bitchord.data.model.CARD_ART_PX
 import com.music.bitchord.data.model.HEADER_ART_PX
 import com.music.bitchord.data.model.HomeShelf
@@ -261,7 +262,8 @@ fun HomeScreen(
                     // Recently Played lands, every real shelf must retain its
                     // compact-card layout instead of briefly becoming a hero.
                     itemsIndexedShelves(
-                        shelves = state.data,
+                        // Explore's borrowed shelves after the listener's own feed.
+                        shelves = state.data.tailLast(),
                         onMoodClick = onMoodClick,
                         onMoodsShowAll = onMoodsShowAll,
                         onItemClick = onItemClick,
@@ -291,7 +293,7 @@ fun HomeScreen(
 
     if (state is UiState.Success) {
         val verticalShelvesArtwork = remember(state.data) {
-            state.data.map { shelf ->
+            state.data.tailLast().map { shelf ->
                 val count = minOf(shelf.items.size, 6)
                 shelf.items.take(count).map { item ->
                     if (shelf.layout == ShelfLayout.VIDEO) item.thumbnailUrl
