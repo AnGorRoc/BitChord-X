@@ -147,6 +147,15 @@ func handleAccountSocket(w http.ResponseWriter, r *http.Request) {
 		acc.StartFresh(d)
 	}
 	acc.Unlock()
+	// Two sockets for one device means two clients share its id (a restored backup, a
+	// cloned install) or the old socket was never noticed dropping. Either way each
+	// reconnect closes the other, so it is worth seeing in the logs.
+	for _, id := range hubInst.MembersOnline(room) {
+		if id == d.DeviceID {
+			log.Printf("account device %.8s opened a socket while it still had one", d.DeviceID)
+			break
+		}
+	}
 	sc := hubInst.Attach(room, d.DeviceID, conn)
 
 	acc.Lock()
