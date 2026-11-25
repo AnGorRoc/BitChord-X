@@ -105,7 +105,8 @@ object YtMusicRepository {
 
     /** Extra Play shelves are independently fetchable so each can appear as soon as it arrives. */
     suspend fun homeSupplement(browseId: String): Result<List<HomeShelf>> = call("home:$browseId") {
-        shelvesOf(browseId)
+        // Explore and New releases already show these; on Home they go last.
+        shelvesOf(browseId).map { it.copy(tail = true) }
     }
 
     val HOME_SUPPLEMENT_BROWSE_IDS = listOf(
@@ -137,7 +138,8 @@ object YtMusicRepository {
      * the moment it's registered, so it's what the top of the page is built
      * from. YouTube's own shelf stays below, where its ranking is a feature.
      *
-     * Signed-in only; there is no history to read as a guest.
+     * Signed out there is no account history, but the device keeps its own
+     * (the one Replay counts), so a guest still gets a Recents shelf from it.
      */
     private suspend fun recentlyPlayed(): HomeShelf? {
         val ytSongs = if (Innertube.cookie != null) {
@@ -145,8 +147,12 @@ object YtMusicRepository {
         } else {
             emptyList()
         }
+        val songs = ytSongs.ifEmpty {
+            runCatching { com.music.bitchord.data.stats.ListeningStats.recent(RECENT_LIMIT).map { it.first } }
+                .getOrDefault(emptyList())
+        }
 
-        val allSongs = ytSongs.distinctBy { it.videoId }.take(RECENT_LIMIT)
+        val allSongs = songs.distinctBy { it.videoId }.take(RECENT_LIMIT)
         if (allSongs.isEmpty()) return null
         return HomeShelf(
             title = RECENT_TITLE,

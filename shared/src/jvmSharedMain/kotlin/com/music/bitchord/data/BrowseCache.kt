@@ -297,6 +297,7 @@ object BrowseCache {
         opt("moreBrowseId", shelf.moreBrowseId)
         opt("moreParams", shelf.moreParams)
         put("layout", JsonPrimitive(shelf.layout.name))
+        if (shelf.tail) put("tail", JsonPrimitive(true))
         put(
             "items",
             list(
@@ -330,6 +331,7 @@ object BrowseCache {
         moreBrowseId = o.str("moreBrowseId"),
         moreParams = o.str("moreParams"),
         layout = o.str("layout")?.let { runCatching { ShelfLayout.valueOf(it) }.getOrNull() } ?: ShelfLayout.CARDS,
+        tail = o.bool("tail") ?: false,
     )
 
     private fun encodeWatch(t: WatchTarget): JsonObject = obj {

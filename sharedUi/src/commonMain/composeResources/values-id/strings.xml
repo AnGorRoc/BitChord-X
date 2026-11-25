@@ -390,4 +390,18 @@
     <string name="badge_info_bitrate">Bitrate</string>
     <string name="badge_info_channels">Saluran</string>
     <string name="badge_info_your_copy">Salinanmu</string>
+    <string name="greeting_morning">Selamat pagi</string>
+    <string name="greeting_morning_named">Selamat pagi, %1$s</string>
+    <string name="greeting_afternoon">Selamat siang</string>
+    <string name="greeting_afternoon_named">Selamat siang, %1$s</string>
+    <string name="greeting_evening">Selamat malam</string>
+    <string name="greeting_evening_named">Selamat malam, %1$s</string>
+    <string name="greeting_late_night">Tidak bisa tidur?</string>
+    <string name="greeting_late_night_named">Tidak bisa tidur, %1$s?</string>
+    <string name="greeting_friday">Jumat, hari rilisan baru</string>
+    <string name="greeting_sunday">Minggu yang santai</string>
+    <string name="greeting_welcome_back">Selamat datang kembali!</string>
+    <string name="greeting_welcome_back_named">Selamat datang kembali, %1$s!</string>
+    <string name="greeting_continue_artist">Lanjut %1$s?</string>
+    <string name="greeting_hello_named">Hai, %1$s</string>
 </resources>

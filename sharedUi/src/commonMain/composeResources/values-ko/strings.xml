@@ -391,4 +391,18 @@
     <string name="badge_info_bitrate">비트레이트</string>
     <string name="badge_info_channels">채널</string>
     <string name="badge_info_your_copy">내 사본</string>
+    <string name="greeting_morning">좋은 아침이에요</string>
+    <string name="greeting_morning_named">좋은 아침이에요, %1$s님</string>
+    <string name="greeting_afternoon">좋은 오후예요</string>
+    <string name="greeting_afternoon_named">좋은 오후예요, %1$s님</string>
+    <string name="greeting_evening">좋은 저녁이에요</string>
+    <string name="greeting_evening_named">좋은 저녁이에요, %1$s님</string>
+    <string name="greeting_late_night">잠이 안 오세요?</string>
+    <string name="greeting_late_night_named">잠이 안 오세요, %1$s님?</string>
+    <string name="greeting_friday">금요일, 신곡 나오는 날</string>
+    <string name="greeting_sunday">여유로운 일요일</string>
+    <string name="greeting_welcome_back">다시 오셨네요!</string>
+    <string name="greeting_welcome_back_named">다시 오셨네요, %1$s님!</string>
+    <string name="greeting_continue_artist">%1$s 계속 들을까요?</string>
+    <string name="greeting_hello_named">안녕하세요, %1$s님</string>
 </resources>

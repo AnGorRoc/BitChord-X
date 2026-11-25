@@ -215,15 +215,20 @@ fun HomeScreen(
     val heldSpotlight = remember { arrayOfNulls<ShelfItem>(1) }
     val spotlightItem = remember(state, currentSong, topPicks) {
         val shelves = (state as? UiState.Success)?.data ?: return@remember null
+        // The shelf drawn right under the billboard (Recents aside, which is
+        // only ever played tracks): its cards are never the billboard's too.
+        val below = shelves.tailLast()
+            .firstOrNull { !it.title.equals(RECENTS_TITLE, ignoreCase = true) }
+            ?.items?.mapNotNull { it.videoId }?.toSet().orEmpty()
         val held = heldSpotlight[0]
         val kept = held?.let { previous ->
-            if (currentSong?.videoId != previous.videoId) {
+            if (currentSong?.videoId != previous.videoId && previous.videoId !in below) {
                 shelves.firstNotNullOfOrNull { shelf ->
                     shelf.items.firstOrNull { it.videoId == previous.videoId && it.browseId == previous.browseId }
                 }
             } else null
         }
-        (kept ?: selectSpotlightSong(shelves, currentSong, topPicks))
+        (kept ?: selectSpotlightSong(shelves, currentSong, topPicks, avoid = below))
             .also { heldSpotlight[0] = it }
     }
     // Top Picks' pictures and motion wait for the feed — see LocalArtworkImages.
@@ -359,7 +364,7 @@ fun HomeScreen(
                     // Recently Played lands, every real shelf must retain its
                     // compact-card layout instead of briefly becoming a hero.
                     itemsIndexedShelves(
-                        shelves = state.data,
+                        shelves = state.data.tailLast(),
                         onMoodClick = onMoodClick,
                         onMoodsShowAll = onMoodsShowAll,
                         onItemClick = onItemClick,
@@ -392,7 +397,7 @@ fun HomeScreen(
         val artworkByItem = remember(state.data, leadingItems, hasMoods) {
             buildList {
                 repeat(leadingItems) { add(emptyList()) }
-                state.data.forEachIndexed { index, shelf ->
+                state.data.tailLast().forEachIndexed { index, shelf ->
                     if (index == 1 && hasMoods) add(emptyList())
                     add(shelf.items.take(6).map { item -> shelfArtwork(shelf, index, item) })
                 }
@@ -424,6 +429,16 @@ fun HomeScreen(
         }
     }
 }
+
+/**
+ * The feed in the order Home draws it: the listener's own shelves first, the
+ * ones borrowed from New releases and Explore ([HomeShelf.tail]) after them,
+ * each group in the order it came. Shelves paged in later still land above
+ * the borrowed ones, so those stay at the very end.
+ */
+internal fun List<HomeShelf>.tailLast(): List<HomeShelf> =
+    if (none { it.tail }) this else filterNot { it.tail } + filter { it.tail }
+
 
 /**
  * Recents mirrors the artist page's top-tracks pager. Any other lead shelf keeps

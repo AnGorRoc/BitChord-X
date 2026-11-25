@@ -626,6 +626,12 @@ data class HomeShelf(
     val moreBrowseId: String? = null,
     val moreParams: String? = null,
     val layout: ShelfLayout = ShelfLayout.CARDS,
+    /**
+     * Drawn after every other shelf on Home: a shelf borrowed from the New
+     * releases or Explore pages to fill Home out, which the Explore tab already
+     * shows, so it follows the listener's own feed rather than interrupting it.
+     */
+    val tail: Boolean = false,
 )
 
 /** These shelves without their music videos, and without any shelf that leaves empty. */

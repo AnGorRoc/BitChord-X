@@ -1809,7 +1809,6 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
      * vanish because a track started playing.
      */
     private fun refreshHomeRecents() {
-        if (!_signedIn.value) return
         val identity = listenerKey()
         val generation = homeLoadGeneration.get()
         viewModelScope.launch {
@@ -2447,7 +2446,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
         homeContinuation = null
         homeSeenTitles.clear()
         _homeLoadingMore.value = false
-        _homeRecentlyPlayedLoading.value = _signedIn.value
+        // Signed out as well: Recents is then read from this device's history.
+        _homeRecentlyPlayedLoading.value = true
         _homePendingShelves.value = 1 + YtMusicRepository.HOME_SUPPLEMENT_BROWSE_IDS.size
         loadTopPicks(identity, rebuild = false, preread = storedPicks)
         viewModelScope.launch {
@@ -2468,19 +2468,17 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
                     homeShelfRequestSettled(identity, generation)
                 }
             }
-            if (_signedIn.value) {
-                launch {
-                    YtMusicRepository.homeRecentlyPlayed()
-                        .onSuccess { shelf ->
-                            if (isCurrentHomeLoad(identity, generation)) {
-                                _homeRecentlyPlayedLoading.value = false
-                                shelf?.let { publishHomeShelves(listOf(it), prepend = true) }
-                            }
+            launch {
+                YtMusicRepository.homeRecentlyPlayed()
+                    .onSuccess { shelf ->
+                        if (isCurrentHomeLoad(identity, generation)) {
+                            _homeRecentlyPlayedLoading.value = false
+                            shelf?.let { publishHomeShelves(listOf(it), prepend = true) }
                         }
-                        .onFailure {
-                            if (isCurrentHomeLoad(identity, generation)) _homeRecentlyPlayedLoading.value = false
-                        }
-                }
+                    }
+                    .onFailure {
+                        if (isCurrentHomeLoad(identity, generation)) _homeRecentlyPlayedLoading.value = false
+                    }
             }
             YtMusicRepository.HOME_SUPPLEMENT_BROWSE_IDS.forEach { browseId ->
                 launch {
@@ -2730,7 +2728,8 @@ class MainViewModel(app: Application) : AndroidViewModel(app) {
 
     private suspend fun fetchHome(): HomeFetch = coroutineScope {
         val core = async { YtMusicRepository.home() }
-        val recent = if (_signedIn.value) async { YtMusicRepository.homeRecentlyPlayed() } else null
+        // Signed out too: Recents then comes from this device's own history.
+        val recent = async { YtMusicRepository.homeRecentlyPlayed() }
         val supplements = YtMusicRepository.HOME_SUPPLEMENT_BROWSE_IDS.map { browseId ->
             async { YtMusicRepository.homeSupplement(browseId) }
         }

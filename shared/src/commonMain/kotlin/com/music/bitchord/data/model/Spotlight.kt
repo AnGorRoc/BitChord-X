@@ -19,10 +19,17 @@ fun selectSpotlightSong(
     shelves: List<HomeShelf>,
     currentSong: Song? = null,
     topPicks: List<TopPick>? = null,
+    /**
+     * Tracks that must not be picked though they would qualify: the cards of
+     * the shelf drawn right under the billboard, so the biggest picture on the
+     * page is never repeated a few pixels below it.
+     */
+    avoid: Set<String> = emptySet(),
 ): ShelfItem? {
     // 1. Strict Exclusion: Gather already listened / currently playing video IDs
     val listenedSongIds = mutableSetOf<String>()
     currentSong?.videoId?.let { listenedSongIds.add(it) }
+    listenedSongIds += avoid
 
     shelves.forEach { shelf ->
         val titleLower = shelf.title.lowercase()

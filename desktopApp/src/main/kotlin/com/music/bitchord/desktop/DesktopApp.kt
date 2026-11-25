@@ -3258,7 +3258,8 @@ fun BitChordDesktopApp() {
         homeContinuation = null
         homeSeenTitles.clear()
         homeLoadingMore = false
-        homeRecentsLoading = signedIn
+        // Signed out as well: Recents is then read from this computer's own history.
+        homeRecentsLoading = true
         scope.launch {
             launch {
                 DesktopSearchClient.home().fold(
@@ -3274,16 +3275,14 @@ fun BitChordDesktopApp() {
                     },
                 )
             }
-            if (signedIn) {
-                launch {
-                    YtMusicRepository.homeRecentlyPlayed()
-                        .onSuccess { shelf ->
-                            if (generation != homeGeneration) return@onSuccess
-                            homeRecentsLoading = false
-                            shelf?.let { publishHomeShelves(listOf(it), prepend = true) }
-                        }
-                        .onFailure { if (generation == homeGeneration) homeRecentsLoading = false }
-                }
+            launch {
+                YtMusicRepository.homeRecentlyPlayed()
+                    .onSuccess { shelf ->
+                        if (generation != homeGeneration) return@onSuccess
+                        homeRecentsLoading = false
+                        shelf?.let { publishHomeShelves(listOf(it), prepend = true) }
+                    }
+                    .onFailure { if (generation == homeGeneration) homeRecentsLoading = false }
             }
             DesktopSearchClient.HOME_SUPPLEMENT_BROWSE_IDS.forEach { browseId ->
                 launch {

@@ -375,6 +375,36 @@ object ListeningStats {
     }
 
     /**
+     * The tracks played on this device lately, most recent first, with when each
+     * was last played (epoch millis).
+     *
+     * Home's Recents for a listener with no YouTube account, and what the
+     * greeting reads to say how long it has been. This device's own months only,
+     * the last two of them: Recents is about this device, and two months always
+     * cover a month boundary.
+     */
+    suspend fun recent(limit: Int = 20): List<Pair<Song, Long>> = withContext(Dispatchers.IO) {
+        flushAndAwait()
+        months().sortedDescending().take(2)
+            .flatMap { read(it.toString())?.tracks.orEmpty() }
+            .filter { it.last > 0 && it.title.isNotBlank() }
+            .sortedByDescending { it.last }
+            .distinctBy { it.id }
+            .take(limit)
+            .map {
+                Song(
+                    videoId = it.id,
+                    title = it.title,
+                    artist = it.artist,
+                    thumbnailUrl = it.art,
+                    artistId = it.artistId,
+                    albumId = it.albumId,
+                    albumName = it.album,
+                ) to it.last
+            }
+    }
+
+    /**
      * One calendar [year] in full, for the Replay year story.
      *
      * Apart from [summary] because it needs a year the periods can't name: from

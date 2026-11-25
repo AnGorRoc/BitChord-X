@@ -390,4 +390,18 @@
     <string name="badge_info_bitrate">Tasa de bits</string>
     <string name="badge_info_channels">Canales</string>
     <string name="badge_info_your_copy">Tu copia</string>
+    <string name="greeting_morning">Buen día</string>
+    <string name="greeting_morning_named">Buen día, %1$s</string>
+    <string name="greeting_afternoon">Buenas tardes</string>
+    <string name="greeting_afternoon_named">Buenas tardes, %1$s</string>
+    <string name="greeting_evening">Buenas noches</string>
+    <string name="greeting_evening_named">Buenas noches, %1$s</string>
+    <string name="greeting_late_night">¿Insomnio?</string>
+    <string name="greeting_late_night_named">¿Insomnio, %1$s?</string>
+    <string name="greeting_friday">Viernes, día de estrenos</string>
+    <string name="greeting_sunday">Domingo tranqui</string>
+    <string name="greeting_welcome_back">¡Volviste!</string>
+    <string name="greeting_welcome_back_named">¡Volviste, %1$s!</string>
+    <string name="greeting_continue_artist">¿Seguimos con %1$s?</string>
+    <string name="greeting_hello_named">Hola, %1$s</string>
 </resources>

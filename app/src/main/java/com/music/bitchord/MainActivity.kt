@@ -4885,6 +4885,16 @@ private fun BitChordApp(
                                 )
                             }
                         } else null,
+                        // Home's greeting, centred between the logo and the profile.
+                        center = if (selectedTab == TAB_HOME && route == null && detail == null && selectedMoodGenre == null) {
+                            {
+                                com.music.bitchord.ui.screens.HomeGreetingLine(
+                                    // Never the generic "User" label: a greeting
+                                    // with no name beats one with a placeholder.
+                                    name = userName.trim().ifBlank { null } ?: account?.name,
+                                )
+                            }
+                        } else null,
                         accessory = if (isSearchActive) {
                             {
                                 SearchSourceSwitcher(

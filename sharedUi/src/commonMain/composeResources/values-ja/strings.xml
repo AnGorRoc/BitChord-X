@@ -390,4 +390,18 @@
     <string name="badge_info_bitrate">ビットレート</string>
     <string name="badge_info_channels">チャンネル</string>
     <string name="badge_info_your_copy">自分のコピー</string>
+    <string name="greeting_morning">おはようございます</string>
+    <string name="greeting_morning_named">おはようございます、%1$sさん</string>
+    <string name="greeting_afternoon">こんにちは</string>
+    <string name="greeting_afternoon_named">こんにちは、%1$sさん</string>
+    <string name="greeting_evening">こんばんは</string>
+    <string name="greeting_evening_named">こんばんは、%1$sさん</string>
+    <string name="greeting_late_night">眠れませんか?</string>
+    <string name="greeting_late_night_named">眠れませんか、%1$sさん?</string>
+    <string name="greeting_friday">金曜日、新曲の日</string>
+    <string name="greeting_sunday">のんびり日曜日</string>
+    <string name="greeting_welcome_back">おかえりなさい!</string>
+    <string name="greeting_welcome_back_named">おかえりなさい、%1$sさん!</string>
+    <string name="greeting_continue_artist">%1$sの続きを聴きますか?</string>
+    <string name="greeting_hello_named">こんにちは、%1$sさん</string>
 </resources>

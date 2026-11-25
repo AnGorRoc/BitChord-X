@@ -156,8 +156,16 @@ object FeedCache {
 
     private fun isFresh(feed: CachedHomeFeed) = clock() - feed.timestamp <= MAX_AGE_MS
 
-    private fun homePrefKey(listenerKey: String?): String =
-        KEY_HOME_PREFIX + (listenerKey?.replace(":", "_") ?: "signed_out")
+    /**
+     * Per listener and per app language, like Explore's (see [exploreKey]):
+     * YouTube names Home's shelves in the language it is asked in, so a feed
+     * kept from before a language change opened with its titles in the old one
+     * until the network caught up.
+     */
+    private fun homePrefKey(listenerKey: String?): String {
+        val lang = runCatching { com.music.bitchord.data.innertube.Innertube.currentLanguage }.getOrDefault("en")
+        return KEY_HOME_PREFIX + (listenerKey?.replace(":", "_") ?: "signed_out") + "_$lang"
+    }
 
     fun getHome(listenerKey: String?): CachedHomeFeed? {
         val key = homePrefKey(listenerKey)
@@ -358,6 +366,7 @@ object FeedCache {
         moreBrowseId?.let { put("moreBrowseId", it) }
         moreParams?.let { put("moreParams", it) }
         put("layout", layout.name)
+        if (tail) put("tail", true)
         putJsonArray("items") {
             items.forEach { add(it.toJsonObject()) }
         }
@@ -370,6 +379,7 @@ object FeedCache {
         moreParams = obj["moreParams"]?.jsonPrimitive?.contentOrNull,
         layout = runCatching { ShelfLayout.valueOf(obj["layout"]?.jsonPrimitive?.contentOrNull.orEmpty()) }
             .getOrDefault(ShelfLayout.CARDS),
+        tail = obj["tail"]?.jsonPrimitive?.booleanOrNull ?: false,
         items = obj["items"]?.jsonArray?.mapNotNull { el ->
             el.takeIf { it !is JsonNull }?.let { runCatching { shelfItemFromJson(it.jsonObject) }.getOrNull() }
         }.orEmpty(),

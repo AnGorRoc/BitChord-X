@@ -128,6 +128,9 @@ private val BackInset = 54.dp
 private val WordmarkInset = 96.dp
 private val ActionsInset = 56.dp
 
+/** How far [FrostedTopBar]'s centred content keeps from either edge: past the logo and the actions pill. */
+private val CENTER_CLEARANCE = 72.dp
+
 /** Between a filling accessory and the actions pill. */
 private val ACCESSORY_GAP = 8.dp
 
@@ -216,6 +219,11 @@ fun FrostedTopBar(
      */
     actionsVisible: Boolean = true,
     leading: (@Composable () -> Unit)? = null,
+    /**
+     * Plain content centred on the bar, between [leading] and [actions] — Home's
+     * greeting. No pill: it reads as part of the page, not as a control.
+     */
+    center: (@Composable () -> Unit)? = null,
     actions: @Composable () -> Unit = {},
 ) {
     val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
@@ -400,6 +408,21 @@ fun FrostedTopBar(
                     TopBarLeadingSlot.NONE -> {
                         Spacer(Modifier.size(0.dp))
                     }
+                }
+            }
+            // Centred on the whole bar, kept clear of the logo and the
+            // actions pill either side of it.
+            if (center != null && accessory == null) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.Center)
+                        .padding(horizontal = CENTER_CLEARANCE)
+                        // Gone once the page scrolls under the bar, where it
+                        // would float over the cards with nothing behind it.
+                        .graphicsLayer { alpha = 1f - titleAlpha },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    center()
                 }
             }
             // No wordmark at the leading end: the root tabs carry it above
