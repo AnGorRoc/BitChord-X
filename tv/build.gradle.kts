@@ -53,8 +53,10 @@ val listenTogetherServer: String = (
     ).trim().trimEnd('/')
 
 /*
- * Bump this by hand before cutting each sideloaded test build ("beta2",
- * "beta3", ...) and blank it out before cutting the real release. Marks the
+ * The phone's beta marker (bitchordBetaSuffix in the root build file), so a
+ * beta of the TV app names itself one too — in its settings, its update check
+ * and the telemetry it reports. It used to be a line of its own here that was
+ * never bumped, which left every TV beta calling itself the release. Marks the
  * versionName below as a pre-release: AppUpdateChecker.isNewer() treats any
  * "-suffix" as older than a clean release of the same number, so testers
  * still get the update prompt once the matching tag is actually published.
@@ -64,10 +66,9 @@ val listenTogetherServer: String = (
  * key, installed over the real package — so leaving the marker off it is
  * exactly the case that strands a tester: their build calls itself 1.6.1,
  * the published 1.6.1 then matches it, isNewer() says no, and no prompt ever
- * comes. Blanking this line is the one step that turns a beta into a release,
- * so it is the one place to get right.
+ * comes.
  */
-val betaSuffix = ""
+val betaSuffix = rootProject.extra["bitchordBetaSuffix"] as String
 
 android {
     namespace = "com.music.bitchord"
