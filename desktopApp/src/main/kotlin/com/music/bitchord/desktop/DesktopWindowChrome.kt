@@ -357,6 +357,16 @@ private fun Modifier.captionPress(scope: WindowScope, actions: DesktopWindowActi
             }
             lastPressAt = down.uptimeMillis
             lastPressPosition = down.position
+            // The system's move loop is only entered once the pointer has actually moved: entered
+            // on the press itself it swallowed the release, and often the second click of a
+            // double click with it, so a double click on the strip only sometimes maximized.
+            var moved = false
+            while (!moved) {
+                val event = awaitPointerEvent()
+                val change = event.changes.firstOrNull { it.id == down.id } ?: return@awaitEachGesture
+                if (!change.pressed) return@awaitEachGesture
+                moved = (change.position - down.position).getDistance() > viewConfiguration.touchSlop
+            }
             if (DesktopPlatform.drawsOwnWindowFrame && DesktopWindowsFrame.startDrag()) return@awaitEachGesture
             if (DesktopPlatform.isMac && DesktopMacFrame.startDrag()) return@awaitEachGesture
             val window = scope.window
