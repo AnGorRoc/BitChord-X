@@ -5721,6 +5721,7 @@ private fun DesktopTopBar(
                 Image(
                     painter = painterResource(Res.drawable.logo_mark),
                     contentDescription = "BitChord",
+                    colorFilter = ColorFilter.tint(Ink),
                     modifier = Modifier.size(width = 28.dp, height = 18.dp),
                 )
                 Spacer(Modifier.width(14.dp))
@@ -6446,6 +6447,8 @@ private fun DesktopSidebar(
                     Image(
                         painter = painterResource(Res.drawable.logo_mark),
                         contentDescription = "BitChord",
+                        // The mark is drawn white; in the ink, so it reads on a light window too.
+                        colorFilter = ColorFilter.tint(Ink),
                         modifier = Modifier.size(width = 28.dp, height = 18.dp),
                     )
                     Spacer(Modifier.width(8.dp))
