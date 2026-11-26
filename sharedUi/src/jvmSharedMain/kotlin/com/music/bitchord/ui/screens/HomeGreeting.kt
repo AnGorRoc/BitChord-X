@@ -35,6 +35,12 @@ private val GREETING_SIZE = 22.sp
 fun HomeGreetingLine(
     name: String?,
     modifier: Modifier = Modifier,
+    /**
+     * The now-playing tint's own text colour, when the app is tinted with the
+     * record playing — the artwork's colour, already corrected to read on the
+     * tinted page. Null keeps the theme's text colour.
+     */
+    color: androidx.compose.ui.graphics.Color? = null,
 ) {
     @Suppress("NAME_SHADOWING")
     val name = name?.trim()?.substringBefore(' ')?.takeIf(String::isNotBlank)
@@ -81,7 +87,7 @@ fun HomeGreetingLine(
         maxSize = GREETING_SIZE,
         minSize = GREETING_MIN_SIZE,
         maxLines = 2,
-        color = MaterialTheme.colorScheme.onBackground,
+        color = color ?: MaterialTheme.colorScheme.onBackground,
         modifier = modifier,
     )
 }

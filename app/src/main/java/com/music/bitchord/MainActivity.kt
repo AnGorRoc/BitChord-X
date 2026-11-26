@@ -4892,6 +4892,11 @@ private fun BitChordApp(
                                     // Never the generic "User" label: a greeting
                                     // with no name beats one with a placeholder.
                                     name = userName.trim().ifBlank { null } ?: account?.name,
+                                    // Tinted with the record playing, as the rest of
+                                    // the chrome is when that setting is on: the
+                                    // artwork's colour, corrected to read on the page.
+                                    // Read here, so only the greeting follows the fade.
+                                    color = if (appTinted) playingPalette.current.accent else null,
                                 )
                             }
                         } else null,
