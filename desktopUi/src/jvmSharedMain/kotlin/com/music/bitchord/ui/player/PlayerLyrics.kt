@@ -1,5 +1,6 @@
 package com.music.bitchord.ui.player
 
+import com.music.bitchord.ui.theme.Ink
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.SizeTransform
 import androidx.compose.animation.animateColorAsState
@@ -799,7 +800,7 @@ private fun SweptLyricLine(
     laneLocked: Boolean = false,
     translationProgress: State<Float>? = null,
     /** What the words are set in — see [PanelVoice] for which lines differ. */
-    color: Color = Color.White,
+    color: Color = Ink,
 ) {
     var layout by remember(line) { mutableStateOf<TextLayoutResult?>(null) }
 
@@ -1599,12 +1600,14 @@ internal fun LyricsTranslationMotion(
 }
 
 /** Glyph positions are cached at layout time; the shared clock is draw-only. */
+@Composable
 private fun Modifier.lyricParticles(
     layout: TextLayoutResult?,
     progress: State<Float>?,
     room: Dp,
 ): Modifier {
     if (layout == null || progress == null) return this
+    val ink = Ink
     return drawWithCache {
         val text = layout.layoutInput.text.text
         val candidates = text.indices.filter { text[it].isLetterOrDigit() }
@@ -1634,8 +1637,8 @@ private fun Modifier.lyricParticles(
                     )
                     // Two inexpensive circles give a soft halo without another
                     // blur layer; opacity rises and falls without a flash.
-                    drawCircle(Color.White, particle.radius * 2.7f, center, alpha = envelope * 0.07f)
-                    drawCircle(Color.White, particle.radius, center, alpha = envelope * 0.58f)
+                    drawCircle(ink, particle.radius * 2.7f, center, alpha = envelope * 0.07f)
+                    drawCircle(ink, particle.radius, center, alpha = envelope * 0.58f)
                 }
             }
         }
@@ -1671,6 +1674,7 @@ private fun LyricsSkeleton(modifier: Modifier = Modifier) {
         // lights end to end in the time a long one takes to get halfway, and
         // the block reads as a row of separate things loading separately.
         val column = maxWidth
+        val skeletonInk = Ink
         Column(verticalArrangement = Arrangement.spacedBy(SKELETON_BLOCK_GAP)) {
             SKELETON_BLOCKS.forEach { rows ->
                 Column(verticalArrangement = Arrangement.spacedBy(SKELETON_LEADING)) {
@@ -1690,9 +1694,9 @@ private fun LyricsSkeleton(modifier: Modifier = Modifier) {
                                     val startX = -band + sweep.value * (full + band * 2)
                                     val brush = Brush.horizontalGradient(
                                         colors = listOf(
-                                            Color.White.copy(alpha = 0.10f),
-                                            Color.White.copy(alpha = 0.26f),
-                                            Color.White.copy(alpha = 0.10f),
+                                            skeletonInk.copy(alpha = 0.10f),
+                                            skeletonInk.copy(alpha = 0.26f),
+                                            skeletonInk.copy(alpha = 0.10f),
                                         ),
                                         startX = startX,
                                         endX = startX + band,
@@ -2072,7 +2076,7 @@ internal fun LyricsPanel(
                 Text(
                     text = stringResource(Res.string.no_lyrics_for_track),
                     style = MaterialTheme.typography.titleMedium,
-                    color = Color.White.copy(alpha = 0.6f),
+                    color = Ink.copy(alpha = 0.6f),
                 )
             }
         }
@@ -2141,7 +2145,7 @@ internal fun LyricsPanel(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
-                            .background(Color.White.copy(alpha = 0.14f))
+                            .background(Ink.copy(alpha = 0.14f))
                             .padding(horizontal = 11.dp, vertical = 4.dp),
                     ) {
                         Text(
@@ -2151,7 +2155,7 @@ internal fun LyricsPanel(
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 11.5.sp,
                             ),
-                            color = Color.White.copy(alpha = 0.9f),
+                            color = Ink.copy(alpha = 0.9f),
                         )
                     }
                 }
@@ -2231,6 +2235,7 @@ internal fun LyricsPanel(
                     label = "gapSwell",
                 )
                 val instrumental = stringResource(Res.string.instrumental)
+                val gapInk = Ink
                 Box(
                     contentAlignment = Alignment.CenterStart,
                     modifier = Modifier
@@ -2273,7 +2278,7 @@ internal fun LyricsPanel(
                                 // fills across it, so they light left to right.
                                 val lit = (through * GAP_DOTS - dot).coerceIn(0f, 1f)
                                 drawCircle(
-                                    color = Color.White.copy(
+                                    color = gapInk.copy(
                                         alpha = GAP_DOT_REST + (1f - GAP_DOT_REST) * lit,
                                     ),
                                     radius = radius,
@@ -2391,8 +2396,8 @@ internal fun LyricsPanel(
                     // is picked is read against what isn't.
                     .background(
                         when {
-                            index in picked -> Color.White.copy(alpha = 0.16f)
-                            picking -> Color.White.copy(alpha = 0.05f)
+                            index in picked -> Ink.copy(alpha = 0.16f)
+                            picking -> Ink.copy(alpha = 0.05f)
                             else -> Color.Transparent
                         },
                     )
@@ -2647,7 +2652,7 @@ private fun PanelVoice(
     // line warms to white as it is reached and cools as it is left. Lyrics
     // with no timing have no line being sung, and stay white throughout.
     val targetColor = when {
-        isActive || !synced -> Color.White
+        isActive || !synced -> Ink
         sung -> Color(0xFF8E8E93)
         else -> LocalPlayerTint.current
     }
@@ -2895,14 +2900,14 @@ private fun CurrentLyricLine(
             Icon(
                 imageVector = BitChordIcons.Instrumental,
                 contentDescription = null,
-                tint = Color.White,
+                tint = Ink,
                 modifier = Modifier.size(16.dp),
             )
             Spacer(Modifier.width(6.dp))
             Text(
                 text = stringResource(Res.string.open_lyrics),
                 style = stripStyle,
-                color = Color.White,
+                color = Ink,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f, fill = false),
@@ -2911,7 +2916,7 @@ private fun CurrentLyricLine(
             Icon(
                 imageVector = BitChordIcons.ChevronRight,
                 contentDescription = null,
-                tint = Color.White.copy(alpha = 0.5f),
+                tint = Ink.copy(alpha = 0.5f),
                 modifier = Modifier.size(14.dp),
             )
         }
@@ -2968,7 +2973,7 @@ private fun CurrentLyricLine(
             Icon(
                 imageVector = BitChordIcons.Instrumental,
                 contentDescription = null,
-                tint = Color.White,
+                tint = Ink,
                 modifier = Modifier.size(16.dp),
             )
             Spacer(Modifier.width(6.dp))
@@ -3032,7 +3037,7 @@ private fun CurrentLyricLine(
                     text = lineText,
                     style = voiceStyle(
                         stripStyle.copy(
-                            color = if (itemInstrumental) Color.White.copy(alpha = 0.5f) else Color.White
+                            color = if (itemInstrumental) Ink.copy(alpha = 0.5f) else Ink
                         ),
                         lineText,
                         alignEnd = false,
@@ -3050,7 +3055,7 @@ private fun CurrentLyricLine(
             Icon(
                 imageVector = BitChordIcons.ChevronRight,
                 contentDescription = null,
-                tint = Color.White.copy(alpha = 0.5f),
+                tint = Ink.copy(alpha = 0.5f),
                 modifier = Modifier.size(14.dp),
             )
         } else {
@@ -3058,7 +3063,7 @@ private fun CurrentLyricLine(
             Icon(
                 imageVector = BitChordIcons.ChevronRight,
                 contentDescription = null,
-                tint = Color.White.copy(alpha = 0.5f),
+                tint = Ink.copy(alpha = 0.5f),
                 modifier = Modifier
                     .size(14.dp)
                     .graphicsLayer { scaleX = -1f },
@@ -3087,7 +3092,7 @@ private fun LyricsUnavailableLine(trackKey: Any, modifier: Modifier = Modifier) 
     Text(
         text = stringResource(Res.string.lyrics_not_available),
         style = MaterialTheme.typography.titleMedium,
-        color = Color.White,
+        color = Ink,
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         modifier = modifier
@@ -3102,7 +3107,7 @@ private fun LyricsLoadingLine(text: String, modifier: Modifier = Modifier) {
     Text(
         text = text,
         style = MaterialTheme.typography.titleMedium,
-        color = Color.White.copy(alpha = 0.55f),
+        color = Ink.copy(alpha = 0.55f),
         maxLines = 1,
         overflow = TextOverflow.Ellipsis,
         modifier = modifier.padding(vertical = 4.dp),

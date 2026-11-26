@@ -69,6 +69,9 @@ fun LyricsSidePanel(
     val haze = remember { HazeState() }
     var showLyricsProviders by remember { mutableStateOf(false) }
 
+    // Beside a light page the player's pale tint would vanish: the lines still to come go grey instead.
+    val tint = if (com.music.bitchord.ui.theme.LocalDesktopDark.current) LocalPlayerTint.current else androidx.compose.ui.graphics.Color(0xFF6E6E73)
+    androidx.compose.runtime.CompositionLocalProvider(LocalPlayerTint provides tint) {
     Box(modifier) {
         Box(Modifier.fillMaxSize().hazeSource(haze)) {
             LandscapeLyricsPane(
@@ -136,6 +139,7 @@ fun LyricsSidePanel(
             )
         }
     }
+    }
 }
 
 /** The live queue — the player's own, rows, drag and all — without the player. */
@@ -151,6 +155,8 @@ fun QueueSidePanel(
     onSaveQueue: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
+    val tint = if (com.music.bitchord.ui.theme.LocalDesktopDark.current) LocalPlayerTint.current else androidx.compose.ui.graphics.Color(0xFF6E6E73)
+    androidx.compose.runtime.CompositionLocalProvider(LocalPlayerTint provides tint) {
     InlineQueue(
         queue = queue,
         currentIndex = queueIndex,
@@ -163,4 +169,5 @@ fun QueueSidePanel(
         onSaveQueue = onSaveQueue,
         modifier = modifier,
     )
+    }
 }

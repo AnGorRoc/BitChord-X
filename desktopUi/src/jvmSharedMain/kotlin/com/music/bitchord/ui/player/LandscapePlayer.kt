@@ -1,5 +1,6 @@
 package com.music.bitchord.ui.player
 
+import com.music.bitchord.ui.theme.Ink
 import com.music.bitchord.sharedui.resources.*
 
 import androidx.compose.animation.Crossfade
@@ -440,7 +441,7 @@ internal fun LandscapeArtwork(
      * The colour of the aura that blooms around the sleeve while an Automix blend runs. Tint it
      * with the artwork's own palette where one is at hand; it defaults to a neutral light.
      */
-    glowColor: Color = Color.White,
+    glowColor: Color = Ink,
     /**
      * Clip the Automix aura to the sleeve's rounded shape rather than its square bounds. The
      * desktop player sets this so the white bloom that pulses during a blend reads as a rounded
@@ -514,7 +515,7 @@ internal fun LandscapeArtwork(
                 Icon(
                     imageVector = BitChordIcons.MusicNote,
                     contentDescription = null,
-                    tint = Color.White.copy(alpha = 0.35f),
+                    tint = Ink.copy(alpha = 0.35f),
                     modifier = Modifier.fillMaxSize(0.36f),
                 )
             }
@@ -633,10 +634,10 @@ internal fun LandscapeCredits(
                 MarqueeText(
                     text = song.title,
                     style = MaterialTheme.typography.titleLarge,
-                    color = Color.White,
+                    color = Ink,
                     onOverflowChange = { titleOverflowing = it },
                     leading = if (song.isExplicit == true) {
-                        { ExplicitBadge(Color.White) }
+                        { ExplicitBadge(Ink) }
                     } else {
                         null
                     },
@@ -738,7 +739,7 @@ internal fun LandscapeLyricsPane(
                 Text(
                     text = placeholder,
                     style = MaterialTheme.typography.titleMedium,
-                    color = Color.White.copy(alpha = 0.6f),
+                    color = Ink.copy(alpha = 0.6f),
                     textAlign = TextAlign.Center,
                     modifier = Modifier.align(Alignment.Center),
                 )

@@ -1,5 +1,6 @@
 package com.music.bitchord.ui.player
 
+import com.music.bitchord.ui.theme.Ink
 import com.music.bitchord.ui.components.trackArtSize
 import androidx.compose.ui.layout.ContentScale
 import com.music.bitchord.sharedui.resources.*
@@ -284,7 +285,7 @@ internal fun InlineQueue(
             Text(
                 text = stringResource(Res.string.queue),
                 style = MaterialTheme.typography.titleLarge,
-                color = Color.White,
+                color = Ink,
                 modifier = Modifier.weight(1f),
             )
             onSaveQueue?.let { saveQueue ->
@@ -446,7 +447,7 @@ private fun QueueHeading(
         Text(
             text = title,
             style = MaterialTheme.typography.titleMedium,
-            color = Color.White.copy(alpha = 0.75f),
+            color = Ink.copy(alpha = 0.75f),
             modifier = Modifier.weight(1f),
         )
         trailing()
@@ -465,14 +466,14 @@ private fun QueueSaveButton(style: TextStyle, onSave: () -> Unit) {
         Icon(
             imageVector = Icons.AutoMirrored.Rounded.PlaylistAdd,
             contentDescription = stringResource(Res.string.save_as_playlist),
-            tint = Color.White.copy(alpha = 0.75f),
+            tint = Ink.copy(alpha = 0.75f),
             modifier = Modifier.size(18.dp),
         )
         Spacer(Modifier.width(4.dp))
         Text(
             text = stringResource(Res.string.save_as_playlist),
             style = style,
-            color = Color.White.copy(alpha = 0.75f),
+            color = Ink.copy(alpha = 0.75f),
         )
     }
 }
@@ -482,7 +483,7 @@ private fun QueueClearButton(style: TextStyle, locked: Boolean, onClear: () -> U
     Text(
         text = stringResource(Res.string.clear),
         style = style,
-        color = Color.White.copy(alpha = if (locked) 0.25f else 0.75f),
+        color = Ink.copy(alpha = if (locked) 0.25f else 0.75f),
         modifier = Modifier
             .clip(RoundedCornerShape(percent = 50))
             .clickable(enabled = !locked, onClick = onClear)
@@ -501,7 +502,7 @@ private fun AutoplayHeading(hasTracks: Boolean, modifier: Modifier = Modifier) {
         Icon(
             BitChordIcons.Infinity,
             contentDescription = null,
-            tint = Color.White.copy(alpha = 0.75f),
+            tint = Ink.copy(alpha = 0.75f),
             modifier = Modifier.size(18.dp),
         )
         Spacer(Modifier.width(8.dp))
@@ -509,14 +510,14 @@ private fun AutoplayHeading(hasTracks: Boolean, modifier: Modifier = Modifier) {
             Text(
                 text = stringResource(Res.string.autoplay),
                 style = MaterialTheme.typography.titleMedium,
-                color = Color.White,
+                color = Ink,
             )
             Text(
                 text = stringResource(
                     if (hasTracks) Res.string.autoplay_queue_description else Res.string.autoplay_empty_description,
                 ),
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.55f),
+                color = Ink.copy(alpha = 0.55f),
             )
         }
     }
@@ -762,7 +763,7 @@ internal fun AddedByBadge(who: AddedByUi, modifier: Modifier = Modifier) {
             .background(Color.Black)
             .padding(1.5.dp)
             .clip(CircleShape)
-            .background(Color.White.copy(alpha = 0.25f)),
+            .background(Ink.copy(alpha = 0.25f)),
         contentAlignment = Alignment.Center,
     ) {
         if (who.avatarUrl != null) {
@@ -776,7 +777,7 @@ internal fun AddedByBadge(who: AddedByUi, modifier: Modifier = Modifier) {
             Text(
                 text = who.name.take(1).uppercase(),
                 style = MaterialTheme.typography.labelSmall,
-                color = Color.White,
+                color = Ink,
             )
         }
     }
@@ -803,7 +804,7 @@ private fun InlineQueueRow(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(8.dp))
-            .background(if (lifted) Color.White.copy(alpha = 0.06f) else Color.Transparent)
+            .background(if (lifted) Ink.copy(alpha = 0.06f) else Color.Transparent)
             // Disabled rather than ignored: a tap that ripples and then does
             // nothing reads as the app having missed it.
             .clickable(enabled = !locked, onClick = onClick)
@@ -814,7 +815,7 @@ private fun InlineQueueRow(
             Icon(
                 Icons.Rounded.DragHandle,
                 contentDescription = stringResource(Res.string.drag_to_reorder),
-                tint = Color.White.copy(alpha = 0.4f),
+                tint = Ink.copy(alpha = 0.4f),
                 modifier = Modifier
                     .size(20.dp)
                     // The glyph sits well inset in its own box; this pulls it
@@ -844,7 +845,7 @@ private fun InlineQueueRow(
                     .trackArtSize(44.dp, song.isVideo)
                     .clip(RoundedCornerShape(6.dp))
                     .thumbnailBorder(RoundedCornerShape(6.dp))
-                    .background(Color.White.copy(alpha = 0.08f)),
+                    .background(Ink.copy(alpha = 0.08f)),
             )
             // In a party, who put this song here: their picture in the cover's bottom-right corner.
             party.addedBy[song.videoId]?.let { who ->
@@ -856,12 +857,12 @@ private fun InlineQueueRow(
             ExplicitSongTitle(
                 song = song,
                 style = MaterialTheme.typography.titleMedium,
-                color = if (isCurrent) Color.White else Color.White.copy(alpha = 0.92f),
+                color = if (isCurrent) Ink else Ink.copy(alpha = 0.92f),
             )
             Text(
                 text = song.artist,
                 style = MaterialTheme.typography.bodyMedium,
-                color = Color.White.copy(alpha = 0.55f),
+                color = Ink.copy(alpha = 0.55f),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -870,7 +871,7 @@ private fun InlineQueueRow(
             Icon(
                 Icons.Rounded.GraphicEq,
                 contentDescription = stringResource(Res.string.now_playing),
-                tint = Color.White,
+                tint = Ink,
                 modifier = Modifier.size(18.dp),
             )
             Spacer(Modifier.width(10.dp))
@@ -886,7 +887,7 @@ private fun InlineQueueRow(
                 Icon(
                     Icons.Rounded.Close,
                     contentDescription = stringResource(Res.string.remove_from_queue),
-                    tint = Color.White.copy(alpha = 0.55f),
+                    tint = Ink.copy(alpha = 0.55f),
                     modifier = Modifier.size(18.dp),
                 )
             }
