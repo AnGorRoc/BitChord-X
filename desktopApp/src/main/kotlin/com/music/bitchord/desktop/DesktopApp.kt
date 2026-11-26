@@ -7004,14 +7004,20 @@ private fun DesktopFrame(
                 Row(Modifier.fillMaxSize()) {
                     if (!compact) sidebar()
                     Column(Modifier.weight(1f).fillMaxHeight()) {
-                        if (DesktopPlatform.drawsOwnWindowFrame && !DesktopPlatform.isMac) {
+                        val captionStrip = DesktopPlatform.drawsOwnWindowFrame && !DesktopPlatform.isMac
+                        // On a narrow window the top bar sits under the caption strip; on a wide one
+                        // the strip lies over the page instead, so the page's own backdrop runs up
+                        // behind the caption buttons rather than the bare system material.
+                        if (captionStrip && compact) {
                             DesktopTitleBarDragArea(
                                 Modifier.fillMaxWidth().height(WINDOW_CAPTION_HEIGHT),
                             )
                         }
+                        val stripInset = if (captionStrip && !compact) WINDOW_CAPTION_HEIGHT else 0.dp
                         // Apple Music has no top bar on a wide window: the player is the floating capsule below.
                         if (compact) topBar(compact)
-                        Row(Modifier.fillMaxWidth().weight(1f)) {
+                        Box(Modifier.fillMaxWidth().weight(1f)) {
+                        Row(Modifier.fillMaxSize()) {
                             Box(
                                 Modifier
                                     .weight(1f)
@@ -7026,15 +7032,17 @@ private fun DesktopFrame(
                             ) {
                                 Box(Modifier.fillMaxSize().hazeSource(haze)) {
                                     if (glass) backdrop(materialBehindApp)
-                                    content(
-                                        PaddingValues(
-                                            start = 0.dp,
-                                            end = 0.dp,
-                                            // Room for the bar that floats over this, so the
-                                            // last row can still be scrolled clear of it.
-                                            bottom = if (compact) 128.dp else 104.dp,
-                                        ),
-                                    )
+                                    Box(Modifier.fillMaxSize().padding(top = stripInset)) {
+                                        content(
+                                            PaddingValues(
+                                                start = 0.dp,
+                                                end = 0.dp,
+                                                // Room for the bar that floats over this, so the
+                                                // last row can still be scrolled clear of it.
+                                                bottom = if (compact) 128.dp else 104.dp,
+                                            ),
+                                        )
+                                    }
                                 }
                                 Box(Modifier.align(Alignment.BottomCenter)) { bottomBar(compact) }
                             }
@@ -7047,8 +7055,15 @@ private fun DesktopFrame(
                                         } else {
                                             Modifier
                                         },
-                                    ),
+                                    )
+                                    .padding(top = stripInset),
                             ) { trailing() }
+                        }
+                        if (stripInset > 0.dp) {
+                            DesktopTitleBarDragArea(
+                                Modifier.fillMaxWidth().height(WINDOW_CAPTION_HEIGHT),
+                            )
+                        }
                         }
                     }
                 }
