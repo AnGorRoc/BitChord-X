@@ -235,6 +235,7 @@ object InnertubeParser {
                 browseId.startsWith("UC") -> BrowseType.ARTIST
                 else -> BrowseType.OTHER
             },
+            pageType = pageType.takeIf { it.isNotBlank() },
         )
     }
 
@@ -1098,6 +1099,7 @@ object InnertubeParser {
                 browseId.startsWith("UC") -> BrowseType.ARTIST
                 else -> BrowseType.OTHER
             },
+            pageType = pageType.takeIf { it.isNotBlank() },
         )
     }
 

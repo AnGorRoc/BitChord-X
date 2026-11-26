@@ -499,6 +499,12 @@ data class BrowseItem(
     val subtitle: String,
     val thumbnailUrl: String?,
     val type: BrowseType,
+    /**
+     * Raw YouTube Music page type when present on the browse endpoint
+     * (e.g. `MUSIC_PAGE_TYPE_ARTIST`, `MUSIC_PAGE_TYPE_USER_CHANNEL`,
+     * `MUSIC_PAGE_TYPE_ALBUM`, `MUSIC_PAGE_TYPE_PLAYLIST`).
+     */
+    val pageType: String? = null,
 )
 
 /** Search rows are heterogeneous once filters other than "Songs" are used. */
