@@ -1,5 +1,6 @@
 package com.music.bitchord.desktop
 
+import com.music.bitchord.ui.theme.Ink
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -104,7 +105,7 @@ internal fun DesktopTelemetryDialogHost() {
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Column(Modifier.weight(1f)) {
-                        Text(telemetryLevelLabel(option), color = Color.White)
+                        Text(telemetryLevelLabel(option), color = Ink)
                         Text(telemetryLevelDetail(option), style = MaterialTheme.typography.bodySmall, color = DesktopSecondary)
                     }
                     if (option == level) {

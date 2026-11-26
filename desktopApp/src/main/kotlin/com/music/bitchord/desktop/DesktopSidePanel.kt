@@ -1,5 +1,6 @@
 package com.music.bitchord.desktop
 
+import com.music.bitchord.ui.theme.Ink
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.FastOutSlowInEasing
@@ -86,7 +87,7 @@ internal fun DesktopSidePanelColumn(
                             // need a name over them.
                             Text(
                                 text = "",
-                                color = Color.White,
+                                color = Ink,
                                 fontSize = 15.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 modifier = Modifier.weight(1f),

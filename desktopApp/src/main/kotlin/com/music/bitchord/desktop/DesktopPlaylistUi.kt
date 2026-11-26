@@ -1,5 +1,6 @@
 package com.music.bitchord.desktop
 
+import com.music.bitchord.ui.theme.Ink
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
@@ -193,7 +194,7 @@ private fun NewPlaylistForm(
     ) {
         onBack?.let {
             IconButton(onClick = it) {
-                Icon(Icons.AutoMirrored.Rounded.ArrowBack, DesktopStrings["back", "Back"], tint = Color.White)
+                Icon(Icons.AutoMirrored.Rounded.ArrowBack, DesktopStrings["back", "Back"], tint = Ink)
             }
         }
         Column(Modifier.weight(1f)) {
@@ -201,7 +202,7 @@ private fun NewPlaylistForm(
                 DesktopStrings["new_playlist", "New playlist"],
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = Color.White,
+                color = Ink,
             )
             Text(
                 if (signedIn) "Saved to your YouTube Music account" else "Saved on this computer",
@@ -217,7 +218,7 @@ private fun NewPlaylistForm(
             .fillMaxWidth()
             .padding(horizontal = 22.dp, vertical = 16.dp)
             .clip(RoundedCornerShape(11.dp))
-            .background(Color.White.copy(alpha = 0.08f))
+            .background(Ink.copy(alpha = 0.08f))
             .padding(horizontal = 12.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -229,7 +230,7 @@ private fun NewPlaylistForm(
                 value = name,
                 onValueChange = { name = it },
                 singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge.copy(color = Color.White),
+                textStyle = MaterialTheme.typography.bodyLarge.copy(color = Ink),
                 cursorBrush = SolidColor(DesktopAccent),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { submit() }),
@@ -295,14 +296,14 @@ internal fun DesktopRenamePlaylistDialog(
                 .fillMaxWidth()
                 .padding(horizontal = 22.dp, vertical = 14.dp)
                 .clip(RoundedCornerShape(11.dp))
-                .background(Color.White.copy(alpha = 0.08f))
+                .background(Ink.copy(alpha = 0.08f))
                 .padding(horizontal = 12.dp, vertical = 12.dp),
         ) {
             BasicTextField(
                 value = name,
                 onValueChange = { name = it },
                 singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge.copy(color = Color.White),
+                textStyle = MaterialTheme.typography.bodyLarge.copy(color = Ink),
                 cursorBrush = SolidColor(DesktopAccent),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(onDone = { submit() }),
@@ -525,7 +526,7 @@ private fun ReorderableSongList(
                                 0f
                             }
                         }
-                        .background(if (dragging) Color.White.copy(alpha = 0.08f) else Color.Transparent),
+                        .background(if (dragging) Ink.copy(alpha = 0.08f) else Color.Transparent),
                 ) {
                     if (slot > 0) DesktopCardRule()
                     ReorderSongRow(
@@ -616,7 +617,7 @@ private fun ReorderSongRow(
         Column(Modifier.weight(1f)) {
             Text(
                 song.title,
-                color = Color.White,
+                color = Ink,
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -679,7 +680,7 @@ private fun DialogHeading(title: String, subtitle: String) {
         title,
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.SemiBold,
-        color = Color.White,
+        color = Ink,
         modifier = Modifier.padding(start = 22.dp, end = 22.dp, top = 20.dp),
     )
     if (subtitle.isNotBlank()) {
@@ -729,10 +730,10 @@ private fun DialogAction(
             .padding(horizontal = 22.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Icon(icon, null, tint = Color.White.copy(alpha = 0.85f), modifier = Modifier.size(18.dp))
+        Icon(icon, null, tint = Ink.copy(alpha = 0.85f), modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(14.dp))
         Column(Modifier.weight(1f)) {
-            Text(label, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(label, color = Ink, maxLines = 1, overflow = TextOverflow.Ellipsis)
             if (subtitle.isNotBlank()) {
                 Text(
                     subtitle,
@@ -775,7 +776,7 @@ private fun PrivacyPill(icon: ImageVector, label: String, selected: Boolean, onC
     Row(
         Modifier
             .clip(RoundedCornerShape(20.dp))
-            .background(if (selected) DesktopAccent.copy(alpha = 0.22f) else Color.White.copy(alpha = 0.08f))
+            .background(if (selected) DesktopAccent.copy(alpha = 0.22f) else Ink.copy(alpha = 0.08f))
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -790,7 +791,7 @@ private fun PrivacyPill(icon: ImageVector, label: String, selected: Boolean, onC
         Text(
             label,
             style = MaterialTheme.typography.bodySmall,
-            color = if (selected) Color.White else DesktopSecondary,
+            color = if (selected) Ink else DesktopSecondary,
         )
     }
 }

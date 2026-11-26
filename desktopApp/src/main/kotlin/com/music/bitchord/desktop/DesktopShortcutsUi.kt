@@ -1,5 +1,6 @@
 package com.music.bitchord.desktop
 
+import com.music.bitchord.ui.theme.Ink
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -32,8 +33,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
-private val KeyCapBackground = Color(0xFF242426)
-private val KeyCapBorder = Color.White.copy(alpha = 0.15f)
+private val KeyCapBackground: Color
+    @Composable get() = com.music.bitchord.ui.theme.themed(Color(0xFF242426), Color(0xFFE5E5EA))
+private val KeyCapBorder: Color
+    @Composable get() = Ink.copy(alpha = 0.15f)
 
 @Composable
 internal fun DesktopShortcutsDialog(onDismiss: () -> Unit) {
@@ -56,7 +59,7 @@ internal fun DesktopShortcutsDialog(onDismiss: () -> Unit) {
                         DesktopStrings["keyboard_shortcuts", "Keyboard shortcuts"],
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White,
+                        color = Ink,
                     )
                     Text(
                         DesktopStrings["d_keyboard_shortcuts_subtitle", "Quick actions for playback, navigation and controls"],
@@ -179,7 +182,7 @@ private fun ShortcutRow(
         Text(
             text = description,
             style = MaterialTheme.typography.bodyMedium,
-            color = Color.White.copy(alpha = 0.9f),
+            color = Ink.copy(alpha = 0.9f),
             modifier = Modifier.weight(1f).padding(end = 12.dp),
         )
         Row(
@@ -212,7 +215,7 @@ private fun KeyBadge(text: String) {
     ) {
         Text(
             text = text,
-            color = Color.White,
+            color = Ink,
             fontSize = 11.sp,
             fontWeight = FontWeight.Medium,
             fontFamily = FontFamily.Monospace,

@@ -1,5 +1,6 @@
 package com.music.bitchord.desktop
 
+import com.music.bitchord.ui.theme.Ink
 import androidx.compose.foundation.background
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsHoveredAsState
@@ -125,7 +126,7 @@ internal fun DesktopMacWindowButtons(modifier: Modifier = Modifier) {
     val maximized by DesktopWindowMode.maximized.collectAsState()
     val windowInfo = androidx.compose.ui.platform.LocalWindowInfo.current
     val isFocused = windowInfo.isWindowFocused
-    val inactiveFill = if (!isFocused && DesktopPlatform.isMac) Color.White.copy(alpha = 0.22f) else null
+    val inactiveFill = if (!isFocused && DesktopPlatform.isMac) Ink.copy(alpha = 0.22f) else null
 
     Row(
         modifier = modifier.height(CAPTION_HEIGHT).padding(start = 2.dp),
@@ -277,10 +278,10 @@ private fun WindowsCaptionButton(
     val hovered by interaction.collectIsHoveredAsState()
     val bgColor = when {
         isClose && hovered -> Color(0xFFE81123)
-        hovered -> Color.White.copy(alpha = 0.09f)
+        hovered -> Ink.copy(alpha = 0.09f)
         else -> Color.Transparent
     }
-    val glyphColor = if (isClose && hovered) Color.White else Color.White.copy(alpha = 0.88f)
+    val glyphColor = if (isClose && hovered) Ink else Ink.copy(alpha = 0.88f)
 
     Box(
         modifier = Modifier

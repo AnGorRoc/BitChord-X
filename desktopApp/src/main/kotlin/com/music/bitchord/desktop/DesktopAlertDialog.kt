@@ -1,5 +1,6 @@
 package com.music.bitchord.desktop
 
+import com.music.bitchord.ui.theme.Ink
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -36,7 +37,7 @@ internal fun DesktopAlertDialog(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             if (title != null) {
-                CompositionLocalProvider(LocalContentColor provides Color.White) {
+                CompositionLocalProvider(LocalContentColor provides Ink) {
                     ProvideTextStyle(MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)) { title() }
                 }
             }

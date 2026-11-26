@@ -1,5 +1,6 @@
 package com.music.bitchord.desktop
 
+import com.music.bitchord.ui.theme.Ink
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Close
@@ -227,7 +228,7 @@ internal fun DesktopTidalInstancesSection() {
                 DesktopStrings["d_lossless_provider_instances", "Lossless Provider Instances"],
                 fontWeight = FontWeight.Medium,
                 fontSize = 13.sp,
-                color = Color.White.copy(alpha = 0.9f),
+                color = Ink.copy(alpha = 0.9f),
             )
             TextButton(
                 onClick = {
@@ -258,7 +259,7 @@ internal fun DesktopTidalInstancesSection() {
                         instance.label,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.SemiBold,
-                        color = Color.White,
+                        color = Ink,
                     )
                     Text(
                         instance.url,

@@ -1,5 +1,6 @@
 package com.music.bitchord.desktop
 
+import com.music.bitchord.ui.theme.Ink
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -132,7 +133,7 @@ fun DesktopWebDavDialog(
             modifier = Modifier.widthIn(min = 400.dp, max = 500.dp),
         ) {
             Column(modifier = Modifier.padding(24.dp)) {
-                Text(DesktopStrings["d_remote_library_webdav_title", "WebDAV Server Setup"], fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text(DesktopStrings["d_remote_library_webdav_title", "WebDAV Server Setup"], fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ink)
                 Spacer(Modifier.height(16.dp))
 
                 OutlinedTextField(
@@ -231,7 +232,7 @@ fun DesktopSmbDialog(
             modifier = Modifier.widthIn(min = 400.dp, max = 500.dp),
         ) {
             Column(modifier = Modifier.padding(24.dp)) {
-                Text(DesktopStrings["d_remote_library_smb_title", "SMB / Windows Share Setup"], fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text(DesktopStrings["d_remote_library_smb_title", "SMB / Windows Share Setup"], fontSize = 20.sp, fontWeight = FontWeight.Bold, color = Ink)
                 Spacer(Modifier.height(16.dp))
 
                 OutlinedTextField(

@@ -1,5 +1,6 @@
 package com.music.bitchord.desktop
 
+import com.music.bitchord.ui.theme.Ink
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
@@ -51,10 +52,10 @@ internal fun DesktopThinSlider(
     transitionWindow: ClosedFloatingPointRange<Float>? = null,
     idleHeight: Dp = 7.dp,
     activeHeight: Dp = 12.dp,
-    activeColor: Color = Color.White.copy(alpha = 0.92f),
-    inactiveColor: Color = Color.White.copy(alpha = 0.26f),
+    activeColor: Color = Ink.copy(alpha = 0.92f),
+    inactiveColor: Color = Ink.copy(alpha = 0.26f),
     /** Halfway between the two track colours: visible against unplayed, invisible under played. */
-    markerColor: Color = Color.White.copy(alpha = 0.5f),
+    markerColor: Color = Ink.copy(alpha = 0.5f),
 ) {
     var dragging by remember { mutableStateOf(false) }
     val height by animateDpAsState(
@@ -154,6 +155,7 @@ private fun DesktopMixSheen(height: Dp) {
         ),
         label = "mixSheenPhase",
     )
+    val ink = Ink
     Canvas(
         Modifier
             .fillMaxWidth()
@@ -167,7 +169,7 @@ private fun DesktopMixSheen(height: Dp) {
             brush = Brush.linearGradient(
                 colorStops = arrayOf(
                     0f to Color.Transparent,
-                    0.5f to Color.White.copy(alpha = 0.95f),
+                    0.5f to ink.copy(alpha = 0.95f),
                     1f to Color.Transparent,
                 ),
                 start = Offset(centre - band / 2f, 0f),

@@ -1,5 +1,6 @@
 package com.music.bitchord.desktop
 
+import com.music.bitchord.ui.theme.Ink
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -69,7 +70,7 @@ internal fun DesktopIntegrationsDialog(
                 DesktopStrings["account_integrations", "Account & integrations"],
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = Color.White,
+                color = Ink,
                 modifier = Modifier.padding(start = panelInset(20.dp), end = panelInset(20.dp), top = 18.dp, bottom = 12.dp),
             )
             SpotifySection(spotify)
@@ -491,7 +492,7 @@ private fun RichPresencePreview(
             "$verb $heading".uppercase(Locale.ROOT),
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.W700,
-            color = Color.White,
+            color = Ink,
         )
         Spacer(Modifier.height(12.dp))
         Row(verticalAlignment = Alignment.Top) {
@@ -509,7 +510,7 @@ private fun RichPresencePreview(
                     title,
                     style = MaterialTheme.typography.bodyLarge.copy(fontSize = 15.sp),
                     fontWeight = if (useDetails) FontWeight.W700 else FontWeight.W400,
-                    color = Color.White,
+                    color = Ink,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -517,7 +518,7 @@ private fun RichPresencePreview(
                     artist,
                     style = MaterialTheme.typography.bodyMedium.copy(fontSize = 14.sp),
                     fontWeight = if (useDetails) FontWeight.W400 else FontWeight.W700,
-                    color = Color.White,
+                    color = Ink,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -561,13 +562,13 @@ private fun PreviewButton(label: String) {
     Box(
         Modifier
             .clip(RoundedCornerShape(4.dp))
-            .background(Color.White.copy(alpha = 0.12f))
+            .background(Ink.copy(alpha = 0.12f))
             .padding(horizontal = 12.dp, vertical = 7.dp),
     ) {
         Text(
             label,
             style = MaterialTheme.typography.labelMedium,
-            color = Color.White,
+            color = Ink,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
@@ -639,7 +640,7 @@ private fun PanelSwitchRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text(title, color = if (enabled) Color.White else DesktopSecondary)
+            Text(title, color = if (enabled) Ink else DesktopSecondary)
             subtitle?.let {
                 Text(it, style = MaterialTheme.typography.bodySmall, color = DesktopSecondary)
             }
@@ -655,7 +656,7 @@ private fun PanelValueRow(title: String, value: String, onClick: () -> Unit) {
         Modifier.fillMaxWidth().desktopRowClickable(onClick = onClick).padding(horizontal = panelInset(14.dp), vertical = 13.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(title, color = Color.White, modifier = Modifier.weight(1f))
+        Text(title, color = Ink, modifier = Modifier.weight(1f))
         Text(value, color = DesktopSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
 }
@@ -667,7 +668,7 @@ private fun PanelActionRow(title: String, subtitle: String, destructive: Boolean
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Column(Modifier.weight(1f)) {
-            Text(title, color = if (destructive) DesktopDestructive else Color.White)
+            Text(title, color = if (destructive) DesktopDestructive else Ink)
             Text(subtitle, style = MaterialTheme.typography.bodySmall, color = DesktopSecondary)
         }
     }
@@ -686,7 +687,7 @@ private fun PanelSliderRow(
     Column(Modifier.fillMaxWidth().padding(horizontal = panelInset(14.dp), vertical = 9.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(title, color = Color.White)
+                Text(title, color = Ink)
                 Text(subtitle, style = MaterialTheme.typography.bodySmall, color = DesktopSecondary)
             }
             Text(readout, color = DesktopSecondary, style = MaterialTheme.typography.bodySmall)
@@ -716,7 +717,7 @@ internal fun DesktopChoiceDialog(
             Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 18.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = Color.White)
+            Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, color = Ink)
             Text(
                 message,
                 modifier = Modifier.padding(top = 5.dp),
@@ -734,7 +735,7 @@ internal fun DesktopChoiceDialog(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text(option.label, color = Color.White)
+                    Text(option.label, color = Ink)
                     Text(option.detail, style = MaterialTheme.typography.bodySmall, color = DesktopSecondary)
                 }
                 if (option.id == selected) {

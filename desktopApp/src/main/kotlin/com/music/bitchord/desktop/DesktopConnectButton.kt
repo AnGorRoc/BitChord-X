@@ -1,5 +1,6 @@
 package com.music.bitchord.desktop
 
+import com.music.bitchord.ui.theme.Ink
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -72,7 +73,7 @@ internal fun DesktopConnectButton(modifier: Modifier = Modifier) {
             Modifier
                 .height(32.dp)
                 .clip(RoundedCornerShape(50))
-                .background(if (lit) Color.White.copy(alpha = 0.14f) else Color.Transparent)
+                .background(if (lit) Ink.copy(alpha = 0.14f) else Color.Transparent)
                 .desktopHoverWash(covered = open)
                 // The panel hands focus back on closing; a focused button would stay greyed.
                 .focusProperties { canFocus = false }

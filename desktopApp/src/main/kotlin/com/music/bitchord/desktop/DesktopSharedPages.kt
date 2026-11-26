@@ -1,5 +1,7 @@
 package com.music.bitchord.desktop
 
+import com.music.bitchord.ui.theme.Ink
+import com.music.bitchord.ui.theme.InkInverse
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -290,12 +292,12 @@ internal fun DesktopLibrarySortMenu() {
                 } else {
                     DesktopStrings["view_as_grid", "View as grid"]
                 },
-                tint = Color.White,
+                tint = Ink,
             )
         }
         Box {
             DesktopToolbarButton(onClick = { open = true }) {
-                Icon(Icons.AutoMirrored.Rounded.Sort, DesktopStrings["sort_library", "Sort library"], tint = Color.White)
+                Icon(Icons.AutoMirrored.Rounded.Sort, DesktopStrings["sort_library", "Sort library"], tint = Ink)
             }
             DesktopDropdownMenu(expanded = open, onDismissRequest = { open = false }) {
                 LibrarySort.entries.forEach { option ->
@@ -343,7 +345,7 @@ internal fun DesktopPlayPill(
         Modifier
             .then(if (iconOnly) Modifier.size(size) else Modifier.height(size))
             .clip(CircleShape)
-            .background(Color.White)
+            .background(Ink)
             .clickable(onClick = onClick)
             .then(if (iconOnly) Modifier else Modifier.padding(horizontal = 32.dp)),
         horizontalArrangement = Arrangement.Center,
@@ -352,12 +354,12 @@ internal fun DesktopPlayPill(
         Icon(
             BitChordIcons.Play,
             contentDescription = if (iconOnly) label else null,
-            tint = Color.Black,
+            tint = InkInverse,
             modifier = Modifier.size(if (iconOnly) size * 0.44f else 18.dp),
         )
         if (!iconOnly) {
             Spacer(Modifier.width(8.dp))
-            Text(label, style = MaterialTheme.typography.titleMedium, color = Color.Black)
+            Text(label, style = MaterialTheme.typography.titleMedium, color = InkInverse)
         }
     }
 }
@@ -377,10 +379,10 @@ internal fun DesktopCircleButton(
         Modifier
             .size(size)
             .clip(CircleShape)
-            .background(Color.White.copy(alpha = 0.12f))
+            .background(Ink.copy(alpha = 0.12f))
             .clickable(onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription, tint = Color.White, modifier = Modifier.size(size * 0.44f))
+        Icon(icon, contentDescription, tint = Ink, modifier = Modifier.size(size * 0.44f))
     }
 }

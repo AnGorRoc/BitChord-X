@@ -1,5 +1,6 @@
 package com.music.bitchord.desktop
 
+import com.music.bitchord.ui.theme.Ink
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.hoverable
@@ -98,13 +99,14 @@ internal fun Modifier.desktopHoverWash(
         animationSpec = tween(WASH_MS),
         label = "hoverWash",
     )
+    val ink = Ink
     this
         .hoverable(interaction)
         .drawBehind {
             val alpha = restAlpha + (hoverAlpha - restAlpha) * wash
             if (alpha <= 0.001f) return@drawBehind
             drawCircle(
-                color = androidx.compose.ui.graphics.Color.White.copy(alpha = alpha),
+                color = ink.copy(alpha = alpha),
                 radius = size.minDimension / 2f,
             )
         }
@@ -133,13 +135,14 @@ internal fun Modifier.desktopHoverFill(
         animationSpec = tween(WASH_MS),
         label = "hoverFill",
     )
+    val ink = Ink
     this
         .hoverable(interaction)
         .drawBehind {
             if (wash <= 0.01f) return@drawBehind
             val radius = corner.toPx()
             drawRoundRect(
-                color = androidx.compose.ui.graphics.Color.White.copy(alpha = alpha * wash),
+                color = ink.copy(alpha = alpha * wash),
                 cornerRadius = androidx.compose.ui.geometry.CornerRadius(radius, radius),
             )
         }

@@ -1,5 +1,6 @@
 package com.music.bitchord.desktop
 
+import com.music.bitchord.ui.theme.Ink
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -303,7 +304,7 @@ internal fun DialogHeading(title: String, message: String, isError: Boolean = fa
             title,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
-            color = Color.White,
+            color = Ink,
         )
         Text(
             message,
@@ -440,14 +441,14 @@ internal fun DesktopSpotifyImportDialog(
                 Icon(
                     painter = painterResource(Res.drawable.spotify_logo),
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = Ink,
                     modifier = Modifier.size(36.dp).padding(bottom = 8.dp),
                 )
                 Text(
                     title,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
-                    color = Color.White,
+                    color = Ink,
                 )
                 Text(
                     if (signedIn) {
@@ -486,7 +487,7 @@ internal fun DesktopSpotifyImportDialog(
                         progress = { animatedProgress },
                         modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
                         color = DesktopAccent,
-                        trackColor = Color.White.copy(alpha = 0.12f),
+                        trackColor = Ink.copy(alpha = 0.12f),
                     )
                     status?.let {
                         Text(
@@ -541,7 +542,7 @@ internal fun DesktopSpotifyImportDialog(
                         .padding(horizontal = panelInset(22.dp))
                         .heightIn(max = 200.dp)
                         .clip(RoundedCornerShape(10.dp))
-                        .background(Color.White.copy(alpha = 0.06f))
+                        .background(Ink.copy(alpha = 0.06f))
                         .verticalScroll(rememberScrollState())
                         .padding(horizontal = 12.dp, vertical = 8.dp),
                     verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -565,7 +566,7 @@ internal fun DesktopSpotifyImportDialog(
                         progress = { animatedProgress },
                         modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
                         color = DesktopAccent,
-                        trackColor = Color.White.copy(alpha = 0.12f),
+                        trackColor = Ink.copy(alpha = 0.12f),
                     )
                     status?.let {
                         Text(
@@ -623,7 +624,7 @@ private fun DialogField(
             .fillMaxWidth()
             .padding(horizontal = panelInset(22.dp))
             .clip(RoundedCornerShape(11.dp))
-            .background(Color.White.copy(alpha = if (enabled) 0.08f else 0.04f))
+            .background(Ink.copy(alpha = if (enabled) 0.08f else 0.04f))
             .padding(horizontal = 12.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -636,7 +637,7 @@ private fun DialogField(
                 onValueChange = onValueChange,
                 enabled = enabled,
                 singleLine = true,
-                textStyle = MaterialTheme.typography.bodyLarge.copy(color = Color.White),
+                textStyle = MaterialTheme.typography.bodyLarge.copy(color = Ink),
                 cursorBrush = SolidColor(DesktopAccent),
                 visualTransformation = if (isPassword) PasswordVisualTransformation() else VisualTransformation.None,
                 keyboardOptions = KeyboardOptions(imeAction = imeAction),

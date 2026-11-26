@@ -1,5 +1,6 @@
 package com.music.bitchord.desktop
 
+import com.music.bitchord.ui.theme.Ink
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -85,8 +86,8 @@ internal fun DesktopDropdownMenuItem(
     val interaction = remember { MutableInteractionSource() }
     val hovered by interaction.collectIsHoveredAsState()
     val shape = RoundedCornerShape(7.dp)
-    val itemColor = contentColor ?: if (enabled) Color.White else DesktopSecondary
-    val iconColor = contentColor ?: if (enabled) Color.White.copy(alpha = 0.85f) else DesktopSecondary
+    val itemColor = contentColor ?: if (enabled) Ink else DesktopSecondary
+    val iconColor = contentColor ?: if (enabled) Ink.copy(alpha = 0.85f) else DesktopSecondary
 
     Row(
         modifier = modifier

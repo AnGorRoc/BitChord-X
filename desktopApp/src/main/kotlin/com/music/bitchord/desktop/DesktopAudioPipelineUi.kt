@@ -1,5 +1,6 @@
 package com.music.bitchord.desktop
 
+import com.music.bitchord.ui.theme.Ink
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -153,7 +154,7 @@ private fun PipelineRow(label: String, value: String?) {
         Spacer(Modifier.width(12.dp))
         Text(
             value,
-            color = Color.White,
+            color = Ink,
             style = MaterialTheme.typography.bodySmall,
             fontWeight = FontWeight.Medium,
             textAlign = TextAlign.End,
@@ -177,7 +178,7 @@ private fun PipelineSourceRow(attempt: DesktopSourceAttempt) {
         }
         Text(
             attempt.displayName,
-            color = if (attempt.isWinner) Color.White else DesktopSecondary,
+            color = if (attempt.isWinner) Ink else DesktopSecondary,
             style = MaterialTheme.typography.bodySmall,
             fontWeight = if (attempt.isWinner) FontWeight.SemiBold else FontWeight.Normal,
             maxLines = 1,
