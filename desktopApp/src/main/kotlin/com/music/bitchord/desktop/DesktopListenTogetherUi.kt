@@ -1,5 +1,7 @@
 package com.music.bitchord.desktop
 
+import com.music.bitchord.ui.theme.Ink
+import com.music.bitchord.ui.theme.InkInverse
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -496,7 +498,7 @@ private fun PartyLanding(
                             TextButton(onClick = onRefreshServer) { Text(tr("d_test", "Test")) }
                             Button(
                                 onClick = onSaveServer,
-                                colors = ButtonDefaults.buttonColors(containerColor = Color.White.copy(alpha = 0.12f), contentColor = Color.White),
+                                colors = ButtonDefaults.buttonColors(containerColor = Ink.copy(alpha = 0.12f), contentColor = Ink),
                             ) { Text(if (server.isBlank()) tr("d_use_builtin", "Use built-in") else tr("d_save", "Save")) }
                         }
                     }
@@ -509,7 +511,7 @@ private fun PartyLanding(
 /** Field outlines bright enough to find the field by; the theme's own are close to invisible here. */
 @Composable
 private fun fieldColors() = OutlinedTextFieldDefaults.colors(
-    unfocusedBorderColor = Color.White.copy(alpha = 0.28f),
+    unfocusedBorderColor = Ink.copy(alpha = 0.28f),
     focusedBorderColor = DesktopAccent,
 )
 
@@ -687,7 +689,7 @@ private fun RoomHero(state: DesktopListenTogether.State) {
             Button(
                 onClick = { DesktopExternalLinks.copy(invite); DesktopPlayerHost.showMessage(tr("d_link_copied", "Invite link copied")) },
                 shape = RoundedCornerShape(50),
-                colors = ButtonDefaults.buttonColors(containerColor = DesktopAccent, contentColor = Color.Black),
+                colors = ButtonDefaults.buttonColors(containerColor = DesktopAccent, contentColor = InkInverse),
                 modifier = Modifier.weight(1f).height(44.dp),
             ) {
                 Icon(Icons.Rounded.ContentCopy, null, modifier = Modifier.size(16.dp))
@@ -697,7 +699,7 @@ private fun RoomHero(state: DesktopListenTogether.State) {
             OutlinedButton(
                 onClick = { DesktopExternalLinks.copy(state.code.orEmpty()); DesktopPlayerHost.showMessage(tr("d_code_copied", "Code copied")) },
                 shape = RoundedCornerShape(50),
-                border = BorderStroke(1.dp, Color.White.copy(alpha = 0.3f)),
+                border = BorderStroke(1.dp, Ink.copy(alpha = 0.3f)),
                 modifier = Modifier.weight(1f).height(44.dp),
             ) {
                 Icon(Icons.Rounded.ContentCopy, null, modifier = Modifier.size(16.dp))
@@ -748,7 +750,7 @@ private fun NowPlayingCard(state: DesktopListenTogether.State) {
                     progress = { (positionMs.toFloat() / duration).coerceIn(0f, 1f) },
                     modifier = Modifier.fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)),
                     color = DesktopAccent,
-                    trackColor = Color.White.copy(alpha = 0.12f),
+                    trackColor = Ink.copy(alpha = 0.12f),
                 )
                 Row(Modifier.fillMaxWidth().padding(top = 6.dp)) {
                     Text(clock(positionMs), color = PartySecondary, style = MaterialTheme.typography.labelSmall)
@@ -789,7 +791,7 @@ private fun Tag(text: String) {
         color = PartySecondary,
         style = MaterialTheme.typography.labelSmall,
         fontWeight = FontWeight.SemiBold,
-        modifier = Modifier.clip(RoundedCornerShape(50)).background(Color.White.copy(alpha = 0.10f)).padding(horizontal = 8.dp, vertical = 2.dp),
+        modifier = Modifier.clip(RoundedCornerShape(50)).background(Ink.copy(alpha = 0.10f)).padding(horizontal = 8.dp, vertical = 2.dp),
     )
 }
 
@@ -964,7 +966,7 @@ private fun Stepper(label: String, enabled: Boolean, onClick: () -> Unit) {
     Box(
         Modifier.size(32.dp).clip(CircleShape).background(DesktopCardInsetFill).clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
-    ) { Text(label, color = if (enabled) Color.White else PartySecondary) }
+    ) { Text(label, color = if (enabled) Ink else PartySecondary) }
 }
 
 @Composable
@@ -979,10 +981,10 @@ private fun PrimaryButton(
         onClick = onClick,
         enabled = enabled && !busy,
         shape = RoundedCornerShape(50),
-        colors = ButtonDefaults.buttonColors(containerColor = DesktopAccent, contentColor = Color.Black),
+        colors = ButtonDefaults.buttonColors(containerColor = DesktopAccent, contentColor = InkInverse),
         modifier = modifier.height(46.dp),
     ) {
-        if (busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = Color.Black)
+        if (busy) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = InkInverse)
         else Text(label, fontWeight = FontWeight.SemiBold)
     }
 }
@@ -1043,7 +1045,8 @@ private fun PlayHereOption(selected: Boolean, title: String, subtitle: String, e
  * Secondary text on this panel's solid card: a step lighter than the app's grey, which reads well on
  * a glass bar but is faint on the inset blocks this panel is made of.
  */
-private val PartySecondary = Color(0xFFAEAEB4)
+private val PartySecondary: Color
+    @Composable get() = com.music.bitchord.ui.theme.themed(Color(0xFFAEAEB4), Color(0xFF6E6E73))
 
 /** The desktop's own words in the language in force; a key with no translation reads as the English given. */
 private fun tr(key: String, fallback: String, vararg args: Any?): String =

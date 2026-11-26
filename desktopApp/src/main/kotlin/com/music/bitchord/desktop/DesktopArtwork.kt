@@ -166,7 +166,7 @@ fun DesktopArtwork(
         }
     }
     if (bitmap == null) {
-        Box(modifier.background(Color(0xFF2B2B35)))
+        Box(modifier.background(com.music.bitchord.ui.theme.themed(Color(0xFF2B2B35), Color(0xFFE5E5EA))))
     } else {
         Image(
             painter = BitmapPainter(bitmap!!),
