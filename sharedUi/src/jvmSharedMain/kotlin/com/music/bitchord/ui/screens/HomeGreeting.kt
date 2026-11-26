@@ -10,6 +10,7 @@ import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -31,7 +32,10 @@ private val GREETING_SIZE = 22.sp
  * Pedro", not the account's full name.
  */
 @Composable
-fun HomeGreetingLine(name: String?, modifier: Modifier = Modifier) {
+fun HomeGreetingLine(
+    name: String?,
+    modifier: Modifier = Modifier,
+) {
     @Suppress("NAME_SHADOWING")
     val name = name?.trim()?.substringBefore(' ')?.takeIf(String::isNotBlank)
     // A new draw on every return to the app, not on every recomposition.
@@ -72,18 +76,58 @@ fun HomeGreetingLine(name: String?, modifier: Modifier = Modifier) {
         HomeGreeting.Kind.CONTINUE_ARTIST -> stringResource(Res.string.greeting_continue_artist, read.first.orEmpty())
         HomeGreeting.Kind.HELLO -> stringResource(Res.string.greeting_hello_named, name.orEmpty())
     }
-    Text(
+    FittedGreeting(
         text = text,
-        // The face of Explore's and Library's large titles, at a size the
-        // top bar holds.
-        style = MaterialTheme.typography.displayLarge.copy(
-            fontSize = GREETING_SIZE,
-            lineHeight = GREETING_SIZE * 1.2f,
-            letterSpacing = androidx.compose.ui.unit.TextUnit.Unspecified,
-        ),
+        maxSize = GREETING_SIZE,
+        minSize = GREETING_MIN_SIZE,
+        maxLines = 2,
         color = MaterialTheme.colorScheme.onBackground,
-        maxLines = 1,
-        overflow = TextOverflow.Ellipsis,
         modifier = modifier,
     )
 }
+
+/** The smallest a long greeting shrinks to before it would be cut. */
+private val GREETING_MIN_SIZE = 14.sp
+
+/**
+ * [text] in the large titles' face at [maxSize], stepping down to [minSize]
+ * and onto up to [maxLines] lines rather than being cut: "Continue with
+ * Michael Jackson?" is meant to be read whole. Nothing is drawn while a size
+ * is still being tried, so the steps never show.
+ */
+@Composable
+internal fun FittedGreeting(
+    text: String,
+    maxSize: androidx.compose.ui.unit.TextUnit,
+    minSize: androidx.compose.ui.unit.TextUnit,
+    maxLines: Int,
+    color: androidx.compose.ui.graphics.Color,
+    modifier: Modifier = Modifier,
+) {
+    var size by remember(text, maxSize) { androidx.compose.runtime.mutableStateOf(maxSize) }
+    var fitted by remember(text, maxSize) { androidx.compose.runtime.mutableStateOf(false) }
+    Text(
+        text = text,
+        style = MaterialTheme.typography.displayLarge.copy(
+            fontSize = size,
+            lineHeight = size * 1.15f,
+            letterSpacing = androidx.compose.ui.unit.TextUnit.Unspecified,
+            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+        ),
+        color = color,
+        maxLines = maxLines,
+        overflow = TextOverflow.Ellipsis,
+        onTextLayout = { layout ->
+            if (layout.hasVisualOverflow && size.value > minSize.value) {
+                size = (size.value - 1f).coerceAtLeast(minSize.value).sp
+            } else {
+                fitted = true
+            }
+        },
+        modifier = modifier.androidxDrawWhen { fitted },
+    )
+}
+
+/** Draws only once [show] holds — used to hide the in-between sizes of [FittedGreeting]. */
+private fun Modifier.androidxDrawWhen(show: () -> Boolean): Modifier =
+    this.drawWithContent { if (show()) drawContent() }

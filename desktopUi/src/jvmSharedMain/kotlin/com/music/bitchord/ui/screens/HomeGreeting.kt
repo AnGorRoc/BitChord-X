@@ -65,7 +65,8 @@ internal fun HomeGreetingLine(name: String?, modifier: Modifier = Modifier) {
             letterSpacing = androidx.compose.ui.unit.TextUnit.Unspecified,
         ),
         color = MaterialTheme.colorScheme.onBackground,
-        maxLines = 1,
+        // A long one wraps rather than being cut.
+        maxLines = 2,
         overflow = TextOverflow.Ellipsis,
         modifier = modifier,
     )
