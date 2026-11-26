@@ -8,6 +8,9 @@ internal enum class DesktopAppFont(val label: String) {
     VAZIRMATN("Vazirmatn"),
 }
 
+/** Whether the PC is drawn dark, light, or as the system is. */
+internal enum class DesktopThemeMode { SYSTEM, LIGHT, DARK }
+
 /**
  * The toggles read far from the Settings sheet that sets them.
  *
@@ -29,6 +32,19 @@ internal object DesktopAppearanceSettings {
         runCatching { DesktopAppFont.valueOf(DesktopPersistence().string(KEY_APP_FONT, DesktopAppFont.SF_PRO.name)) }
             .getOrDefault(DesktopAppFont.SF_PRO),
     )
+
+    private val _themeMode = MutableStateFlow(
+        runCatching { DesktopThemeMode.valueOf(DesktopPersistence().string(KEY_THEME_MODE, DesktopThemeMode.SYSTEM.name)) }
+            .getOrDefault(DesktopThemeMode.SYSTEM),
+    )
+
+    /** Dark, light, or following the system; the system's by default. */
+    val themeMode: StateFlow<DesktopThemeMode> = _themeMode
+
+    fun setThemeMode(value: DesktopThemeMode) {
+        DesktopPersistence().saveString(KEY_THEME_MODE, value.name)
+        _themeMode.value = value
+    }
 
     /** Freezes the main player's gradient instead of drifting. */
     val reduceAnimation: StateFlow<Boolean> = _reduceAnimation
@@ -80,4 +96,5 @@ internal object DesktopAppearanceSettings {
     internal const val KEY_SHOW_QUEUE_HISTORY = "show_queue_history"
     internal const val KEY_LYRIC_ABOVE_SCRUBBER = "lyric_above_scrubber"
     internal const val KEY_APP_FONT = "app_font"
+    internal const val KEY_THEME_MODE = "theme_mode"
 }

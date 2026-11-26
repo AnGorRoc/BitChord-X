@@ -33,7 +33,7 @@ internal object DesktopWindowsTheme {
     /**
      * Applies the UI theme's background color and dark mode to Windows' native title bar.
      */
-    fun updateTitleBar(window: Window?, backgroundColor: Color = DesktopBackground) {
+    fun updateTitleBar(window: Window?, backgroundColor: Color = backgroundFor(com.music.bitchord.ui.theme.DesktopUiTheme.dark)) {
         if (!DesktopPlatform.isWindows || window == null) return
         val dwmapi = Dwmapi.INSTANCE ?: return
         val pointer = runCatching { Native.getWindowPointer(window) }.getOrNull() ?: return
@@ -59,6 +59,9 @@ internal object DesktopWindowsTheme {
         // 4. Border color (Windows 11 build 22000+)
         dwmapi.DwmSetWindowAttribute(hwnd, DWMWA_BORDER_COLOR, captionRef.pointer, 4)
     }
+
+    /** The page's background, outside composition: what the title bar takes on. */
+    fun backgroundFor(dark: Boolean): Color = if (dark) Color(0xFF202020) else Color(0xFFF5F5F7)
 
     internal fun Color.toColorRef(): Int {
         val r = (red * 255f).roundToInt().coerceIn(0, 255)

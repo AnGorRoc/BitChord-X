@@ -210,6 +210,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.Typography
 import androidx.compose.material3.darkColorScheme
+import androidx.compose.material3.lightColorScheme
+import com.music.bitchord.ui.theme.DesktopUiTheme
+import com.music.bitchord.ui.theme.LocalDesktopDark
+import androidx.compose.runtime.ReadOnlyComposable
+import com.music.bitchord.ui.theme.Ink
+import com.music.bitchord.ui.theme.InkInverse
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
@@ -352,14 +358,16 @@ import org.jetbrains.compose.resources.painterResource
  */
 internal val DesktopPageGutter = PAGE_GUTTER
 
-internal val DesktopBackground = Color(0xFF202020)
-internal val DesktopSurface = Color(0xFF0D0D0F)
-private val DesktopSurfaceRaised = Color(0xFF1C1C1E)
-internal val DesktopGlass = Color(0x661C1C1E)
-internal val DesktopGlassStrong = Color(0xCC0D0D0F)
+// Each colour below has a dark and a light value, picked by DesktopUiTheme as the
+// theme setting says; the light ones are the phone's light theme.
+internal val DesktopBackground: Color @Composable @ReadOnlyComposable get() = if (LocalDesktopDark.current) Color(0xFF202020) else Color(0xFFF5F5F7)
+internal val DesktopSurface: Color @Composable @ReadOnlyComposable get() = if (LocalDesktopDark.current) Color(0xFF0D0D0F) else Color.White
+private val DesktopSurfaceRaised: Color @Composable @ReadOnlyComposable get() = if (LocalDesktopDark.current) Color(0xFF1C1C1E) else Color(0xFFF2F2F7)
+internal val DesktopGlass: Color @Composable @ReadOnlyComposable get() = if (LocalDesktopDark.current) Color(0x661C1C1E) else Color(0x99FFFFFF)
+internal val DesktopGlassStrong: Color @Composable @ReadOnlyComposable get() = if (LocalDesktopDark.current) Color(0xCC0D0D0F) else Color(0xE6FFFFFF)
 
 /** The floating bars in the narrow layout. */
-private val DesktopBarGlass = Color(0xB324242A)
+private val DesktopBarGlass: Color @Composable @ReadOnlyComposable get() = if (LocalDesktopDark.current) Color(0xB324242A) else Color(0xB3F2F2F5)
 
 /** The backdrop the floating bars blur. */
 internal val LocalDesktopHaze = staticCompositionLocalOf<HazeState?> { null }
@@ -371,8 +379,8 @@ internal val DesktopPlayerHaze = HazeState()
 private val LocalDesktopBottomInset = staticCompositionLocalOf { 0.dp }
 
 /** Android's own edge on these bars: `Color.White.copy(alpha = 0.10f)`. */
-private val DesktopBarEdge = Color(0x1AFFFFFF)
-internal val DesktopAccent = Color.White
+private val DesktopBarEdge: Color @Composable @ReadOnlyComposable get() = Ink.copy(alpha = 0.10f)
+internal val DesktopAccent: Color @Composable @ReadOnlyComposable get() = Ink
 
 /** Deleting, signing out, and anything that failed — the one place a colour survives, as on Android. */
 internal val DesktopDestructive = Color(0xFFFF453A)
@@ -382,22 +390,22 @@ internal val DesktopDestructive = Color(0xFFFF453A)
 internal fun desktopChipColors() = FilterChipDefaults.filterChipColors(
     containerColor = Color.Transparent,
     labelColor = DesktopSecondary,
-    selectedContainerColor = Color.White,
-    selectedLabelColor = Color.Black,
+    selectedContainerColor = Ink,
+    selectedLabelColor = InkInverse,
 )
 
-/** Android's switch: a white track with a black knob on, a faint wash off. */
+/** Android's switch: a white track with a black knob on, a faint wash off (inverted when light). */
 @Composable
 internal fun desktopSwitchColors() = SwitchDefaults.colors(
-    checkedTrackColor = Color.White,
-    checkedThumbColor = Color.Black,
+    checkedTrackColor = Ink,
+    checkedThumbColor = InkInverse,
     checkedBorderColor = Color.Transparent,
-    uncheckedTrackColor = Color.White.copy(alpha = 0.10f),
-    uncheckedThumbColor = Color.White.copy(alpha = 0.35f),
+    uncheckedTrackColor = Ink.copy(alpha = 0.10f),
+    uncheckedThumbColor = Ink.copy(alpha = 0.35f),
     uncheckedBorderColor = Color.Transparent,
 )
-internal val DesktopSecondary = Color(0xFF8E8E93)
-internal val DesktopDivider = Color(0xFF2C2C2E)
+internal val DesktopSecondary: Color @Composable @ReadOnlyComposable get() = if (LocalDesktopDark.current) Color(0xFF8E8E93) else Color(0xFF6E6E73)
+internal val DesktopDivider: Color @Composable @ReadOnlyComposable get() = if (LocalDesktopDark.current) Color(0xFF2C2C2E) else Color(0xFFE5E5EA)
 private const val STATS_SAMPLE_MS = 5_000L
 
 /** How often the playhead is offered to the history tracker. */
@@ -439,20 +447,41 @@ private const val SKIP_MIX_ON_SKIP_SECONDS = 15
 /** How long the supplier waits for the server to echo an AutoPlay queue addition. */
 private const val PARTY_AUTOPLAY_ECHO_TIMEOUT_MS = 5_000L
 
-/** The phone's dark scheme, which the shared pages are drawn against. */
-internal fun desktopColorScheme() = darkColorScheme(
-    primary = DesktopAccent,
+/** The phone's scheme, dark or light as [DesktopUiTheme] says, which the shared pages are drawn against. */
+@Composable
+internal fun desktopColorScheme() = if (LocalDesktopDark.current) desktopDarkScheme() else desktopLightScheme()
+
+/** The player's own scheme: always dark, as it is drawn over the artwork. */
+internal fun desktopDarkScheme() = darkColorScheme(
+    primary = Color.White,
     // Black on the accent, now that the accent is white.
     onPrimary = Color.Black,
     primaryContainer = Color.White.copy(alpha = 0.16f),
     onPrimaryContainer = Color.White,
-    background = DesktopBackground,
+    background = Color(0xFF202020),
     onBackground = Color.White,
-    surface = DesktopSurface,
+    surface = Color(0xFF0D0D0F),
     onSurface = Color.White,
+    surfaceVariant = Color(0xFF1C1C1E),
+    onSurfaceVariant = Color(0xFF8E8E93),
+    outline = Color(0xFF2C2C2E),
+    outlineVariant = Color(0xFF2C2C2E),
+    surfaceTint = Color.White,
+)
+
+@Composable
+private fun desktopLightScheme() = lightColorScheme(
+    primary = DesktopAccent,
+    onPrimary = InkInverse,
+    primaryContainer = Ink.copy(alpha = 0.08f),
+    onPrimaryContainer = Ink,
+    background = DesktopBackground,
+    onBackground = Ink,
+    surface = DesktopSurface,
+    onSurface = Ink,
     surfaceVariant = DesktopSurfaceRaised,
     onSurfaceVariant = DesktopSecondary,
-    outline = Color(0xFF2C2C2E),
+    outline = DesktopDivider,
     outlineVariant = DesktopDivider,
     surfaceTint = DesktopAccent,
 )
@@ -4007,6 +4036,20 @@ fun BitChordDesktopApp() {
         partySyncHolder[0]?.onLocalIntent()
     }
 
+    val themeMode by DesktopAppearanceSettings.themeMode.collectAsState()
+    LaunchedEffect(themeMode) {
+        when (themeMode) {
+            DesktopThemeMode.DARK -> DesktopUiTheme.dark = true
+            DesktopThemeMode.LIGHT -> DesktopUiTheme.dark = false
+            // The system's mode is read again every few seconds, so a switch there carries over.
+            DesktopThemeMode.SYSTEM -> while (true) {
+                DesktopUiTheme.dark = withContext(Dispatchers.IO) { DesktopSystemTheme.isDark() }
+                delay(DesktopSystemTheme.POLL_MS)
+            }
+        }
+    }
+
+    CompositionLocalProvider(LocalDesktopDark provides DesktopUiTheme.dark) {
     MaterialTheme(
         colorScheme = desktopColorScheme(),
         typography = desktopTypography(),
@@ -4016,13 +4059,14 @@ fun BitChordDesktopApp() {
             .takeIf { overlays.replay }
             ?: selectedSong?.thumbnailUrl.takeIf { ambientBackdrop }
         val windowScope = LocalDesktopWindowScope.current
-        LaunchedEffect(windowScope?.window) {
+        val dark = DesktopUiTheme.dark
+        LaunchedEffect(windowScope?.window, dark) {
             val window = windowScope?.window ?: return@LaunchedEffect
-            DesktopWindowsTheme.updateTitleBar(window, DesktopBackground)
+            DesktopWindowsTheme.updateTitleBar(window, DesktopWindowsTheme.backgroundFor(dark))
         }
         val windowActions = LocalDesktopWindowActions.current
         CompositionLocalProvider(
-            LocalContentColor provides Color.White,
+            LocalContentColor provides Ink,
             LocalNowPlaying provides selectedSong,
         ) {
             DesktopFrame(
@@ -5602,6 +5646,7 @@ fun BitChordDesktopApp() {
         }
         }
     }
+    }
 
 }
 
@@ -5683,7 +5728,7 @@ private fun DesktopTopBar(
                     Icon(
                         Icons.AutoMirrored.Rounded.ArrowBack,
                         DesktopStrings["back", "Back"],
-                        tint = if (canGoBack) Color.White else DesktopSecondary.copy(alpha = 0.40f),
+                        tint = if (canGoBack) Ink else DesktopSecondary.copy(alpha = 0.40f),
                         modifier = Modifier.size(20.dp),
                     )
                 }
@@ -5705,7 +5750,7 @@ private fun DesktopTopBar(
                             Icon(
                                 Icons.Rounded.FastRewind,
                                 DesktopStrings["widget_previous", "Previous"],
-                                tint = if (previousEnabled) Color.White else DesktopSecondary.copy(alpha = 0.40f),
+                                tint = if (previousEnabled) Ink else DesktopSecondary.copy(alpha = 0.40f),
                                 modifier = Modifier.size(21.dp),
                             )
                         }
@@ -5713,14 +5758,14 @@ private fun DesktopTopBar(
                             if (isLoading) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(18.dp),
-                                    color = Color.White,
+                                    color = Ink,
                                     strokeWidth = 2.dp,
                                 )
                             } else {
                                 Icon(
                                     if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                                     if (isPlaying) "Pause" else "Play",
-                                    tint = Color.White,
+                                    tint = Ink,
                                     modifier = Modifier.size(23.dp),
                                 )
                             }
@@ -5729,7 +5774,7 @@ private fun DesktopTopBar(
                             Icon(
                                 Icons.Rounded.FastForward,
                                 DesktopStrings["widget_next", "Next"],
-                                tint = Color.White,
+                                tint = Ink,
                                 modifier = Modifier.size(21.dp),
                             )
                         }
@@ -5766,10 +5811,10 @@ private fun DesktopTopBar(
                                 .widthIn(min = 300.dp, max = 520.dp)
                                 .fillMaxWidth()
                                 .height(46.dp)
-                                .border(1.dp, Color.White.copy(alpha = 0.06f), RoundedCornerShape(4.dp))
+                                .border(1.dp, Ink.copy(alpha = 0.06f), RoundedCornerShape(4.dp))
                                 .clip(RoundedCornerShape(4.dp))
                                 .clickable(onClick = onOpenNowPlaying),
-                            color = Color(0xFF323236),
+                            color = com.music.bitchord.ui.theme.themed(Color(0xFF323236), Color(0xFFE8E8EB)),
                             tonalElevation = 0.dp,
                         ) {
                             Box(Modifier.fillMaxSize()) {
@@ -5813,6 +5858,7 @@ private fun DesktopTopBar(
                                     // the full width and pulses on the beat, as the player's
                                     // scrubber does, and reading either in draw keeps the frame
                                     // clock from recomposing the whole bar.
+                                    val barInk = Ink
                                     Box(
                                         Modifier
                                             .align(Alignment.BottomStart)
@@ -5823,7 +5869,7 @@ private fun DesktopTopBar(
                                                 val base = currentProgress.coerceIn(0f, 1f)
                                                 val fraction = base + (1f - base) * mixPulse.cover
                                                 drawRect(
-                                                    color = Color.White.copy(alpha = mixPulse.alpha(0.48f)),
+                                                    color = barInk.copy(alpha = mixPulse.alpha(0.48f)),
                                                     size = Size(size.width * fraction, size.height),
                                                 )
                                             },
@@ -5864,7 +5910,7 @@ private fun DesktopTopBar(
                             Modifier
                                 .padding(end = 4.dp)
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(Color.White.copy(alpha = 0.08f))
+                                .background(Ink.copy(alpha = 0.08f))
                                 .clickable(onClick = onToggleOfflineMode)
                                 .padding(horizontal = 8.dp, vertical = 4.dp),
                             verticalAlignment = Alignment.CenterVertically,
@@ -5879,7 +5925,7 @@ private fun DesktopTopBar(
                             Text(
                                 DesktopStrings["offline_mode", "Offline"],
                                 style = MaterialTheme.typography.labelSmall,
-                                color = Color.White,
+                                color = Ink,
                                 fontWeight = FontWeight.Medium,
                             )
                         }
@@ -5897,7 +5943,7 @@ private fun DesktopTopBar(
                         Icon(
                             BitChordIcons.LyricsQuote,
                             DesktopStrings["lyrics", "Lyrics"],
-                            tint = if (sidePanel == DesktopSidePanel.LYRICS) Color.White else DesktopSecondary,
+                            tint = if (sidePanel == DesktopSidePanel.LYRICS) Ink else DesktopSecondary,
                             modifier = Modifier.size(19.dp),
                         )
                     }
@@ -5905,7 +5951,7 @@ private fun DesktopTopBar(
                         Icon(
                             BitChordIcons.Queue,
                             DesktopStrings["queue", "Queue"],
-                            tint = if (sidePanel == DesktopSidePanel.QUEUE) Color.White else DesktopSecondary,
+                            tint = if (sidePanel == DesktopSidePanel.QUEUE) Ink else DesktopSecondary,
                             modifier = Modifier.size(19.dp),
                         )
                     }
@@ -5990,8 +6036,8 @@ private fun DesktopPlayerCapsule(
 ) {
     val currentProgress by rememberUpdatedState(progress)
     val shape = RoundedCornerShape(percent = 50)
-    val inactiveColor = Color.White.copy(alpha = 0.35f)
-    val activeSecondaryColor = Color.White.copy(alpha = 0.70f)
+    val inactiveColor = Ink.copy(alpha = 0.35f)
+    val activeSecondaryColor = Ink.copy(alpha = 0.70f)
 
     val volumeInteraction = remember { MutableInteractionSource() }
     val volumeHovered by volumeInteraction.collectIsHoveredAsState()
@@ -6046,7 +6092,7 @@ private fun DesktopPlayerCapsule(
                         Icon(
                             Icons.Rounded.FastRewind,
                             DesktopStrings["widget_previous", "Previous"],
-                            tint = if (song != null && previousEnabled) Color.White else inactiveColor,
+                            tint = if (song != null && previousEnabled) Ink else inactiveColor,
                             modifier = Modifier.size(26.dp),
                         )
                     }
@@ -6058,14 +6104,14 @@ private fun DesktopPlayerCapsule(
                         if (isLoading) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(22.dp),
-                                color = Color.White,
+                                color = Ink,
                                 strokeWidth = 2.4.dp,
                             )
                         } else {
                             Icon(
                                 if (isPlaying) Icons.Rounded.Pause else Icons.Rounded.PlayArrow,
                                 if (isPlaying) "Pause" else "Play",
-                                tint = if (song != null) Color.White else inactiveColor,
+                                tint = if (song != null) Ink else inactiveColor,
                                 modifier = Modifier.size(31.dp),
                             )
                         }
@@ -6078,7 +6124,7 @@ private fun DesktopPlayerCapsule(
                         Icon(
                             Icons.Rounded.FastForward,
                             DesktopStrings["widget_next", "Next"],
-                            tint = if (song != null) Color.White else inactiveColor,
+                            tint = if (song != null) Ink else inactiveColor,
                             modifier = Modifier.size(26.dp),
                         )
                     }
@@ -6177,7 +6223,7 @@ private fun DesktopPlayerCapsule(
                         ) {
                             Text(
                                 song.title,
-                                color = Color.White,
+                                color = Ink,
                                 fontWeight = FontWeight.SemiBold,
                                 style = MaterialTheme.typography.bodyMedium.copy(fontSize = 12.5.sp),
                                 maxLines = 1,
@@ -6225,14 +6271,14 @@ private fun DesktopPlayerCapsule(
                             .fillMaxWidth()
                             .height(2.dp)
                             .clip(RoundedCornerShape(1.dp))
-                            .background(Color.White.copy(alpha = 0.16f)),
+                            .background(Ink.copy(alpha = 0.16f)),
                     ) {
                         val fraction = currentProgress.coerceIn(0f, 1f)
                         Box(
                             Modifier
                                 .fillMaxHeight()
                                 .fillMaxWidth(fraction)
-                                .background(Color.White),
+                                .background(Ink),
                         )
                     }
                 }
@@ -6255,7 +6301,7 @@ private fun DesktopPlayerCapsule(
                         DesktopStrings["lyrics", "Lyrics"],
                         tint = when {
                             song == null -> inactiveColor
-                            sidePanel == DesktopSidePanel.LYRICS -> Color.White
+                            sidePanel == DesktopSidePanel.LYRICS -> Ink
                             else -> activeSecondaryColor
                         },
                         modifier = Modifier.size(17.dp),
@@ -6269,7 +6315,7 @@ private fun DesktopPlayerCapsule(
                         BitChordIcons.Queue,
                         DesktopStrings["queue", "Queue"],
                         tint = when {
-                            sidePanel == DesktopSidePanel.QUEUE -> Color.White
+                            sidePanel == DesktopSidePanel.QUEUE -> Ink
                             song == null -> inactiveColor
                             else -> activeSecondaryColor
                         },
@@ -6405,7 +6451,7 @@ private fun DesktopSidebar(
                     Spacer(Modifier.width(8.dp))
                     Text(
                         "BitChord",
-                        color = Color.White,
+                        color = Ink,
                         fontWeight = FontWeight.Bold,
                         style = MaterialTheme.typography.titleMedium,
                         modifier = Modifier.weight(1f),
@@ -6415,7 +6461,7 @@ private fun DesktopSidebar(
                         Icon(
                             Icons.AutoMirrored.Rounded.ArrowBack,
                             DesktopStrings["back", "Back"],
-                            tint = if (canGoBack) Color.White else DesktopSecondary.copy(alpha = 0.40f),
+                            tint = if (canGoBack) Ink else DesktopSecondary.copy(alpha = 0.40f),
                             modifier = Modifier.size(18.dp),
                         )
                     }
@@ -6512,7 +6558,7 @@ private fun DesktopSidebar(
                         .fillMaxWidth()
                         .clip(RoundedCornerShape(7.dp))
                         .desktopHoverFill()
-                        .background(if (accountsOpen) Color.White.copy(alpha = 0.12f) else Color.Transparent)
+                        .background(if (accountsOpen) Ink.copy(alpha = 0.12f) else Color.Transparent)
                         .clickable(onClick = onOpenAccounts)
                         .padding(horizontal = 4.dp, vertical = 2.dp),
                     verticalAlignment = Alignment.CenterVertically,
@@ -6521,7 +6567,7 @@ private fun DesktopSidebar(
                     Spacer(Modifier.width(6.dp))
                     Text(
                         accountName?.takeIf { it.isNotBlank() } ?: DesktopStrings["accounts", "Account"],
-                        color = Color.White,
+                        color = Ink,
                         style = MaterialTheme.typography.bodyMedium,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
@@ -6569,7 +6615,7 @@ private fun DesktopSidebarItem(
                 .fillMaxWidth()
                 .desktopHoverFill()
                 .clip(RoundedCornerShape(7.dp))
-                .background(if (selected) Color.White.copy(alpha = 0.12f) else Color.Transparent)
+                .background(if (selected) Ink.copy(alpha = 0.12f) else Color.Transparent)
                 .clickable(onClick = onClick)
                 .then(
                     if (onHide == null) Modifier
@@ -6592,7 +6638,7 @@ private fun DesktopSidebarItem(
             Spacer(Modifier.width(10.dp))
             Text(
                 label,
-                color = if (selected) Color.White else DesktopSecondary,
+                color = if (selected) Ink else DesktopSecondary,
                 style = MaterialTheme.typography.bodyMedium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
@@ -6770,7 +6816,7 @@ private fun DesktopFloatingNavigation(
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Icon(iconAndLabel.first, iconAndLabel.second, tint = if (isSelected) DesktopAccent else DesktopSecondary, modifier = Modifier.size(20.dp))
-                    Text(iconAndLabel.second, color = if (isSelected) Color.White else DesktopSecondary, style = MaterialTheme.typography.labelSmall)
+                    Text(iconAndLabel.second, color = if (isSelected) Ink else DesktopSecondary, style = MaterialTheme.typography.labelSmall)
                 }
             }
         }
@@ -6816,7 +6862,7 @@ private fun DesktopMiniPlayer(
                 Icon(
                     painter = painterResource(if (playing) SharedRes.drawable.ic_player_pause else SharedRes.drawable.ic_player_play),
                     contentDescription = if (playing) "Pause" else "Play",
-                    tint = Color.White,
+                    tint = Ink,
                     modifier = Modifier.size(24.dp),
                 )
             }
@@ -6833,7 +6879,7 @@ private fun DesktopMiniPlayer(
             Icon(
                 painter = painterResource(SharedRes.drawable.ic_player_next),
                 contentDescription = DesktopStrings["widget_next", "Next"],
-                tint = Color.White,
+                tint = Ink,
                 modifier = Modifier
                     .size(24.dp)
                     .graphicsLayer { translationX = nextKickOffset.value.dp.toPx() },
@@ -6858,8 +6904,8 @@ internal fun DesktopSearchField(
             .fillMaxWidth()
             .height(36.dp)
             .clip(searchShape)
-            .background(Color.White.copy(alpha = 0.07f))
-            .border(1.dp, Color.White.copy(alpha = 0.10f), searchShape)
+            .background(Ink.copy(alpha = 0.07f))
+            .border(1.dp, Ink.copy(alpha = 0.10f), searchShape)
             .clickable { focusRequester.requestFocus() }
             .padding(horizontal = 9.dp),
         contentAlignment = Alignment.CenterStart,
@@ -6881,7 +6927,7 @@ internal fun DesktopSearchField(
                 }
                 .onKeyEvent { it.type == KeyEventType.KeyUp },
             singleLine = true,
-            textStyle = MaterialTheme.typography.bodyMedium.copy(color = Color.White),
+            textStyle = MaterialTheme.typography.bodyMedium.copy(color = Ink),
             cursorBrush = SolidColor(DesktopAccent),
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
             keyboardActions = KeyboardActions(onSearch = { onSearch() }),
@@ -7060,13 +7106,17 @@ private fun DesktopPageBackdrop(artworkUrl: String?, transparentBase: Boolean) {
             return@Box
         }
         DesktopMesh(artworkUrl)
+        // Under black when dark and white when light, so the page's ink reads either way.
+        // A light page needs more of it: dark artwork shows through white far more than through black.
+        val veil = InkInverse
+        val light = !LocalDesktopDark.current
         Box(
             Modifier.fillMaxSize().background(
                 Brush.verticalGradient(
                     listOf(
-                        Color.Black.copy(alpha = 0.30f),
-                        Color.Black.copy(alpha = 0.72f),
-                        Color.Black.copy(alpha = 0.88f),
+                        veil.copy(alpha = if (light) 0.72f else 0.30f),
+                        veil.copy(alpha = if (light) 0.84f else 0.72f),
+                        veil.copy(alpha = if (light) 0.90f else 0.88f),
                     ),
                 ),
             ),
@@ -7322,15 +7372,15 @@ private fun DesktopArtistAboutCard(
     Column(
         modifier = modifier
             .clip(shape)
-            .background(Color.White.copy(alpha = 0.07f), shape)
-            .border(1.dp, Color.White.copy(alpha = 0.10f), shape)
+            .background(Ink.copy(alpha = 0.07f), shape)
+            .border(1.dp, Ink.copy(alpha = 0.10f), shape)
             .padding(20.dp),
     ) {
         Text(
             text = title,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
-            color = Color.White,
+            color = Ink,
         )
 
         if (hasStats) {
@@ -7397,8 +7447,8 @@ private fun DesktopStatChip(
     Row(
         modifier = Modifier
             .clip(CircleShape)
-            .background(Color.White.copy(alpha = 0.08f), CircleShape)
-            .border(0.5.dp, Color.White.copy(alpha = 0.14f), CircleShape)
+            .background(Ink.copy(alpha = 0.08f), CircleShape)
+            .border(0.5.dp, Ink.copy(alpha = 0.14f), CircleShape)
             .padding(horizontal = 12.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -7413,7 +7463,7 @@ private fun DesktopStatChip(
             text = text,
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Medium,
-            color = Color.White,
+            color = Ink,
         )
     }
 }
@@ -7727,7 +7777,7 @@ private fun DesktopLocalMusicPage(
                         DesktopOfflinePlaylists.create(newOfflinePlaylistName)
                         createOfflinePlaylistOpen = false
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = DesktopAccent, contentColor = Color.Black),
+                    colors = ButtonDefaults.buttonColors(containerColor = DesktopAccent, contentColor = InkInverse),
                 ) {
                     Text(DesktopStrings["create", "Create"])
                 }
@@ -7982,7 +8032,7 @@ private fun DesktopSettingsScreen(
                             Icon(
                                 Icons.AutoMirrored.Rounded.ArrowBack,
                                 DesktopStrings["back", "Back"],
-                                tint = Color.White,
+                                tint = Ink,
                                 modifier = Modifier.size(20.dp),
                             )
                         }
@@ -8474,6 +8524,32 @@ private fun DesktopSettingsScreen(
 
                 if (shows(DesktopSettingsCategory.APPEARANCE)) item {
                     SettingsGroup(DesktopStrings["appearance", "Appearance"]) {
+                        val themeMode by DesktopAppearanceSettings.themeMode.collectAsState()
+                        val themeTitle = DesktopStrings["theme", "Theme"]
+                        val themeLabel: (DesktopThemeMode) -> String = {
+                            when (it) {
+                                DesktopThemeMode.SYSTEM -> DesktopStrings["system", "System"]
+                                DesktopThemeMode.LIGHT -> DesktopStrings["light", "Light"]
+                                DesktopThemeMode.DARK -> DesktopStrings["dark", "Dark"]
+                            }
+                        }
+                        if (settingsRowVisible(themeTitle, themeLabel(themeMode))) {
+                            Column(Modifier.fillMaxWidth().padding(vertical = 12.dp)) {
+                                Text(themeTitle, fontWeight = FontWeight.Medium)
+                                Text(themeLabel(themeMode), color = DesktopSecondary, style = MaterialTheme.typography.bodySmall)
+                                Spacer(Modifier.height(10.dp))
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    DesktopThemeMode.entries.forEach { option ->
+                                        FilterChip(
+                                            colors = desktopChipColors(),
+                                            selected = themeMode == option,
+                                            onClick = { DesktopAppearanceSettings.setThemeMode(option) },
+                                            label = { Text(themeLabel(option)) },
+                                        )
+                                    }
+                                }
+                            }
+                        }
                         val selectedFont by DesktopAppearanceSettings.appFont.collectAsState()
                         val fontTitle = DesktopStrings["font", "Font"]
                         val fontSubtitle = selectedFont.label
@@ -9239,7 +9315,7 @@ private fun DesktopLicensesPage(onDismiss: () -> Unit) {
             Button(
                 onClick = onDismiss,
                 shape = RoundedCornerShape(50),
-                colors = ButtonDefaults.buttonColors(containerColor = DesktopAccent, contentColor = Color.Black),
+                colors = ButtonDefaults.buttonColors(containerColor = DesktopAccent, contentColor = InkInverse),
             ) { Text(DesktopStrings["done", "Done"]) }
         }
     }
@@ -9857,7 +9933,7 @@ private fun DesktopCollectionSongRow(
             .alpha(if (song.isMatchMissing) 0.45f else 1f)
             .contextClick(if (unresolved) null else ({ openContextMenu(song) }))
             .clip(RoundedCornerShape(6.dp))
-            .background(if (striped) Color.White.copy(alpha = 0.04f) else Color.Transparent)
+            .background(if (striped) Ink.copy(alpha = 0.04f) else Color.Transparent)
             .desktopHoverFill(corner = 6.dp)
             .clickable(enabled = !unresolved) { onClick(song) }
             .padding(horizontal = 8.dp, vertical = 6.dp),
@@ -9885,7 +9961,7 @@ private fun DesktopCollectionSongRow(
         Text(
             song.title,
             Modifier.weight(0.42f),
-            color = if (nowPlaying) Color.White else Color.White.copy(alpha = 0.75f),
+            color = if (nowPlaying) Ink else Ink.copy(alpha = 0.75f),
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
             fontWeight = FontWeight.Medium,
@@ -9993,7 +10069,7 @@ internal fun Modifier.desktopBarGlass(
     opaque: Color = DesktopBarGlass,
     borderAlpha: Float = 0.10f,
 ): Modifier = desktopFrosted(opaque, tintAlpha = tintAlpha)
-    .border(0.75.dp, Color.White.copy(alpha = borderAlpha), shape)
+    .border(0.75.dp, Ink.copy(alpha = borderAlpha), shape)
 
 /**
  * The mini player's own glass, to the letter: its tint, its fill and its edge. Every panel that opens from
@@ -10001,7 +10077,7 @@ internal fun Modifier.desktopBarGlass(
  */
 @Composable
 internal fun Modifier.desktopPlayerGlass(shape: Shape): Modifier {
-    return desktopBarGlass(shape = shape, tintAlpha = 0.25f, opaque = Color(0x5216161C), borderAlpha = 0.10f)
+    return desktopBarGlass(shape = shape, tintAlpha = 0.25f, opaque = com.music.bitchord.ui.theme.themed(Color(0x5216161C), Color(0x66F2F2F5)), borderAlpha = 0.10f)
 }
 
 /** Whether the composition is inside the full player, whose panels need a backing under the glass. */
@@ -10050,15 +10126,16 @@ internal fun Modifier.desktopWindowGlass(
     fade: Float = 0.2f,
 ): Modifier {
     val backdrop by DesktopWindowBackdrop.active.collectAsState()
+    val sheen = Ink
     return if (backdrop == DesktopBackdrop.OFF) {
         desktopChromeGlass(edge, fade)
     } else {
-        val base = background(Color.Black.copy(alpha = WINDOW_GLASS_TINT))
+        val base = background(InkInverse.copy(alpha = WINDOW_GLASS_TINT))
         if (DesktopPlatform.isMac && edge == DesktopChromeEdge.BOTTOM) {
             base.drawBehind {
                 // Subtle liquid glass specular highlight along the top edge
                 drawLine(
-                    color = Color.White.copy(alpha = 0.08f),
+                    color = sheen.copy(alpha = 0.08f),
                     start = Offset(0f, 0f),
                     end = Offset(size.width, 0f),
                     strokeWidth = 1f,
@@ -10082,8 +10159,8 @@ private const val WINDOW_GLASS_TINT = 0.28f
 internal fun desktopChromeDivider(): Color {
     val backdrop by DesktopWindowBackdrop.active.collectAsState()
     return when {
-        backdrop == DesktopBackdrop.ACRYLIC -> Color.White.copy(alpha = 0.14f)
-        DesktopPlatform.isMac && backdrop != DesktopBackdrop.OFF -> Color.White.copy(alpha = 0.10f)
+        backdrop == DesktopBackdrop.ACRYLIC -> Ink.copy(alpha = 0.14f)
+        DesktopPlatform.isMac && backdrop != DesktopBackdrop.OFF -> Ink.copy(alpha = 0.10f)
         else -> DesktopDivider
     }
 }
@@ -10100,15 +10177,16 @@ private fun Modifier.desktopFrosted(
     if (haze == null || reduceDynamicBlur) {
         return this.background(edge.dissolve(opaque, fade) ?: SolidColor(opaque))
     }
-    val dissolve = edge.dissolve(Color.Black, fade)
+    val dissolve = edge.dissolve(InkInverse, fade)
+    val surface = DesktopSurface
     return this.hazeEffect(state = haze) {
         // Spelled out rather than taken from a preset.
         blurEnabled = true
-        backgroundColor = DesktopSurface
+        backgroundColor = surface
         blurRadius = 30.dp
         // Dark enough that white text on the pane always wins, translucent enough that the
         // colour of what is behind it still comes through.
-        tints = listOf(HazeTint(DesktopSurface.copy(alpha = tintAlpha)))
+        tints = listOf(HazeTint(surface.copy(alpha = tintAlpha)))
         noiseFactor = 0.04f
         // Assigned either way: the scope belongs to the node and outlives the draw, so a pane that
         // stops dissolving — the leading stretch of the top bar, when the window grows back out of
@@ -10329,7 +10407,7 @@ private fun DesktopShelfCard(item: ShelfItem, onClick: (ShelfItem) -> Unit) {
                 .size(width)
                 .clip(shape)
                 .background(DesktopGlass)
-                .border(1.dp, Color.White.copy(alpha = 0.12f), shape),
+                .border(1.dp, Ink.copy(alpha = 0.12f), shape),
         ) {
             DesktopArtwork(item.thumbnailUrl, Modifier.fillMaxSize())
         }
@@ -10404,7 +10482,7 @@ private fun DesktopSongRow(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 fontWeight = FontWeight.Medium,
-                color = if (isCurrent ?: song.isNowPlaying()) Color.White else Color.White.copy(alpha = 0.75f),
+                color = if (isCurrent ?: song.isNowPlaying()) Ink else Ink.copy(alpha = 0.75f),
             )
             Text(listOfNotNull(song.artist.takeIf(String::isNotBlank), song.durationText).joinToString(" · "), color = DesktopSecondary, style = MaterialTheme.typography.bodySmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
@@ -10666,9 +10744,9 @@ internal fun DesktopBareSlider(
     onValueChangeFinished: (() -> Unit)? = null,
 ) {
     val colors = SliderDefaults.colors(
-        thumbColor = Color.White,
-        activeTrackColor = Color.White,
-        inactiveTrackColor = Color.White.copy(alpha = 0.24f),
+        thumbColor = Ink,
+        activeTrackColor = Ink,
+        inactiveTrackColor = Ink.copy(alpha = 0.24f),
     )
     Slider(
         value = value,
@@ -10810,9 +10888,9 @@ private fun DesktopActionButton(
     onClick: () -> Unit,
 ) {
     Row(modifier.clip(CircleShape).background(DesktopAccent).clickable(onClick = onClick).padding(horizontal = 18.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-        Icon(icon, null, tint = Color.Black, modifier = Modifier.size(18.dp))
+        Icon(icon, null, tint = InkInverse, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(8.dp))
-        Text(label, color = Color.Black, fontWeight = FontWeight.SemiBold)
+        Text(label, color = InkInverse, fontWeight = FontWeight.SemiBold)
     }
 }
 

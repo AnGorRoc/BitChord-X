@@ -1,5 +1,7 @@
 package com.music.bitchord.desktop
 
+import com.music.bitchord.ui.theme.LocalDesktopDark
+
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
@@ -100,11 +102,19 @@ internal fun DesktopPlayerSheet(
         ) {
             // Panels opened from the player sit over its moving artwork and lyrics, which the page's
             // blur does not sample: they need a backing of their own (see desktopPlayerGlass).
+            // Dark whatever the theme says: the player is drawn over the artwork, as on the phone.
             androidx.compose.runtime.CompositionLocalProvider(
                 LocalOverPlayer provides true,
                 LocalDesktopHaze provides DesktopPlayerHaze,
+                LocalDesktopDark provides true,
+                androidx.compose.material3.LocalContentColor provides Color.White,
             ) {
-                content(windowWidth, windowHeight)
+                androidx.compose.material3.MaterialTheme(
+                    colorScheme = desktopDarkScheme(),
+                    typography = androidx.compose.material3.MaterialTheme.typography,
+                ) {
+                    content(windowWidth, windowHeight)
+                }
             }
             // The handle the landscape player draws at its top edge, made to do
             // on a click what it promises for a drag.
@@ -120,6 +130,7 @@ internal fun DesktopPlayerSheet(
                     ),
             )
             val fullScreen by DesktopWindowMode.fullScreen.collectAsState()
+            androidx.compose.runtime.CompositionLocalProvider(LocalDesktopDark provides true) {
             Row(
                 modifier = Modifier.align(Alignment.TopStart).padding(start = 14.dp, top = 14.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -142,6 +153,7 @@ internal fun DesktopPlayerSheet(
                         modifier = Modifier.size(20.dp),
                     )
                 }
+            }
             }
         }
     }

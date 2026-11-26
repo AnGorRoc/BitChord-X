@@ -1,5 +1,7 @@
 package com.music.bitchord.desktop
 
+import com.music.bitchord.ui.theme.Ink
+import com.music.bitchord.ui.theme.InkInverse
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -86,7 +88,7 @@ internal fun DesktopEqualizerDialog(onDismiss: () -> Unit) {
                 Text(
                     DesktopStrings["equalizer", "Equalizer"],
                     style = MaterialTheme.typography.titleLarge,
-                    color = Color.White,
+                    color = Ink,
                 )
                 Text(
                     DesktopStrings["equalizer_footer", "Shapes the sound inside BitChord, before it reaches the system."],
@@ -140,7 +142,7 @@ internal fun DesktopEqualizerDialog(onDismiss: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Column(Modifier.weight(1f)) {
-                    Text(DesktopStrings["d_equalizer_replaygain", "ReplayGain"], style = MaterialTheme.typography.titleMedium, color = Color.White)
+                    Text(DesktopStrings["d_equalizer_replaygain", "ReplayGain"], style = MaterialTheme.typography.titleMedium, color = Ink)
                     Text(
                         DesktopStrings["d_equalizer_replaygain_desc", "Automatically equalizes the perceived loudness between songs"],
                         style = MaterialTheme.typography.bodySmall,
@@ -173,7 +175,7 @@ internal fun DesktopEqualizerDialog(onDismiss: () -> Unit) {
                     Text(
                         "Preamp: ${if (replayGainPreamp >= 0) "+%.1f".format(replayGainPreamp) else "%.1f".format(replayGainPreamp)} dB",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White,
+                        color = Ink,
                     )
                     Slider(
                         value = replayGainPreamp,
@@ -185,7 +187,7 @@ internal fun DesktopEqualizerDialog(onDismiss: () -> Unit) {
                     Modifier.fillMaxWidth().padding(horizontal = panelInset(22.dp), vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    Text(DesktopStrings["d_equalizer_prevent_clipping", "Prevent Clipping"], style = MaterialTheme.typography.bodyMedium, color = Color.White, modifier = Modifier.weight(1f))
+                    Text(DesktopStrings["d_equalizer_prevent_clipping", "Prevent Clipping"], style = MaterialTheme.typography.bodyMedium, color = Ink, modifier = Modifier.weight(1f))
                     Switch(
                         checked = replayGainPreventClipping,
                         onCheckedChange = DesktopEqualizerSettings::setReplayGainPreventClipping,
@@ -205,7 +207,7 @@ internal fun DesktopEqualizerDialog(onDismiss: () -> Unit) {
                 Text(
                     "Vocal Reduction: ${(singLevel * 100).toInt()}%",
                     style = MaterialTheme.typography.bodyMedium,
-                    color = Color.White,
+                    color = Ink,
                 )
                 Slider(
                     value = singLevel,
@@ -241,7 +243,7 @@ internal fun DesktopEqualizerDialog(onDismiss: () -> Unit) {
 
         Row(Modifier.fillMaxWidth().padding(horizontal = panelInset(20.dp), vertical = 14.dp)) {
             Spacer(Modifier.weight(1f))
-            TextButton(onClick = onDismiss) { Text(DesktopStrings["done", "Done"], color = Color.White) }
+            TextButton(onClick = onDismiss) { Text(DesktopStrings["done", "Done"], color = Ink) }
         }
     }
 }
@@ -253,7 +255,7 @@ private fun ModeTabs(mode: DesktopEqualizerMode, onSelect: (DesktopEqualizerMode
             .padding(horizontal = panelInset(22.dp))
             .fillMaxWidth()
             .clip(RoundedCornerShape(10.dp))
-            .background(Color.White.copy(alpha = 0.08f))
+            .background(Ink.copy(alpha = 0.08f))
             .padding(4.dp),
         horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
@@ -263,7 +265,7 @@ private fun ModeTabs(mode: DesktopEqualizerMode, onSelect: (DesktopEqualizerMode
                 Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(7.dp))
-                    .background(if (selected) Color.White.copy(alpha = 0.92f) else Color.Transparent)
+                    .background(if (selected) Ink.copy(alpha = 0.92f) else Color.Transparent)
                     .clickable { onSelect(option) }
                     .padding(vertical = 7.dp),
                 contentAlignment = Alignment.Center,
@@ -275,7 +277,7 @@ private fun ModeTabs(mode: DesktopEqualizerMode, onSelect: (DesktopEqualizerMode
                     },
                     style = MaterialTheme.typography.labelLarge,
                     fontWeight = FontWeight.SemiBold,
-                    color = if (selected) Color.Black else Color.White,
+                    color = if (selected) InkInverse else Ink,
                 )
             }
         }
@@ -338,7 +340,7 @@ private fun Readout(label: String, value: Int) {
         Text(
             if (value > 0) "+$value" else value.toString(),
             style = MaterialTheme.typography.bodyLarge,
-            color = Color.White,
+            color = Ink,
         )
     }
 }
@@ -348,7 +350,7 @@ private fun WidthChoice(label: String, selected: Boolean, onClick: () -> Unit) {
     Row(
         Modifier
             .clip(RoundedCornerShape(8.dp))
-            .background(if (selected) Color.White.copy(alpha = 0.12f) else Color.Transparent)
+            .background(if (selected) Ink.copy(alpha = 0.12f) else Color.Transparent)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -356,7 +358,7 @@ private fun WidthChoice(label: String, selected: Boolean, onClick: () -> Unit) {
         Text(
             label,
             style = MaterialTheme.typography.labelLarge,
-            color = if (selected) Color.White else DesktopSecondary,
+            color = if (selected) Ink else DesktopSecondary,
         )
         if (selected) {
             Spacer(Modifier.width(6.dp))
@@ -393,6 +395,8 @@ private fun TonePad(x: Int, y: Int, onChange: (Int, Int) -> Unit) {
         label = "tonePadY",
     )
 
+    val ink = Ink
+    val accent = DesktopAccent
     Canvas(
         Modifier
             .fillMaxWidth()
@@ -439,7 +443,7 @@ private fun TonePad(x: Int, y: Int, onChange: (Int, Int) -> Unit) {
                 // without a reading.
                 val onAxis = column == steps || row == steps
                 drawCircle(
-                    color = Color.White.copy(alpha = if (onAxis) 0.45f else 0.22f),
+                    color = ink.copy(alpha = if (onAxis) 0.45f else 0.22f),
                     radius = DOT_RADIUS.toPx(),
                     center = Offset(
                         inset + usableWidth * column / columns,
@@ -462,7 +466,7 @@ private fun TonePad(x: Int, y: Int, onChange: (Int, Int) -> Unit) {
                 center = centre.copy(y = centre.y + ring),
             )
         }
-        drawCircle(color = Color.White, radius = inset, center = centre)
+        drawCircle(color = ink, radius = inset, center = centre)
     }
 }
 
@@ -552,6 +556,8 @@ private fun BandFader(value: Float, onChange: (Float) -> Unit) {
     // The caller's lambda closes over the whole band list; a stale one writes the other bands back.
     val currentOnChange by rememberUpdatedState(onChange)
 
+    val ink = Ink
+    val accent = DesktopAccent
     Canvas(
         Modifier
             .width(30.dp)
@@ -595,14 +601,14 @@ private fun BandFader(value: Float, onChange: (Float) -> Unit) {
         val knobY = inset + usable * (1f - (value / range + 1f) / 2f)
 
         drawRoundRect(
-            color = Color.White.copy(alpha = 0.18f),
+            color = ink.copy(alpha = 0.18f),
             topLeft = Offset(centreX - trackWidth / 2, inset),
             size = Size(trackWidth, usable),
             cornerRadius = CornerRadius(trackWidth / 2),
         )
         if (abs(value) > 0.05f) {
             drawRoundRect(
-                color = DesktopAccent,
+                color = accent,
                 topLeft = Offset(centreX - trackWidth / 2, minOf(centreY, knobY)),
                 size = Size(trackWidth, abs(centreY - knobY)),
                 cornerRadius = CornerRadius(trackWidth / 2),
@@ -610,7 +616,7 @@ private fun BandFader(value: Float, onChange: (Float) -> Unit) {
         }
         // The zero line, over the track so it survives a full-scale fill.
         drawLine(
-            color = Color.White.copy(alpha = 0.35f),
+            color = ink.copy(alpha = 0.35f),
             start = Offset(centreX - trackWidth, centreY),
             end = Offset(centreX + trackWidth, centreY),
             strokeWidth = 1.dp.toPx(),
@@ -620,7 +626,7 @@ private fun BandFader(value: Float, onChange: (Float) -> Unit) {
             radius = inset + 1.5f,
             center = Offset(centreX, knobY + 1.5f),
         )
-        drawCircle(color = Color.White, radius = inset, center = Offset(centreX, knobY))
+        drawCircle(color = ink, radius = inset, center = Offset(centreX, knobY))
     }
 }
 
@@ -635,7 +641,7 @@ private fun PresetList(selected: EqualizerPreset, modifier: Modifier = Modifier)
                 Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(7.dp))
-                    .background(if (chosen) Color.White.copy(alpha = 0.09f) else Color.Transparent)
+                    .background(if (chosen) Ink.copy(alpha = 0.09f) else Color.Transparent)
                     .clickable(enabled = preset != EqualizerPreset.CUSTOM) {
                         DesktopEqualizerSettings.setPreset(preset)
                     }
@@ -646,7 +652,7 @@ private fun PresetList(selected: EqualizerPreset, modifier: Modifier = Modifier)
                     presetLabel(preset),
                     style = MaterialTheme.typography.bodySmall,
                     fontWeight = if (chosen) FontWeight.SemiBold else FontWeight.Normal,
-                    color = Color.White,
+                    color = Ink,
                     modifier = Modifier.weight(1f),
                 )
                 if (chosen) {
@@ -669,7 +675,7 @@ private fun BalanceControl(balance: Float, onChange: (Float) -> Unit) {
     val currentOnChange by rememberUpdatedState(onChange)
     Column(Modifier.padding(horizontal = panelInset(22.dp))) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(DesktopStrings["equalizer_balance_left", "L"], style = MaterialTheme.typography.bodyMedium, color = Color.White)
+            Text(DesktopStrings["equalizer_balance_left", "L"], style = MaterialTheme.typography.bodyMedium, color = Ink)
             Text(
                 String.format(Locale.ROOT, "%.2f", balance),
                 style = MaterialTheme.typography.bodyMedium,
@@ -677,9 +683,11 @@ private fun BalanceControl(balance: Float, onChange: (Float) -> Unit) {
                 textAlign = TextAlign.Center,
                 modifier = Modifier.weight(1f),
             )
-            Text(DesktopStrings["equalizer_balance_right", "R"], style = MaterialTheme.typography.bodyMedium, color = Color.White)
+            Text(DesktopStrings["equalizer_balance_right", "R"], style = MaterialTheme.typography.bodyMedium, color = Ink)
         }
         Spacer(Modifier.height(6.dp))
+        val ink = Ink
+        val accent = DesktopAccent
         Canvas(
             Modifier
                 .fillMaxWidth()
@@ -723,14 +731,14 @@ private fun BalanceControl(balance: Float, onChange: (Float) -> Unit) {
             val knobX = inset + usable * (balance + 1f) / 2f
 
             drawRoundRect(
-                color = Color.White.copy(alpha = 0.18f),
+                color = ink.copy(alpha = 0.18f),
                 topLeft = Offset(inset, centreY - trackHeight / 2),
                 size = Size(usable, trackHeight),
                 cornerRadius = CornerRadius(trackHeight / 2),
             )
             if (abs(balance) > 0.004f) {
                 drawRoundRect(
-                    color = DesktopAccent,
+                    color = accent,
                     topLeft = Offset(minOf(centreX, knobX), centreY - trackHeight / 2),
                     size = Size(abs(centreX - knobX), trackHeight),
                     cornerRadius = CornerRadius(trackHeight / 2),
@@ -741,7 +749,7 @@ private fun BalanceControl(balance: Float, onChange: (Float) -> Unit) {
                 radius = inset + 1.5f,
                 center = Offset(knobX, centreY + 1.5f),
             )
-            drawCircle(color = Color.White, radius = inset, center = Offset(knobX, centreY))
+            drawCircle(color = ink, radius = inset, center = Offset(knobX, centreY))
         }
     }
 }
@@ -816,14 +824,14 @@ private fun DesktopChip(selected: Boolean, onClick: () -> Unit, label: String) {
     Box(
         Modifier
             .clip(RoundedCornerShape(8.dp))
-            .background(if (selected) Color.White.copy(alpha = 0.2f) else Color.White.copy(alpha = 0.06f))
+            .background(if (selected) Ink.copy(alpha = 0.2f) else Ink.copy(alpha = 0.06f))
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 6.dp),
     ) {
         Text(
             label,
             style = MaterialTheme.typography.bodySmall,
-            color = if (selected) Color.White else DesktopSecondary,
+            color = if (selected) Ink else DesktopSecondary,
             fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
         )
     }

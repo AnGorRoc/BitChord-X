@@ -12,7 +12,8 @@ class DesktopWindowsThemeTest {
         assertEquals(0x000000FF, Color.Red.toColorRef())
         assertEquals(0x0000FF00, Color.Green.toColorRef())
         assertEquals(0x00FF0000, Color.Blue.toColorRef())
-        assertEquals(0x00202020, DesktopBackground.toColorRef())
+        assertEquals(0x00202020, DesktopWindowsTheme.backgroundFor(dark = true).toColorRef())
+        assertEquals(0x00F7F5F5, DesktopWindowsTheme.backgroundFor(dark = false).toColorRef())
         assertEquals(0x00FFFFFF, Color.White.toColorRef())
         assertEquals(0x00000000, Color.Black.toColorRef())
     }

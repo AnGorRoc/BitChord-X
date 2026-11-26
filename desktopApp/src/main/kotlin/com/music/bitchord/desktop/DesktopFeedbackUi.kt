@@ -1,5 +1,7 @@
 package com.music.bitchord.desktop
 
+import com.music.bitchord.ui.theme.Ink
+import com.music.bitchord.ui.theme.InkInverse
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -93,7 +95,8 @@ private sealed interface FeedbackView {
 }
 
 /** Text on the accent: the accent is white in some themes, so white text would vanish on it. */
-private fun onAccent(): Color = if (DesktopAccent.luminance() > 0.6f) Color.Black else Color.White
+@Composable
+private fun onAccent(): Color = if (DesktopAccent.luminance() > 0.6f) InkInverse else Ink
 
 @Composable
 private fun UnreadBadge(count: Int) {
@@ -120,7 +123,7 @@ internal fun DesktopFeedbackPanel(onDismiss: () -> Unit) {
                     Modifier.size(32.dp).clip(CircleShape).clickable { view = FeedbackView.List },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = DesktopStrings["back", "Back"], tint = Color.White, modifier = Modifier.size(18.dp))
+                    Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = DesktopStrings["back", "Back"], tint = Ink, modifier = Modifier.size(18.dp))
                 }
                 Spacer(Modifier.width(6.dp))
             } else {
@@ -133,7 +136,7 @@ internal fun DesktopFeedbackPanel(onDismiss: () -> Unit) {
                 },
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
-                color = Color.White,
+                color = Ink,
             )
         }
         Column(desktopPanelBody(cardMax = 640.dp).verticalScroll(rememberScrollState()).padding(bottom = 12.dp)) {
@@ -190,7 +193,7 @@ private fun FbRow(title: String, subtitle: String? = null, unread: Int = 0, dest
         Column(Modifier.weight(1f)) {
             Text(
                 title,
-                color = if (destructive) DesktopDestructive else Color.White,
+                color = if (destructive) DesktopDestructive else Ink,
                 fontWeight = if (unread > 0) FontWeight.SemiBold else FontWeight.Normal,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
@@ -215,7 +218,7 @@ private fun FbField(value: String, onValueChange: (String) -> Unit, placeholder:
             .fillMaxWidth()
             .heightIn(min = minHeight.dp)
             .clip(RoundedCornerShape(10.dp))
-            .background(Color.White.copy(alpha = 0.07f))
+            .background(Ink.copy(alpha = 0.07f))
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
         if (value.isEmpty()) Text(placeholder, color = DesktopSecondary)
@@ -223,7 +226,7 @@ private fun FbField(value: String, onValueChange: (String) -> Unit, placeholder:
             value = value,
             onValueChange = onValueChange,
             singleLine = singleLine,
-            textStyle = MaterialTheme.typography.bodyMedium.copy(color = Color.White),
+            textStyle = MaterialTheme.typography.bodyMedium.copy(color = Ink),
             cursorBrush = SolidColor(DesktopAccent),
             // The whole box is the field, so a click anywhere in it puts the cursor there. The
             // window's shortcuts act on key-up (space plays or pauses, arrows seek), which a field
@@ -345,14 +348,14 @@ private fun ImagePicker(images: MutableList<PickedImage>, onError: (String) -> U
         if (images.isNotEmpty()) {
             Row(Modifier.horizontalScroll(rememberScrollState()).padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 images.forEachIndexed { i, img ->
-                    Box(Modifier.size(76.dp).clip(RoundedCornerShape(8.dp)).background(Color.White.copy(alpha = 0.06f))) {
+                    Box(Modifier.size(76.dp).clip(RoundedCornerShape(8.dp)).background(Ink.copy(alpha = 0.06f))) {
                         img.preview?.let { Image(it, contentDescription = null, contentScale = ContentScale.Crop, modifier = Modifier.size(76.dp)) }
                         Box(
                             Modifier.align(Alignment.TopEnd).padding(3.dp).size(20.dp).clip(CircleShape)
                                 .background(Color.Black.copy(alpha = 0.6f)).clickable { images.removeAt(i) },
                             contentAlignment = Alignment.Center,
                         ) {
-                            Icon(Icons.Rounded.Close, contentDescription = DesktopStrings["feedback_remove_attachment", "Remove"], tint = Color.White, modifier = Modifier.size(12.dp))
+                            Icon(Icons.Rounded.Close, contentDescription = DesktopStrings["feedback_remove_attachment", "Remove"], tint = Ink, modifier = Modifier.size(12.dp))
                         }
                     }
                 }
@@ -452,10 +455,10 @@ private fun FeedbackCompose(onSent: () -> Unit) {
             Box(
                 Modifier
                     .clip(RoundedCornerShape(50))
-                    .background(if (selected) DesktopAccent else Color.White.copy(alpha = 0.08f))
+                    .background(if (selected) DesktopAccent else Ink.copy(alpha = 0.08f))
                     .clickable { kind = k }
                     .padding(horizontal = 14.dp, vertical = 7.dp),
-            ) { Text(kindLabel(k.wire), color = if (selected) onAccent() else Color.White) }
+            ) { Text(kindLabel(k.wire), color = if (selected) onAccent() else Ink) }
         }
     }
     FbGroup {
@@ -495,7 +498,7 @@ private fun FeedbackCompose(onSent: () -> Unit) {
     }
     FbGroup(footer = DesktopStrings["feedback_name_hint_pc", "Replies greet you by this name. It stays on this computer and is never sent. Empty uses your account's first name."]) {
         Column(Modifier.padding(12.dp)) {
-            Text(DesktopStrings["feedback_name_label", "Name for replies"], color = Color.White)
+            Text(DesktopStrings["feedback_name_label", "Name for replies"], color = Ink)
             Spacer(Modifier.padding(top = 6.dp))
             FbField(value = name, onValueChange = { name = it.take(40) }, placeholder = "", singleLine = true)
         }
@@ -536,12 +539,12 @@ private fun Bubble(text: String, mine: Boolean, meta: String, thanks: Boolean = 
                     when {
                         thanks -> Color(0xFF2DD4BF).copy(alpha = 0.18f)
                         mine -> DesktopAccent.copy(alpha = 0.24f)
-                        else -> Color.White.copy(alpha = 0.08f)
+                        else -> Ink.copy(alpha = 0.08f)
                     },
                 )
                 .padding(horizontal = 12.dp, vertical = 9.dp),
         ) {
-            if (text.isNotEmpty()) Text(text, color = Color.White)
+            if (text.isNotEmpty()) Text(text, color = Ink)
             if (attachments > 0) {
                 Text(
                     "📎 " + DesktopStrings["feedback_attachments", "%d attached"].format(attachments),
@@ -602,7 +605,7 @@ private fun FeedbackThreadView(ticketId: String, onDeleted: () -> Unit) {
         onDispose { DesktopFeedback.scope.launch { center.setDraft(ticketId, reply) } }
     }
 
-    Text(ticket?.title.orEmpty(), color = Color.White, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = panelInset(22.dp)))
+    Text(ticket?.title.orEmpty(), color = Ink, style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(horizontal = panelInset(22.dp)))
     if (ticket != null) {
         Text(DesktopFeedback.statusLabel(ticket.status), color = DesktopAccent, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(start = panelInset(22.dp), top = 2.dp, bottom = 8.dp))
     }

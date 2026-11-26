@@ -41,7 +41,7 @@ import com.music.bitchord.ui.graphics.fadingEdges
 fun Modifier.thumbnailBorder(shape: Shape): Modifier = composed {
     this.border(
         width = 1.dp,
-        color = if (isSystemInDarkTheme()) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.15f),
+        color = if (com.music.bitchord.ui.theme.LocalDesktopDark.current) Color.White.copy(alpha = 0.15f) else Color.Black.copy(alpha = 0.15f),
         shape = shape
     )
 }

@@ -77,6 +77,12 @@ fun main() {
     DesktopPresence.install()
     // Bug reports and ideas, and the developer's answers; see FeedbackCenter.
     DesktopFeedback.install()
+    // Settled before the window opens, so a light theme does not flash dark first.
+    com.music.bitchord.ui.theme.DesktopUiTheme.dark = when (DesktopAppearanceSettings.themeMode.value) {
+        DesktopThemeMode.DARK -> true
+        DesktopThemeMode.LIGHT -> false
+        DesktopThemeMode.SYSTEM -> DesktopSystemTheme.isDark()
+    }
     desktopMain()
     kotlin.system.exitProcess(0)
 }
@@ -192,15 +198,16 @@ private fun desktopMain() = application {
             composeWindow.addComponentListener(componentListener)
             DesktopWindowVisibility.attachWindow(composeWindow)
             if (DesktopPlatform.isWindows && !DesktopPlatform.drawsOwnWindowFrame) {
-                DesktopWindowsTheme.updateTitleBar(composeWindow, DesktopBackground)
+                DesktopWindowsTheme.updateTitleBar(composeWindow)
             }
             // AWT's default is white, and it is what shows for the frame or two a moved or resized
             // window takes to repaint: a white band along its edges.
             // Not over a transparent window, whose clear background is what the material shows
             // through; DWM moves that window, so there is no band to hide.
             if (!DesktopWindowBackdrop.available || !DesktopPlatform.drawsOwnWindowFrame) {
-                composeWindow.background = java.awt.Color.BLACK
-                composeWindow.contentPane.background = java.awt.Color.BLACK
+                val edge = if (com.music.bitchord.ui.theme.DesktopUiTheme.dark) java.awt.Color.BLACK else java.awt.Color.WHITE
+                composeWindow.background = edge
+                composeWindow.contentPane.background = edge
             } else {
                 composeWindow.background = java.awt.Color(0, 0, 0, 0)
                 composeWindow.contentPane.background = java.awt.Color(0, 0, 0, 0)
