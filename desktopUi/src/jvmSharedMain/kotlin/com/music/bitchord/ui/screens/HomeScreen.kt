@@ -50,6 +50,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.setValue
+import dev.chrisbanes.haze.HazeState
+import dev.chrisbanes.haze.HazeTint
+import dev.chrisbanes.haze.hazeEffect
+import dev.chrisbanes.haze.hazeSource
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.layout.ContentScale
@@ -99,6 +106,9 @@ import com.music.bitchord.ui.player.MeshPalette
 
 /** How far the Listen now heading and feed sit above the shared top inset. */
 private val HOME_TITLE_LIFT = 28.dp
+
+/** How far the greeting's blur runs past its own spacing, thinning out over the feed. */
+private val GREETING_FADE_ROOM = 12.dp
 
 private const val RECENTS_TITLE = "Recents"
 private const val RECENT_TRACKS_PER_COLUMN = 4
@@ -187,9 +197,18 @@ fun HomeScreen(
         state = pullState,
         modifier = modifier,
     ) {
+        // The greeting leads the PC's Home as its heading and stays pinned to
+        // the top while the feed scrolls under it, through a blur that is
+        // strongest at the top edge and gone at the greeting's foot — the
+        // phone's top edge — rather than on a solid band of the page colour.
+        val greetingHaze = remember { HazeState() }
+        var greetingHeightPx by remember { mutableIntStateOf(0) }
+        val density = LocalDensity.current
+        val pageTop = contentPadding.calculateTopPadding()
+        Box(Modifier.fillMaxSize()) {
         LazyColumn(
             state = listState,
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxSize().hazeSource(greetingHaze),
             // The heading sits higher than the other tabs' first row: pull the
             // whole feed up by [HOME_TITLE_LIFT] with it.
             contentPadding = if (title != null) {
@@ -198,18 +217,17 @@ fun HomeScreen(
                     bottom = contentPadding.calculateBottomPadding(),
                 )
             } else {
-                contentPadding
+                // The greeting overlay carries the page's top padding itself.
+                PaddingValues(bottom = contentPadding.calculateBottomPadding())
             },
         ) {
             if (title != null) {
                 item { HomeTitle() }
             }
-            // The greeting leads the PC's Home, as its heading.
+            // Room for the greeting drawn over the top of the feed.
             item(key = "home-greeting") {
-                HomeGreetingLine(
-                    name = listenerName,
-                    modifier = Modifier.padding(start = PAGE_GUTTER, end = PAGE_GUTTER, top = 4.dp, bottom = 16.dp),
-                )
+                // Less the fade under the words, which the first shelf may run into.
+                Spacer(Modifier.height(with(density) { greetingHeightPx.toDp() } - GREETING_FADE_ROOM))
             }
             if (!signedIn && onSignIn != null) {
                 item {
@@ -288,6 +306,46 @@ fun HomeScreen(
                     if (loadingMore) feedMoreSkeleton()
                 }
             }
+        }
+        val pageColor = MaterialTheme.colorScheme.background
+        Box(
+            Modifier
+                .fillMaxWidth()
+                .onSizeChanged { greetingHeightPx = it.height }
+                .hazeEffect(state = greetingHaze) {
+                    // Clear, not the page colour: the window's own backdrop lies
+                    // behind the feed, and a filled base would be a band again.
+                    backgroundColor = Color.Transparent
+                    blurRadius = 28.dp
+                    noiseFactor = 0f
+                    // Full blur at the top edge, none at the greeting's foot. A mask
+                    // over one blur rather than haze's progressive blur: that one's
+                    // variable-radius shader took Direct3D the best part of a
+                    // minute to compile, and the window sat frozen until it had.
+                    mask = Brush.verticalGradient(
+                        0f to Color.Black,
+                        0.45f to Color.Black,
+                        1f to Color.Transparent,
+                    )
+                    // A veil of the page colour that thins out the same way, so
+                    // the greeting reads over a busy card without a hard edge.
+                    tints = listOf(
+                        HazeTint(
+                            Brush.verticalGradient(
+                                0f to pageColor.copy(alpha = 0.78f),
+                                0.55f to pageColor.copy(alpha = 0.45f),
+                                1f to pageColor.copy(alpha = 0f),
+                            ),
+                        ),
+                    )
+                    fallbackTint = HazeTint(pageColor.copy(alpha = 0.85f))
+                },
+        ) {
+            HomeGreetingLine(
+                name = listenerName,
+                modifier = Modifier.padding(start = PAGE_GUTTER, end = PAGE_GUTTER, top = pageTop + 4.dp, bottom = 16.dp + GREETING_FADE_ROOM),
+            )
+        }
         }
     }
 

@@ -4073,6 +4073,11 @@ fun BitChordDesktopApp() {
                 // The phone's page is black, not the near-black of its cards.
                 containerColor = DesktopBackground,
                 isNowPlaying = overlays.nowPlaying && selectedSong != null,
+                // Home pins its greeting under a blur, which the feed should scroll up into all
+                // the way to the window's edge rather than stop short at the caption strip.
+                contentUnderCaption = destination == DesktopDestination.LISTEN_NOW &&
+                    overlays.settingsPage == null && !overlays.replay &&
+                    openedArtist == null && openedCollection == null,
                 // Only Replay dresses itself unless ambient backdrop is on; everywhere else the chrome sits on the plain surface.
                 backdrop = { transparentBase ->
                     val ambientArtworkUrl = replaySummary.songs.firstOrNull()?.song?.thumbnailUrl
@@ -4896,7 +4901,11 @@ fun BitChordDesktopApp() {
             ) { contentPadding ->
                 // Desktop pages start at the same top edge as Library. Only preserve space for the
                 // floating player/navigation bar at the bottom in compact windows.
-                val sharedPagePadding = PaddingValues(bottom = contentPadding.calculateBottomPadding())
+                // Top is the caption strip, for the one page that runs up under it — see contentUnderCaption.
+                val sharedPagePadding = PaddingValues(
+                    top = contentPadding.calculateTopPadding(),
+                    bottom = contentPadding.calculateBottomPadding(),
+                )
                 CompositionLocalProvider(
                     LocalPullToRefreshEnabled provides false,
                     LocalShelfRowChrome provides DesktopShelfRowChrome,
@@ -6961,6 +6970,11 @@ private fun DesktopFrame(
     modifier: Modifier = Modifier,
     isNowPlaying: Boolean = false,
     /**
+     * Whether the page runs up under the caption strip, given its height as top padding to keep
+     * its heading clear of it, rather than starting below the strip.
+     */
+    contentUnderCaption: Boolean = false,
+    /**
      * The open page's own colours, painted across the whole window rather than only the content
      * area, so the title bar, top bar and sidebar take their tint from the page they are framing
      * instead of staying a flat slab beside it.
@@ -7032,11 +7046,12 @@ private fun DesktopFrame(
                             ) {
                                 Box(Modifier.fillMaxSize().hazeSource(haze)) {
                                     if (glass) backdrop(materialBehindApp)
-                                    Box(Modifier.fillMaxSize().padding(top = stripInset)) {
+                                    Box(Modifier.fillMaxSize().padding(top = if (contentUnderCaption) 0.dp else stripInset)) {
                                         content(
                                             PaddingValues(
                                                 start = 0.dp,
                                                 end = 0.dp,
+                                                top = if (contentUnderCaption) stripInset else 0.dp,
                                                 // Room for the bar that floats over this, so the
                                                 // last row can still be scrolled clear of it.
                                                 bottom = if (compact) 128.dp else 104.dp,
