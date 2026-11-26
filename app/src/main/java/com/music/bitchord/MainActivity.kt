@@ -4887,7 +4887,7 @@ private fun BitChordApp(
                         } else null,
                         // Home's greeting, centred between the logo and the profile.
                         center = if (selectedTab == TAB_HOME && route == null && detail == null && selectedMoodGenre == null) {
-                            {
+                            { pill ->
                                 com.music.bitchord.ui.screens.HomeGreetingLine(
                                     // Never the generic "User" label: a greeting
                                     // with no name beats one with a placeholder.
@@ -4897,6 +4897,7 @@ private fun BitChordApp(
                                     // artwork's colour, corrected to read on the page.
                                     // Read here, so only the greeting follows the fade.
                                     color = if (appTinted) playingPalette.current.accent else null,
+                                    pill = pill,
                                 )
                             }
                         } else null,

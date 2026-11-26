@@ -55,6 +55,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -223,7 +224,7 @@ fun FrostedTopBar(
      * Plain content centred on the bar, between [leading] and [actions] — Home's
      * greeting. No pill: it reads as part of the page, not as a control.
      */
-    center: (@Composable () -> Unit)? = null,
+    center: (@Composable (pill: Boolean) -> Unit)? = null,
     actions: @Composable () -> Unit = {},
 ) {
     val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
@@ -413,16 +414,24 @@ fun FrostedTopBar(
             // Centred on the whole bar, kept clear of the logo and the
             // actions pill either side of it.
             if (center != null && accessory == null) {
+                // Once the page scrolls under the bar the content would float
+                // over the cards with nothing behind it, so it moves onto a
+                // pill of the navbar's own glass and stays. The same slot
+                // either way, so what it shows carries straight across.
+                val pill = scrolled()
                 Box(
                     modifier = Modifier
                         .align(Alignment.Center)
-                        .padding(horizontal = CENTER_CLEARANCE)
-                        // Gone once the page scrolls under the bar, where it
-                        // would float over the cards with nothing behind it.
-                        .graphicsLayer { alpha = 1f - titleAlpha },
+                        .padding(horizontal = CENTER_CLEARANCE),
                     contentAlignment = Alignment.Center,
                 ) {
-                    center()
+                    CenterPill(
+                        pill = pill,
+                        floating = useFloatingChrome,
+                        hazeState = backButtonHazeState,
+                    ) {
+                        center(pill)
+                    }
                 }
             }
             // No wordmark at the leading end: the root tabs carry it above
@@ -891,6 +900,51 @@ private fun AccessoryPill(
 
 /** The field's hint and glyphs on glass, against its typed text at full strength. */
 private const val ACCESSORY_HINT_ALPHA = 0.6f
+
+/**
+ * The bar's centred content, bare over the top of the page and on a pill of
+ * the navbar's glass once the page has scrolled under it ([pill]). The pill is
+ * the controls' height and hugs its content; on the plain bar it takes the
+ * field's own fill. The switch is immediate: the content is the same either
+ * way, only what is behind it changes.
+ */
+@Composable
+private fun CenterPill(
+    pill: Boolean,
+    floating: Boolean,
+    hazeState: HazeState?,
+    content: @Composable () -> Unit,
+) {
+    val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
+    val glass = floating && LocalLiquidGlassEnabled.current && isGlassSupported() && !reduceDynamicBlur
+    val shape = remember { SquirclePillShape() }
+    val contentColor = when {
+        !pill -> LocalContentColor.current
+        glass -> glassContentColor()
+        else -> MaterialTheme.colorScheme.onSurface
+    }
+    Box(
+        modifier = if (pill) {
+            Modifier
+                .height(TOP_CONTROL_SIZE)
+                .then(
+                    if (floating) {
+                        artworkPageSurface(shape = shape, hazeState = hazeState)
+                    } else {
+                        Modifier
+                            .clip(shape)
+                            .background(MaterialTheme.colorScheme.surfaceVariant)
+                    },
+                )
+                .padding(horizontal = 18.dp)
+        } else {
+            Modifier
+        },
+        contentAlignment = Alignment.Center,
+    ) {
+        CompositionLocalProvider(LocalContentColor provides contentColor, content = content)
+    }
+}
 
 /**
  * Edge padding that collapses only for the profile-only state.

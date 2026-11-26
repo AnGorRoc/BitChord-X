@@ -41,6 +41,11 @@ fun HomeGreetingLine(
      * tinted page. Null keeps the theme's text colour.
      */
     color: androidx.compose.ui.graphics.Color? = null,
+    /**
+     * Drawn inside the top bar's glass pill (the page scrolled under it): one
+     * line, smaller, in the pill's own content colour so it reads on the glass.
+     */
+    pill: Boolean = false,
 ) {
     @Suppress("NAME_SHADOWING")
     val name = name?.trim()?.substringBefore(' ')?.takeIf(String::isNotBlank)
@@ -84,13 +89,17 @@ fun HomeGreetingLine(
     }
     FittedGreeting(
         text = text,
-        maxSize = GREETING_SIZE,
-        minSize = GREETING_MIN_SIZE,
-        maxLines = 2,
-        color = color ?: MaterialTheme.colorScheme.onBackground,
+        maxSize = if (pill) PILL_SIZE else GREETING_SIZE,
+        minSize = if (pill) PILL_MIN_SIZE else GREETING_MIN_SIZE,
+        maxLines = if (pill) 1 else 2,
+        color = if (pill) androidx.compose.material3.LocalContentColor.current else color ?: MaterialTheme.colorScheme.onBackground,
         modifier = modifier,
     )
 }
+
+/** The greeting inside the glass pill: one line, at the size the pill holds. */
+private val PILL_SIZE = 17.sp
+private val PILL_MIN_SIZE = 12.sp
 
 /** The smallest a long greeting shrinks to before it would be cut. */
 private val GREETING_MIN_SIZE = 14.sp
