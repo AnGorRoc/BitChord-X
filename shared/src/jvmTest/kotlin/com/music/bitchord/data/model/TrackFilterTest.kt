@@ -423,4 +423,153 @@ class TrackFilterTest {
         assertEquals(1, setAll.rows.size)
         assertEquals("set_01", (setAll.rows.single() as SearchResult.Track).song.videoId)
     }
+
+    // -------------------------------------------------------------------------
+    // 6. Normal user accounts vs. unregistered music channels (scarce fallback)
+    // -------------------------------------------------------------------------
+
+    @Test
+    fun `normal user accounts without songs are always excluded even when no other results exist`() {
+        val profiles = listOf(
+            SearchResult.Browse(BrowseItem("UC_u1", "Juan Perez", "Perfil • @juanperez", null, BrowseType.ARTIST, TrackFilter.PAGE_TYPE_USER_CHANNEL)),
+            SearchResult.Browse(BrowseItem("UC_u2", "John Doe", "Profile • @johndoe", null, BrowseType.ARTIST, TrackFilter.PAGE_TYPE_USER_CHANNEL)),
+            SearchResult.Browse(BrowseItem("UC_u3", "Marie Dupont", "Profil • @marie", null, BrowseType.ARTIST, TrackFilter.PAGE_TYPE_USER_CHANNEL)),
+            SearchResult.Browse(BrowseItem("UC_u4", "Иван Иванов", "Профиль", null, BrowseType.ARTIST, TrackFilter.PAGE_TYPE_USER_CHANNEL)),
+            SearchResult.Browse(BrowseItem("UC_u5", "山田太郎", "プロフィール", null, BrowseType.ARTIST, TrackFilter.PAGE_TYPE_USER_CHANNEL)),
+            SearchResult.Browse(BrowseItem("UC_u6", "Reggaeton Lyrics HD", "Channel • 50K subscribers", null, BrowseType.ARTIST, TrackFilter.PAGE_TYPE_USER_CHANNEL)),
+        )
+
+        val outAll = TrackFilter.prioritizeAndFilterSearchResults(profiles, "juan perez", SearchFilter.ALL)
+        val outArtists = TrackFilter.prioritizeAndFilterSearchResults(profiles, "juan perez", SearchFilter.ARTISTS)
+
+        assertTrue("Normal profiles and lyrics channels must never appear in ALL", outAll.isEmpty())
+        assertTrue("Normal profiles and lyrics channels must never appear in ARTISTS", outArtists.isEmpty())
+    }
+
+    @Test
+    fun `unregistered music channels are omitted when valuable results exist`() {
+        val registeredArtist = SearchResult.Browse(
+            BrowseItem("UC_reg", "Bad Bunny", "Artist • 80M monthly listeners", null, BrowseType.ARTIST, TrackFilter.PAGE_TYPE_ARTIST),
+        )
+        val unregisteredMusic = SearchResult.Browse(
+            BrowseItem("UC_mus", "Bad Bunny Beats Studio", "Channel • 12K subscribers", null, BrowseType.ARTIST, TrackFilter.PAGE_TYPE_USER_CHANNEL),
+        )
+        val normalProfile = SearchResult.Browse(
+            BrowseItem("UC_norm", "Bad Bunny Fan", "Profile • @bbfan", null, BrowseType.ARTIST, TrackFilter.PAGE_TYPE_USER_CHANNEL),
+        )
+
+        val outArtists = TrackFilter.prioritizeAndFilterSearchResults(
+            listOf(registeredArtist, unregisteredMusic, normalProfile),
+            "Bad Bunny",
+            SearchFilter.ARTISTS,
+        )
+        assertEquals(listOf(registeredArtist), outArtists)
+
+        // In ALL with 2+ valuable tracks (even without a registered artist), unregistered music channel is still omitted
+        val song1 = SearchResult.Track(song("s1", "Track 1", "Artist", albumId = "MPRE1", musicVideoType = TrackFilter.MUSIC_VIDEO_TYPE_ATV))
+        val song2 = SearchResult.Track(song("s2", "Track 2", "Artist", albumId = "MPRE1", musicVideoType = TrackFilter.MUSIC_VIDEO_TYPE_ATV))
+        val outAll = TrackFilter.prioritizeAndFilterSearchResults(
+            listOf(song1, song2, unregisteredMusic, normalProfile),
+            "Track",
+            SearchFilter.ALL,
+        )
+        assertEquals(listOf(song1, song2), outAll)
+    }
+
+    @Test
+    fun `unregistered music channels are included as fallback when valuable results are scarce`() {
+        val unregisteredDj = SearchResult.Browse(
+            BrowseItem("UC_dj", "DJ Pepon Underground", "Perfil • @djpepon", null, BrowseType.ARTIST, TrackFilter.PAGE_TYPE_USER_CHANNEL),
+        )
+        val normalUser = SearchResult.Browse(
+            BrowseItem("UC_plain", "Pepon Garcia", "Perfil • @pepongarcia", null, BrowseType.ARTIST, TrackFilter.PAGE_TYPE_USER_CHANNEL),
+        )
+
+        // ARTISTS tab with zero registered artists: keeps unregistered music channel, drops normal profile
+        val outArtists = TrackFilter.prioritizeAndFilterSearchResults(
+            listOf(normalUser, unregisteredDj),
+            "DJ Pepon Underground",
+            SearchFilter.ARTISTS,
+        )
+        assertEquals(listOf(unregisteredDj), outArtists)
+
+        // ALL tab with zero registered artists and only 1 independent track credited to an unregistered channel:
+        // keeps both the track and the credited channel, drops unrelated normal profile
+        val indieTrack = SearchResult.Track(
+            song("t1", "Mi Tema", "Lucas Mendoza", artistId = "UC_lucas", albumId = null, musicVideoType = TrackFilter.MUSIC_VIDEO_TYPE_UGC),
+        )
+        val lucasChannel = SearchResult.Browse(
+            BrowseItem("UC_lucas", "Lucas Mendoza", "Perfil • @lucasmendoza", null, BrowseType.ARTIST, TrackFilter.PAGE_TYPE_USER_CHANNEL),
+        )
+        val outAll = TrackFilter.prioritizeAndFilterSearchResults(
+            listOf(normalUser, lucasChannel, indieTrack),
+            "Lucas Mendoza",
+            SearchFilter.ALL,
+        )
+        assertEquals(listOf(lucasChannel, indieTrack), outAll)
+    }
+
+    @Test
+    fun `InnertubeParser preserves pageType on BrowseItem for artist vs user channel filtering`() {
+        val json = """
+        {
+          "contents": {
+            "tabbedSearchResultsRenderer": {
+              "tabs": [{
+                "tabRenderer": {
+                  "content": {
+                    "sectionListRenderer": {
+                      "contents": [{
+                        "musicShelfRenderer": {
+                          "contents": [
+                            {
+                              "musicResponsiveListItemRenderer": {
+                                "navigationEndpoint": {
+                                  "browseEndpoint": {
+                                    "browseId": "UC_official",
+                                    "browseEndpointContextSupportedConfigs": {
+                                      "browseEndpointContextMusicConfig": { "pageType": "MUSIC_PAGE_TYPE_ARTIST" }
+                                    }
+                                  }
+                                },
+                                "flexColumns": [
+                                  { "musicResponsiveListItemFlexColumnRenderer": { "text": { "runs": [{ "text": "Duki" }] } } },
+                                  { "musicResponsiveListItemFlexColumnRenderer": { "text": { "runs": [{ "text": "Artista • 20 M de oyentes mensuales" }] } } }
+                                ]
+                              }
+                            },
+                            {
+                              "musicResponsiveListItemRenderer": {
+                                "navigationEndpoint": {
+                                  "browseEndpoint": {
+                                    "browseId": "UC_random_user",
+                                    "browseEndpointContextSupportedConfigs": {
+                                      "browseEndpointContextMusicConfig": { "pageType": "MUSIC_PAGE_TYPE_USER_CHANNEL" }
+                                    }
+                                  }
+                                },
+                                "flexColumns": [
+                                  { "musicResponsiveListItemFlexColumnRenderer": { "text": { "runs": [{ "text": "Duki2026" }] } } },
+                                  { "musicResponsiveListItemFlexColumnRenderer": { "text": { "runs": [{ "text": "Perfil • @duki2026" }] } } }
+                                ]
+                              }
+                            }
+                          ]
+                        }
+                      }]
+                    }
+                  }
+                }
+              }]
+            }
+          }
+        }
+        """.trimIndent()
+
+        val parsed = InnertubeParser.parseSearchPage(Json.parseToJsonElement(json).jsonObject)
+        assertEquals(2, parsed.rows.size)
+        val filtered = TrackFilter.prioritizeAndFilterSearchResults(parsed.rows, "Duki", SearchFilter.ARTISTS)
+        assertEquals(1, filtered.size)
+        assertEquals("UC_official", (filtered.single() as SearchResult.Browse).item.browseId)
+    }
 }

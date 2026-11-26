@@ -2135,11 +2135,8 @@ fun BitChordDesktopApp() {
         }
         onDispose {
             if (deviceLinkHolder[0] === deviceLink) deviceLinkHolder[0] = null
-            connectingWatch.cancel()
-            DesktopPlayerHost.setConnectingDevice(null)
-            DesktopPlayerHost.onPickDevice = { _, _ -> }
-            DesktopPlayerHost.onComeBack = {}
-            DesktopPlayerHost.onSetDeviceVolume = { _, _ -> }
+            runCatching { connectingWatch.cancel() }
+            DesktopPlayerHost.resetDeviceCallbacks()
         }
     }
     DisposableEffect(partySync) {

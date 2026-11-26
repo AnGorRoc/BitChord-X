@@ -190,10 +190,22 @@ internal object DesktopPlayerHost : PlayerHost {
         _connectingDevice.value = deviceId
     }
 
+    private val noopPickDevice: (String, com.music.bitchord.data.listentogether.account.HandoffForce?) -> Unit = { _, _ -> }
+    private val noopComeBack: () -> Unit = {}
+    private val noopSetDeviceVolume: (String, Float) -> Unit = { _, _ -> }
+
     /** Where a tap on a device goes — set by the window, which owns the engine. */
-    var onPickDevice: (String, com.music.bitchord.data.listentogether.account.HandoffForce?) -> Unit = { _, _ -> }
-    var onComeBack: () -> Unit = {}
-    var onSetDeviceVolume: (String, Float) -> Unit = { _, _ -> }
+    var onPickDevice: (String, com.music.bitchord.data.listentogether.account.HandoffForce?) -> Unit = noopPickDevice
+    var onComeBack: () -> Unit = noopComeBack
+    var onSetDeviceVolume: (String, Float) -> Unit = noopSetDeviceVolume
+
+    /** Clears callbacks and resets them to no-op handlers without allocating synthetic anonymous classes. */
+    fun resetDeviceCallbacks() {
+        onPickDevice = noopPickDevice
+        onComeBack = noopComeBack
+        onSetDeviceVolume = noopSetDeviceVolume
+        setConnectingDevice(null)
+    }
 
     override fun pickDevice(deviceId: String, force: com.music.bitchord.data.listentogether.account.HandoffForce?) =
         onPickDevice(deviceId, force)

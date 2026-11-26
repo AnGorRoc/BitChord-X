@@ -21,6 +21,31 @@ enum class TrackAuthenticityTier(val rank: Int) {
 }
 
 /**
+ * Classification of a channel/artist [BrowseItem] returned by search.
+ */
+enum class BrowseChannelTier {
+    /** Official YouTube Music registered artist (`MUSIC_PAGE_TYPE_ARTIST`). */
+    REGISTERED_ARTIST,
+
+    /**
+     * A YouTube channel not officially registered as a YouTube Music Artist,
+     * but showing clear music-creator signals (credited on tracks in the results,
+     * musician/label/DJ/music-channel identity, or subscriber-backed music channel).
+     * Included ONLY as a fallback when valuable results are scarce.
+     */
+    UNREGISTERED_MUSIC_CHANNEL,
+
+    /**
+     * A normal personal YouTube user account/profile with no songs or music-creator
+     * signals, or a third-party fan/lyrics/reupload channel. Always excluded from search.
+     */
+    NORMAL_USER_ACCOUNT,
+
+    /** Albums, playlists, and other non-channel browse items. */
+    NON_CHANNEL,
+}
+
+/**
  * Pure, deterministic filtering and ranking rules for:
  * 1. Prioritizing official catalogue releases over UGC/reuploads while preserving
  *    direct uploads from independent/original artists without a record label.
@@ -35,6 +60,8 @@ object TrackFilter {
     const val MUSIC_VIDEO_TYPE_ATV = "MUSIC_VIDEO_TYPE_ATV"
     const val MUSIC_VIDEO_TYPE_OMV = "MUSIC_VIDEO_TYPE_OMV"
     const val MUSIC_VIDEO_TYPE_UGC = "MUSIC_VIDEO_TYPE_UGC"
+    const val PAGE_TYPE_ARTIST = "MUSIC_PAGE_TYPE_ARTIST"
+    const val PAGE_TYPE_USER_CHANNEL = "MUSIC_PAGE_TYPE_USER_CHANNEL"
 
     /** Minimum runtime (12 min) for explicit enganchado / DJ set titles. */
     const val MIN_EXPLICIT_DJ_SET_SECONDS = 12 * 60
@@ -121,6 +148,31 @@ object TrackFilter {
     private val DJ_SET_EXCLUDE_REGEX = Regex(
         pattern = """\b(?:full\s+album|album\s+completo|album\s+complet|ganzes\s+album|disco\s+completo|podcast|entrevista|interview|entretien|intervista|documental|documentary|reaccion|reaction|reacao|reaktion|reazione|1\s+hour|1\s+hora|1\s+heure|1\s+stunde|1\s+ora|10\s+hours|10\s+horas|10\s+heures|10\s+stunden|10\s+ore|loop|audiobook|audiolibro|sleep\s+music|study\s+music|rain\s+sounds|white\s+noise)\b""" +
             """|(?:полный\s+альбом|интервью|реакция|1\s*час|1時間|1시간|1小时|1小時|フルアルバム|전곡)""",
+        option = RegexOption.IGNORE_CASE,
+    )
+
+    // --- Multilingual channel / artist / profile classifiers ---
+    private val ARTIST_SUBTITLE_REGEX = Regex(
+        pattern = """^\s*(?:artist|artista|artiste|kunstler|sanatci|wykonawca|artis)\b""" +
+            """|^\s*(?:исполнитель|артист|アーティスト|아티스트|歌手|艺人)""",
+        option = RegexOption.IGNORE_CASE,
+    )
+
+    private val PROFILE_SUBTITLE_REGEX = Regex(
+        pattern = """^\s*(?:profile|perfil|profil|profilo|user|usuario|utilisateur|benutzer|utente|kanal|channel|canal)\b""" +
+            """|^\s*(?:профиль|канал|プロフィール|프로필|个人资料|個人資料)""",
+        option = RegexOption.IGNORE_CASE,
+    )
+
+    private val SUBSCRIBER_OR_LISTENER_REGEX = Regex(
+        pattern = """\b(?:subscribers?|suscriptores?|inscritos?|abonnes?|abonnenten|iscritti|abone|subskrybentow|pelanggan|monthly\s+(?:audience|listeners?)|oyentes?\s+mensuales?|ouvintes?\s+mensais?)\b""" +
+            """|(?:подписчик|слушател|登録者|구독자|订阅|訂閱)""",
+        option = RegexOption.IGNORE_CASE,
+    )
+
+    private val MUSIC_CHANNEL_CUE_REGEX = Regex(
+        pattern = """\b(?:music|musica|musique|musik|muzyka|muzik|records?|recordings?|discos?|label|sound|sounds|audio|beats?|beatmaker|prod\.?|producer|dj|mc|band|banda|orchestra|orquesta|symphony|sinfonica|quartet|cuarteto|trio|choir|coro|studio|estudios?|sessions?|sesiones?|vevo|topic|radio|acoustic|acustico|hip[\s-]?hop|rap|trap|rock|jazz|techno|house|cumbia|rkt|reggaeton|salsa|punk|metal|indie|lo[\s-]?fi|phonk|dubstep|dnb|trance|blues|folk|flamenco|tango|bossa)\b""" +
+            """|(?:музыка|рекордс|音楽|ミュージック|음악|뮤직|音乐|音樂)""",
         option = RegexOption.IGNORE_CASE,
     )
 
@@ -262,31 +314,97 @@ object TrackFilter {
     }
 
     /**
-     * Ranks and filters a search result list so official catalogue music is prioritized,
-     * independent creator uploads are preserved, and unwanted fan lyrics/UGC reuploads
-     * are filtered out (with a safety fallback so a query never collapses to empty).
+     * Classifies a [BrowseItem] to separate registered YouTube Music artists from
+     * normal user accounts without songs and unregistered music channels.
      *
-     * Browse items (Artists, Albums, Playlists) remain in their original positions.
+     * @param trackArtistIds Artist browseIds credited on playable tracks in the same
+     *   search response — proves an unregistered channel actually has songs.
+     */
+    fun classifyBrowseChannel(
+        item: BrowseItem,
+        trackArtistIds: Set<String> = emptySet(),
+    ): BrowseChannelTier {
+        if (item.type != BrowseType.ARTIST && !item.browseId.startsWith("UC")) {
+            return BrowseChannelTier.NON_CHANNEL
+        }
+
+        val pageType = item.pageType.orEmpty()
+        val foldedTitle = fold(item.title)
+        val foldedSubtitle = fold(item.subtitle)
+
+        // 1. Explicitly registered YouTube Music Artist.
+        if ("ARTIST" in pageType) {
+            return BrowseChannelTier.REGISTERED_ARTIST
+        }
+
+        val isExplicitUserChannel = "USER_CHANNEL" in pageType ||
+            PROFILE_SUBTITLE_REGEX.containsMatchIn(foldedSubtitle)
+
+        // 2. When pageType is omitted (e.g. legacy/cached rows), a localized "Artist"
+        // subtitle without user-channel markers still identifies a registered artist.
+        if (!isExplicitUserChannel && pageType.isBlank() && ARTIST_SUBTITLE_REGEX.containsMatchIn(foldedSubtitle)) {
+            return BrowseChannelTier.REGISTERED_ARTIST
+        }
+
+        // 3. Fan/lyrics/reupload channels are never treated as legitimate musician channels.
+        if (UNOFFICIAL_CHANNEL_REGEX.containsMatchIn(foldedTitle)) {
+            return BrowseChannelTier.NORMAL_USER_ACCOUNT
+        }
+
+        // 4. Unregistered channel with clear proof or strong signals of being a music channel:
+        //    - Credited as artistId on a playable track in the same search results, OR
+        //    - Has musician/music-channel identity cues in its name or subtitle, OR
+        //    - Has an active subscriber/listener count on a non-profile channel.
+        val hasSongsInResults = item.browseId in trackArtistIds
+        val hasMusicCue = MUSIC_CHANNEL_CUE_REGEX.containsMatchIn(foldedTitle) ||
+            MUSIC_CHANNEL_CUE_REGEX.containsMatchIn(foldedSubtitle)
+        val hasSubscribersOnNonProfile = !PROFILE_SUBTITLE_REGEX.containsMatchIn(foldedSubtitle) &&
+            SUBSCRIBER_OR_LISTENER_REGEX.containsMatchIn(foldedSubtitle)
+
+        if (hasSongsInResults || hasMusicCue || hasSubscribersOnNonProfile) {
+            return BrowseChannelTier.UNREGISTERED_MUSIC_CHANNEL
+        }
+
+        // 5. Plain personal user account with no songs and no music-channel indicators.
+        return BrowseChannelTier.NORMAL_USER_ACCOUNT
+    }
+
+    /**
+     * Ranks and filters a search result list so:
+     * 1. Official catalogue music is prioritized and independent creator uploads are preserved,
+     *    while unwanted fan lyrics/UGC reuploads are filtered out (with an anti-empty fallback).
+     * 2. Normal user accounts without songs are always excluded.
+     * 3. Unregistered music channels are included ONLY as a fallback when it is difficult
+     *    to find other valuable results (registered artists, clean songs, albums, playlists).
      */
     fun prioritizeAndFilterSearchResults(
         results: List<SearchResult>,
         query: String,
         filter: SearchFilter,
     ): List<SearchResult> {
-        if (filter != SearchFilter.ALL && filter != SearchFilter.SONGS) return results
+        if (filter != SearchFilter.ALL && filter != SearchFilter.SONGS && filter != SearchFilter.ARTISTS) {
+            return results
+        }
         if (results.isEmpty()) return results
 
         val trackRows = results.filter { it is SearchResult.Track || it is SearchResult.TopTrack }
-        if (trackRows.isEmpty()) return results
-
         val hasCleanTrack = trackRows.any { row ->
             val song = row.songOrNull() ?: return@any false
             !isUnwantedUgcForQuery(song, query)
         }
 
-        // Safety fallback: if every track returned by YouTube is classified as UGC
-        // (e.g., an unreleased leak that only exists as a reupload), never return empty.
-        val kept = if (hasCleanTrack) {
+        // Collect artistIds from playable tracks so an unregistered channel that actually
+        // authored songs in these results is recognized as a music channel.
+        val trackArtistIds = buildSet {
+            trackRows.forEach { row ->
+                val song = row.songOrNull() ?: return@forEach
+                song.artistId?.takeIf { it.isNotBlank() }?.let(::add)
+                song.artists.forEach { ref -> ref.browseId?.takeIf { it.isNotBlank() }?.let(::add) }
+            }
+        }
+
+        // Step A: Filter unwanted UGC tracks (with safety fallback so tracks never collapse to empty).
+        val afterTrackFilter = if (trackRows.isNotEmpty() && hasCleanTrack) {
             results.filter { row ->
                 val song = row.songOrNull() ?: return@filter true
                 !isUnwantedUgcForQuery(song, query)
@@ -295,10 +413,42 @@ object TrackFilter {
             results
         }
 
-        // When the user explicitly searched for a set/enganchado/mix in ALL,
-        // keep YouTube's relevance order among matching DJ sets & tracks rather
-        // than pushing sets below unrelated studio tracks.
-        if (filter == SearchFilter.ALL && queryRequestsDjSet(query)) {
+        // Step B: Filter normal user accounts and conditionally include unregistered music channels
+        // ONLY when valuable results are scarce.
+        val hasRegisteredArtist = afterTrackFilter.any { row ->
+            row is SearchResult.Browse &&
+                classifyBrowseChannel(row.item, trackArtistIds) == BrowseChannelTier.REGISTERED_ARTIST
+        }
+        val valuableNonChannelCount = afterTrackFilter.count { row ->
+            when (row) {
+                is SearchResult.TopTrack, is SearchResult.Track -> {
+                    val song = row.songOrNull()
+                    song != null && !isUnwantedUgcForQuery(song, query)
+                }
+                is SearchResult.Browse -> {
+                    classifyBrowseChannel(row.item, trackArtistIds) == BrowseChannelTier.NON_CHANNEL
+                }
+            }
+        }
+        val allowUnregisteredMusicChannels = when (filter) {
+            SearchFilter.ARTISTS -> !hasRegisteredArtist
+            SearchFilter.ALL -> !hasRegisteredArtist && valuableNonChannelCount < 2
+            else -> false
+        }
+
+        val kept = afterTrackFilter.filter { row ->
+            if (row !is SearchResult.Browse) return@filter true
+            when (classifyBrowseChannel(row.item, trackArtistIds)) {
+                BrowseChannelTier.REGISTERED_ARTIST,
+                BrowseChannelTier.NON_CHANNEL,
+                -> true
+                BrowseChannelTier.UNREGISTERED_MUSIC_CHANNEL -> allowUnregisteredMusicChannels
+                BrowseChannelTier.NORMAL_USER_ACCOUNT -> false
+            }
+        }
+
+        // For ARTISTS or explicit set/enganchado/mix queries in ALL, preserve relevance order.
+        if (filter == SearchFilter.ARTISTS || (filter == SearchFilter.ALL && queryRequestsDjSet(query))) {
             return kept
         }
 
