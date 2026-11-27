@@ -1936,7 +1936,18 @@ object AudioCache {
     suspend fun prepareUpcoming(upcoming: Upcoming): Boolean {
         val id = upcoming.mediaId
         if (SourceRegistry.parseTrackKey(id) != null || id in Downloads.saved.value) return false
-        if (SourceResolver.canSubstituteForYouTube() && StreamChoice.peek(id) == null && !OriginalVersion.isPinned(id)) {
+        // A track whose entry already holds YouTube's Opus — the song playing
+        // right now, out of the cache, when a search lists it again — is not
+        // upcoming, it is sounding. The player reads those bytes and never
+        // asks the resolver, so pinning another source here only made the
+        // pin lie: 'Pain In My Voice' played its cached Opus for a whole
+        // song while the player named Tidal and the badge read its name.
+        // The same guard read-ahead applies before its own warm-up; the
+        // second look is what upgrades a track that is already playing.
+        val youTubeFilled = heldByYouTube(cacheKeyOf(Uri.parse("bitchord://watch?v=$id")))
+        if (SourceResolver.canSubstituteForYouTube() && StreamChoice.peek(id) == null &&
+            !OriginalVersion.isPinned(id) && !youTubeFilled
+        ) {
             DirectSourceGate.holdWhilePreparing(id)
             try {
                 runCatching { SourceResolver.prepareAhead(upcoming.target) }
