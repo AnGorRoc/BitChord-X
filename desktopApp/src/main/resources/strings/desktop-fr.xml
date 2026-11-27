@@ -282,4 +282,5 @@
     <string name="d_chrome_minimize">Réduire</string>
     <string name="d_chrome_close">Fermer</string>
     <string name="d_account_sign_in_google">Se connecter avec Google</string>
+    <string name="d_settings_window">Fenêtre</string>
 </resources>

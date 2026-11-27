@@ -282,4 +282,5 @@
     <string name="d_chrome_minimize">Riduci a icona</string>
     <string name="d_chrome_close">Chiudi</string>
     <string name="d_account_sign_in_google">Accedi con Google</string>
+    <string name="d_settings_window">Finestra</string>
 </resources>

@@ -281,4 +281,5 @@
     <string name="d_chrome_minimize">Minimizar</string>
     <string name="d_chrome_close">Cerrar</string>
     <string name="d_account_sign_in_google">Iniciar sesión con Google</string>
+    <string name="d_settings_window">Ventana</string>
 </resources>

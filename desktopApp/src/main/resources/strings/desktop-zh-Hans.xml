@@ -282,4 +282,5 @@
     <string name="d_chrome_minimize">最小化</string>
     <string name="d_chrome_close">关闭</string>
     <string name="d_account_sign_in_google">通过 Google 登录</string>
+    <string name="d_settings_window">窗口</string>
 </resources>

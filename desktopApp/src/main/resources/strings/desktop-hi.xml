@@ -282,4 +282,5 @@
     <string name="d_chrome_minimize">छोटा करें</string>
     <string name="d_chrome_close">बंद करें</string>
     <string name="d_account_sign_in_google">Google से साइन इन करें</string>
+    <string name="d_settings_window">विंडो</string>
 </resources>

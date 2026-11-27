@@ -282,4 +282,5 @@
     <string name="d_chrome_minimize">מזער</string>
     <string name="d_chrome_close">סגור</string>
     <string name="d_account_sign_in_google">התחבר באמצעות Google</string>
+    <string name="d_settings_window">חלון</string>
 </resources>

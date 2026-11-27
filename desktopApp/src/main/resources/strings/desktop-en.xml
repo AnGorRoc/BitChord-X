@@ -283,4 +283,5 @@
     <string name="d_chrome_minimize">Minimize</string>
     <string name="d_chrome_close">Close</string>
     <string name="d_account_sign_in_google">Sign in with Google</string>
+    <string name="d_settings_window">Window</string>
 </resources>

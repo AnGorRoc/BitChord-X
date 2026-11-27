@@ -282,4 +282,5 @@
     <string name="d_chrome_minimize">Свернуть</string>
     <string name="d_chrome_close">Закрыть</string>
     <string name="d_account_sign_in_google">Войти с помощью Google</string>
+    <string name="d_settings_window">Окно</string>
 </resources>
