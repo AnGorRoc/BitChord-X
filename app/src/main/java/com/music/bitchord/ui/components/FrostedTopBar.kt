@@ -37,6 +37,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.windowInsetsPadding
@@ -904,9 +905,12 @@ private const val ACCESSORY_HINT_ALPHA = 0.6f
 /**
  * The bar's centred content, bare over the top of the page and on a pill of
  * the navbar's glass once the page has scrolled under it ([pill]). The pill is
- * the controls' height and hugs its content; on the plain bar it takes the
- * field's own fill. The switch is immediate: the content is the same either
- * way, only what is behind it changes.
+ * at least the controls' height and hugs its content; on the plain bar it
+ * takes the field's own fill.
+ *
+ * The content never moves or resizes: its box is the same in both states, and
+ * only the surface behind it comes and goes. That surface fades and grows in
+ * rather than appearing from nothing. Reduce animation makes it immediate.
  */
 @Composable
 private fun CenterPill(
@@ -915,33 +919,58 @@ private fun CenterPill(
     hazeState: HazeState?,
     content: @Composable () -> Unit,
 ) {
+    val reduceAnimation by AppSettings.reduceAnimation.collectAsStateWithLifecycle()
     val shape = remember { SquirclePillShape() }
+    val shown by animateFloatAsState(
+        targetValue = if (pill) 1f else 0f,
+        animationSpec = if (reduceAnimation) snap() else tween(CENTER_PILL_FADE_MS),
+        label = "centerPill",
+    )
     // One colour in both states: the page's text colour, which the glass is
     // made to carry. Switching to the glass's own content colour on the way in
     // turned the greeting from the theme's tone to plain black or white.
     val contentColor = MaterialTheme.colorScheme.onBackground
     Box(
-        modifier = if (pill) {
-            Modifier
-                .height(TOP_CONTROL_SIZE)
-                .then(
-                    if (floating) {
-                        artworkPageSurface(shape = shape, hazeState = hazeState)
-                    } else {
-                        Modifier
-                            .clip(shape)
-                            .background(MaterialTheme.colorScheme.surfaceVariant)
-                    },
-                )
-                .padding(horizontal = 18.dp)
-        } else {
-            Modifier
-        },
+        modifier = Modifier.heightIn(min = TOP_CONTROL_SIZE),
         contentAlignment = Alignment.Center,
     ) {
-        CompositionLocalProvider(LocalContentColor provides contentColor, content = content)
+        // Composed only while any of it shows: the glass samples the page
+        // behind it, which is work for nothing at zero alpha.
+        if (shown > 0f) {
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .graphicsLayer {
+                        alpha = shown
+                        val scale = CENTER_PILL_START_SCALE + (1f - CENTER_PILL_START_SCALE) * shown
+                        scaleX = scale
+                        scaleY = scale
+                    }
+                    .then(
+                        if (floating) {
+                            artworkPageSurface(shape = shape, hazeState = hazeState)
+                        } else {
+                            Modifier
+                                .clip(shape)
+                                .background(MaterialTheme.colorScheme.surfaceVariant)
+                        },
+                    ),
+            )
+        }
+        Box(
+            modifier = Modifier.padding(horizontal = 18.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            CompositionLocalProvider(LocalContentColor provides contentColor, content = content)
+        }
     }
 }
+
+/** How long [CenterPill]'s surface takes to come in or go. */
+private const val CENTER_PILL_FADE_MS = 260
+
+/** The size [CenterPill]'s surface grows in from, as a fraction of its own. */
+private const val CENTER_PILL_START_SCALE = 0.9f
 
 /**
  * Edge padding that collapses only for the profile-only state.
