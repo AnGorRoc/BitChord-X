@@ -2,6 +2,7 @@ package com.music.bitchord.desktop
 
 import com.music.bitchord.data.model.Song
 import com.music.bitchord.data.model.durationMillis
+import com.music.bitchord.data.sources.TrackMatcher
 import java.util.Locale
 import kotlin.math.abs
 
@@ -20,6 +21,9 @@ internal object DesktopTrackMatcher {
     /** Every candidate that is the same recording, most confident first. */
     fun ranked(candidates: List<Song>, target: Song): List<Song> = candidates
         .mapNotNull { candidate -> score(candidate, target)?.let { candidate to it } }
+        // The phone's release tie-breaks: the artist's own release over a
+        // compilation or an unasked-for remaster, the earliest year first.
+        .let { TrackMatcher.releaseAdjusted(it, TrackMatcher.targetOf(target)) }
         .sortedByDescending { it.second }
         .map { it.first }
 

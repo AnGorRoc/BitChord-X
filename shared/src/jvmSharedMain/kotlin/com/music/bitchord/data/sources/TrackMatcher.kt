@@ -52,6 +52,8 @@ object TrackMatcher {
         val isExplicit: Boolean? = null,
         /** Music-video timing includes visual intros/outros that catalogue audio omits. */
         val isVideo: Boolean = false,
+        /** Release year, when the queue row states one. Rare: YouTube's rows don't. */
+        val year: Int? = null,
     )
 
     fun targetOf(song: Song) = Target(
@@ -61,6 +63,7 @@ object TrackMatcher {
         song.albumName,
         song.isExplicit,
         song.isVideo,
+        song.releaseYear,
     )
 
     // ── Asking ──────────────────────────────────────────────────────────────
@@ -182,6 +185,7 @@ object TrackMatcher {
     fun ranked(candidates: List<Song>, target: Target): List<Song> =
         candidates
             .mapNotNull { candidate -> score(candidate, target)?.let { candidate to it } }
+            .let { releaseAdjusted(it, target) }
             // A runtime-identical cover is only a last-resort explanation for
             // catalogues crediting the same master differently. If this search
             // also returned anything carrying the requested artist, there is
@@ -341,6 +345,69 @@ object TrackMatcher {
         val winners = ranked.filter { it.second == topCredits }.map { it.first }
         return winners.singleOrNull()
     }
+
+    // ── Release ─────────────────────────────────────────────────────────────
+
+    /**
+     * Resolves a release collision when exactly one release among the
+     * close-duration candidates is an original: every other one is a
+     * compilation ("Greatest Hits", "Now 80s") or a remaster the request
+     * didn't ask for. Those are copies of the same master filed again, and
+     * the artist's own release is the one worth playing.
+     *
+     * Two *originals* still disagree, and that stays a refusal: the case this
+     * guards ("Brown Rang") is two different recordings on two real releases.
+     */
+    fun uniqueOriginalCloseMatch(candidates: List<Song>, target: Target): Song? {
+        val close = candidates.filter { withinSeconds(it, target, DURATION_LIMIT_SEC) }
+        if (close.size < 2) return null
+        val originals = close.filter { releaseScore(it, target) >= 0 }
+        if (originals.isEmpty() || originals.size == close.size) return null
+        if (originals.mapNotNull { albumKey(it.albumName) }.distinct().size != 1) return null
+        return originals.first()
+    }
+
+    /**
+     * Adds the release tie-breaks to already-scored candidates: a compilation
+     * or an unasked-for remaster loses a little, the requested year wins a
+     * little, and among rows stating different years the earliest — the first
+     * time that master was released — gets a nudge.
+     *
+     * Kept small on purpose: these never outweigh the runtime. A compilation
+     * row a second away still beats an album row twenty seconds away, because
+     * the latter is more likely a different edit than the same master.
+     */
+    fun releaseAdjusted(scored: List<Pair<Song, Int>>, target: Target): List<Pair<Song, Int>> {
+        val years = scored.mapNotNull { it.first.releaseYear }
+        val earliest = years.minOrNull()?.takeIf { years.distinct().size > 1 }
+        return scored.map { (song, score) ->
+            val first = if (earliest != null && song.releaseYear == earliest) EARLIEST_YEAR else 0
+            song to (score + releaseScore(song, target) + first)
+        }
+    }
+
+    /**
+     * The release-identity part of a candidate's score, positive or negative.
+     * Never a veto: a compilation is still the right audio, only a worse
+     * place to get it from when the original is also on offer.
+     */
+    fun releaseScore(candidate: Song, target: Target): Int {
+        var score = 0
+        if (isCompilation(candidate.albumName) && !isCompilation(target.album)) score -= COMPILATION_PENALTY
+        val wantRemaster = isRemaster(target.title) || isRemaster(target.album)
+        val gotRemaster = isRemaster(candidate.title) || isRemaster(candidate.albumName)
+        if (wantRemaster != gotRemaster) score -= REMASTER_MISMATCH
+        if (target.year != null && candidate.releaseYear == target.year) score += YEAR_EXACT
+        return score
+    }
+
+    /** Whether an album name reads as a compilation rather than an artist's own release. */
+    fun isCompilation(album: String?): Boolean =
+        !album.isNullOrBlank() && COMPILATION.containsMatchIn(normalize(album))
+
+    /** Whether a title or album says it is a remaster ("2011 Remaster", "Remastered"). */
+    fun isRemaster(text: String?): Boolean =
+        !text.isNullOrBlank() && REMASTER.containsMatchIn(normalize(text))
 
     /**
      * Whether [candidate] states a runtime, and one within [seconds] of
@@ -927,6 +994,10 @@ object TrackMatcher {
     private const val DURATION_TIGHT = 40
     private const val DURATION_LOOSE = 15
     private const val ALBUM_EXACT = 35
+    private const val COMPILATION_PENALTY = 20
+    private const val REMASTER_MISMATCH = 15
+    private const val YEAR_EXACT = 15
+    private const val EARLIEST_YEAR = 10
     private const val EXPLICIT_EXACT = 20
     private const val CONTEXT_SHARED = 20
 
@@ -1100,6 +1171,21 @@ object TrackMatcher {
         "album", "deluxe", "edition", "expanded", "remaster", "remastered",
         "version", "explicit", "clean", "bonus", "anniversary",
     )
+
+    /**
+     * Album names that mean a compilation: a label or a store filing an
+     * artist's existing masters again. Matched on the normalized (lowercase)
+     * name, so a word boundary is all a short word like "hits" needs.
+     */
+    private val COMPILATION = Regex(
+        """\b(?:greatest hits|best of|the very best|hits|collection|the essentials?|essential|anthology|""" +
+            """now that'?s what i call|now \d+|top \d+|\d+ (?:hits|songs|classics)|retrospective|""" +
+            """compilation|various artists|love songs|the singles|lo mejor|grandes [eé]xitos|""" +
+            """[eé]xitos|colecci[oó]n|best hits)\b""",
+    )
+
+    /** "Remaster", "Remastered", "Remasterizado", "2011 Remaster". */
+    private val REMASTER = Regex("""\bremaster""")
 
     /** Trailing labels an upload hangs on a title with no brackets to hold them. */
     private val TRAILING_NOISE = setOf(

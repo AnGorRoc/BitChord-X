@@ -1561,6 +1561,7 @@ object SourceResolver {
                 TrackMatcher.hasConflictingAlbums(matches, target)
             ) {
                 val canonical = TrackMatcher.uniquelyMostCreditedCloseMatch(matches, target)
+                    ?: TrackMatcher.uniqueOriginalCloseMatch(matches, target)
                 if (canonical == null) {
                     TrackLog.w(
                         TAG,
@@ -1577,7 +1578,7 @@ object SourceResolver {
                 TrackLog.d(
                     TAG,
                     "${source.displayName} resolved conflicting albums for '${target.title}' " +
-                        "using the uniquely fullest credit: '${canonical.artist}'",
+                        "on '${canonical.albumName}' by '${canonical.artist}'",
                 )
                 matches = listOf(canonical)
             }

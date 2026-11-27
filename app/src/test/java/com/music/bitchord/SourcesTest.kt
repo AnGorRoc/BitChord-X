@@ -573,6 +573,65 @@ class SourcesTest {
     }
 
     @Test
+    fun `a collision between an album and a compilation resolves to the album`() {
+        val target = TrackMatcher.Target("Mere Bina", "Pritam, Nikhil D'Souza", durationSec = 290)
+        val film = song("Mere Bina", "Pritam, Nikhil D'Souza", "4:49").copy(albumName = "Crook")
+        val hits = song("Mere Bina", "Pritam, Nikhil D'Souza", "4:51").copy(albumName = "Sad Love Hits")
+
+        assertEquals(film, TrackMatcher.uniqueOriginalCloseMatch(listOf(hits, film), target))
+    }
+
+    @Test
+    fun `two original releases still refuse to guess`() {
+        val target = TrackMatcher.Target("Brown Rang", "Yo Yo Honey Singh", durationSec = 175)
+        val first = song("Brown Rang", "Yo Yo Honey Singh", "2:59").copy(albumName = "International Villager")
+        val second = song("Brown Rang", "Yo Yo Honey Singh", "2:54").copy(albumName = "Chaar Ikke")
+
+        assertNull(TrackMatcher.uniqueOriginalCloseMatch(listOf(first, second), target))
+    }
+
+    @Test
+    fun `the original release beats a compilation copy of the same master`() {
+        val target = TrackMatcher.Target("Take On Me", "a-ha", durationSec = 225)
+        val compilation = song("Take On Me", "a-ha", "3:45").copy(albumName = "Now That's What I Call The 80s")
+        val album = song("Take On Me", "a-ha", "3:46").copy(albumName = "Hunting High and Low")
+
+        assertEquals(album, TrackMatcher.best(listOf(compilation, album), target))
+    }
+
+    @Test
+    fun `an unasked-for remaster loses to the original, and an asked-for one wins`() {
+        val original = song("Bohemian Rhapsody", "Queen", "5:55").copy(albumName = "A Night at the Opera")
+        val remaster = song("Bohemian Rhapsody (Remastered 2011)", "Queen", "5:55")
+            .copy(albumName = "A Night at the Opera (2011 Remaster)")
+
+        val plain = TrackMatcher.Target("Bohemian Rhapsody", "Queen", durationSec = 355)
+        assertEquals(original, TrackMatcher.best(listOf(remaster, original), plain))
+
+        val asked = plain.copy(title = "Bohemian Rhapsody (Remastered 2011)")
+        assertEquals(remaster, TrackMatcher.best(listOf(original, remaster), asked))
+    }
+
+    @Test
+    fun `among equal copies the earliest release comes first`() {
+        val target = TrackMatcher.Target("Song", "Artist", durationSec = 200)
+        val reissue = song("Song", "Artist", "3:20").copy(albumName = "Song", releaseYear = 2019)
+        val first = song("Song", "Artist", "3:20").copy(albumName = "Debut", releaseYear = 1998)
+
+        assertEquals(first, TrackMatcher.best(listOf(reissue, first), target))
+    }
+
+    @Test
+    fun `release tie-breaks never outweigh the runtime`() {
+        val target = TrackMatcher.Target("Song", "Artist", durationSec = 200)
+        val compilationExact = song("Song", "Artist", "3:20").copy(albumName = "Greatest Hits")
+        val albumFarOff = song("Song", "Artist", "3:45").copy(albumName = "Debut")
+
+        assertEquals(compilationExact, TrackMatcher.best(listOf(albumFarOff, compilationExact), target))
+    }
+
+
+    @Test
     fun `target keeps the queued album identity`() {
         val queued = song("Brown Rang", "Yo Yo Honey Singh", "2:59")
             .copy(albumName = "International Villager")
