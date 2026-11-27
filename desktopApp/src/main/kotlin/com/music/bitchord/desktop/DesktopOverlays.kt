@@ -3,6 +3,11 @@ package com.music.bitchord.desktop
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.BarChart
 import androidx.compose.material.icons.rounded.Code
+import androidx.compose.material.icons.rounded.DesktopWindows
+import androidx.compose.material.icons.rounded.GraphicEq
+import androidx.compose.material.icons.rounded.Headphones
+import androidx.compose.material.icons.rounded.PlayCircle
+import androidx.compose.material.icons.rounded.Subtitles
 import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.Palette
 import androidx.compose.material.icons.rounded.Storage
@@ -73,17 +78,24 @@ internal class DesktopOverlays {
 }
 
 /**
- * The 10 settings categories ported from the phone app.
+ * The pages of Settings, in the order its main page lists them: the phone's map (see its
+ * `SettingsCategory`), plus Window for what only a desktop window has. Account, Listen together
+ * and Feedback stay on the main page itself.
  */
 internal enum class DesktopSettingsCategory(val titleKey: String, val defaultTitle: String) {
-    DOWNLOADS("downloads", "Downloads"),
-    PLAYBACK("playback", "Playback"),
+    AUDIO_QUALITY("audio_quality", "Audio quality"),
     APPEARANCE("appearance", "Appearance"),
-    PERFORMANCE("performance", "Performance"),
-    LOCAL_MUSIC("local_music", "Local Music"),
+    EFFECTS_PERFORMANCE("settings_effects_performance", "Effects and performance"),
+    WINDOW("d_settings_window", "Window"),
+    PLAYER("settings_player", "Player"),
+    LYRICS("settings_lyrics", "Lyrics"),
+    PLAYBACK("playback", "Playback"),
+    SOUND("settings_sound", "Sound"),
+    OUTPUT("settings_output_dac", "Output and DAC"),
+    DOWNLOADS("downloads", "Downloads"),
     STORAGE("storage", "Storage"),
-    YOUR_DATA("your_data", "Your Data"),
-    MISCELLANEOUS("miscellaneous", "Miscellaneous"),
+    LOCAL_MUSIC("local_music", "Local Music"),
+    PRIVACY_DATA("settings_privacy_data", "Privacy and data"),
     LANGUAGE("language", "Language"),
     ADVANCED("advanced_options", "Advanced options"),
     ;
@@ -92,14 +104,19 @@ internal enum class DesktopSettingsCategory(val titleKey: String, val defaultTit
 
     val icon: ImageVector
         get() = when (this) {
-            DOWNLOADS -> BitChordIcons.Download
-            PLAYBACK -> BitChordIcons.Play
+            AUDIO_QUALITY -> Icons.Rounded.GraphicEq
             APPEARANCE -> Icons.Rounded.Palette
-            PERFORMANCE -> BitChordIcons.Performance
-            LOCAL_MUSIC -> BitChordIcons.Library
+            EFFECTS_PERFORMANCE -> BitChordIcons.Performance
+            WINDOW -> Icons.Rounded.DesktopWindows
+            PLAYER -> Icons.Rounded.PlayCircle
+            LYRICS -> Icons.Rounded.Subtitles
+            PLAYBACK -> BitChordIcons.Play
+            SOUND -> Icons.Rounded.Tune
+            OUTPUT -> Icons.Rounded.Headphones
+            DOWNLOADS -> BitChordIcons.Download
             STORAGE -> Icons.Rounded.Storage
-            YOUR_DATA -> Icons.Rounded.BarChart
-            MISCELLANEOUS -> Icons.Rounded.Tune
+            LOCAL_MUSIC -> BitChordIcons.Library
+            PRIVACY_DATA -> Icons.Rounded.BarChart
             LANGUAGE -> Icons.Rounded.Language
             ADVANCED -> Icons.Rounded.Code
         }
