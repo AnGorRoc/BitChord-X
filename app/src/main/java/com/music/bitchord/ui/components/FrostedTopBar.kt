@@ -915,14 +915,11 @@ private fun CenterPill(
     hazeState: HazeState?,
     content: @Composable () -> Unit,
 ) {
-    val reduceDynamicBlur by AppSettings.reduceDynamicBlur.collectAsStateWithLifecycle()
-    val glass = floating && LocalLiquidGlassEnabled.current && isGlassSupported() && !reduceDynamicBlur
     val shape = remember { SquirclePillShape() }
-    val contentColor = when {
-        !pill -> LocalContentColor.current
-        glass -> glassContentColor()
-        else -> MaterialTheme.colorScheme.onSurface
-    }
+    // One colour in both states: the page's text colour, which the glass is
+    // made to carry. Switching to the glass's own content colour on the way in
+    // turned the greeting from the theme's tone to plain black or white.
+    val contentColor = MaterialTheme.colorScheme.onBackground
     Box(
         modifier = if (pill) {
             Modifier

@@ -42,9 +42,11 @@ fun HomeGreetingLine(
      */
     color: androidx.compose.ui.graphics.Color? = null,
     /**
-     * Drawn inside the top bar's glass pill (the page scrolled under it): one
-     * line, smaller, in the pill's own content colour so it reads on the glass.
+     * Drawn inside the top bar's glass pill (the page scrolled under it). The
+     * line itself does not change: same size, same tint. Untinted, it takes
+     * the pill's content colour, which the bar fades across from the page's.
      */
+    @Suppress("UNUSED_PARAMETER")
     pill: Boolean = false,
 ) {
     @Suppress("NAME_SHADOWING")
@@ -87,19 +89,18 @@ fun HomeGreetingLine(
         HomeGreeting.Kind.CONTINUE_ARTIST -> stringResource(Res.string.greeting_continue_artist, read.first.orEmpty())
         HomeGreeting.Kind.HELLO -> stringResource(Res.string.greeting_hello_named, name.orEmpty())
     }
+    // The same fit bare and on the pill: changing it as the pill came in made
+    // the line jump size at the moment it moved onto the glass, and re-fitting
+    // hid it for a frame. The tint, when there is one, stays across too.
     FittedGreeting(
         text = text,
-        maxSize = if (pill) PILL_SIZE else GREETING_SIZE,
-        minSize = if (pill) PILL_MIN_SIZE else GREETING_MIN_SIZE,
-        maxLines = if (pill) 1 else 2,
-        color = if (pill) androidx.compose.material3.LocalContentColor.current else color ?: MaterialTheme.colorScheme.onBackground,
+        maxSize = GREETING_SIZE,
+        minSize = GREETING_MIN_SIZE,
+        maxLines = 2,
+        color = color ?: androidx.compose.material3.LocalContentColor.current,
         modifier = modifier,
     )
 }
-
-/** The greeting inside the glass pill: one line, at the size the pill holds. */
-private val PILL_SIZE = 17.sp
-private val PILL_MIN_SIZE = 12.sp
 
 /** The smallest a long greeting shrinks to before it would be cut. */
 private val GREETING_MIN_SIZE = 14.sp
