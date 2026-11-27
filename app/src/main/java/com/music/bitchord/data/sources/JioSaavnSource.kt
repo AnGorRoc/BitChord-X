@@ -61,6 +61,7 @@ class JioSaavnSource(
                 },
                 sourceQuality = "HIGH",
                 isExplicit = raw.isExplicit,
+                releaseYear = raw.year.trim().toIntOrNull(),
             )
         }
     }

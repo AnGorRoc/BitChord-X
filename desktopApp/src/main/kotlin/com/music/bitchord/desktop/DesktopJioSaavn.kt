@@ -31,6 +31,7 @@ private data class DesktopSaavnSong(
     val title: String = "",
     val image: String = "",
     @SerialName("explicit_content") val explicitContent: String = "",
+    val year: String = "",
     @SerialName("more_info") val moreInfo: DesktopSaavnMoreInfo = DesktopSaavnMoreInfo(),
 ) {
     val isExplicit: Boolean
@@ -160,6 +161,7 @@ internal object DesktopJioSaavn {
         },
         sourceQuality = "HIGH",
         isExplicit = isExplicit,
+        releaseYear = year.trim().toIntOrNull(),
     )
 
     private fun prioritizeExplicit(songs: List<DesktopSaavnSong>): List<DesktopSaavnSong> =

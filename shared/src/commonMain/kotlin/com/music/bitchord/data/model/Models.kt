@@ -159,6 +159,12 @@ data class Song(
      * `MUSIC_VIDEO_TYPE_UGC` (user-generated upload), etc.
      */
     val musicVideoType: String? = null,
+    /**
+     * The year the catalogue says this release came out, where a source row
+     * states one (JioSaavn does; YouTube's queue rows don't). Only used to tell
+     * an original release from the compilation or reissue that copied it.
+     */
+    val releaseYear: Int? = null,
 ) {
     /** Legacy derived property: true if and only if [queueTier] is [QueueTier.AUTOPLAY]. */
     val fromAutoplay: Boolean get() = queueTier == QueueTier.AUTOPLAY

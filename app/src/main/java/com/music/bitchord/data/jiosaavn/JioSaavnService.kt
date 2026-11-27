@@ -90,6 +90,8 @@ data class RawSongItem(
     val image: String = "",
     /** JioSaavn sends this as the string `"1"` or `"0"`. */
     @SerialName("explicit_content") val explicitContent: String = "",
+    /** The release year, as a string ("2011"); blank when the row doesn't say. */
+    val year: String = "",
     @SerialName("more_info") val moreInfo: RawMoreInfo = RawMoreInfo()
 ) {
     val isExplicit: Boolean
