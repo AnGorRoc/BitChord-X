@@ -630,6 +630,16 @@ class SourcesTest {
         assertEquals(compilationExact, TrackMatcher.best(listOf(albumFarOff, compilationExact), target))
     }
 
+    @Test
+    fun `asks for the album only when it adds something`() {
+        assertEquals(
+            // "and" is a joining word the title parser drops; a search engine doesn't miss it.
+            "take on me hunting high low",
+            TrackMatcher.albumQuery(TrackMatcher.Target("Take On Me", "a-ha", album = "Hunting High and Low")),
+        )
+        assertNull(TrackMatcher.albumQuery(TrackMatcher.Target("Take On Me", "a-ha", album = "Take On Me")))
+        assertNull(TrackMatcher.albumQuery(TrackMatcher.Target("Take On Me", "a-ha")))
+    }
 
     @Test
     fun `target keeps the queued album identity`() {

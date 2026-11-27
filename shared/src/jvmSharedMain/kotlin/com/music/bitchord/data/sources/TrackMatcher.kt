@@ -409,6 +409,25 @@ object TrackMatcher {
     fun isRemaster(text: String?): Boolean =
         !text.isNullOrBlank() && REMASTER.containsMatchIn(normalize(text))
 
+    /** Whether two album names are the same release, edition labels aside. */
+    fun sameAlbum(first: String?, second: String?): Boolean {
+        val a = albumKey(first) ?: return false
+        return a == albumKey(second)
+    }
+
+    /**
+     * A search that names the release, for when the plain searches returned
+     * copies of the track but not the one on [Target.album]. Null when there
+     * is no album or it is just the title again (a single).
+     */
+    fun albumQuery(target: Target): String? {
+        val album = target.album?.takeIf { it.isNotBlank() } ?: return null
+        val title = searchableTitle(target.title, target.artist).takeIf { it.isNotBlank() } ?: return null
+        val albumWords = searchableTitle(album)
+        if (albumWords.isBlank() || albumKey(album) == albumKey(target.title)) return null
+        return "$title $albumWords"
+    }
+
     /**
      * Whether [candidate] states a runtime, and one within [seconds] of
      * [target]'s.

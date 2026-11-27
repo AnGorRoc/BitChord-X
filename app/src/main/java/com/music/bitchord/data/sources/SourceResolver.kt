@@ -1528,9 +1528,10 @@ object SourceResolver {
         var hadAnyCandidates = false
         var hadRelevantCandidates = false
         var hadFailedStream = false
+        var askedForAlbum = false
         for (query in TrackMatcher.queries(target)) {
             searchedAny = true
-            val candidates = attempt(source) {
+            var candidates = attempt(source) {
                 source.search(
                     query,
                     limit = MATCH_CANDIDATES,
@@ -1541,6 +1542,26 @@ object SourceResolver {
                     request = request,
                 )
             } ?: return null
+            // JioSaavn files one master on the artist's album and on every
+            // compilation that licensed it, and a plain title search can
+            // answer with only the compilations. When the queue row names its
+            // album and none of what came back is on it, ask once more with
+            // the album in the query, so the original gets a chance to compete.
+            if (source.kind == SourceKind.JIOSAAVN && !askedForAlbum) {
+                val albumQuery = TrackMatcher.albumQuery(target)
+                if (albumQuery != null &&
+                    TrackMatcher.ranked(candidates, target).none { TrackMatcher.sameAlbum(it.albumName, target.album) }
+                ) {
+                    askedForAlbum = true
+                    val more = attempt(source) {
+                        source.search(albumQuery, limit = MATCH_CANDIDATES, waitForAll = waitForAll, request = request)
+                    }.orEmpty()
+                    if (more.isNotEmpty()) {
+                        TrackLog.d(TAG, "${source.displayName}: asked again with the album: \"$albumQuery\"")
+                        candidates = (candidates + more).distinctBy { it.videoId }
+                    }
+                }
+            }
             if (candidates.isNotEmpty()) {
                 hadAnyCandidates = true
                 if (candidates.any { TrackMatcher.sharesArtist(target.artist, it.artist) }) {

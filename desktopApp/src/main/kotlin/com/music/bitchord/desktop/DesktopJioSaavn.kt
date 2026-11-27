@@ -3,6 +3,7 @@ package com.music.bitchord.desktop
 import com.music.bitchord.data.model.SearchFilter
 import com.music.bitchord.data.model.SearchResult
 import com.music.bitchord.data.model.Song
+import com.music.bitchord.data.sources.TrackMatcher
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.cio.CIO
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
@@ -139,13 +140,29 @@ internal object DesktopJioSaavn {
     /** Every copy this catalogue holds of [song], most confident first. */
     suspend fun matches(song: Song): List<Song> {
         if (song.title.isBlank() || song.isVideo) return emptyList()
+        val target = TrackMatcher.targetOf(song)
+        var askedForAlbum = false
         for (query in DesktopTrackMatcher.queries(song)) {
-            val candidates = search(query, 25).getOrDefault(emptyList())
-                .mapNotNull { (it as? SearchResult.Track)?.song }
+            var candidates = searchTracks(query)
+            // A plain title search can answer with only the compilations that
+            // licensed the master. When the song names its album and nothing
+            // that came back is on it, ask once more with the album named.
+            if (!askedForAlbum) {
+                val albumQuery = TrackMatcher.albumQuery(target)
+                if (albumQuery != null &&
+                    DesktopTrackMatcher.ranked(candidates, song).none { TrackMatcher.sameAlbum(it.albumName, song.albumName) }
+                ) {
+                    askedForAlbum = true
+                    candidates = (candidates + searchTracks(albumQuery)).distinctBy { it.videoId }
+                }
+            }
             DesktopTrackMatcher.ranked(candidates, song).ifEmpty { null }?.let { return it }
         }
         return emptyList()
     }
+
+    private suspend fun searchTracks(query: String): List<Song> =
+        search(query, 25).getOrDefault(emptyList()).mapNotNull { (it as? SearchResult.Track)?.song }
 
     private fun DesktopSaavnSong.toSong() = Song(
         videoId = TRACK_PREFIX + id,
